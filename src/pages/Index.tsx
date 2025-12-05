@@ -1,19 +1,20 @@
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Users, Sparkles, DollarSign, TrendingUp } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { mockAppointments, mockClients, mockServices } from '@/data/mockData';
+import { getCategoryColor } from '@/lib/categoryColors';
 
 const Index = () => {
   const today = new Date();
   const todayAppointments = mockAppointments.filter(
-    apt => format(apt.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+    apt => isSameDay(new Date(apt.start_time), today)
   );
   
   const confirmedToday = todayAppointments.filter(apt => apt.status === 'confirmed').length;
-  const todayRevenue = todayAppointments.reduce((acc, apt) => acc + apt.service.price, 0);
+  const todayRevenue = todayAppointments.reduce((acc, apt) => acc + (apt.service?.price || 0), 0);
 
   return (
     <AppLayout 
@@ -126,7 +127,7 @@ const Index = () => {
                 >
                   <div 
                     className="h-2 w-2 rounded-full" 
-                    style={{ backgroundColor: service.color }}
+                    style={{ backgroundColor: getCategoryColor(service.category) }}
                   />
                   <span className="flex-1 truncate text-muted-foreground">
                     {service.name}

@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { Search, Plus, Users } from 'lucide-react';
+import { Search, Plus, Users, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
+import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { mockClients } from '@/data/mockData';
+import { useClients } from '@/hooks/useClients';
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { clients, isLoading, refetch } = useClients();
 
-  const filteredClients = mockClients.filter(client =>
+  const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
     client.phone.includes(searchTerm)
   );
 
@@ -32,10 +34,7 @@ const Clientes = () => {
             className="pl-9"
           />
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <NewClientDialog onClientCreated={refetch} />
       </div>
 
       {/* Stats */}
@@ -45,20 +44,19 @@ const Clientes = () => {
             <Users className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-display font-semibold">{mockClients.length}</p>
+            <p className="text-2xl font-display font-semibold">{clients.length}</p>
             <p className="text-xs text-muted-foreground">Total de clientes</p>
           </div>
-        </div>
-        <div className="h-10 w-px bg-border" />
-        <div>
-          <p className="text-2xl font-display font-semibold">3</p>
-          <p className="text-xs text-muted-foreground">Novos este mês</p>
         </div>
       </div>
 
       {/* Clients Grid */}
       <div className="mt-6">
-        {filteredClients.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredClients.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredClients.map((client, index) => (
               <div
@@ -78,10 +76,12 @@ const Clientes = () => {
                 ? 'Nenhum cliente encontrado para sua busca' 
                 : 'Nenhum cliente cadastrado'}
             </p>
-            <Button className="mt-4" variant="secondary">
-              <Plus className="h-4 w-4 mr-2" />
-              Cadastrar Cliente
-            </Button>
+            <NewClientDialog onClientCreated={refetch}>
+              <Button className="mt-4" variant="secondary">
+                <Plus className="h-4 w-4 mr-2" />
+                Cadastrar Cliente
+              </Button>
+            </NewClientDialog>
           </div>
         )}
       </div>

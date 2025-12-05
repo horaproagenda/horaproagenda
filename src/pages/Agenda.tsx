@@ -18,8 +18,8 @@ const Agenda = () => {
 
   const filteredAppointments = useMemo(() => {
     return mockAppointments.filter(
-      apt => isSameDay(apt.date, selectedDate)
-    ).sort((a, b) => a.time.localeCompare(b.time));
+      apt => isSameDay(new Date(apt.start_time), selectedDate)
+    ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [selectedDate]);
 
   const goToPreviousWeek = () => {
@@ -65,7 +65,9 @@ const Agenda = () => {
           {weekDays.map(day => {
             const isSelected = isSameDay(day, selectedDate);
             const isToday = isSameDay(day, new Date());
-            const dayAppointments = mockAppointments.filter(apt => isSameDay(apt.date, day));
+            const dayAppointments = mockAppointments.filter(apt => 
+              isSameDay(new Date(apt.start_time), day)
+            );
 
             return (
               <button

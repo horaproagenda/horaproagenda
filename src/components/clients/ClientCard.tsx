@@ -35,10 +35,12 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
               <Phone className="h-3.5 w-3.5" />
               {client.phone}
             </p>
-            <p className="flex items-center gap-2 text-sm text-muted-foreground truncate">
-              <Mail className="h-3.5 w-3.5" />
-              {client.email}
-            </p>
+            {client.email && (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground truncate">
+                <Mail className="h-3.5 w-3.5" />
+                {client.email}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -51,7 +53,7 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
 
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          Cliente desde {format(client.createdAt, "MMM 'de' yyyy", { locale: ptBR })}
+          Cliente desde {format(new Date(client.created_at), "MMM 'de' yyyy", { locale: ptBR })}
         </span>
         <Button 
           variant="ghost" 

@@ -1,33 +1,59 @@
+export interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppRole = 'admin' | 'receptionist' | 'professional';
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role: AppRole;
+}
+
 export interface Client {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
-  avatar?: string;
-  notes?: string;
-  createdAt: Date;
+  birthdate: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Service {
   id: string;
   name: string;
-  description: string;
-  duration: number; // in minutes
+  description: string | null;
+  duration: number;
   price: number;
   category: string;
-  color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
+
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
 
 export interface Appointment {
   id: string;
-  clientId: string;
-  client: Client;
-  serviceId: string;
-  service: Service;
-  date: Date;
-  time: string;
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
-  notes?: string;
+  client_id: string;
+  service_id: string;
+  professional_id: string | null;
+  start_time: string;
+  end_time: string;
+  status: AppointmentStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  client?: Client;
+  service?: Service;
+  professional?: Profile;
 }
-
-export type AppointmentStatus = Appointment['status'];

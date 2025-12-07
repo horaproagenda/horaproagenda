@@ -1,26 +1,69 @@
 import { useState, useMemo } from 'react';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, User, DoorOpen } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { mockAppointments } from '@/data/mockData';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useRooms } from '@/hooks/useRooms';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
+  const [roomFilter, setRoomFilter] = useState<string>('all');
+
+  const { appointments, isLoading: isLoadingAppointments } = useAppointments();
+  const { professionals } = useProfessionals();
+  const { rooms } = useRooms();
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [weekStart]);
 
+  // Filter appointments by professional and room
+  const filteredByFilters = useMemo(() => {
+    return appointments.filter(apt => {
+      // Filter by professional
+      if (professionalFilter !== 'all') {
+        if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
+          return false;
+        }
+      }
+      // Filter by room
+      if (roomFilter !== 'all') {
+        if (apt.service?.room_id !== roomFilter) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [appointments, professionalFilter, roomFilter]);
+
+  // Filter by selected date
   const filteredAppointments = useMemo(() => {
-    return mockAppointments.filter(
+    return filteredByFilters.filter(
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
-  }, [selectedDate]);
+  }, [filteredByFilters, selectedDate]);
+
+  // Get appointment count for each day (with filters applied)
+  const getAppointmentsForDay = (day: Date) => {
+    return filteredByFilters.filter(apt => 
+      isSameDay(new Date(apt.start_time), day)
+    );
+  };
 
   const goToPreviousWeek = () => {
     setWeekStart(addDays(weekStart, -7));
@@ -36,11 +79,69 @@ const Agenda = () => {
     setWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
   };
 
+  const clearFilters = () => {
+    setProfessionalFilter('all');
+    setRoomFilter('all');
+  };
+
+  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all';
+
+  const activeProfessionals = professionals.filter(p => p.is_active);
+  const activeRooms = rooms.filter(r => r.is_active);
+
   return (
     <AppLayout 
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Profissional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os profissionais</SelectItem>
+              {activeProfessionals.map((prof) => (
+                <SelectItem key={prof.id} value={prof.id}>
+                  {prof.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <DoorOpen className="h-4 w-4 text-muted-foreground" />
+          <Select value={roomFilter} onValueChange={setRoomFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Sala" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as salas</SelectItem>
+              {activeRooms.map((room) => (
+                <SelectItem key={room.id} value={room.id}>
+                  {room.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            Limpar filtros
+          </Button>
+        )}
+      </div>
+
       {/* Week Navigation */}
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-4">
@@ -65,9 +166,7 @@ const Agenda = () => {
           {weekDays.map(day => {
             const isSelected = isSameDay(day, selectedDate);
             const isToday = isSameDay(day, new Date());
-            const dayAppointments = mockAppointments.filter(apt => 
-              isSameDay(new Date(apt.start_time), day)
-            );
+            const dayAppointments = getAppointmentsForDay(day);
 
             return (
               <button
@@ -106,6 +205,14 @@ const Agenda = () => {
                         )}
                       />
                     ))}
+                    {dayAppointments.length > 3 && (
+                      <span className={cn(
+                        'text-[10px] ml-0.5',
+                        isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                      )}>
+                        +{dayAppointments.length - 3}
+                      </span>
+                    )}
                   </div>
                 )}
               </button>
@@ -125,7 +232,13 @@ const Agenda = () => {
           </span>
         </div>
 
-        {filteredAppointments.length > 0 ? (
+        {isLoadingAppointments ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-40 rounded-xl" />
+            ))}
+          </div>
+        ) : filteredAppointments.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredAppointments.map((appointment, index) => (
               <div 
@@ -140,7 +253,9 @@ const Agenda = () => {
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
             <p className="text-muted-foreground">
-              Nenhum agendamento para esta data
+              {hasActiveFilters 
+                ? 'Nenhum agendamento encontrado com os filtros aplicados' 
+                : 'Nenhum agendamento para esta data'}
             </p>
             <Button className="mt-4" variant="secondary">
               Criar Agendamento

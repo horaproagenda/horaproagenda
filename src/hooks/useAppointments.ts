@@ -21,7 +21,11 @@ export function useAppointments() {
         .select(`
           *,
           client:clients(*),
-          service:services(*)
+          service:services(
+            *,
+            room:rooms(*),
+            professional:professionals(*)
+          )
         `)
         .order('start_time', { ascending: true });
 

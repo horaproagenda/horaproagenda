@@ -413,6 +413,7 @@ export type Database = {
           name: string
           price: number
           professional_id: string | null
+          return_days: number | null
           room_id: string | null
           updated_at: string
         }
@@ -426,6 +427,7 @@ export type Database = {
           name: string
           price: number
           professional_id?: string | null
+          return_days?: number | null
           room_id?: string | null
           updated_at?: string
         }
@@ -439,6 +441,7 @@ export type Database = {
           name?: string
           price?: number
           professional_id?: string | null
+          return_days?: number | null
           room_id?: string | null
           updated_at?: string
         }

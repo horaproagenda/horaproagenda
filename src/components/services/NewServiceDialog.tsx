@@ -43,6 +43,7 @@ const serviceSchema = z.object({
   category: z.string().trim().min(1, 'Selecione uma categoria'),
   room_id: z.string().optional(),
   professional_id: z.string().optional(),
+  return_days: z.coerce.number().min(0).max(365).optional().nullable(),
   is_active: z.boolean(),
 });
 
@@ -80,6 +81,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       category: '',
       room_id: '',
       professional_id: '',
+      return_days: null,
       is_active: true,
     },
   });
@@ -95,6 +97,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         category: data.category,
         room_id: data.room_id || null,
         professional_id: data.professional_id || null,
+        return_days: data.return_days || null,
         is_active: data.is_active,
       });
 
@@ -212,6 +215,31 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="return_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Retorno (dias)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={0} 
+                      max={365} 
+                      placeholder="Ex: 30, 90, 180..."
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Tempo em dias para alertar retorno do cliente
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}

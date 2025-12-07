@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Cake, RotateCcw, UserX, Phone, Mail, Calendar } from 'lucide-react';
+import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles } from 'lucide-react';
 import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -38,61 +38,84 @@ const Relatorios = () => {
       .sort((a, b) => a.daysUntil - b.daysUntil);
   }, [clients, today]);
 
-  // Clientes para retorno (última visita há mais de 30 dias, mas menos de 90)
+  // Clientes para retorno - baseado no tempo de retorno do serviço
   const retornos = useMemo(() => {
-    const clientLastAppointment = new Map<string, Date>();
+    // Map client to their last completed appointment with service info
+    const clientLastAppointments = new Map<string, { date: Date; serviceName: string; returnDays: number }>();
     
     appointments
-      .filter(apt => apt.status === 'completed')
+      .filter(apt => apt.status === 'completed' && apt.service?.return_days)
       .forEach(apt => {
         const aptDate = parseISO(apt.start_time);
-        const current = clientLastAppointment.get(apt.client_id);
-        if (!current || aptDate > current) {
-          clientLastAppointment.set(apt.client_id, aptDate);
+        const current = clientLastAppointments.get(apt.client_id);
+        if (!current || aptDate > current.date) {
+          clientLastAppointments.set(apt.client_id, {
+            date: aptDate,
+            serviceName: apt.service?.name || 'Serviço',
+            returnDays: apt.service?.return_days || 30
+          });
         }
       });
 
     return clients
       .filter(client => {
-        const lastVisit = clientLastAppointment.get(client.id);
-        if (!lastVisit) return false;
-        const daysSinceVisit = differenceInDays(today, lastVisit);
-        return daysSinceVisit >= 30 && daysSinceVisit < 90;
+        const lastAppt = clientLastAppointments.get(client.id);
+        if (!lastAppt) return false;
+        const daysSinceVisit = differenceInDays(today, lastAppt.date);
+        // Show if past return date but not too long (within 2x return period)
+        return daysSinceVisit >= lastAppt.returnDays && daysSinceVisit < lastAppt.returnDays * 3;
       })
-      .map(client => ({
-        ...client,
-        lastVisit: clientLastAppointment.get(client.id)!,
-        daysSinceVisit: differenceInDays(today, clientLastAppointment.get(client.id)!)
-      }))
-      .sort((a, b) => b.daysSinceVisit - a.daysSinceVisit);
+      .map(client => {
+        const lastAppt = clientLastAppointments.get(client.id)!;
+        const daysSinceVisit = differenceInDays(today, lastAppt.date);
+        const daysOverdue = daysSinceVisit - lastAppt.returnDays;
+        return {
+          ...client,
+          lastVisit: lastAppt.date,
+          daysSinceVisit,
+          serviceName: lastAppt.serviceName,
+          returnDays: lastAppt.returnDays,
+          daysOverdue
+        };
+      })
+      .sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [clients, appointments, today]);
 
-  // Clientes sumidos (última visita há mais de 90 dias)
+  // Clientes sumidos (última visita há mais de 3x o tempo de retorno ou +90 dias se não tiver retorno definido)
   const sumidos = useMemo(() => {
-    const clientLastAppointment = new Map<string, Date>();
+    const clientLastAppointments = new Map<string, { date: Date; serviceName: string; returnDays: number | null }>();
     
     appointments
       .filter(apt => apt.status === 'completed')
       .forEach(apt => {
         const aptDate = parseISO(apt.start_time);
-        const current = clientLastAppointment.get(apt.client_id);
-        if (!current || aptDate > current) {
-          clientLastAppointment.set(apt.client_id, aptDate);
+        const current = clientLastAppointments.get(apt.client_id);
+        if (!current || aptDate > current.date) {
+          clientLastAppointments.set(apt.client_id, {
+            date: aptDate,
+            serviceName: apt.service?.name || 'Serviço',
+            returnDays: apt.service?.return_days || null
+          });
         }
       });
 
     return clients
       .filter(client => {
-        const lastVisit = clientLastAppointment.get(client.id);
-        if (!lastVisit) return false;
-        const daysSinceVisit = differenceInDays(today, lastVisit);
-        return daysSinceVisit >= 90;
+        const lastAppt = clientLastAppointments.get(client.id);
+        if (!lastAppt) return false;
+        const daysSinceVisit = differenceInDays(today, lastAppt.date);
+        const threshold = lastAppt.returnDays ? lastAppt.returnDays * 3 : 90;
+        return daysSinceVisit >= threshold;
       })
-      .map(client => ({
-        ...client,
-        lastVisit: clientLastAppointment.get(client.id)!,
-        daysSinceVisit: differenceInDays(today, clientLastAppointment.get(client.id)!)
-      }))
+      .map(client => {
+        const lastAppt = clientLastAppointments.get(client.id)!;
+        return {
+          ...client,
+          lastVisit: lastAppt.date,
+          daysSinceVisit: differenceInDays(today, lastAppt.date),
+          serviceName: lastAppt.serviceName
+        };
+      })
       .sort((a, b) => b.daysSinceVisit - a.daysSinceVisit);
   }, [clients, appointments, today]);
 
@@ -200,13 +223,16 @@ const Relatorios = () => {
 
             <TabsContent value="retornos" className="space-y-4">
               <div className="text-sm text-muted-foreground mb-4">
-                Clientes que não visitam há 30-90 dias e podem precisar de um retorno
+                Clientes que passaram do tempo de retorno do serviço realizado
               </div>
               {retornos.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
                   <RotateCcw className="mx-auto h-10 w-10 text-muted-foreground/50" />
                   <p className="mt-3 text-muted-foreground">
                     Nenhum cliente pendente de retorno
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure o tempo de retorno nos serviços para ativar este recurso
                   </p>
                 </div>
               ) : (
@@ -215,9 +241,13 @@ const Relatorios = () => {
                     <ClientCard key={client.id} client={client}>
                       <div className="text-right">
                         <Badge variant="outline" className="border-amber-500 text-amber-600">
-                          {client.daysSinceVisit} dias
+                          +{client.daysOverdue} dias
                         </Badge>
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
+                          <Sparkles className="h-3 w-3" />
+                          {client.serviceName}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
                           <Calendar className="h-3 w-3" />
                           {format(client.lastVisit, "dd/MM/yyyy")}
                         </p>
@@ -230,7 +260,7 @@ const Relatorios = () => {
 
             <TabsContent value="sumidos" className="space-y-4">
               <div className="text-sm text-muted-foreground mb-4">
-                Clientes que não visitam há mais de 90 dias
+                Clientes inativos há muito tempo (3x o tempo de retorno ou +90 dias)
               </div>
               {sumidos.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
@@ -248,6 +278,10 @@ const Relatorios = () => {
                           {client.daysSinceVisit} dias
                         </Badge>
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
+                          <Sparkles className="h-3 w-3" />
+                          {client.serviceName}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
                           <Calendar className="h-3 w-3" />
                           {format(client.lastVisit, "dd/MM/yyyy")}
                         </p>

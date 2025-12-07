@@ -219,14 +219,14 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Sala de Atendimento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(val) => field.onChange(val === "none" ? "" : val)} value={field.value || "none"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma sala (opcional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
+                      <SelectItem value="none">Nenhuma</SelectItem>
                       {rooms.filter(r => r.is_active).map((room) => (
                         <SelectItem key={room.id} value={room.id}>
                           {room.name}
@@ -245,14 +245,14 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Profissional Responsável</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(val) => field.onChange(val === "none" ? "" : val)} value={field.value || "none"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um profissional (opcional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
                       {professionals.filter(p => p.is_active).map((prof) => (
                         <SelectItem key={prof.id} value={prof.id}>
                           {prof.name}

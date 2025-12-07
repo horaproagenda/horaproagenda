@@ -68,9 +68,54 @@ export type Database = {
           },
         ]
       }
+      client_documents: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          file_path: string | null
+          file_url: string | null
+          id: string
+          title: string
+          type: Database["public"]["Enums"]["document_type"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          title: string
+          type: Database["public"]["Enums"]["document_type"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["document_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           birthdate: string | null
+          complementary_info: string | null
           created_at: string
           email: string | null
           id: string
@@ -81,6 +126,7 @@ export type Database = {
         }
         Insert: {
           birthdate?: string | null
+          complementary_info?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -91,6 +137,7 @@ export type Database = {
         }
         Update: {
           birthdate?: string | null
+          complementary_info?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -131,6 +178,56 @@ export type Database = {
         }
         Relationships: []
       }
+      quotes: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          items: Json
+          notes: string | null
+          sent_at: string | null
+          sent_via: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          total_amount: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           category: string
@@ -167,6 +264,57 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_photos: {
+        Row: {
+          appointment_id: string | null
+          client_id: string
+          created_at: string
+          file_path: string
+          file_url: string | null
+          id: string
+          notes: string | null
+          stage: Database["public"]["Enums"]["treatment_stage"]
+          taken_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          client_id: string
+          created_at?: string
+          file_path: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          stage: Database["public"]["Enums"]["treatment_stage"]
+          taken_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          client_id?: string
+          created_at?: string
+          file_path?: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          stage?: Database["public"]["Enums"]["treatment_stage"]
+          taken_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_photos_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_photos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -201,6 +349,9 @@ export type Database = {
     Enums: {
       app_role: "admin" | "receptionist" | "professional"
       appointment_status: "scheduled" | "confirmed" | "completed" | "cancelled"
+      document_type: "anamnese" | "contract" | "quote" | "photo" | "other"
+      quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
+      treatment_stage: "before" | "during" | "after"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -330,6 +481,9 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "receptionist", "professional"],
       appointment_status: ["scheduled", "confirmed", "completed", "cancelled"],
+      document_type: ["anamnese", "contract", "quote", "photo", "other"],
+      quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
+      treatment_stage: ["before", "during", "after"],
     },
   },
 } as const

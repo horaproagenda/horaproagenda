@@ -32,6 +32,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useRooms } from '@/hooks/useRooms';
+import { useProfessionals } from '@/hooks/useProfessionals';
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -39,6 +41,8 @@ const serviceSchema = z.object({
   duration: z.coerce.number().min(5, 'Duração mínima de 5 minutos').max(480, 'Duração máxima de 8 horas'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(100000, 'Preço muito alto'),
   category: z.string().trim().min(1, 'Selecione uma categoria'),
+  room_id: z.string().optional(),
+  professional_id: z.string().optional(),
   is_active: z.boolean(),
 });
 
@@ -63,6 +67,8 @@ interface NewServiceDialogProps {
 export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { rooms } = useRooms();
+  const { professionals } = useProfessionals();
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -72,6 +78,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       duration: 60,
       price: 0,
       category: '',
+      room_id: '',
+      professional_id: '',
       is_active: true,
     },
   });
@@ -85,6 +93,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         duration: data.duration,
         price: data.price,
         category: data.category,
+        room_id: data.room_id || null,
+        professional_id: data.professional_id || null,
         is_active: data.is_active,
       });
 
@@ -111,7 +121,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Serviço</DialogTitle>
           <DialogDescription>
@@ -202,6 +212,59 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 )}
               />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="room_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sala de Atendimento</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma sala (opcional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma</SelectItem>
+                      {rooms.filter(r => r.is_active).map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          {room.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="professional_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profissional Responsável</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um profissional (opcional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum</SelectItem>
+                      {professionals.filter(p => p.is_active).map((prof) => (
+                        <SelectItem key={prof.id} value={prof.id}>
+                          {prof.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="is_active"

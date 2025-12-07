@@ -28,6 +28,30 @@ export interface Client {
   updated_at: string;
 }
 
+export interface Room {
+  id: string;
+  name: string;
+  description: string | null;
+  capacity: number;
+  equipment: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  specialties: string[];
+  bio: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -35,6 +59,41 @@ export interface Service {
   duration: number;
   price: number;
   category: string;
+  is_active: boolean;
+  room_id: string | null;
+  professional_id: string | null;
+  created_at: string;
+  updated_at: string;
+  room?: Room;
+  professional?: Professional;
+}
+
+export interface ServicePackage {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  items?: PackageItem[];
+}
+
+export interface PackageItem {
+  id: string;
+  package_id: string;
+  service_id: string;
+  quantity: number;
+  created_at: string;
+  service?: Service;
+}
+
+export interface DocumentTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  content: string;
+  variables: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;

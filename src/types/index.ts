@@ -23,6 +23,7 @@ export interface Client {
   phone: string;
   birthdate: string | null;
   notes: string | null;
+  complementary_info: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,4 +57,57 @@ export interface Appointment {
   client?: Client;
   service?: Service;
   professional?: Profile;
+}
+
+export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';
+
+export interface ClientDocument {
+  id: string;
+  client_id: string;
+  type: DocumentType;
+  title: string;
+  description: string | null;
+  file_path: string | null;
+  file_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TreatmentStage = 'before' | 'during' | 'after';
+
+export interface TreatmentPhoto {
+  id: string;
+  client_id: string;
+  appointment_id: string | null;
+  stage: TreatmentStage;
+  file_path: string;
+  file_url: string | null;
+  notes: string | null;
+  taken_at: string;
+  created_at: string;
+  appointment?: Appointment;
+}
+
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+
+export interface QuoteItem {
+  service_id: string;
+  service_name: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
+export interface Quote {
+  id: string;
+  client_id: string;
+  status: QuoteStatus;
+  items: QuoteItem[];
+  total_amount: number;
+  notes: string | null;
+  sent_via: string | null;
+  sent_at: string | null;
+  valid_until: string | null;
+  created_at: string;
+  updated_at: string;
 }

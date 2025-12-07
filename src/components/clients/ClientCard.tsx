@@ -1,4 +1,5 @@
-import { Phone, Mail, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Phone, Mail, Calendar, ChevronRight } from 'lucide-react';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,13 @@ function getInitials(name: string) {
 }
 
 export function ClientCard({ client, onSchedule }: ClientCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <div className="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in">
+    <div 
+      className="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in cursor-pointer"
+      onClick={() => navigate(`/clientes/${client.id}`)}
+    >
       <div className="flex items-start gap-4">
         <Avatar className="h-12 w-12 border-2 border-primary/20">
           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
@@ -55,15 +61,21 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
         <span className="text-xs text-muted-foreground">
           Cliente desde {format(new Date(client.created_at), "MMM 'de' yyyy", { locale: ptBR })}
         </span>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => onSchedule?.(client)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Calendar className="h-4 w-4 mr-1" />
-          Agendar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSchedule?.(client);
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Calendar className="h-4 w-4 mr-1" />
+            Agendar
+          </Button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
       </div>
     </div>
   );

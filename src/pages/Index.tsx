@@ -127,7 +127,7 @@ const Index = () => {
                 >
                   <div 
                     className="h-2 w-2 rounded-full" 
-                    style={{ backgroundColor: getCategoryColor(service.category) }}
+                    style={{ backgroundColor: getCategoryColor(service.category).hex }}
                   />
                   <span className="flex-1 truncate text-muted-foreground">
                     {service.name}

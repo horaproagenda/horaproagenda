@@ -22,8 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { mockClients, mockServices } from '@/data/mockData';
-import { toast } from 'sonner';
+import { useClients } from '@/hooks/useClients';
+import { useServices } from '@/hooks/useServices';
+import { useAppointments } from '@/hooks/useAppointments';
 
 interface NewAppointmentDialogProps {
   open: boolean;
@@ -44,17 +45,34 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
 
-  const selectedServiceData = mockServices.find(s => s.id === selectedService);
+  const { clients } = useClients();
+  const { services } = useServices();
+  const { createAppointment } = useAppointments();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const selectedServiceData = services.find(s => s.id === selectedService);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedClient || !selectedService || !date || !time) {
-      toast.error('Por favor, preencha todos os campos obrigatórios');
+    if (!selectedClient || !selectedService || !date || !time || !selectedServiceData) {
       return;
     }
 
-    toast.success('Agendamento criado com sucesso!');
+    const [hours, minutes] = time.split(':').map(Number);
+    const startTime = new Date(date);
+    startTime.setHours(hours, minutes, 0, 0);
+
+    const endTime = new Date(startTime);
+    endTime.setMinutes(endTime.getMinutes() + selectedServiceData.duration);
+
+    await createAppointment.mutateAsync({
+      client_id: selectedClient,
+      service_id: selectedService,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      notes: notes || undefined,
+    });
+
     onOpenChange(false);
     resetForm();
   };
@@ -78,7 +96,6 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
-          {/* Client Selection */}
           <div className="space-y-2">
             <Label htmlFor="client">Cliente *</Label>
             <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -86,7 +103,7 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>
               <SelectContent>
-                {mockClients.map((client) => (
+                {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
                   </SelectItem>
@@ -95,7 +112,6 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
             </Select>
           </div>
 
-          {/* Service Selection */}
           <div className="space-y-2">
             <Label htmlFor="service">Serviço *</Label>
             <Select value={selectedService} onValueChange={setSelectedService}>
@@ -103,7 +119,7 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
                 <SelectValue placeholder="Selecione um serviço" />
               </SelectTrigger>
               <SelectContent>
-                {mockServices.map((service) => (
+                {services.filter(s => s.is_active).map((service) => (
                   <SelectItem key={service.id} value={service.id}>
                     <div className="flex items-center justify-between w-full gap-4">
                       <span>{service.name}</span>
@@ -118,12 +134,11 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
             {selectedServiceData && (
               <p className="text-xs text-muted-foreground">
                 Duração: {selectedServiceData.duration} minutos • 
-                Valor: R$ {selectedServiceData.price.toFixed(2)}
+                Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
               </p>
             )}
           </div>
 
-          {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data *</Label>
@@ -146,7 +161,8 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
                     selected={date}
                     onSelect={setDate}
                     initialFocus
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -176,7 +192,6 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
             </div>
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
             <Textarea
@@ -189,13 +204,16 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
             />
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1">
-              Criar Agendamento
+            <Button 
+              type="submit" 
+              className="flex-1"
+              disabled={!selectedClient || !selectedService || !date || !time || createAppointment.isPending}
+            >
+              {createAppointment.isPending ? 'Salvando...' : 'Criar Agendamento'}
             </Button>
           </div>
         </form>

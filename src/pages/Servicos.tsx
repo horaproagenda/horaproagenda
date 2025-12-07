@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { Plus, Sparkles, Filter, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Filter, Loader2, Package } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
+import { NewPackageDialog } from '@/components/services/NewPackageDialog';
+import { ManageRoomsDialog } from '@/components/services/ManageRoomsDialog';
+import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/hooks/useServices';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { cn } from '@/lib/utils';
 
 const Servicos = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { services, isLoading, refetch } = useServices();
+  const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
 
   const categories = [...new Set(services.map(s => s.category))];
   
@@ -21,101 +28,186 @@ const Servicos = () => {
   return (
     <AppLayout 
       title="Serviços" 
-      subtitle="Catálogo de procedimentos"
+      subtitle="Catálogo de procedimentos e pacotes"
     >
-      {/* Header Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Badge
-            variant="outline"
-            className={cn(
-              'cursor-pointer transition-colors',
-              !selectedCategory && 'bg-primary text-primary-foreground border-primary'
-            )}
-            onClick={() => setSelectedCategory(null)}
-          >
-            Todos
-          </Badge>
-          {categories.map(category => (
-            <Badge
-              key={category}
-              variant="outline"
-              className={cn(
-                'cursor-pointer transition-colors',
-                selectedCategory === category && 'bg-primary text-primary-foreground border-primary'
-              )}
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </Badge>
-          ))}
+      <Tabs defaultValue="services" className="w-full">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <TabsList>
+            <TabsTrigger value="services">Serviços</TabsTrigger>
+            <TabsTrigger value="packages">Pacotes</TabsTrigger>
+          </TabsList>
+          
+          <div className="flex flex-wrap gap-2">
+            <ManageRoomsDialog />
+            <ManageProfessionalsDialog />
+          </div>
         </div>
-        <NewServiceDialog onServiceCreated={refetch} />
-      </div>
 
-      {/* Stats */}
-      <div className="mt-6 flex items-center gap-6 rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary/10 p-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+        <TabsContent value="services" className="mt-0">
+          {/* Header Actions */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Badge
+                variant="outline"
+                className={cn(
+                  'cursor-pointer transition-colors',
+                  !selectedCategory && 'bg-primary text-primary-foreground border-primary'
+                )}
+                onClick={() => setSelectedCategory(null)}
+              >
+                Todos
+              </Badge>
+              {categories.map(category => (
+                <Badge
+                  key={category}
+                  variant="outline"
+                  className={cn(
+                    'cursor-pointer transition-colors',
+                    selectedCategory === category && 'bg-primary text-primary-foreground border-primary'
+                  )}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Badge>
+              ))}
+            </div>
+            <NewServiceDialog onServiceCreated={refetch} />
           </div>
-          <div>
-            <p className="text-2xl font-display font-semibold">{services.filter(s => s.is_active).length}</p>
-            <p className="text-xs text-muted-foreground">Serviços ativos</p>
-          </div>
-        </div>
-        <div className="h-10 w-px bg-border" />
-        <div>
-          <p className="text-2xl font-display font-semibold">{categories.length}</p>
-          <p className="text-xs text-muted-foreground">Categorias</p>
-        </div>
-        {services.length > 0 && (
-          <>
+
+          {/* Stats */}
+          <div className="mt-6 flex items-center gap-6 rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-display font-semibold">{services.filter(s => s.is_active).length}</p>
+                <p className="text-xs text-muted-foreground">Serviços ativos</p>
+              </div>
+            </div>
             <div className="h-10 w-px bg-border" />
             <div>
-              <p className="text-2xl font-display font-semibold">
-                R$ {Math.round(services.reduce((acc, s) => acc + Number(s.price), 0) / services.length)}
-              </p>
-              <p className="text-xs text-muted-foreground">Ticket médio</p>
+              <p className="text-2xl font-display font-semibold">{categories.length}</p>
+              <p className="text-xs text-muted-foreground">Categorias</p>
             </div>
-          </>
-        )}
-      </div>
+            {services.length > 0 && (
+              <>
+                <div className="h-10 w-px bg-border" />
+                <div>
+                  <p className="text-2xl font-display font-semibold">
+                    R$ {Math.round(services.reduce((acc, s) => acc + Number(s.price), 0) / services.length)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Ticket médio</p>
+                </div>
+              </>
+            )}
+          </div>
 
-      {/* Services Grid */}
-      <div className="mt-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : filteredServices.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredServices.map((service, index) => (
-              <div
-                key={service.id}
-                style={{ animationDelay: `${index * 50}ms` }}
-                className="animate-slide-up"
-              >
-                <ServiceCard service={service} />
+          {/* Services Grid */}
+          <div className="mt-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ))}
+            ) : filteredServices.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredServices.map((service, index) => (
+                  <div
+                    key={service.id}
+                    style={{ animationDelay: `${index * 50}ms` }}
+                    className="animate-slide-up"
+                  >
+                    <ServiceCard service={service} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
+                <Sparkles className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                <p className="mt-3 text-muted-foreground">
+                  Nenhum serviço cadastrado
+                </p>
+                <NewServiceDialog onServiceCreated={refetch}>
+                  <Button className="mt-4" variant="secondary">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Cadastrar Serviço
+                  </Button>
+                </NewServiceDialog>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
-            <Sparkles className="mx-auto h-10 w-10 text-muted-foreground/50" />
-            <p className="mt-3 text-muted-foreground">
-              Nenhum serviço cadastrado
-            </p>
-            <NewServiceDialog onServiceCreated={refetch}>
-              <Button className="mt-4" variant="secondary">
-                <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Serviço
-              </Button>
-            </NewServiceDialog>
+        </TabsContent>
+
+        <TabsContent value="packages" className="mt-0">
+          <div className="flex justify-end mb-6">
+            <NewPackageDialog onPackageCreated={refetchPackages} />
           </div>
-        )}
-      </div>
+
+          {packagesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : packages.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {packages.map((pkg) => (
+                <Card key={pkg.id} className="overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-2">
+                          <Package className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                          {pkg.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
+                        {pkg.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {pkg.items && pkg.items.length > 0 && (
+                      <div className="space-y-1 mb-4">
+                        <p className="text-xs font-medium text-muted-foreground uppercase">Serviços inclusos:</p>
+                        {pkg.items.map((item) => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span>{item.service?.name || 'Serviço'}</span>
+                            <span className="text-muted-foreground">x{item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <span className="text-sm text-muted-foreground">Valor do pacote</span>
+                      <span className="text-xl font-bold text-primary">
+                        R$ {Number(pkg.price).toFixed(2)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
+              <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
+              <p className="mt-3 text-muted-foreground">
+                Nenhum pacote cadastrado
+              </p>
+              <NewPackageDialog onPackageCreated={refetchPackages}>
+                <Button className="mt-4" variant="secondary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Pacote
+                </Button>
+              </NewPackageDialog>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 };

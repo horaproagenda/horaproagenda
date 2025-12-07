@@ -8,12 +8,12 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
-  const color = getCategoryColor(service.category);
+  const categoryColor = getCategoryColor(service.category);
   
   return (
     <div 
       className="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in"
-      style={{ borderTopColor: color, borderTopWidth: '3px' }}
+      style={{ borderTopColor: categoryColor.hex, borderTopWidth: '3px' }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -25,7 +25,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
         <Badge 
           variant="outline" 
           className="shrink-0"
-          style={{ backgroundColor: `${color}15`, borderColor: `${color}40` }}
+          style={{ backgroundColor: `${categoryColor.hex}15`, borderColor: `${categoryColor.hex}40` }}
         >
           {service.category}
         </Badge>

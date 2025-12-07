@@ -31,14 +31,15 @@ const statusConfig = {
 
 export function AppointmentCard({ appointment, compact = false }: AppointmentCardProps) {
   const status = statusConfig[appointment.status];
-  const color = appointment.service ? getCategoryColor(appointment.service.category) : '#999';
+  const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;
+  const hexColor = categoryColor?.hex || '#999';
   const timeStr = format(new Date(appointment.start_time), 'HH:mm');
 
   if (compact) {
     return (
       <div 
         className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
-        style={{ borderLeftColor: color, borderLeftWidth: '3px' }}
+        style={{ borderLeftColor: hexColor, borderLeftWidth: '3px' }}
       >
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{appointment.client?.name}</p>
@@ -55,7 +56,7 @@ export function AppointmentCard({ appointment, compact = false }: AppointmentCar
   return (
     <div 
       className="group rounded-xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in"
-      style={{ borderLeftColor: color, borderLeftWidth: '4px' }}
+      style={{ borderLeftColor: hexColor, borderLeftWidth: '4px' }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
@@ -88,7 +89,7 @@ export function AppointmentCard({ appointment, compact = false }: AppointmentCar
       <div className="mt-3 flex items-center justify-between">
         <span 
           className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-          style={{ backgroundColor: `${color}20`, color }}
+          style={{ backgroundColor: `${hexColor}20`, color: hexColor }}
         >
           {appointment.service?.category}
         </span>

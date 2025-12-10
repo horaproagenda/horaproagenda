@@ -246,7 +246,7 @@ const Agenda = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
                 className="animate-slide-up"
               >
-                <AppointmentCard appointment={appointment} />
+                <AppointmentCard appointment={appointment} professionals={professionals} />
               </div>
             ))}
           </div>

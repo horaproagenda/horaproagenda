@@ -35,7 +35,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useClients } from '@/hooks/useClients';
+
 import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
@@ -63,7 +63,6 @@ const packageSchema = z.object({
   template_id: z.string().optional(),
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
-  client_id: z.string().min(1, 'Selecione um cliente'),
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
@@ -88,7 +87,6 @@ interface NewPackageDialogProps {
 export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { clients } = useClients();
   const { templates } = usePackageTemplates();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
@@ -99,7 +97,6 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
       template_id: '_manual',
       name: '',
       description: '',
-      client_id: '',
       total_sessions: 10,
       interval_days: 7,
       duration: 60,
@@ -145,7 +142,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         .insert({
           name: data.name,
           description: data.description || null,
-          client_id: data.client_id,
+          client_id: null,
           template_id: data.template_id && data.template_id !== '_manual' ? data.template_id : null,
           total_sessions: data.total_sessions,
           sessions_scheduled: 0,
@@ -214,7 +211,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         <DialogHeader>
           <DialogTitle>Novo Pacote</DialogTitle>
           <DialogDescription>
-            Crie um pacote de sessões para um cliente.
+            Crie um modelo de pacote de sessões. O cliente será atribuído na venda (Caixa).
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -250,31 +247,6 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 )}
               />
             )}
-
-            <FormField
-              control={form.control}
-              name="client_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name} - {client.phone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

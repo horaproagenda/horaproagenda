@@ -78,20 +78,36 @@ export interface ServicePackage {
   id: string;
   name: string;
   description: string | null;
-  price: number;
+  client_id: string | null;
+  total_sessions: number;
+  sessions_scheduled: number;
+  interval_days: number | null;
+  auto_schedule: boolean;
+  preferred_day_of_week: number | null;
+  preferred_time: string | null;
+  total_price: number;
+  payment_method: string | null;
+  whatsapp_reminder: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  items?: PackageItem[];
+  client?: Client;
+  appointments?: PackageAppointment[];
 }
 
-export interface PackageItem {
+export type PackageAppointmentStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled';
+
+export interface PackageAppointment {
   id: string;
   package_id: string;
-  service_id: string;
-  quantity: number;
+  appointment_id: string | null;
+  session_number: number;
+  scheduled_date: string | null;
+  status: PackageAppointmentStatus;
+  notes: string | null;
   created_at: string;
-  service?: Service;
+  updated_at: string;
+  appointment?: Appointment;
 }
 
 export interface DocumentTemplate {

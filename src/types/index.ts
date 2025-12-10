@@ -74,11 +74,30 @@ export interface Service {
   professional?: Professional;
 }
 
+export interface PackageTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  total_sessions: number;
+  price: number;
+  duration: number;
+  interval_days: number | null;
+  professional_id: string | null;
+  room_id: string | null;
+  equipment: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  professional?: Professional;
+  room?: Room;
+}
+
 export interface ServicePackage {
   id: string;
   name: string;
   description: string | null;
   client_id: string | null;
+  template_id: string | null;
   total_sessions: number;
   sessions_scheduled: number;
   interval_days: number | null;
@@ -87,11 +106,19 @@ export interface ServicePackage {
   preferred_time: string | null;
   total_price: number;
   payment_method: string | null;
+  payment_methods: string[];
   whatsapp_reminder: boolean;
+  professional_id: string | null;
+  room_id: string | null;
+  duration: number;
+  equipment: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
   client?: Client;
+  template?: PackageTemplate;
+  professional?: Professional;
+  room?: Room;
   appointments?: PackageAppointment[];
 }
 

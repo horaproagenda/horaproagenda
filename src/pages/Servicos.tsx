@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Sparkles, Filter, Loader2, Package } from 'lucide-react';
+import { Plus, Sparkles, Filter, Loader2, Package, CalendarCheck, User, Clock } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
 import { ManageRoomsDialog } from '@/components/services/ManageRoomsDialog';
 import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
+import { ManagePackageTemplatesDialog } from '@/components/services/ManagePackageTemplatesDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +14,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { cn } from '@/lib/utils';
+
+const PAYMENT_LABELS: Record<string, string> = {
+  pix: 'PIX',
+  credit_card: 'Crédito',
+  debit_card: 'Débito',
+  cash: 'Dinheiro',
+  bank_transfer: 'Transferência',
+  installments: 'Parcelado',
+};
 
 const Servicos = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -40,6 +50,7 @@ const Servicos = () => {
           <div className="flex flex-wrap gap-2">
             <ManageRoomsDialog />
             <ManageProfessionalsDialog />
+            <ManagePackageTemplatesDialog />
           </div>
         </div>
 
@@ -153,6 +164,9 @@ const Servicos = () => {
               {packages.map((pkg) => {
                 const sessionsRemaining = pkg.total_sessions - pkg.sessions_scheduled;
                 const progressPercent = (pkg.sessions_scheduled / pkg.total_sessions) * 100;
+                const paymentMethods = pkg.payment_methods?.length > 0 
+                  ? pkg.payment_methods 
+                  : pkg.payment_method ? [pkg.payment_method] : [];
                 
                 return (
                   <Card key={pkg.id} className="overflow-hidden">
@@ -197,6 +211,33 @@ const Servicos = () => {
                         </div>
                       </div>
 
+                      {/* Auto Schedule Info */}
+                      {pkg.auto_schedule && (
+                        <div className="flex items-center gap-2 p-2 rounded bg-primary/5 border border-primary/20">
+                          <CalendarCheck className="h-4 w-4 text-primary" />
+                          <span className="text-sm text-primary font-medium">
+                            Agendamento Automático - {pkg.sessions_scheduled} criados
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Professional & Room */}
+                      {(pkg.professional_id || pkg.room_id) && (
+                        <div className="flex flex-wrap gap-2">
+                          {pkg.professional && (
+                            <Badge variant="outline" className="gap-1">
+                              <User className="h-3 w-3" />
+                              {pkg.professional.name}
+                            </Badge>
+                          )}
+                          {pkg.room && (
+                            <Badge variant="outline" className="gap-1">
+                              {pkg.room.name}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
                       {/* Details */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="p-2 rounded bg-muted/50">
@@ -204,20 +245,32 @@ const Servicos = () => {
                           <p className="font-medium">{pkg.interval_days} dias</p>
                         </div>
                         <div className="p-2 rounded bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Duração</p>
+                          <p className="font-medium">{pkg.duration || 60} min</p>
+                        </div>
+                        <div className="p-2 rounded bg-muted/50">
                           <p className="text-xs text-muted-foreground">Agendamento</p>
                           <p className="font-medium">{pkg.auto_schedule ? 'Automático' : 'Manual'}</p>
                         </div>
-                        {pkg.payment_method && (
-                          <div className="p-2 rounded bg-muted/50">
-                            <p className="text-xs text-muted-foreground">Pagamento</p>
-                            <p className="font-medium capitalize">{pkg.payment_method.replace('_', ' ')}</p>
-                          </div>
-                        )}
                         <div className="p-2 rounded bg-muted/50">
                           <p className="text-xs text-muted-foreground">WhatsApp</p>
                           <p className="font-medium">{pkg.whatsapp_reminder ? 'Ativo' : 'Desativado'}</p>
                         </div>
                       </div>
+
+                      {/* Payment Methods */}
+                      {paymentMethods.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Formas de Pagamento</p>
+                          <div className="flex flex-wrap gap-1">
+                            {paymentMethods.map((method) => (
+                              <Badge key={method} variant="secondary" className="text-xs">
+                                {PAYMENT_LABELS[method] || method}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center pt-3 border-t">
                         <span className="text-sm text-muted-foreground">Valor total</span>

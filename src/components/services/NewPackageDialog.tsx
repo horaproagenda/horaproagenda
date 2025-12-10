@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Package, Plus } from 'lucide-react';
+import { Package, Plus, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -31,9 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useRooms } from '@/hooks/useRooms';
 
 const DAYS_OF_WEEK = [
   { value: '0', label: 'Domingo' },
@@ -55,17 +60,22 @@ const PAYMENT_METHODS = [
 ];
 
 const packageSchema = z.object({
+  template_id: z.string().optional(),
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
   client_id: z.string().min(1, 'Selecione um cliente'),
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
+  duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
   auto_schedule: z.boolean(),
   preferred_day_of_week: z.string().optional(),
   preferred_time: z.string().optional(),
   total_price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
-  payment_method: z.string().min(1, 'Selecione a forma de pagamento'),
+  payment_methods: z.array(z.string()).min(1, 'Selecione pelo menos uma forma de pagamento'),
   whatsapp_reminder: z.boolean(),
+  professional_id: z.string().optional(),
+  room_id: z.string().optional(),
+  equipment: z.array(z.string()).optional(),
 });
 
 type PackageFormData = z.infer<typeof packageSchema>;
@@ -79,25 +89,53 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { clients } = useClients();
+  const { templates } = usePackageTemplates();
+  const { professionals } = useProfessionals();
+  const { rooms } = useRooms();
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
+      template_id: '',
       name: '',
       description: '',
       client_id: '',
       total_sessions: 10,
       interval_days: 7,
+      duration: 60,
       auto_schedule: false,
       preferred_day_of_week: '',
       preferred_time: '',
       total_price: 0,
-      payment_method: '',
+      payment_methods: [],
       whatsapp_reminder: true,
+      professional_id: '',
+      room_id: '',
+      equipment: [],
     },
   });
 
   const autoSchedule = form.watch('auto_schedule');
+  const selectedTemplateId = form.watch('template_id');
+  const paymentMethods = form.watch('payment_methods');
+
+  // Apply template when selected
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = templates.find(t => t.id === selectedTemplateId);
+      if (template) {
+        form.setValue('name', template.name);
+        form.setValue('description', template.description || '');
+        form.setValue('total_sessions', template.total_sessions);
+        form.setValue('total_price', template.price);
+        form.setValue('duration', template.duration);
+        form.setValue('interval_days', template.interval_days || 7);
+        form.setValue('professional_id', template.professional_id || '');
+        form.setValue('room_id', template.room_id || '');
+        form.setValue('equipment', template.equipment || []);
+      }
+    }
+  }, [selectedTemplateId, templates, form]);
 
   const onSubmit = async (data: PackageFormData) => {
     setIsLoading(true);
@@ -108,15 +146,21 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
           name: data.name,
           description: data.description || null,
           client_id: data.client_id,
+          template_id: data.template_id || null,
           total_sessions: data.total_sessions,
           sessions_scheduled: 0,
           interval_days: data.interval_days,
+          duration: data.duration,
           auto_schedule: data.auto_schedule,
           preferred_day_of_week: data.preferred_day_of_week ? parseInt(data.preferred_day_of_week) : null,
           preferred_time: data.preferred_time || null,
           total_price: data.total_price,
-          payment_method: data.payment_method,
+          payment_method: data.payment_methods[0], // Keep first for backwards compat
+          payment_methods: data.payment_methods,
           whatsapp_reminder: data.whatsapp_reminder,
+          professional_id: data.professional_id || null,
+          room_id: data.room_id || null,
+          equipment: data.equipment || [],
         })
         .select()
         .single();
@@ -147,6 +191,15 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
     }
   };
 
+  const togglePaymentMethod = (method: string) => {
+    const current = form.getValues('payment_methods');
+    if (current.includes(method)) {
+      form.setValue('payment_methods', current.filter(m => m !== method));
+    } else {
+      form.setValue('payment_methods', [...current, method]);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -157,7 +210,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Pacote</DialogTitle>
           <DialogDescription>
@@ -166,6 +219,38 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Template Selection */}
+            {templates.length > 0 && (
+              <FormField
+                control={form.control}
+                name="template_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pacote Pré-cadastrado (opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um modelo ou preencha manualmente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Preencher manualmente</SelectItem>
+                        {templates.map(template => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} - {template.total_sessions} sessões - R$ {Number(template.price).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Escolha um modelo pré-cadastrado para preencher automaticamente
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="client_id"
@@ -223,13 +308,13 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
               )}
             />
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="total_sessions"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantidade de Sessões *</FormLabel>
+                    <FormLabel>Qtd. Sessões *</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} max={100} {...field} />
                     </FormControl>
@@ -243,10 +328,78 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 name="interval_days"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Intervalo entre Sessões (dias) *</FormLabel>
+                    <FormLabel>Intervalo (dias) *</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} max={365} {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duração (min) *</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={15} max={480} step={15} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="professional_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profissional</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nenhum</SelectItem>
+                        {professionals.filter(p => p.is_active).map(prof => (
+                          <SelectItem key={prof.id} value={prof.id}>
+                            {prof.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="room_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sala</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nenhuma</SelectItem>
+                        {rooms.filter(r => r.is_active).map(room => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -270,24 +423,22 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
 
               <FormField
                 control={form.control}
-                name="payment_method"
-                render={({ field }) => (
+                name="payment_methods"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Forma de Pagamento *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PAYMENT_METHODS.map(method => (
-                          <SelectItem key={method.value} value={method.value}>
-                            {method.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Formas de Pagamento *</FormLabel>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {PAYMENT_METHODS.map(method => (
+                        <Badge
+                          key={method.value}
+                          variant={paymentMethods.includes(method.value) ? 'default' : 'outline'}
+                          className="cursor-pointer"
+                          onClick={() => togglePaymentMethod(method.value)}
+                        >
+                          {method.label}
+                        </Badge>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

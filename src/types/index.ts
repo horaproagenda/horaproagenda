@@ -44,9 +44,15 @@ export interface Professional {
   name: string;
   email: string | null;
   phone: string | null;
+  cpf: string | null;
+  birthdate: string | null;
   specialties: string[];
   bio: string | null;
   avatar_url: string | null;
+  agenda_color: string | null;
+  app_role: string | null;
+  is_commission_based: boolean | null;
+  commission_percentage: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

@@ -1,6 +1,6 @@
 import { Clock, User } from 'lucide-react';
 import { format } from 'date-fns';
-import { Appointment } from '@/types';
+import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { getCategoryColor } from '@/lib/categoryColors';
@@ -8,6 +8,7 @@ import { getCategoryColor } from '@/lib/categoryColors';
 interface AppointmentCardProps {
   appointment: Appointment;
   compact?: boolean;
+  professionals?: Professional[];
 }
 
 const statusConfig = {
@@ -29,10 +30,16 @@ const statusConfig = {
   },
 };
 
-export function AppointmentCard({ appointment, compact = false }: AppointmentCardProps) {
+export function AppointmentCard({ appointment, compact = false, professionals = [] }: AppointmentCardProps) {
   const status = statusConfig[appointment.status];
   const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;
-  const hexColor = categoryColor?.hex || '#999';
+  
+  // Find professional from appointment.professional_id or service.professional_id
+  const professionalId = appointment.professional_id || appointment.service?.professional_id;
+  const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
+  const professionalColor = professional?.agenda_color;
+  const hexColor = professionalColor || categoryColor?.hex || '#999';
+  
   const timeStr = format(new Date(appointment.start_time), 'HH:mm');
 
   if (compact) {

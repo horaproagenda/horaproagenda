@@ -232,6 +232,69 @@ export type Database = {
           },
         ]
       }
+      package_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration: number
+          equipment: string[] | null
+          id: string
+          interval_days: number | null
+          is_active: boolean
+          name: string
+          price: number
+          professional_id: string | null
+          room_id: string | null
+          total_sessions: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration?: number
+          equipment?: string[] | null
+          id?: string
+          interval_days?: number | null
+          is_active?: boolean
+          name: string
+          price: number
+          professional_id?: string | null
+          room_id?: string | null
+          total_sessions?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration?: number
+          equipment?: string[] | null
+          id?: string
+          interval_days?: number | null
+          is_active?: boolean
+          name?: string
+          price?: number
+          professional_id?: string | null
+          room_id?: string | null
+          total_sessions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_templates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_templates_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           agenda_color: string | null
@@ -408,14 +471,20 @@ export type Database = {
           client_id: string | null
           created_at: string
           description: string | null
+          duration: number | null
+          equipment: string[] | null
           id: string
           interval_days: number | null
           is_active: boolean
           name: string
           payment_method: string | null
+          payment_methods: string[] | null
           preferred_day_of_week: number | null
           preferred_time: string | null
+          professional_id: string | null
+          room_id: string | null
           sessions_scheduled: number
+          template_id: string | null
           total_price: number
           total_sessions: number
           updated_at: string
@@ -426,14 +495,20 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           description?: string | null
+          duration?: number | null
+          equipment?: string[] | null
           id?: string
           interval_days?: number | null
           is_active?: boolean
           name: string
           payment_method?: string | null
+          payment_methods?: string[] | null
           preferred_day_of_week?: number | null
           preferred_time?: string | null
+          professional_id?: string | null
+          room_id?: string | null
           sessions_scheduled?: number
+          template_id?: string | null
           total_price: number
           total_sessions?: number
           updated_at?: string
@@ -444,14 +519,20 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           description?: string | null
+          duration?: number | null
+          equipment?: string[] | null
           id?: string
           interval_days?: number | null
           is_active?: boolean
           name?: string
           payment_method?: string | null
+          payment_methods?: string[] | null
           preferred_day_of_week?: number | null
           preferred_time?: string | null
+          professional_id?: string | null
+          room_id?: string | null
           sessions_scheduled?: number
+          template_id?: string | null
           total_price?: number
           total_sessions?: number
           updated_at?: string
@@ -463,6 +544,27 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_packages_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_packages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_packages_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "package_templates"
             referencedColumns: ["id"]
           },
         ]

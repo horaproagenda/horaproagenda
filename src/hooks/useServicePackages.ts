@@ -12,7 +12,9 @@ export function useServicePackages() {
         .from('service_packages')
         .select(`
           *,
-          client:clients (*)
+          client:clients (*),
+          professional:professionals (*),
+          room:rooms (*)
         `)
         .order('created_at', { ascending: false });
       

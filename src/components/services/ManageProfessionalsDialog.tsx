@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 
 const AGENDA_COLORS = [
   { value: '#3B82F6', label: 'Azul' },
@@ -54,7 +55,10 @@ const APP_ROLES = [
 
 const professionalSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
-  cpf: z.string().trim().max(14, 'CPF inválido').optional(),
+  cpf: z.string().trim().optional().refine(
+    (val) => !val || val === '' || isValidCPF(val),
+    { message: 'CPF inválido. Verifique os números digitados.' }
+  ),
   birthdate: z.string().optional(),
   email: z.string().trim().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
@@ -109,7 +113,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
 
       const payload = {
         name: data.name,
-        cpf: data.cpf || null,
+        cpf: data.cpf ? formatCPF(data.cpf) : null,
         birthdate: data.birthdate || null,
         email: data.email || null,
         phone: data.phone || null,

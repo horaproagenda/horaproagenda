@@ -69,8 +69,8 @@ export function ManagePackageTemplatesDialog() {
       price: 0,
       duration: 60,
       interval_days: 7,
-      professional_id: '',
-      room_id: '',
+      professional_id: '_none',
+      room_id: '_none',
     },
   });
 
@@ -82,8 +82,8 @@ export function ManagePackageTemplatesDialog() {
       price: 0,
       duration: 60,
       interval_days: 7,
-      professional_id: '',
-      room_id: '',
+      professional_id: '_none',
+      room_id: '_none',
     });
     setEditingTemplate(null);
   };
@@ -97,8 +97,8 @@ export function ManagePackageTemplatesDialog() {
       price: template.price,
       duration: template.duration,
       interval_days: template.interval_days || 7,
-      professional_id: template.professional_id || '',
-      room_id: template.room_id || '',
+      professional_id: template.professional_id || '_none',
+      room_id: template.room_id || '_none',
     });
   };
 
@@ -128,8 +128,8 @@ export function ManagePackageTemplatesDialog() {
         price: data.price,
         duration: data.duration,
         interval_days: data.interval_days,
-        professional_id: data.professional_id || null,
-        room_id: data.room_id || null,
+        professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
+        room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
       };
 
       if (editingTemplate) {
@@ -281,7 +281,7 @@ export function ManagePackageTemplatesDialog() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
+                          <SelectItem value="_none">Nenhum</SelectItem>
                           {professionals.filter(p => p.is_active).map(prof => (
                             <SelectItem key={prof.id} value={prof.id}>
                               {prof.name}
@@ -307,7 +307,7 @@ export function ManagePackageTemplatesDialog() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma</SelectItem>
+                          <SelectItem value="_none">Nenhuma</SelectItem>
                           {rooms.filter(r => r.is_active).map(room => (
                             <SelectItem key={room.id} value={room.id}>
                               {room.name}

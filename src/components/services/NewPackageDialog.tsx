@@ -96,7 +96,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
-      template_id: '',
+      template_id: '_manual',
       name: '',
       description: '',
       client_id: '',
@@ -109,8 +109,8 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
       total_price: 0,
       payment_methods: [],
       whatsapp_reminder: true,
-      professional_id: '',
-      room_id: '',
+      professional_id: '_none',
+      room_id: '_none',
       equipment: [],
     },
   });
@@ -121,7 +121,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
 
   // Apply template when selected
   useEffect(() => {
-    if (selectedTemplateId) {
+    if (selectedTemplateId && selectedTemplateId !== '_manual') {
       const template = templates.find(t => t.id === selectedTemplateId);
       if (template) {
         form.setValue('name', template.name);
@@ -130,8 +130,8 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         form.setValue('total_price', template.price);
         form.setValue('duration', template.duration);
         form.setValue('interval_days', template.interval_days || 7);
-        form.setValue('professional_id', template.professional_id || '');
-        form.setValue('room_id', template.room_id || '');
+        form.setValue('professional_id', template.professional_id || '_none');
+        form.setValue('room_id', template.room_id || '_none');
         form.setValue('equipment', template.equipment || []);
       }
     }
@@ -146,7 +146,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
           name: data.name,
           description: data.description || null,
           client_id: data.client_id,
-          template_id: data.template_id || null,
+          template_id: data.template_id && data.template_id !== '_manual' ? data.template_id : null,
           total_sessions: data.total_sessions,
           sessions_scheduled: 0,
           interval_days: data.interval_days,
@@ -158,8 +158,8 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
           payment_method: data.payment_methods[0], // Keep first for backwards compat
           payment_methods: data.payment_methods,
           whatsapp_reminder: data.whatsapp_reminder,
-          professional_id: data.professional_id || null,
-          room_id: data.room_id || null,
+          professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
+          room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
           equipment: data.equipment || [],
         })
         .select()
@@ -234,7 +234,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Preencher manualmente</SelectItem>
+                        <SelectItem value="_manual">Preencher manualmente</SelectItem>
                         {templates.map(template => (
                           <SelectItem key={template.id} value={template.id}>
                             {template.name} - {template.total_sessions} sessões - R$ {Number(template.price).toFixed(2)}
@@ -366,7 +366,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="_none">Nenhum</SelectItem>
                         {professionals.filter(p => p.is_active).map(prof => (
                           <SelectItem key={prof.id} value={prof.id}>
                             {prof.name}
@@ -392,7 +392,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhuma</SelectItem>
+                        <SelectItem value="_none">Nenhuma</SelectItem>
                         {rooms.filter(r => r.is_active).map(room => (
                           <SelectItem key={room.id} value={room.id}>
                             {room.name}

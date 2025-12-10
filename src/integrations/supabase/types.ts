@@ -222,36 +222,54 @@ export type Database = {
       }
       professionals: {
         Row: {
+          agenda_color: string | null
+          app_role: string | null
           avatar_url: string | null
           bio: string | null
+          birthdate: string | null
+          commission_percentage: number | null
+          cpf: string | null
           created_at: string
           email: string | null
           id: string
           is_active: boolean
+          is_commission_based: boolean | null
           name: string
           phone: string | null
           specialties: string[] | null
           updated_at: string
         }
         Insert: {
+          agenda_color?: string | null
+          app_role?: string | null
           avatar_url?: string | null
           bio?: string | null
+          birthdate?: string | null
+          commission_percentage?: number | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string
           is_active?: boolean
+          is_commission_based?: boolean | null
           name: string
           phone?: string | null
           specialties?: string[] | null
           updated_at?: string
         }
         Update: {
+          agenda_color?: string | null
+          app_role?: string | null
           avatar_url?: string | null
           bio?: string | null
+          birthdate?: string | null
+          commission_percentage?: number | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string
           is_active?: boolean
+          is_commission_based?: boolean | null
           name?: string
           phone?: string | null
           specialties?: string[] | null

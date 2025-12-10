@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,9 +19,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -31,21 +33,42 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useServices } from '@/hooks/useServices';
+import { useClients } from '@/hooks/useClients';
+
+const DAYS_OF_WEEK = [
+  { value: '0', label: 'Domingo' },
+  { value: '1', label: 'Segunda-feira' },
+  { value: '2', label: 'Terça-feira' },
+  { value: '3', label: 'Quarta-feira' },
+  { value: '4', label: 'Quinta-feira' },
+  { value: '5', label: 'Sexta-feira' },
+  { value: '6', label: 'Sábado' },
+];
+
+const PAYMENT_METHODS = [
+  { value: 'pix', label: 'PIX' },
+  { value: 'credit_card', label: 'Cartão de Crédito' },
+  { value: 'debit_card', label: 'Cartão de Débito' },
+  { value: 'cash', label: 'Dinheiro' },
+  { value: 'bank_transfer', label: 'Transferência Bancária' },
+  { value: 'installments', label: 'Parcelado' },
+];
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
-  price: z.coerce.number().min(0, 'Preço deve ser positivo').max(100000, 'Preço muito alto'),
+  client_id: z.string().min(1, 'Selecione um cliente'),
+  total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
+  interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
+  auto_schedule: z.boolean(),
+  preferred_day_of_week: z.string().optional(),
+  preferred_time: z.string().optional(),
+  total_price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
+  payment_method: z.string().min(1, 'Selecione a forma de pagamento'),
+  whatsapp_reminder: z.boolean(),
 });
 
 type PackageFormData = z.infer<typeof packageSchema>;
-
-interface SelectedService {
-  service_id: string;
-  service_name: string;
-  quantity: number;
-}
 
 interface NewPackageDialogProps {
   onPackageCreated?: () => void;
@@ -55,61 +78,28 @@ interface NewPackageDialogProps {
 export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
-  const { services } = useServices();
+  const { clients } = useClients();
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
       name: '',
       description: '',
-      price: 0,
+      client_id: '',
+      total_sessions: 10,
+      interval_days: 7,
+      auto_schedule: false,
+      preferred_day_of_week: '',
+      preferred_time: '',
+      total_price: 0,
+      payment_method: '',
+      whatsapp_reminder: true,
     },
   });
 
-  const addService = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
-    if (!service) return;
-    
-    const existing = selectedServices.find(s => s.service_id === serviceId);
-    if (existing) {
-      setSelectedServices(prev =>
-        prev.map(s =>
-          s.service_id === serviceId
-            ? { ...s, quantity: s.quantity + 1 }
-            : s
-        )
-      );
-    } else {
-      setSelectedServices(prev => [
-        ...prev,
-        { service_id: serviceId, service_name: service.name, quantity: 1 },
-      ]);
-    }
-  };
-
-  const updateQuantity = (serviceId: string, quantity: number) => {
-    if (quantity < 1) {
-      removeService(serviceId);
-      return;
-    }
-    setSelectedServices(prev =>
-      prev.map(s =>
-        s.service_id === serviceId ? { ...s, quantity } : s
-      )
-    );
-  };
-
-  const removeService = (serviceId: string) => {
-    setSelectedServices(prev => prev.filter(s => s.service_id !== serviceId));
-  };
+  const autoSchedule = form.watch('auto_schedule');
 
   const onSubmit = async (data: PackageFormData) => {
-    if (selectedServices.length === 0) {
-      toast.error('Adicione pelo menos um serviço ao pacote');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data: pkg, error: pkgError } = await supabase
@@ -117,28 +107,37 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         .insert({
           name: data.name,
           description: data.description || null,
-          price: data.price,
+          client_id: data.client_id,
+          total_sessions: data.total_sessions,
+          sessions_scheduled: 0,
+          interval_days: data.interval_days,
+          auto_schedule: data.auto_schedule,
+          preferred_day_of_week: data.preferred_day_of_week ? parseInt(data.preferred_day_of_week) : null,
+          preferred_time: data.preferred_time || null,
+          total_price: data.total_price,
+          payment_method: data.payment_method,
+          whatsapp_reminder: data.whatsapp_reminder,
         })
         .select()
         .single();
 
       if (pkgError) throw pkgError;
 
-      const items = selectedServices.map(s => ({
+      // Create pending package appointments for tracking
+      const packageAppointments = Array.from({ length: data.total_sessions }, (_, i) => ({
         package_id: pkg.id,
-        service_id: s.service_id,
-        quantity: s.quantity,
+        session_number: i + 1,
+        status: 'pending' as const,
       }));
 
-      const { error: itemsError } = await supabase
-        .from('package_items')
-        .insert(items);
+      const { error: appointmentsError } = await supabase
+        .from('package_appointments')
+        .insert(packageAppointments);
 
-      if (itemsError) throw itemsError;
+      if (appointmentsError) throw appointmentsError;
 
       toast.success('Pacote cadastrado com sucesso!');
       form.reset();
-      setSelectedServices([]);
       setOpen(false);
       onPackageCreated?.();
     } catch (error: any) {
@@ -158,15 +157,40 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Pacote</DialogTitle>
           <DialogDescription>
-            Crie um pacote combinando vários serviços.
+            Crie um pacote de sessões para um cliente.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="client_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name} - {client.phone}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"
@@ -174,12 +198,13 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 <FormItem>
                   <FormLabel>Nome do Pacote *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Pacote Noiva Completo" {...field} />
+                    <Input placeholder="Ex: 10 Aplicações Buço, Axila, Virilha e Canela" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="description"
@@ -188,7 +213,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Descreva o pacote..."
+                      placeholder="Detalhes do pacote..."
                       className="resize-none"
                       {...field} 
                     />
@@ -198,63 +223,158 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
               )}
             />
             
-            <div className="space-y-2">
-              <FormLabel>Serviços do Pacote</FormLabel>
-              <Select onValueChange={addService}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Adicionar serviço..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.filter(s => s.is_active).map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                      {service.name} - R$ {Number(service.price).toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {selectedServices.length > 0 && (
-                <div className="space-y-2 mt-3">
-                  {selectedServices.map(item => (
-                    <div
-                      key={item.service_id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted"
-                    >
-                      <span className="text-sm">{item.service_name}</span>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={e => updateQuantity(item.service_id, parseInt(e.target.value) || 1)}
-                          className="w-16 h-8 text-center"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => removeService(item.service_id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="total_sessions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantidade de Sessões *</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={1} max={100} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="interval_days"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Intervalo entre Sessões (dias) *</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={1} max={365} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="total_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Total (R$) *</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="payment_method"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forma de Pagamento *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map(method => (
+                          <SelectItem key={method.value} value={method.value}>
+                            {method.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
               control={form.control}
-              name="price"
+              name="auto_schedule"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Preço do Pacote (R$) *</FormLabel>
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Agendamento Automático</FormLabel>
+                    <FormDescription>
+                      O sistema agenda as sessões automaticamente baseado nas preferências
+                    </FormDescription>
+                  </div>
                   <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
                   </FormControl>
-                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {autoSchedule && (
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50">
+                <FormField
+                  control={form.control}
+                  name="preferred_day_of_week"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dia da Semana Preferido</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DAYS_OF_WEEK.map(day => (
+                            <SelectItem key={day.value} value={day.value}>
+                              {day.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="preferred_time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário Preferido</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="whatsapp_reminder"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Lembrete via WhatsApp</FormLabel>
+                    <FormDescription>
+                      Enviar lembrete automático antes dos agendamentos
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

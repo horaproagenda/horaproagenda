@@ -150,47 +150,85 @@ const Servicos = () => {
             </div>
           ) : packages.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {packages.map((pkg) => (
-                <Card key={pkg.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-lg bg-primary/10 p-2">
-                          <Package className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                          {pkg.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
-                          )}
-                        </div>
-                      </div>
-                      <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
-                        {pkg.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {pkg.items && pkg.items.length > 0 && (
-                      <div className="space-y-1 mb-4">
-                        <p className="text-xs font-medium text-muted-foreground uppercase">Serviços inclusos:</p>
-                        {pkg.items.map((item) => (
-                          <div key={item.id} className="flex justify-between text-sm">
-                            <span>{item.service?.name || 'Serviço'}</span>
-                            <span className="text-muted-foreground">x{item.quantity}</span>
+              {packages.map((pkg) => {
+                const sessionsRemaining = pkg.total_sessions - pkg.sessions_scheduled;
+                const progressPercent = (pkg.sessions_scheduled / pkg.total_sessions) * 100;
+                
+                return (
+                  <Card key={pkg.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-lg bg-primary/10 p-2">
+                            <Package className="h-5 w-5 text-primary" />
                           </div>
-                        ))}
+                          <div>
+                            <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                            {pkg.client && (
+                              <p className="text-sm text-muted-foreground">{pkg.client.name}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
+                          {pkg.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
                       </div>
-                    )}
-                    <div className="flex justify-between items-center pt-3 border-t">
-                      <span className="text-sm text-muted-foreground">Valor do pacote</span>
-                      <span className="text-xl font-bold text-primary">
-                        R$ {Number(pkg.price).toFixed(2)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {pkg.description && (
+                        <p className="text-sm text-muted-foreground">{pkg.description}</p>
+                      )}
+                      
+                      {/* Progress */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progresso</span>
+                          <span className="font-medium">{pkg.sessions_scheduled}/{pkg.total_sessions} sessões</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{pkg.sessions_scheduled} agendadas</span>
+                          <span>{sessionsRemaining} restantes</span>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="p-2 rounded bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Intervalo</p>
+                          <p className="font-medium">{pkg.interval_days} dias</p>
+                        </div>
+                        <div className="p-2 rounded bg-muted/50">
+                          <p className="text-xs text-muted-foreground">Agendamento</p>
+                          <p className="font-medium">{pkg.auto_schedule ? 'Automático' : 'Manual'}</p>
+                        </div>
+                        {pkg.payment_method && (
+                          <div className="p-2 rounded bg-muted/50">
+                            <p className="text-xs text-muted-foreground">Pagamento</p>
+                            <p className="font-medium capitalize">{pkg.payment_method.replace('_', ' ')}</p>
+                          </div>
+                        )}
+                        <div className="p-2 rounded bg-muted/50">
+                          <p className="text-xs text-muted-foreground">WhatsApp</p>
+                          <p className="font-medium">{pkg.whatsapp_reminder ? 'Ativo' : 'Desativado'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-3 border-t">
+                        <span className="text-sm text-muted-foreground">Valor total</span>
+                        <span className="text-xl font-bold text-primary">
+                          R$ {Number(pkg.total_price).toFixed(2)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">

@@ -181,41 +181,53 @@ export type Database = {
         }
         Relationships: []
       }
-      package_items: {
+      package_appointments: {
         Row: {
+          appointment_id: string | null
           created_at: string
           id: string
+          notes: string | null
           package_id: string
-          quantity: number
-          service_id: string
+          scheduled_date: string | null
+          session_number: number
+          status: string
+          updated_at: string
         }
         Insert: {
+          appointment_id?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
           package_id: string
-          quantity?: number
-          service_id: string
+          scheduled_date?: string | null
+          session_number: number
+          status?: string
+          updated_at?: string
         }
         Update: {
+          appointment_id?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
           package_id?: string
-          quantity?: number
-          service_id?: string
+          scheduled_date?: string | null
+          session_number?: number
+          status?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "package_items_package_id_fkey"
-            columns: ["package_id"]
+            foreignKeyName: "package_appointments_appointment_id_fkey"
+            columns: ["appointment_id"]
             isOneToOne: false
-            referencedRelation: "service_packages"
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "package_items_service_id_fkey"
-            columns: ["service_id"]
+            foreignKeyName: "package_appointments_package_id_fkey"
+            columns: ["package_id"]
             isOneToOne: false
-            referencedRelation: "services"
+            referencedRelation: "service_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -392,33 +404,68 @@ export type Database = {
       }
       service_packages: {
         Row: {
+          auto_schedule: boolean
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
+          interval_days: number | null
           is_active: boolean
           name: string
-          price: number
+          payment_method: string | null
+          preferred_day_of_week: number | null
+          preferred_time: string | null
+          sessions_scheduled: number
+          total_price: number
+          total_sessions: number
           updated_at: string
+          whatsapp_reminder: boolean
         }
         Insert: {
+          auto_schedule?: boolean
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          interval_days?: number | null
           is_active?: boolean
           name: string
-          price: number
+          payment_method?: string | null
+          preferred_day_of_week?: number | null
+          preferred_time?: string | null
+          sessions_scheduled?: number
+          total_price: number
+          total_sessions?: number
           updated_at?: string
+          whatsapp_reminder?: boolean
         }
         Update: {
+          auto_schedule?: boolean
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          interval_days?: number | null
           is_active?: boolean
           name?: string
-          price?: number
+          payment_method?: string | null
+          preferred_day_of_week?: number | null
+          preferred_time?: string | null
+          sessions_scheduled?: number
+          total_price?: number
+          total_sessions?: number
           updated_at?: string
+          whatsapp_reminder?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {

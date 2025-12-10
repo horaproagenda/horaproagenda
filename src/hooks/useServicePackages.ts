@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ServicePackage, PackageItem, Service } from '@/types';
+import { ServicePackage } from '@/types';
 
 export function useServicePackages() {
   const queryClient = useQueryClient();
@@ -12,22 +12,13 @@ export function useServicePackages() {
         .from('service_packages')
         .select(`
           *,
-          package_items (
-            *,
-            service:services (*)
-          )
+          client:clients (*)
         `)
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      return (data || []).map((pkg: any) => ({
-        ...pkg,
-        items: pkg.package_items?.map((item: any) => ({
-          ...item,
-          service: item.service,
-        })) || [],
-      })) as ServicePackage[];
+      return (data || []) as ServicePackage[];
     },
   });
 
@@ -36,4 +27,32 @@ export function useServicePackages() {
   };
 
   return { packages, isLoading, error, refetch };
+}
+
+export function usePackageAppointments(packageId: string | null) {
+  const { data: appointments = [], isLoading, error } = useQuery({
+    queryKey: ['package_appointments', packageId],
+    queryFn: async () => {
+      if (!packageId) return [];
+      
+      const { data, error } = await supabase
+        .from('package_appointments')
+        .select(`
+          *,
+          appointment:appointments (
+            *,
+            client:clients (*),
+            service:services (*)
+          )
+        `)
+        .eq('package_id', packageId)
+        .order('session_number', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!packageId,
+  });
+
+  return { appointments, isLoading, error };
 }

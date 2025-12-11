@@ -97,6 +97,7 @@ export interface ServicePackage {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   client_id: string | null;
   template_id: string | null;
   total_sessions: number;

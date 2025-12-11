@@ -49,6 +49,7 @@ const DAYS_OF_WEEK = [
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
+  category: z.string().min(1, 'Selecione uma categoria'),
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
@@ -66,9 +67,10 @@ type PackageFormData = z.infer<typeof packageSchema>;
 interface NewPackageDialogProps {
   onPackageCreated?: () => void;
   children?: React.ReactNode;
+  categories?: string[];
 }
 
-export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
+export function NewPackageDialog({ onPackageCreated, children, categories = [] }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { professionals } = useProfessionals();
@@ -79,6 +81,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
     defaultValues: {
       name: '',
       description: '',
+      category: '',
       total_sessions: 10,
       interval_days: 7,
       duration: 60,
@@ -102,6 +105,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         .insert({
           name: data.name,
           description: data.description || null,
+          category: data.category,
           client_id: null,
           total_sessions: data.total_sessions,
           sessions_scheduled: 0,
@@ -171,6 +175,31 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                   <FormControl>
                     <Input placeholder="Ex: 10 Aplicações Buço, Axila, Virilha e Canela" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoria *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

@@ -47,6 +47,7 @@ type ServicePackage = Tables<'service_packages'>;
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
+  category: z.string().optional(),
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
   total_price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
   duration: z.coerce.number().min(5, 'Duração mínima de 5 minutos').max(480, 'Duração máxima de 8 horas'),
@@ -65,9 +66,10 @@ interface PackageDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPackageUpdated?: () => void;
+  categories?: string[];
 }
 
-export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated }: PackageDetailDialogProps) {
+export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated, categories = [] }: PackageDetailDialogProps) {
   const [clientsCount, setClientsCount] = useState(0);
   const [roomName, setRoomName] = useState<string | null>(null);
   const [professionalName, setProfessionalName] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated 
     defaultValues: {
       name: pkg.name,
       description: pkg.description || '',
+      category: pkg.category || '',
       total_sessions: pkg.total_sessions,
       total_price: pkg.total_price,
       duration: pkg.duration || 60,
@@ -104,6 +107,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated 
       form.reset({
         name: pkg.name,
         description: pkg.description || '',
+        category: pkg.category || '',
         total_sessions: pkg.total_sessions,
         total_price: pkg.total_price,
         duration: pkg.duration || 60,
@@ -186,6 +190,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated 
         .update({
           name: data.name,
           description: data.description || null,
+          category: data.category || null,
           total_sessions: data.total_sessions,
           total_price: data.total_price,
           duration: data.duration,
@@ -249,6 +254,10 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated 
 
           {!isEditing ? (
             <>
+              {pkg.category && (
+                <Badge variant="outline" className="w-fit">{pkg.category}</Badge>
+              )}
+
               {pkg.description && (
                 <p className="text-muted-foreground">{pkg.description}</p>
               )}
@@ -407,6 +416,31 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated 
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map(cat => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

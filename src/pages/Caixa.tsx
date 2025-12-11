@@ -89,7 +89,7 @@ const DATE_RANGES = [
 export default function Caixa() {
   const { packages, refetch: refetchPackages } = useServicePackages();
   const { clients } = useClients();
-  const { appointments, isLoading: isLoadingAppointments } = useAppointments();
+  const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
   const { professionals } = useProfessionals();
   
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -104,6 +104,12 @@ export default function Caixa() {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
+
+  // Payment dialog state for receivables
+  const [paymentAppointment, setPaymentAppointment] = useState<typeof receivables[0] | null>(null);
+  const [paymentValue, setPaymentValue] = useState('');
+  const [paymentMethodsSelected, setPaymentMethodsSelected] = useState<string[]>([]);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Filter packages that don't have a client assigned yet (available for sale)
   const availablePackages = packages.filter(pkg => !pkg.client_id && pkg.is_active);
@@ -315,6 +321,51 @@ export default function Caixa() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success('Relatório exportado com sucesso!');
+  };
+
+  const openPaymentDialog = (apt: typeof receivables[0]) => {
+    setPaymentAppointment(apt);
+    setPaymentValue(apt.remainingAmount.toFixed(2));
+    setPaymentMethodsSelected([]);
+  };
+
+  const handleRegisterPayment = async () => {
+    if (!paymentAppointment || paymentMethodsSelected.length === 0) {
+      toast.error('Selecione pelo menos uma forma de pagamento');
+      return;
+    }
+
+    const value = parseFloat(paymentValue.replace(',', '.'));
+    if (isNaN(value) || value <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    try {
+      const newAmountPaid = (paymentAppointment.amount_paid || 0) + value;
+      const servicePrice = paymentAppointment.service?.price || 0;
+      const newPaymentStatus = newAmountPaid >= servicePrice ? 'paid' : 'partial';
+      const existingMethods = paymentAppointment.payment_methods || [];
+      const allMethods = [...new Set([...existingMethods, ...paymentMethodsSelected])];
+
+      await updatePayment.mutateAsync({
+        id: paymentAppointment.id,
+        payment: {
+          payment_methods: allMethods,
+          amount_paid: newAmountPaid,
+          payment_status: newPaymentStatus,
+        },
+      });
+
+      setPaymentAppointment(null);
+      setPaymentValue('');
+      setPaymentMethodsSelected([]);
+    } catch (error) {
+      // Error is handled by the mutation
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   return (
@@ -1002,14 +1053,24 @@ export default function Caixa() {
                                   {format(parseISO(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <p className="text-sm">
-                                  <span className="text-muted-foreground">Pago: </span>
-                                  <span className="text-success">R$ {(apt.amount_paid || 0).toFixed(2)}</span>
-                                </p>
-                                <p className="text-sm font-semibold text-warning">
-                                  Pendente: R$ {apt.remainingAmount.toFixed(2)}
-                                </p>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <p className="text-sm">
+                                    <span className="text-muted-foreground">Pago: </span>
+                                    <span className="text-success">R$ {(apt.amount_paid || 0).toFixed(2)}</span>
+                                  </p>
+                                  <p className="text-sm font-semibold text-warning">
+                                    Pendente: R$ {apt.remainingAmount.toFixed(2)}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => openPaymentDialog(apt)}
+                                  className="gap-1"
+                                >
+                                  <CreditCard className="h-3 w-3" />
+                                  Pagar
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -1044,6 +1105,85 @@ export default function Caixa() {
               Fechar
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={!!paymentAppointment} onOpenChange={(open) => !open && setPaymentAppointment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Registrar Pagamento
+            </DialogTitle>
+            <DialogDescription>
+              {paymentAppointment?.client?.name} - {paymentAppointment?.service?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {paymentAppointment && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex justify-between text-sm">
+                  <span>Valor do Serviço:</span>
+                  <span className="font-medium">R$ {(paymentAppointment.service?.price || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Já Pago:</span>
+                  <span className="font-medium text-success">R$ {(paymentAppointment.amount_paid || 0).toFixed(2)}</span>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex justify-between">
+                  <span className="font-medium">A Pagar:</span>
+                  <span className="font-bold text-warning">R$ {paymentAppointment.remainingAmount.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment-value">Valor</Label>
+                <Input
+                  id="payment-value"
+                  value={paymentValue}
+                  onChange={(e) => setPaymentValue(e.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Formas de Pagamento</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.map(method => (
+                    <Button
+                      key={method.value}
+                      variant={paymentMethodsSelected.includes(method.value) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        if (paymentMethodsSelected.includes(method.value)) {
+                          setPaymentMethodsSelected(prev => prev.filter(m => m !== method.value));
+                        } else {
+                          setPaymentMethodsSelected(prev => [...prev, method.value]);
+                        }
+                      }}
+                    >
+                      {method.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4">
+                <Button variant="outline" onClick={() => setPaymentAppointment(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleRegisterPayment}
+                  disabled={isProcessingPayment || paymentMethodsSelected.length === 0}
+                >
+                  {isProcessingPayment ? 'Processando...' : 'Confirmar Pagamento'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>

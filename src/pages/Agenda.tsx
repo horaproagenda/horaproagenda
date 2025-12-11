@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   format, 
   addDays, 
@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Clock,
   Plus,
+  GripVertical,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -48,6 +49,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
+import { toast } from 'sonner';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -63,13 +65,15 @@ const Agenda = () => {
   const [newAppointmentDialogOpen, setNewAppointmentDialogOpen] = useState(false);
   const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
   const [prefilledTime, setPrefilledTime] = useState<string | undefined>();
+  const [draggedAppointment, setDraggedAppointment] = useState<Appointment | null>(null);
 
-  const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
+  const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { generateTimeSlots, settings, isLoading: isLoadingSettings } = useBusinessSettings();
 
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings;
+  const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
   const timeSlots = generateTimeSlots();
 
@@ -260,6 +264,74 @@ const Agenda = () => {
     }
   };
 
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, apt: Appointment) => {
+    if (!dragAndDropEnabled) return;
+    setDraggedAppointment(apt);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', apt.id);
+  }, [dragAndDropEnabled]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!dragAndDropEnabled || !draggedAppointment) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, [dragAndDropEnabled, draggedAppointment]);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetDay: Date, targetTime: string) => {
+    e.preventDefault();
+    if (!dragAndDropEnabled || !draggedAppointment) return;
+
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    const newStartTime = new Date(targetDay);
+    newStartTime.setHours(hours, minutes, 0, 0);
+
+    // Calculate duration from original appointment
+    const originalStart = new Date(draggedAppointment.start_time);
+    const originalEnd = new Date(draggedAppointment.end_time);
+    const duration = originalEnd.getTime() - originalStart.getTime();
+
+    const newEndTime = new Date(newStartTime.getTime() + duration);
+
+    // Check for conflicts at new time
+    const hasConflict = appointments.some(apt => {
+      if (apt.id === draggedAppointment.id) return false;
+      
+      const aptStart = new Date(apt.start_time);
+      const aptEnd = new Date(apt.end_time);
+      const overlaps = newStartTime < aptEnd && newEndTime > aptStart;
+      if (!overlaps) return false;
+
+      // Check if same professional or room
+      const dragProfId = draggedAppointment.professional_id || draggedAppointment.service?.professional_id;
+      const aptProfId = apt.professional_id || apt.service?.professional_id;
+      const dragRoomId = draggedAppointment.room_id || draggedAppointment.service?.room_id;
+      const aptRoomId = apt.room_id || apt.service?.room_id;
+
+      return (dragProfId && aptProfId === dragProfId) || (dragRoomId && aptRoomId === dragRoomId);
+    });
+
+    if (hasConflict) {
+      toast.error('Conflito de horário! Profissional ou sala já ocupados.');
+      setDraggedAppointment(null);
+      return;
+    }
+
+    updateAppointment.mutate({
+      id: draggedAppointment.id,
+      updates: {
+        start_time: newStartTime.toISOString(),
+        end_time: newEndTime.toISOString(),
+      },
+    });
+
+    setDraggedAppointment(null);
+  }, [dragAndDropEnabled, draggedAppointment, appointments, updateAppointment]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedAppointment(null);
+  }, []);
+
   // Render time slot grid for day view
   const renderTimeSlotDayView = () => (
     <div className="space-y-4">
@@ -286,15 +358,19 @@ const Agenda = () => {
             const slotDuration = settings?.slot_interval || 30;
             const aptDuration = apt?.service?.duration || slotDuration;
             const slotsSpan = Math.ceil(aptDuration / slotDuration);
+            const isDragging = draggedAppointment?.id === apt?.id;
 
             return (
               <div
                 key={time}
                 className={cn(
-                  'flex items-stretch gap-3 min-h-[50px] rounded-lg transition-all cursor-pointer',
-                  apt ? '' : 'hover:bg-muted/50'
+                  'flex items-stretch gap-3 min-h-[50px] rounded-lg transition-all',
+                  apt ? '' : 'hover:bg-muted/50 cursor-pointer',
+                  draggedAppointment && !apt && 'bg-primary/5 border-2 border-dashed border-primary/30'
                 )}
-                onClick={() => handleSlotClick(selectedDate, time)}
+                onClick={() => !draggedAppointment && handleSlotClick(selectedDate, time)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, selectedDate, time)}
               >
                 <div className="w-16 flex-shrink-0 flex items-center justify-center text-sm font-medium text-muted-foreground">
                   {time}
@@ -305,16 +381,32 @@ const Agenda = () => {
                 )}>
                   {isStart && apt && (
                     <div 
-                      className="h-full rounded-lg p-3 text-white"
+                      className={cn(
+                        'h-full rounded-lg p-3 text-white transition-all',
+                        dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                        isDragging && 'opacity-50 ring-2 ring-primary'
+                      )}
                       style={{ 
                         backgroundColor: color,
                         minHeight: `${slotsSpan * 50 - 8}px`
                       }}
+                      draggable={dragAndDropEnabled}
+                      onDragStart={(e) => handleDragStart(e, apt)}
+                      onDragEnd={handleDragEnd}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAppointmentClick(apt);
+                      }}
                     >
                       <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold">{apt.client?.name}</p>
-                          <p className="text-sm opacity-90">{apt.service?.name}</p>
+                        <div className="flex items-start gap-2">
+                          {dragAndDropEnabled && (
+                            <GripVertical className="h-4 w-4 opacity-60 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <p className="font-semibold">{apt.client?.name}</p>
+                            <p className="text-sm opacity-90">{apt.service?.name}</p>
+                          </div>
                         </div>
                         <div className="text-right text-sm">
                           <p>R$ {apt.service?.price.toFixed(2)}</p>
@@ -395,6 +487,7 @@ const Agenda = () => {
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
                 const color = prof?.agenda_color || '#3B82F6';
+                const isDragging = draggedAppointment?.id === apt?.id;
 
                 return (
                   <div
@@ -402,14 +495,28 @@ const Agenda = () => {
                     className={cn(
                       'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
                       apt && !isStart && 'opacity-0 pointer-events-none',
-                      !apt && 'hover:bg-muted/30 hover:border-primary/30'
+                      !apt && 'hover:bg-muted/30 hover:border-primary/30',
+                      draggedAppointment && !apt && 'bg-primary/5 border-primary/30'
                     )}
-                    onClick={() => handleSlotClick(day, time)}
+                    onClick={() => !draggedAppointment && handleSlotClick(day, time)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, day, time)}
                   >
                     {isStart && apt && (
                       <div 
-                        className="h-full rounded p-1 text-white text-xs"
+                        className={cn(
+                          'h-full rounded p-1 text-white text-xs transition-all',
+                          dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                          isDragging && 'opacity-50 ring-2 ring-primary'
+                        )}
                         style={{ backgroundColor: color }}
+                        draggable={dragAndDropEnabled}
+                        onDragStart={(e) => handleDragStart(e, apt)}
+                        onDragEnd={handleDragEnd}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAppointmentClick(apt);
+                        }}
                       >
                         <p className="font-medium truncate">{apt.client?.name}</p>
                         <p className="truncate opacity-80">{apt.service?.name}</p>
@@ -567,6 +674,7 @@ const Agenda = () => {
                   });
                   
                   const isOccupied = occupyingApt && !apt;
+                  const isDragging = draggedAppointment?.id === apt?.id;
 
                   return (
                     <div
@@ -574,9 +682,11 @@ const Agenda = () => {
                       className={cn(
                         'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
                         isOccupied && 'opacity-0 pointer-events-none',
-                        !occupyingApt && 'hover:bg-muted/30 hover:border-primary/30'
+                        !occupyingApt && 'hover:bg-muted/30 hover:border-primary/30',
+                        draggedAppointment && !apt && !isOccupied && 'bg-primary/5 border-primary/30'
                       )}
                       onClick={() => {
+                        if (draggedAppointment) return;
                         if (apt) {
                           handleAppointmentClick(apt);
                         } else if (!isOccupied) {
@@ -585,11 +695,24 @@ const Agenda = () => {
                           setNewAppointmentDialogOpen(true);
                         }
                       }}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, selectedDate, time)}
                     >
                       {apt && (
                         <div 
-                          className="h-full rounded p-1 text-white text-xs"
+                          className={cn(
+                            'h-full rounded p-1 text-white text-xs transition-all',
+                            dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                            isDragging && 'opacity-50 ring-2 ring-primary'
+                          )}
                           style={{ backgroundColor: prof.agenda_color || '#3B82F6' }}
+                          draggable={dragAndDropEnabled}
+                          onDragStart={(e) => handleDragStart(e, apt)}
+                          onDragEnd={handleDragEnd}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAppointmentClick(apt);
+                          }}
                         >
                           <p className="font-medium truncate">{apt.client?.name}</p>
                           <p className="truncate opacity-80">{apt.service?.name}</p>

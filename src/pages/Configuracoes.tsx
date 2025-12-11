@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Clock, Bell, Palette } from 'lucide-react';
+import { Building2, Clock, Bell, Palette, GripVertical } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const Configuracoes = () => {
   const [slotInterval, setSlotInterval] = useState(30);
   const [workSaturdays, setWorkSaturdays] = useState(true);
   const [workSundays, setWorkSundays] = useState(false);
+  const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
 
   useEffect(() => {
     if (settings) {
@@ -25,6 +26,7 @@ const Configuracoes = () => {
       setSlotInterval(settings.slot_interval || 30);
       setWorkSaturdays(settings.work_saturdays ?? true);
       setWorkSundays(settings.work_sundays ?? false);
+      setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
     }
   }, [settings]);
 
@@ -35,6 +37,12 @@ const Configuracoes = () => {
       slot_interval: slotInterval,
       work_saturdays: workSaturdays,
       work_sundays: workSundays,
+    });
+  };
+
+  const handleSaveDragDrop = () => {
+    updateSettings.mutate({
+      drag_and_drop_enabled: dragAndDropEnabled,
     });
   };
 
@@ -192,6 +200,40 @@ const Configuracoes = () => {
               <Input type="number" defaultValue="24" />
               <p className="text-xs text-muted-foreground">Horas antes do agendamento</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Agenda Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <GripVertical className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Agenda</CardTitle>
+                <CardDescription>Configure opções da agenda</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Arrastar e soltar</Label>
+                <p className="text-xs text-muted-foreground">Permitir mover agendamentos arrastando na agenda</p>
+              </div>
+              <Switch 
+                checked={dragAndDropEnabled} 
+                onCheckedChange={setDragAndDropEnabled}
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handleSaveDragDrop}
+              disabled={updateSettings.isPending}
+            >
+              {updateSettings.isPending ? 'Salvando...' : 'Salvar Configurações'}
+            </Button>
           </CardContent>
         </Card>
 

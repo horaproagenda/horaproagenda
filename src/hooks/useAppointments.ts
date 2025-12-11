@@ -17,6 +17,15 @@ export interface PaymentUpdate {
   payment_status: PaymentStatus;
 }
 
+export interface AppointmentUpdate {
+  start_time?: string;
+  end_time?: string;
+  professional_id?: string | null;
+  room_id?: string | null;
+  notes?: string;
+  status?: 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
+}
+
 export function useAppointments() {
   const queryClient = useQueryClient();
 
@@ -87,10 +96,32 @@ export function useAppointments() {
     },
   });
 
+  const updateAppointment = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: AppointmentUpdate }) => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      toast.success('Agendamento atualizado!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar agendamento: ' + error.message);
+    },
+  });
+
   return {
     appointments,
     isLoading,
     createAppointment,
     updatePayment,
+    updateAppointment,
   };
 }

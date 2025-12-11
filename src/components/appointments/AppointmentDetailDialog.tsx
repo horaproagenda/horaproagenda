@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -25,6 +35,7 @@ import {
   Phone,
   Plus,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
@@ -69,6 +80,7 @@ export function AppointmentDetailDialog({
   const [payments, setPayments] = useState<{ method: string; amount: string }[]>([
     { method: 'pix', amount: '' },
   ]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   if (!appointment) return null;
 
@@ -95,7 +107,19 @@ export function AppointmentDetailDialog({
     setPayments(newPayments);
   };
 
-  const handleSubmitPayment = () => {
+  const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const newRemainingAmount = remainingAmount - totalPaymentAmount;
+  const hasPartialPayment = newRemainingAmount > 0 && totalPaymentAmount > 0;
+
+  const handleConfirmPayment = () => {
+    if (hasPartialPayment) {
+      setShowConfirmDialog(true);
+    } else {
+      submitPayment();
+    }
+  };
+
+  const submitPayment = () => {
     const validPayments = payments
       .filter(p => p.amount && parseFloat(p.amount) > 0)
       .map(p => ({ method: p.method, amount: parseFloat(p.amount) }));
@@ -104,209 +128,275 @@ export function AppointmentDetailDialog({
       onPayment(appointment.id, validPayments);
       setShowPaymentForm(false);
       setPayments([{ method: 'pix', amount: '' }]);
+      setShowConfirmDialog(false);
     }
   };
 
-  const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Scissors className="h-5 w-5" />
-            Detalhes do Agendamento
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Scissors className="h-5 w-5" />
+              Detalhes do Agendamento
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
-          {/* Client Info */}
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-            <User className="h-5 w-5 mt-0.5 text-primary" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">{appointment.client?.name}</h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-3 w-3" />
-                {appointment.client?.phone}
-              </div>
-            </div>
-            <Badge variant="outline" className={cn('text-xs', status.className)}>
-              {status.label}
-            </Badge>
-          </div>
-
-          {/* Service Info */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Scissors className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">{appointment.service?.name}</p>
-                <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{format(new Date(appointment.start_time), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>
-                {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
-                <span className="text-muted-foreground ml-1">({appointment.service?.duration} min)</span>
-              </span>
-            </div>
-
-            {professional && (
-              <div className="flex items-center gap-3">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <div className="flex items-center gap-2">
-                  <span>{professional.name}</span>
-                  {professional.agenda_color && (
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: professional.agenda_color }}
-                    />
-                  )}
+          <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+            {/* Client Info */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <User className="h-5 w-5 mt-0.5 text-primary" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">{appointment.client?.name}</h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Phone className="h-3 w-3" />
+                  {appointment.client?.phone}
                 </div>
               </div>
-            )}
+              <Badge variant="outline" className={cn('text-xs', status.className)}>
+                {status.label}
+              </Badge>
+            </div>
 
-            {(appointment.room || appointment.service?.room) && (
+            {/* Service Info */}
+            <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{appointment.room?.name || appointment.service?.room?.name}</span>
+                <Scissors className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{appointment.service?.name}</p>
+                  <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
+                </div>
               </div>
-            )}
-          </div>
 
-          <Separator />
+              <div className="flex items-center gap-3">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>{format(new Date(appointment.start_time), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+              </div>
 
-          {/* Payment Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-semibold flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Pagamento
-              </h4>
-              <div className={cn('flex items-center gap-1.5', paymentStatus.className)}>
-                <PaymentIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">{paymentStatus.label}</span>
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
+                  <span className="text-muted-foreground ml-1">({appointment.service?.duration} min)</span>
+                </span>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-4 p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="font-semibold">R$ {totalPrice.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Valor Pago</p>
-                <p className="font-semibold text-success">R$ {amountPaid.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Restante</p>
-                <p className={cn('font-semibold', remainingAmount > 0 ? 'text-warning' : 'text-success')}>
-                  R$ {remainingAmount.toFixed(2)}
-                </p>
-              </div>
-            </div>
-
-            {/* Existing Payments */}
-            {appointment.payment_methods && appointment.payment_methods.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {appointment.payment_methods.map((method, i) => (
-                  <Badge key={i} variant="secondary">
-                    <CreditCard className="h-3 w-3 mr-1" />
-                    {PAYMENT_METHODS.find(p => p.value === method)?.label || method}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Payment Form */}
-            {showPaymentForm ? (
-              <div className="space-y-3 p-3 rounded-lg border border-border">
-                <p className="text-sm font-medium">Registrar Pagamento</p>
-                
-                {payments.map((payment, index) => (
-                  <div key={index} className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <Label className="text-xs">Forma de Pagamento</Label>
-                      <select
-                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                        value={payment.method}
-                        onChange={(e) => updatePayment(index, 'method', e.target.value)}
-                      >
-                        {PAYMENT_METHODS.map(m => (
-                          <option key={m.value} value={m.value}>{m.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <Label className="text-xs">Valor (R$)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={payment.amount}
-                        onChange={(e) => updatePayment(index, 'amount', e.target.value)}
+              {professional && (
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    <span>{professional.name}</span>
+                    {professional.agenda_color && (
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: professional.agenda_color }}
                       />
-                    </div>
-                    {payments.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => removePaymentMethod(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     )}
                   </div>
-                ))}
+                </div>
+              )}
 
-                <Button variant="outline" size="sm" onClick={addPaymentMethod} className="w-full">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar forma de pagamento
-                </Button>
+              {(appointment.room || appointment.service?.room) && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{appointment.room?.name || appointment.service?.room?.name}</span>
+                </div>
+              )}
+            </div>
 
-                {totalPaymentAmount > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Total a registrar: <span className="font-semibold">R$ {totalPaymentAmount.toFixed(2)}</span>
-                  </p>
-                )}
+            <Separator />
 
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setShowPaymentForm(false)} className="flex-1">
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSubmitPayment} className="flex-1" disabled={totalPaymentAmount <= 0}>
-                    Confirmar Pagamento
-                  </Button>
+            {/* Payment Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Pagamento
+                </h4>
+                <div className={cn('flex items-center gap-1.5', paymentStatus.className)}>
+                  <PaymentIcon className="h-4 w-4" />
+                  <span className="text-sm font-medium">{paymentStatus.label}</span>
                 </div>
               </div>
-            ) : remainingAmount > 0 ? (
-              <Button onClick={() => setShowPaymentForm(true)} className="w-full">
-                <CreditCard className="h-4 w-4 mr-2" />
-                Dar Baixa no Pagamento
-              </Button>
-            ) : null}
-          </div>
 
-          {/* Notes */}
-          {appointment.notes && (
-            <>
-              <Separator />
-              <div>
-                <p className="text-sm font-medium mb-1">Observações</p>
-                <p className="text-sm text-muted-foreground">{appointment.notes}</p>
+              <div className="grid grid-cols-3 gap-4 p-3 rounded-lg bg-muted/30">
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Total</p>
+                  <p className="font-semibold">R$ {totalPrice.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Pago</p>
+                  <p className="font-semibold text-success">R$ {amountPaid.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Restante</p>
+                  <p className={cn('font-semibold', remainingAmount > 0 ? 'text-warning' : 'text-success')}>
+                    R$ {remainingAmount.toFixed(2)}
+                  </p>
+                </div>
               </div>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+              {/* Outstanding Balance Warning */}
+              {remainingAmount > 0 && !showPaymentForm && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                  <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+                  <p className="text-sm text-warning">
+                    Este agendamento possui um valor em aberto de <strong>R$ {remainingAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+              )}
+
+              {/* Existing Payments */}
+              {appointment.payment_methods && appointment.payment_methods.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {appointment.payment_methods.map((method, i) => (
+                    <Badge key={i} variant="secondary">
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      {PAYMENT_METHODS.find(p => p.value === method)?.label || method}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Payment Form */}
+              {showPaymentForm ? (
+                <div className="space-y-3 p-3 rounded-lg border border-border">
+                  {/* Total to pay header */}
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-sm text-muted-foreground">Valor a pagar</p>
+                    <p className="text-xl font-bold text-primary">R$ {remainingAmount.toFixed(2)}</p>
+                  </div>
+                  
+                  <p className="text-sm font-medium">Registrar Pagamento</p>
+                  
+                  {payments.map((payment, index) => (
+                    <div key={index} className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <Label className="text-xs">Forma de Pagamento</Label>
+                        <select
+                          className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                          value={payment.method}
+                          onChange={(e) => updatePayment(index, 'method', e.target.value)}
+                        >
+                          {PAYMENT_METHODS.map(m => (
+                            <option key={m.value} value={m.value}>{m.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Valor (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0,00"
+                          value={payment.amount}
+                          onChange={(e) => updatePayment(index, 'amount', e.target.value)}
+                        />
+                      </div>
+                      {payments.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => removePaymentMethod(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  <Button variant="outline" size="sm" onClick={addPaymentMethod} className="w-full">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar forma de pagamento
+                  </Button>
+
+                  {/* Payment summary */}
+                  {totalPaymentAmount > 0 && (
+                    <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Total a registrar:</span>
+                        <span className="font-semibold">R$ {totalPaymentAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Restante após pagamento:</span>
+                        <span className={cn('font-semibold', newRemainingAmount > 0 ? 'text-warning' : 'text-success')}>
+                          R$ {newRemainingAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Partial payment warning */}
+                  {hasPartialPayment && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20">
+                      <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+                      <p className="text-xs text-warning">
+                        Ficará um valor em aberto de R$ {newRemainingAmount.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowPaymentForm(false)} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalPaymentAmount <= 0}>
+                      Confirmar Pagamento
+                    </Button>
+                  </div>
+                </div>
+              ) : remainingAmount > 0 ? (
+                <Button onClick={() => setShowPaymentForm(true)} className="w-full">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Dar Baixa no Pagamento
+                </Button>
+              ) : null}
+            </div>
+
+            {/* Notes */}
+            {appointment.notes && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-sm font-medium mb-1">Observações</p>
+                  <p className="text-sm text-muted-foreground">{appointment.notes}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Partial Payment Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Pagamento Parcial
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Você está registrando um pagamento parcial. Após confirmar, ficará um valor em aberto de:
+              </p>
+              <p className="text-2xl font-bold text-warning text-center py-2">
+                R$ {newRemainingAmount.toFixed(2)}
+              </p>
+              <p>
+                Deseja continuar com o registro do pagamento parcial?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={submitPayment}>
+              Confirmar Pagamento Parcial
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

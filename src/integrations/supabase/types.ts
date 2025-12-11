@@ -16,12 +16,16 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          amount_paid: number | null
           client_id: string
           created_at: string
           end_time: string
           id: string
           notes: string | null
+          payment_methods: string[] | null
+          payment_status: string | null
           professional_id: string | null
+          room_id: string | null
           service_id: string
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"]
@@ -29,12 +33,16 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          amount_paid?: number | null
           client_id: string
           created_at?: string
           end_time: string
           id?: string
           notes?: string | null
+          payment_methods?: string[] | null
+          payment_status?: string | null
           professional_id?: string | null
+          room_id?: string | null
           service_id: string
           start_time: string
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -42,12 +50,16 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          amount_paid?: number | null
           client_id?: string
           created_at?: string
           end_time?: string
           id?: string
           notes?: string | null
+          payment_methods?: string[] | null
+          payment_status?: string | null
           professional_id?: string | null
+          room_id?: string | null
           service_id?: string
           start_time?: string
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -60,6 +72,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
           {

@@ -157,21 +157,29 @@ export interface DocumentTemplate {
 
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
 
+export type PaymentStatus = 'pending' | 'partial' | 'paid';
+
 export interface Appointment {
   id: string;
   client_id: string;
   service_id: string;
   professional_id: string | null;
+  room_id: string | null;
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
+  payment_status: PaymentStatus;
+  payment_methods: string[];
+  amount_paid: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   // Joined data
   client?: Client;
   service?: Service;
-  professional?: Profile;
+  professional?: Professional;
+  room?: Room;
 }
 
 export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';

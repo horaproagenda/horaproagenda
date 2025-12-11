@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ManageRoomsDialog } from '@/components/services/ManageRoomsDialog';
 import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
 import { ManageEquipmentDialog } from '@/components/cadastros/ManageEquipmentDialog';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -17,15 +18,7 @@ export default function Cadastros() {
   const activeEquipment = equipment.filter(e => e.is_active).length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-foreground">
-          Cadastros
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Gerencie salas, profissionais e equipamentos
-        </p>
-      </div>
+    <AppLayout title="Cadastros" subtitle="Gerencie salas, profissionais e equipamentos">
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Salas */}
@@ -91,6 +84,6 @@ export default function Cadastros() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppLayout>
   );
 }

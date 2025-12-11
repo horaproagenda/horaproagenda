@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 
 const Servicos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('services');
   const { services, isLoading, refetch } = useServices();
   const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
 
@@ -28,17 +29,18 @@ const Servicos: React.FC = () => {
       title="Serviços" 
       subtitle="Catálogo de procedimentos e pacotes"
     >
-      <Tabs defaultValue="services" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <TabsList>
             <TabsTrigger value="services">Serviços</TabsTrigger>
             <TabsTrigger value="packages">Pacotes</TabsTrigger>
           </TabsList>
           
-          <div className="flex gap-2">
+          {activeTab === 'services' ? (
             <NewServiceDialog onServiceCreated={refetch} />
+          ) : (
             <NewPackageDialog onPackageCreated={refetchPackages} />
-          </div>
+          )}
         </div>
 
         <TabsContent value="services" className="mt-0">

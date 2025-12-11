@@ -42,6 +42,16 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -66,6 +76,11 @@ const Agenda = () => {
   const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
   const [prefilledTime, setPrefilledTime] = useState<string | undefined>();
   const [draggedAppointment, setDraggedAppointment] = useState<Appointment | null>(null);
+  const [pendingMove, setPendingMove] = useState<{
+    appointment: Appointment;
+    newStartTime: Date;
+    newEndTime: Date;
+  } | null>(null);
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
@@ -317,16 +332,32 @@ const Agenda = () => {
       return;
     }
 
+    // Show confirmation dialog instead of directly updating
+    setPendingMove({
+      appointment: draggedAppointment,
+      newStartTime,
+      newEndTime,
+    });
+    setDraggedAppointment(null);
+  }, [dragAndDropEnabled, draggedAppointment, appointments]);
+
+  const confirmMove = useCallback(() => {
+    if (!pendingMove) return;
+
     updateAppointment.mutate({
-      id: draggedAppointment.id,
+      id: pendingMove.appointment.id,
       updates: {
-        start_time: newStartTime.toISOString(),
-        end_time: newEndTime.toISOString(),
+        start_time: pendingMove.newStartTime.toISOString(),
+        end_time: pendingMove.newEndTime.toISOString(),
       },
     });
 
-    setDraggedAppointment(null);
-  }, [dragAndDropEnabled, draggedAppointment, appointments, updateAppointment]);
+    setPendingMove(null);
+  }, [pendingMove, updateAppointment]);
+
+  const cancelMove = useCallback(() => {
+    setPendingMove(null);
+  }, []);
 
   const handleDragEnd = useCallback(() => {
     setDraggedAppointment(null);
@@ -882,6 +913,32 @@ const Agenda = () => {
         prefilledDate={prefilledDate}
         prefilledTime={prefilledTime}
       />
+
+      {/* Move Confirmation Dialog */}
+      <AlertDialog open={!!pendingMove} onOpenChange={(open) => !open && cancelMove()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de horário</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              {pendingMove && (
+                <>
+                  <p>
+                    Deseja mover o agendamento de <strong>{pendingMove.appointment.client?.name}</strong> ({pendingMove.appointment.service?.name})?
+                  </p>
+                  <div className="mt-3 p-3 rounded-lg bg-muted/50 text-sm">
+                    <p><strong>De:</strong> {format(new Date(pendingMove.appointment.start_time), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}</p>
+                    <p><strong>Para:</strong> {format(pendingMove.newStartTime, "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}</p>
+                  </div>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelMove}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMove}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };

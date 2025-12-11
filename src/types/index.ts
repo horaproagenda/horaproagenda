@@ -29,6 +29,7 @@ export interface Client {
   referral_source: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
 }
 
 export interface Room {
@@ -120,6 +121,7 @@ export interface ServicePackage {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   client?: Client;
   template?: PackageTemplate;
   professional?: Professional;

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Clock, DollarSign, Users, Calendar, Home, User, Package, Layers, Timer, Pencil, Trash2 } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, Home, User, Package, Layers, Timer, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PackageClientsList } from './PackageClientsList';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showClientsList, setShowClientsList] = useState(false);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
@@ -119,6 +121,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
         is_active: pkg.is_active,
       });
       setIsEditing(false);
+      setShowClientsList(false);
     }
   }, [open, pkg]);
 
@@ -265,10 +268,28 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
               <Separator />
 
               {/* Usage Stats */}
-              <div className="rounded-lg bg-primary/10 p-4 text-center">
-                <Users className="mx-auto h-6 w-6 text-primary" />
-                <p className="mt-2 text-2xl font-bold">{isLoading ? '...' : clientsCount}</p>
-                <p className="text-xs text-muted-foreground">Clientes usando este pacote</p>
+              <div className="space-y-3">
+                <div 
+                  className="rounded-lg bg-primary/10 p-4 cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => setShowClientsList(!showClientsList)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-6 w-6 text-primary" />
+                      <div className="text-left">
+                        <p className="text-2xl font-bold">{isLoading ? '...' : clientsCount}</p>
+                        <p className="text-xs text-muted-foreground">Clientes usando este pacote</p>
+                      </div>
+                    </div>
+                    {clientsCount > 0 && (
+                      showClientsList ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />
+                    )}
+                  </div>
+                </div>
+                
+                {showClientsList && clientsCount > 0 && (
+                  <PackageClientsList packageName={pkg.name} />
+                )}
               </div>
 
               <Separator />

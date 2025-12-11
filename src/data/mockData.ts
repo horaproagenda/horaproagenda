@@ -3,11 +3,11 @@ import { Client, Service, Appointment } from '@/types';
 const now = new Date().toISOString();
 
 export const mockClients: Client[] = [
-  { id: '1', name: 'Maria Silva', email: 'maria.silva@email.com', phone: '(11) 99999-1234', birthdate: null, notes: 'Preferência por horários matutinos', complementary_info: null, created_at: '2024-01-15T10:00:00Z', updated_at: now },
-  { id: '2', name: 'Ana Costa', email: 'ana.costa@email.com', phone: '(11) 98888-5678', birthdate: null, notes: 'Alergia a parabenos', complementary_info: null, created_at: '2024-02-20T10:00:00Z', updated_at: now },
-  { id: '3', name: 'Julia Santos', email: 'julia.santos@email.com', phone: '(11) 97777-9012', birthdate: null, notes: null, complementary_info: null, created_at: '2024-03-10T10:00:00Z', updated_at: now },
-  { id: '4', name: 'Fernanda Lima', email: 'fernanda.lima@email.com', phone: '(11) 96666-3456', birthdate: null, notes: 'Cliente VIP', complementary_info: null, created_at: '2024-01-05T10:00:00Z', updated_at: now },
-  { id: '5', name: 'Camila Oliveira', email: 'camila.oliveira@email.com', phone: '(11) 95555-7890', birthdate: null, notes: null, complementary_info: null, created_at: '2024-04-01T10:00:00Z', updated_at: now },
+  { id: '1', name: 'Maria Silva', email: 'maria.silva@email.com', phone: '(11) 99999-1234', cpf: null, birthdate: null, notes: 'Preferência por horários matutinos', complementary_info: null, created_at: '2024-01-15T10:00:00Z', updated_at: now },
+  { id: '2', name: 'Ana Costa', email: 'ana.costa@email.com', phone: '(11) 98888-5678', cpf: null, birthdate: null, notes: 'Alergia a parabenos', complementary_info: null, created_at: '2024-02-20T10:00:00Z', updated_at: now },
+  { id: '3', name: 'Julia Santos', email: 'julia.santos@email.com', phone: '(11) 97777-9012', cpf: null, birthdate: null, notes: null, complementary_info: null, created_at: '2024-03-10T10:00:00Z', updated_at: now },
+  { id: '4', name: 'Fernanda Lima', email: 'fernanda.lima@email.com', phone: '(11) 96666-3456', cpf: null, birthdate: null, notes: 'Cliente VIP', complementary_info: null, created_at: '2024-01-05T10:00:00Z', updated_at: now },
+  { id: '5', name: 'Camila Oliveira', email: 'camila.oliveira@email.com', phone: '(11) 95555-7890', cpf: null, birthdate: null, notes: null, complementary_info: null, created_at: '2024-04-01T10:00:00Z', updated_at: now },
 ];
 
 export const mockServices: Service[] = [

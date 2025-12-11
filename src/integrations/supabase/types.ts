@@ -116,6 +116,7 @@ export type Database = {
         Row: {
           birthdate: string | null
           complementary_info: string | null
+          cpf: string | null
           created_at: string
           email: string | null
           id: string
@@ -127,6 +128,7 @@ export type Database = {
         Insert: {
           birthdate?: string | null
           complementary_info?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -138,6 +140,7 @@ export type Database = {
         Update: {
           birthdate?: string | null
           complementary_info?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string

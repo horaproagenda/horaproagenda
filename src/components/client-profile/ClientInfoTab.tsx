@@ -19,6 +19,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
     name: client.name,
     email: client.email || '',
     phone: client.phone,
+    cpf: client.cpf || '',
     birthdate: client.birthdate || '',
     notes: client.notes || '',
     complementary_info: client.complementary_info || '',
@@ -31,6 +32,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim(),
+        cpf: formData.cpf.trim() || null,
         birthdate: formData.birthdate || null,
         notes: formData.notes.trim() || null,
         complementary_info: formData.complementary_info.trim() || null,
@@ -48,6 +50,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
       name: client.name,
       email: client.email || '',
       phone: client.phone,
+      cpf: client.cpf || '',
       birthdate: client.birthdate || '',
       notes: client.notes || '',
       complementary_info: client.complementary_info || '',
@@ -126,6 +129,19 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
               />
             ) : (
               <p className="text-foreground">{client.birthdate || '-'}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>CPF</Label>
+            {editing ? (
+              <Input
+                value={formData.cpf}
+                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+              />
+            ) : (
+              <p className="text-foreground">{client.cpf || '-'}</p>
             )}
           </div>
         </div>

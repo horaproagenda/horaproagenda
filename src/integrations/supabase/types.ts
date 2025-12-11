@@ -26,6 +26,7 @@ export type Database = {
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           client_id: string
@@ -38,6 +39,7 @@ export type Database = {
           start_time: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           client_id?: string
@@ -50,6 +52,7 @@ export type Database = {
           start_time?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -126,6 +129,7 @@ export type Database = {
           phone: string
           referral_source: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           birthdate?: string | null
@@ -140,6 +144,7 @@ export type Database = {
           phone: string
           referral_source?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           birthdate?: string | null
@@ -154,6 +159,7 @@ export type Database = {
           phone?: string
           referral_source?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -166,6 +172,7 @@ export type Database = {
           is_active: boolean
           title: string
           updated_at: string
+          updated_by: string | null
           variables: string[] | null
         }
         Insert: {
@@ -176,6 +183,7 @@ export type Database = {
           is_active?: boolean
           title: string
           updated_at?: string
+          updated_by?: string | null
           variables?: string[] | null
         }
         Update: {
@@ -186,6 +194,7 @@ export type Database = {
           is_active?: boolean
           title?: string
           updated_at?: string
+          updated_by?: string | null
           variables?: string[] | null
         }
         Relationships: []
@@ -199,6 +208,7 @@ export type Database = {
           name: string
           serial_number: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           created_at?: string
@@ -208,6 +218,7 @@ export type Database = {
           name: string
           serial_number?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           created_at?: string
@@ -217,6 +228,7 @@ export type Database = {
           name?: string
           serial_number?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -352,6 +364,7 @@ export type Database = {
           phone: string | null
           specialties: string[] | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           agenda_color?: string | null
@@ -370,6 +383,7 @@ export type Database = {
           phone?: string | null
           specialties?: string[] | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           agenda_color?: string | null
@@ -388,6 +402,7 @@ export type Database = {
           phone?: string | null
           specialties?: string[] | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -433,6 +448,7 @@ export type Database = {
           status: Database["public"]["Enums"]["quote_status"]
           total_amount: number
           updated_at: string
+          updated_by: string | null
           valid_until: string | null
         }
         Insert: {
@@ -446,6 +462,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"]
           total_amount?: number
           updated_at?: string
+          updated_by?: string | null
           valid_until?: string | null
         }
         Update: {
@@ -459,6 +476,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"]
           total_amount?: number
           updated_at?: string
+          updated_by?: string | null
           valid_until?: string | null
         }
         Relationships: [
@@ -481,6 +499,7 @@ export type Database = {
           is_active: boolean
           name: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           capacity?: number | null
@@ -491,6 +510,7 @@ export type Database = {
           is_active?: boolean
           name: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           capacity?: number | null
@@ -501,6 +521,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -528,6 +549,7 @@ export type Database = {
           total_price: number
           total_sessions: number
           updated_at: string
+          updated_by: string | null
           whatsapp_reminder: boolean
         }
         Insert: {
@@ -553,6 +575,7 @@ export type Database = {
           total_price: number
           total_sessions?: number
           updated_at?: string
+          updated_by?: string | null
           whatsapp_reminder?: boolean
         }
         Update: {
@@ -578,6 +601,7 @@ export type Database = {
           total_price?: number
           total_sessions?: number
           updated_at?: string
+          updated_by?: string | null
           whatsapp_reminder?: boolean
         }
         Relationships: [
@@ -625,6 +649,7 @@ export type Database = {
           return_days: number | null
           room_id: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           category: string
@@ -639,6 +664,7 @@ export type Database = {
           return_days?: number | null
           room_id?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           category?: string
@@ -653,6 +679,7 @@ export type Database = {
           return_days?: number | null
           room_id?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {

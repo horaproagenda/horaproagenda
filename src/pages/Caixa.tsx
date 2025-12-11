@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -47,6 +48,8 @@ import {
   CalendarIcon,
   Filter,
   Download,
+  AlertTriangle,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -171,6 +174,62 @@ export default function Caixa() {
     });
   }, [appointments, dateRange, customStartDate, customEndDate, paymentMethodFilter, professionalFilter]);
 
+  // Filter appointments with pending amounts (receivables)
+  const receivables = useMemo(() => {
+    const { start, end } = getDateRange();
+    
+    return appointments.filter(apt => {
+      // Only appointments with pending or partial payment status
+      if (apt.payment_status === 'paid') return false;
+      
+      const servicePrice = apt.service?.price || 0;
+      const amountPaid = apt.amount_paid || 0;
+      const remainingAmount = servicePrice - amountPaid;
+      
+      // Must have a remaining balance
+      if (remainingAmount <= 0) return false;
+      
+      // Date filter - check appointment date
+      const aptDate = parseISO(apt.start_time);
+      if (!isWithinInterval(aptDate, { start, end })) {
+        return false;
+      }
+      
+      return true;
+    }).map(apt => ({
+      ...apt,
+      remainingAmount: (apt.service?.price || 0) - (apt.amount_paid || 0),
+    }));
+  }, [appointments, dateRange, customStartDate, customEndDate]);
+
+  // Group receivables by client
+  const receivablesByClient = useMemo(() => {
+    const grouped: Record<string, {
+      client: typeof receivables[0]['client'];
+      appointments: typeof receivables;
+      totalRemaining: number;
+    }> = {};
+
+    receivables.forEach(apt => {
+      const clientId = apt.client_id;
+      if (!grouped[clientId]) {
+        grouped[clientId] = {
+          client: apt.client,
+          appointments: [],
+          totalRemaining: 0,
+        };
+      }
+      grouped[clientId].appointments.push(apt);
+      grouped[clientId].totalRemaining += apt.remainingAmount;
+    });
+
+    return Object.values(grouped).sort((a, b) => b.totalRemaining - a.totalRemaining);
+  }, [receivables]);
+
+  const totalReceivables = useMemo(() => {
+    return receivables.reduce((sum, apt) => sum + apt.remainingAmount, 0);
+  }, [receivables]);
+
   // Calculate totals
   const totals = useMemo(() => {
     const total = paidAppointments.reduce((sum, apt) => sum + (apt.amount_paid || 0), 0);
@@ -269,6 +328,15 @@ export default function Caixa() {
           <TabsTrigger value="report" className="gap-2">
             <FileText className="h-4 w-4" />
             Relatório de Caixa
+          </TabsTrigger>
+          <TabsTrigger value="receivables" className="gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            A Receber
+            {totalReceivables > 0 && (
+              <Badge variant="destructive" className="ml-1 text-xs">
+                R$ {totalReceivables.toFixed(0)}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -730,6 +798,225 @@ export default function Caixa() {
                       </TableRow>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Receivables Tab */}
+        <TabsContent value="receivables" className="space-y-6">
+          {/* Summary Card */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total a Receber</p>
+                    <p className="text-2xl font-bold text-warning">
+                      R$ {totalReceivables.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-warning" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Clientes com Pendência</p>
+                    <p className="text-2xl font-bold">{receivablesByClient.length}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <User className="h-6 w-6 text-blue-500" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Agendamentos Pendentes</p>
+                    <p className="text-2xl font-bold">{receivables.length}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <CalendarDays className="h-6 w-6 text-orange-500" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Date Filter for Receivables */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filtrar por Período
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Período</Label>
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DATE_RANGES.map(range => (
+                        <SelectItem key={range.value} value={range.value}>
+                          {range.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {dateRange === 'custom' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Data Inicial</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !customStartDate && 'text-muted-foreground'
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customStartDate ? format(customStartDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={customStartDate}
+                            onSelect={setCustomStartDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data Final</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !customEndDate && 'text-muted-foreground'
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customEndDate ? format(customEndDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={customEndDate}
+                            onSelect={setCustomEndDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Receivables by Client */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Valores a Receber por Cliente
+              </CardTitle>
+              <CardDescription>
+                Clientes com valores pendentes de pagamento
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingAppointments ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <Skeleton key={i} className="h-20 rounded-lg" />
+                  ))}
+                </div>
+              ) : receivablesByClient.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success opacity-50" />
+                  <p>Nenhum valor pendente no período selecionado</p>
+                  <p className="text-sm">Todos os pagamentos estão em dia!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {receivablesByClient.map(({ client, appointments: clientAppointments, totalRemaining }) => (
+                    <Card key={client?.id} className="border-warning/30 bg-warning/5">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
+                              <User className="h-5 w-5 text-warning" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">{client?.name || 'Cliente não identificado'}</h4>
+                              {client?.phone && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  {client.phone}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Total em aberto</p>
+                            <p className="text-xl font-bold text-warning">R$ {totalRemaining.toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        <Separator className="my-3" />
+
+                        <div className="space-y-2">
+                          {clientAppointments.map(apt => (
+                            <div
+                              key={apt.id}
+                              className="flex items-center justify-between p-2 rounded bg-background/50"
+                            >
+                              <div>
+                                <p className="text-sm font-medium">{apt.service?.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(parseISO(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Pago: </span>
+                                  <span className="text-success">R$ {(apt.amount_paid || 0).toFixed(2)}</span>
+                                </p>
+                                <p className="text-sm font-semibold text-warning">
+                                  Pendente: R$ {apt.remainingAmount.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </CardContent>

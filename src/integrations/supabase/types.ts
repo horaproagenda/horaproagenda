@@ -420,6 +420,7 @@ export type Database = {
           specialties: string[] | null
           updated_at: string
           updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           agenda_color?: string | null
@@ -439,6 +440,7 @@ export type Database = {
           specialties?: string[] | null
           updated_at?: string
           updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           agenda_color?: string | null
@@ -458,6 +460,7 @@ export type Database = {
           specialties?: string[] | null
           updated_at?: string
           updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -827,6 +830,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_professional_id_for_user: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

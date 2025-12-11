@@ -12,8 +12,7 @@ import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { cn } from '@/lib/utils';
 
-
-const Servicos = () => {
+const Servicos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { services, isLoading, refetch } = useServices();
   const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
@@ -43,7 +42,6 @@ const Servicos = () => {
         </div>
 
         <TabsContent value="services" className="mt-0">
-          {/* Header Actions */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 flex-wrap">
               <Filter className="h-4 w-4 text-muted-foreground" />
@@ -73,7 +71,6 @@ const Servicos = () => {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="mt-6 flex items-center gap-6 rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2">
@@ -102,7 +99,6 @@ const Servicos = () => {
             )}
           </div>
 
-          {/* Services Grid */}
           <div className="mt-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
@@ -144,7 +140,7 @@ const Servicos = () => {
             </div>
           ) : packages.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {packages.map((pkg) => (
+              {packages.map((pkg) => (
                 <Card key={pkg.id} className="overflow-hidden">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -164,7 +160,6 @@ const Servicos = () => {
                       <p className="text-sm text-muted-foreground">{pkg.description}</p>
                     )}
 
-                    {/* Details */}
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="p-2 rounded bg-muted/50">
                         <p className="text-xs text-muted-foreground">Sessões</p>

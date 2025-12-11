@@ -56,8 +56,8 @@ export function NewAppointmentDialog({
   const [selectedService, setSelectedService] = useState('');
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
-  const [date, setDate] = useState<Date | undefined>(prefilledDate);
-  const [time, setTime] = useState(prefilledTime || '');
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
 
   const { clients } = useClients();
@@ -73,11 +73,18 @@ export function NewAppointmentDialog({
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
 
-  // Update date/time when prefilled values change
+  // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
-    if (prefilledDate) setDate(prefilledDate);
-    if (prefilledTime) setTime(prefilledTime);
-  }, [prefilledDate, prefilledTime]);
+    if (open) {
+      setSelectedClient('');
+      setSelectedService('');
+      setSelectedProfessional('');
+      setSelectedRoom('');
+      setNotes('');
+      setDate(prefilledDate || undefined);
+      setTime(prefilledTime || '');
+    }
+  }, [open, prefilledDate, prefilledTime]);
 
   // Auto-select professional and room from service if available
   useEffect(() => {
@@ -229,15 +236,15 @@ export function NewAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
           <DialogTitle className="font-display text-xl">Novo Agendamento</DialogTitle>
           <DialogDescription>
             Preencha as informações para criar um novo agendamento
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6">
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="client">Cliente *</Label>
@@ -448,7 +455,7 @@ export function NewAppointmentDialog({
               </Button>
             </div>
           </form>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

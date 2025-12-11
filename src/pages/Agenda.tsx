@@ -65,9 +65,11 @@ const Agenda = () => {
   const [prefilledTime, setPrefilledTime] = useState<string | undefined>();
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
-  const { professionals } = useProfessionals();
-  const { rooms } = useRooms();
-  const { generateTimeSlots, settings } = useBusinessSettings();
+  const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
+  const { rooms, isLoading: isLoadingRooms } = useRooms();
+  const { generateTimeSlots, settings, isLoading: isLoadingSettings } = useBusinessSettings();
+
+  const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings;
 
   const timeSlots = generateTimeSlots();
 
@@ -715,11 +717,21 @@ const Agenda = () => {
         </div>
 
         {/* Calendar Views */}
-        {isLoadingAppointments ? (
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-12 rounded-lg" />
-            ))}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full border-4 border-muted animate-spin border-t-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground">Carregando agenda...</p>
+            <div className="w-full max-w-md space-y-3">
+              <Skeleton className="h-4 w-3/4 mx-auto" />
+              <Skeleton className="h-4 w-1/2 mx-auto" />
+              <div className="grid grid-cols-7 gap-2 pt-4">
+                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <Skeleton key={i} className="h-20 rounded-lg" />
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>

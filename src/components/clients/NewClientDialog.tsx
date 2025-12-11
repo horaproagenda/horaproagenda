@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UserPlus } from 'lucide-react';
@@ -24,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useClients } from '@/hooks/useClients';
+import { DuplicateClientAlert } from './DuplicateClientAlert';
 
 const clientSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -43,6 +45,7 @@ interface NewClientDialogProps {
 export function NewClientDialog({ onClientCreated, children }: NewClientDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { clients } = useClients();
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -55,7 +58,46 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
     },
   });
 
+  const watchedName = useWatch({ control: form.control, name: 'name' });
+  const watchedPhone = useWatch({ control: form.control, name: 'phone' });
+  const watchedEmail = useWatch({ control: form.control, name: 'email' });
+
+  const duplicatesByName = useMemo(() => {
+    if (!watchedName || watchedName.length < 3) return [];
+    const searchTerm = watchedName.toLowerCase().trim();
+    return clients.filter(client => 
+      client.name.toLowerCase().includes(searchTerm) || 
+      searchTerm.includes(client.name.toLowerCase())
+    ).slice(0, 3);
+  }, [watchedName, clients]);
+
+  const duplicatesByPhone = useMemo(() => {
+    if (!watchedPhone || watchedPhone.length < 8) return [];
+    const cleanPhone = watchedPhone.replace(/\D/g, '');
+    return clients.filter(client => {
+      const clientPhone = client.phone?.replace(/\D/g, '') || '';
+      return clientPhone.includes(cleanPhone) || cleanPhone.includes(clientPhone);
+    }).slice(0, 3);
+  }, [watchedPhone, clients]);
+
+  const duplicatesByEmail = useMemo(() => {
+    if (!watchedEmail || watchedEmail.length < 5 || !watchedEmail.includes('@')) return [];
+    const searchEmail = watchedEmail.toLowerCase().trim();
+    return clients.filter(client => 
+      client.email?.toLowerCase() === searchEmail
+    ).slice(0, 3);
+  }, [watchedEmail, clients]);
+
+  const hasDuplicates = duplicatesByName.length > 0 || duplicatesByPhone.length > 0 || duplicatesByEmail.length > 0;
+
   const onSubmit = async (data: ClientFormData) => {
+    if (hasDuplicates) {
+      const confirmSubmit = window.confirm(
+        'Foram encontrados clientes com dados similares. Deseja continuar com o cadastro mesmo assim?'
+      );
+      if (!confirmSubmit) return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.from('clients').insert({
@@ -89,7 +131,7 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Cliente</DialogTitle>
           <DialogDescription>
@@ -111,19 +153,10 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {duplicatesByName.length > 0 && (
+              <DuplicateClientAlert duplicates={duplicatesByName} matchType="name" />
+            )}
+            
             <FormField
               control={form.control}
               name="phone"
@@ -137,6 +170,27 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                 </FormItem>
               )}
             />
+            {duplicatesByPhone.length > 0 && (
+              <DuplicateClientAlert duplicates={duplicatesByPhone} matchType="phone" />
+            )}
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="email@exemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {duplicatesByEmail.length > 0 && (
+              <DuplicateClientAlert duplicates={duplicatesByEmail} matchType="email" />
+            )}
+
             <FormField
               control={form.control}
               name="birthdate"

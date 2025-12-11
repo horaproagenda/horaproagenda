@@ -65,6 +65,7 @@ export interface Service {
   duration: number;
   price: number;
   category: string;
+  return_days: number | null;
   is_active: boolean;
   room_id: string | null;
   professional_id: string | null;

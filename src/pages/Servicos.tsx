@@ -4,6 +4,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
+import { ServiceDetailDialog } from '@/components/services/ServiceDetailDialog';
+import { PackageDetailDialog } from '@/components/services/PackageDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,10 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { cn } from '@/lib/utils';
+import { Service } from '@/types';
+import { Tables } from '@/integrations/supabase/types';
+
+type ServicePackageDB = Tables<'service_packages'>;
 
 const Servicos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('services');
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<ServicePackageDB | null>(null);
   const { services, isLoading, refetch } = useServices();
   const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
 
@@ -112,7 +120,8 @@ const Servicos: React.FC = () => {
                   <div
                     key={service.id}
                     style={{ animationDelay: `${index * 50}ms` }}
-                    className="animate-slide-up"
+                    className="animate-slide-up cursor-pointer"
+                    onClick={() => setSelectedService(service)}
                   >
                     <ServiceCard service={service} />
                   </div>
@@ -143,7 +152,11 @@ const Servicos: React.FC = () => {
           ) : packages.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {packages.map((pkg) => (
-                <Card key={pkg.id} className="overflow-hidden">
+                <Card 
+                  key={pkg.id} 
+                  className="overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-lg transition-all"
+                  onClick={() => setSelectedPackage(pkg)}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -207,6 +220,24 @@ const Servicos: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Service Detail Dialog */}
+      {selectedService && (
+        <ServiceDetailDialog
+          service={selectedService}
+          open={!!selectedService}
+          onOpenChange={(open) => !open && setSelectedService(null)}
+        />
+      )}
+
+      {/* Package Detail Dialog */}
+      {selectedPackage && (
+        <PackageDetailDialog
+          pkg={selectedPackage}
+          open={!!selectedPackage}
+          onOpenChange={(open) => !open && setSelectedPackage(null)}
+        />
+      )}
     </AppLayout>
   );
 };

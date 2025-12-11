@@ -1,9 +1,34 @@
 import { useState, useMemo } from 'react';
-import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import { 
+  format, 
+  addDays, 
+  addWeeks,
+  addMonths,
+  startOfWeek, 
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay, 
+  isSameMonth,
+  getDay,
+} from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Filter, User, DoorOpen } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Filter, 
+  User, 
+  DoorOpen,
+  Calendar as CalendarIcon,
+  LayoutGrid,
+  List,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+} from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
+import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -12,19 +37,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Appointment, PaymentStatus } from '@/types';
+
+type ViewType = 'day' | 'week' | 'month';
+
+const paymentStatusIcon = {
+  pending: AlertCircle,
+  partial: Clock,
+  paid: CheckCircle,
+};
+
+const paymentStatusColor = {
+  pending: 'text-warning',
+  partial: 'text-info',
+  paid: 'text-success',
+};
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
+  const [viewType, setViewType] = useState<ViewType>('week');
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  const { appointments, isLoading: isLoadingAppointments } = useAppointments();
+  const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
 
@@ -32,16 +77,36 @@ const Agenda = () => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [weekStart]);
 
+  const monthDays = useMemo(() => {
+    const start = startOfMonth(monthStart);
+    const end = endOfMonth(monthStart);
+    const days = eachDayOfInterval({ start, end });
+    
+    // Add days from previous month to fill the first week
+    const firstDayOfMonth = getDay(start);
+    const daysFromPrevMonth = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+    const prevMonthDays = Array.from({ length: daysFromPrevMonth }, (_, i) => 
+      addDays(start, -(daysFromPrevMonth - i))
+    );
+    
+    // Add days from next month to fill the last week
+    const lastDayOfMonth = getDay(end);
+    const daysFromNextMonth = lastDayOfMonth === 0 ? 0 : 7 - lastDayOfMonth;
+    const nextMonthDays = Array.from({ length: daysFromNextMonth }, (_, i) => 
+      addDays(end, i + 1)
+    );
+    
+    return [...prevMonthDays, ...days, ...nextMonthDays];
+  }, [monthStart]);
+
   // Filter appointments by professional and room
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
-      // Filter by professional
       if (professionalFilter !== 'all') {
         if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
           return false;
         }
       }
-      // Filter by room
       if (roomFilter !== 'all') {
         if (apt.service?.room_id !== roomFilter) {
           return false;
@@ -51,7 +116,7 @@ const Agenda = () => {
     });
   }, [appointments, professionalFilter, roomFilter]);
 
-  // Filter by selected date
+  // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
     return filteredByFilters.filter(
       apt => isSameDay(new Date(apt.start_time), selectedDate)
@@ -65,18 +130,31 @@ const Agenda = () => {
     );
   };
 
-  const goToPreviousWeek = () => {
-    setWeekStart(addDays(weekStart, -7));
+  const goToPrevious = () => {
+    if (viewType === 'day') {
+      setSelectedDate(addDays(selectedDate, -1));
+    } else if (viewType === 'week') {
+      setWeekStart(addWeeks(weekStart, -1));
+    } else {
+      setMonthStart(addMonths(monthStart, -1));
+    }
   };
 
-  const goToNextWeek = () => {
-    setWeekStart(addDays(weekStart, 7));
+  const goToNext = () => {
+    if (viewType === 'day') {
+      setSelectedDate(addDays(selectedDate, 1));
+    } else if (viewType === 'week') {
+      setWeekStart(addWeeks(weekStart, 1));
+    } else {
+      setMonthStart(addMonths(monthStart, 1));
+    }
   };
 
   const goToToday = () => {
     const today = new Date();
     setSelectedDate(today);
     setWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
+    setMonthStart(startOfMonth(today));
   };
 
   const clearFilters = () => {
@@ -84,145 +162,155 @@ const Agenda = () => {
     setRoomFilter('all');
   };
 
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setDetailDialogOpen(true);
+  };
+
+  const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[]) => {
+    const appointment = appointments.find(a => a.id === appointmentId);
+    if (!appointment) return;
+
+    const totalPaid = (appointment.amount_paid || 0) + paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+    const totalPrice = appointment.service?.price || 0;
+    const existingMethods = appointment.payment_methods || [];
+    const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
+    
+    let paymentStatus: PaymentStatus = 'pending';
+    if (totalPaid >= totalPrice) {
+      paymentStatus = 'paid';
+    } else if (totalPaid > 0) {
+      paymentStatus = 'partial';
+    }
+
+    updatePayment.mutate({
+      id: appointmentId,
+      payment: {
+        payment_methods: newMethods,
+        amount_paid: totalPaid,
+        payment_status: paymentStatus,
+      },
+    });
+  };
+
   const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all';
 
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
 
-  return (
-    <AppLayout 
-      title="Agenda" 
-      subtitle="Gerencie seus agendamentos"
-    >
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Profissional" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os profissionais</SelectItem>
-              {activeProfessionals.map((prof) => (
-                <SelectItem key={prof.id} value={prof.id}>
-                  {prof.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+  const getNavigationLabel = () => {
+    if (viewType === 'day') {
+      return format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
+    } else if (viewType === 'week') {
+      return format(weekStart, "MMMM 'de' yyyy", { locale: ptBR });
+    } else {
+      return format(monthStart, "MMMM 'de' yyyy", { locale: ptBR });
+    }
+  };
 
-        <div className="flex items-center gap-2">
-          <DoorOpen className="h-4 w-4 text-muted-foreground" />
-          <Select value={roomFilter} onValueChange={setRoomFilter}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Sala" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as salas</SelectItem>
-              {activeRooms.map((room) => (
-                <SelectItem key={room.id} value={room.id}>
-                  {room.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  const renderDayView = () => (
+    <div className="space-y-4">
+      <h2 className="font-display text-xl font-semibold text-foreground">
+        {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+      </h2>
+      
+      {isLoadingAppointments ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
+          ))}
         </div>
-
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Limpar filtros
-          </Button>
-        )}
-      </div>
-
-      {/* Week Navigation */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToNextWeek}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <span className="ml-2 font-medium text-foreground">
-              {format(weekStart, "MMMM 'de' yyyy", { locale: ptBR })}
-            </span>
-          </div>
-          <Button variant="secondary" size="sm" onClick={goToToday}>
-            Hoje
+      ) : filteredAppointments.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredAppointments.map((appointment, index) => (
+            <div 
+              key={appointment.id}
+              style={{ animationDelay: `${index * 100}ms` }}
+              className="animate-slide-up cursor-pointer"
+              onClick={() => handleAppointmentClick(appointment)}
+            >
+              <AppointmentCard appointment={appointment} professionals={professionals} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
+          <p className="text-muted-foreground">
+            {hasActiveFilters 
+              ? 'Nenhum agendamento encontrado com os filtros aplicados' 
+              : 'Nenhum agendamento para esta data'}
+          </p>
+          <Button className="mt-4" variant="secondary">
+            Criar Agendamento
           </Button>
         </div>
+      )}
+    </div>
+  );
 
-        {/* Week Days */}
-        <div className="grid grid-cols-7 gap-2">
-          {weekDays.map(day => {
-            const isSelected = isSameDay(day, selectedDate);
-            const isToday = isSameDay(day, new Date());
-            const dayAppointments = getAppointmentsForDay(day);
+  const renderWeekView = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-7 gap-2">
+        {weekDays.map(day => {
+          const isSelected = isSameDay(day, selectedDate);
+          const isToday = isSameDay(day, new Date());
+          const dayAppointments = getAppointmentsForDay(day);
 
-            return (
-              <button
-                key={day.toISOString()}
-                onClick={() => setSelectedDate(day)}
-                className={cn(
-                  'flex flex-col items-center rounded-xl p-3 transition-all duration-200',
-                  isSelected 
-                    ? 'bg-primary text-primary-foreground shadow-glow' 
-                    : 'hover:bg-secondary',
-                  isToday && !isSelected && 'ring-2 ring-primary/30'
-                )}
-              >
-                <span className={cn(
-                  'text-xs font-medium uppercase',
-                  isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                )}>
-                  {format(day, 'EEE', { locale: ptBR })}
-                </span>
-                <span className={cn(
-                  'mt-1 text-xl font-semibold',
-                  isSelected ? 'text-primary-foreground' : 'text-foreground'
-                )}>
-                  {format(day, 'd')}
-                </span>
-                {dayAppointments.length > 0 && (
-                  <div className={cn(
-                    'mt-1 flex gap-0.5',
-                  )}>
-                    {dayAppointments.slice(0, 3).map((_, i) => (
+          return (
+            <button
+              key={day.toISOString()}
+              onClick={() => setSelectedDate(day)}
+              className={cn(
+                'flex flex-col items-center rounded-xl p-3 transition-all duration-200',
+                isSelected 
+                  ? 'bg-primary text-primary-foreground shadow-glow' 
+                  : 'hover:bg-secondary',
+                isToday && !isSelected && 'ring-2 ring-primary/30'
+              )}
+            >
+              <span className={cn(
+                'text-xs font-medium uppercase',
+                isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
+              )}>
+                {format(day, 'EEE', { locale: ptBR })}
+              </span>
+              <span className={cn(
+                'mt-1 text-xl font-semibold',
+                isSelected ? 'text-primary-foreground' : 'text-foreground'
+              )}>
+                {format(day, 'd')}
+              </span>
+              {dayAppointments.length > 0 && (
+                <div className="mt-1 flex gap-0.5">
+                  {dayAppointments.slice(0, 3).map((apt, i) => {
+                    const profId = apt.professional_id || apt.service?.professional_id;
+                    const prof = professionals.find(p => p.id === profId);
+                    const color = prof?.agenda_color || '#3B82F6';
+                    return (
                       <div 
                         key={i} 
-                        className={cn(
-                          'h-1.5 w-1.5 rounded-full',
-                          isSelected ? 'bg-primary-foreground/70' : 'bg-primary'
-                        )}
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
                       />
-                    ))}
-                    {dayAppointments.length > 3 && (
-                      <span className={cn(
-                        'text-[10px] ml-0.5',
-                        isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                      )}>
-                        +{dayAppointments.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                    );
+                  })}
+                  {dayAppointments.length > 3 && (
+                    <span className={cn(
+                      'text-[10px] ml-0.5',
+                      isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    )}>
+                      +{dayAppointments.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Appointments List */}
-      <div className="mt-6">
+      <div className="mt-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-xl font-semibold text-foreground">
             {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
@@ -244,7 +332,8 @@ const Agenda = () => {
               <div 
                 key={appointment.id}
                 style={{ animationDelay: `${index * 100}ms` }}
-                className="animate-slide-up"
+                className="animate-slide-up cursor-pointer"
+                onClick={() => handleAppointmentClick(appointment)}
               >
                 <AppointmentCard appointment={appointment} professionals={professionals} />
               </div>
@@ -263,6 +352,197 @@ const Agenda = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+
+  const renderMonthView = () => (
+    <div className="space-y-4">
+      {/* Week days header */}
+      <div className="grid grid-cols-7 gap-1">
+        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(day => (
+          <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {monthDays.map(day => {
+          const isSelected = isSameDay(day, selectedDate);
+          const isToday = isSameDay(day, new Date());
+          const isCurrentMonth = isSameMonth(day, monthStart);
+          const dayAppointments = getAppointmentsForDay(day);
+
+          return (
+            <button
+              key={day.toISOString()}
+              onClick={() => {
+                setSelectedDate(day);
+                setViewType('day');
+              }}
+              className={cn(
+                'flex flex-col items-center rounded-lg p-2 min-h-[80px] transition-all duration-200',
+                isSelected 
+                  ? 'bg-primary text-primary-foreground shadow-glow' 
+                  : 'hover:bg-secondary',
+                isToday && !isSelected && 'ring-2 ring-primary/30',
+                !isCurrentMonth && 'opacity-40'
+              )}
+            >
+              <span className={cn(
+                'text-sm font-medium',
+                isSelected ? 'text-primary-foreground' : 'text-foreground'
+              )}>
+                {format(day, 'd')}
+              </span>
+              
+              {dayAppointments.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
+                  {dayAppointments.slice(0, 4).map((apt, i) => {
+                    const profId = apt.professional_id || apt.service?.professional_id;
+                    const prof = professionals.find(p => p.id === profId);
+                    const color = prof?.agenda_color || '#3B82F6';
+                    const PaymentIcon = paymentStatusIcon[apt.payment_status || 'pending'];
+                    
+                    return (
+                      <div 
+                        key={i} 
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
+                        title={`${apt.client?.name} - ${apt.service?.name}`}
+                      />
+                    );
+                  })}
+                  {dayAppointments.length > 4 && (
+                    <span className={cn(
+                      'text-[10px]',
+                      isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    )}>
+                      +{dayAppointments.length - 4}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <AppLayout 
+      title="Agenda" 
+      subtitle="Gerencie seus agendamentos"
+    >
+      {/* View Toggle and Filters */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)}>
+            <ToggleGroupItem value="day" aria-label="Ver dia">
+              <List className="h-4 w-4 mr-1" />
+              Dia
+            </ToggleGroupItem>
+            <ToggleGroupItem value="week" aria-label="Ver semana">
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Semana
+            </ToggleGroupItem>
+            <ToggleGroupItem value="month" aria-label="Ver mês">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              Mês
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os profissionais</SelectItem>
+                {activeProfessionals.map((prof) => (
+                  <SelectItem key={prof.id} value={prof.id}>
+                    <div className="flex items-center gap-2">
+                      {prof.agenda_color && (
+                        <div 
+                          className="h-3 w-3 rounded-full" 
+                          style={{ backgroundColor: prof.agenda_color }}
+                        />
+                      )}
+                      {prof.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 text-muted-foreground" />
+            <Select value={roomFilter} onValueChange={setRoomFilter}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Sala" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as salas</SelectItem>
+                {activeRooms.map((room) => (
+                  <SelectItem key={room.id} value={room.id}>
+                    {room.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={goToPrevious}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={goToNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <span className="ml-2 font-medium text-foreground capitalize">
+              {getNavigationLabel()}
+            </span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={goToToday}>
+            Hoje
+          </Button>
+        </div>
+
+        {/* Calendar Views */}
+        {viewType === 'day' && renderDayView()}
+        {viewType === 'week' && renderWeekView()}
+        {viewType === 'month' && renderMonthView()}
+      </div>
+
+      {/* Appointment Detail Dialog */}
+      <AppointmentDetailDialog
+        appointment={selectedAppointment}
+        professionals={professionals}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onPayment={handlePayment}
+      />
     </AppLayout>
   );
 };

@@ -1,4 +1,4 @@
-import { Clock, User } from 'lucide-react';
+import { Clock, User, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
@@ -30,8 +30,16 @@ const statusConfig = {
   },
 };
 
+const paymentStatusConfig = {
+  pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning' },
+  partial: { label: 'Parcial', icon: Clock, className: 'text-info' },
+  paid: { label: 'Pago', icon: CheckCircle, className: 'text-success' },
+};
+
 export function AppointmentCard({ appointment, compact = false, professionals = [] }: AppointmentCardProps) {
   const status = statusConfig[appointment.status];
+  const paymentStatus = paymentStatusConfig[appointment.payment_status || 'pending'];
+  const PaymentIcon = paymentStatus.icon;
   const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;
   
   // Find professional from appointment.professional_id or service.professional_id
@@ -87,19 +95,30 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
           <span>{timeStr}</span>
           <span className="text-xs">({appointment.service?.duration}min)</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <User className="h-4 w-4" />
-          <span>{appointment.client?.phone}</span>
-        </div>
+        {professional && (
+          <div className="flex items-center gap-1.5">
+            <div 
+              className="h-3 w-3 rounded-full" 
+              style={{ backgroundColor: professionalColor || '#999' }}
+            />
+            <span className="text-xs">{professional.name}</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <span 
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-          style={{ backgroundColor: `${hexColor}20`, color: hexColor }}
-        >
-          {appointment.service?.category}
-        </span>
+        <div className="flex items-center gap-2">
+          <span 
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: `${hexColor}20`, color: hexColor }}
+          >
+            {appointment.service?.category}
+          </span>
+          <div className={cn('flex items-center gap-1', paymentStatus.className)}>
+            <PaymentIcon className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">{paymentStatus.label}</span>
+          </div>
+        </div>
         <span className="text-sm font-semibold text-foreground">
           R$ {appointment.service?.price.toFixed(2)}
         </span>

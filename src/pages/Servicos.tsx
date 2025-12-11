@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Plus, Sparkles, Filter, Loader2, Package, Clock } from 'lucide-react';
+import { Plus, Sparkles, Filter, Loader2, Package } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
-import { ManagePackageTemplatesDialog } from '@/components/services/ManagePackageTemplatesDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,7 +36,10 @@ const Servicos = () => {
             <TabsTrigger value="packages">Pacotes</TabsTrigger>
           </TabsList>
           
-          <ManagePackageTemplatesDialog />
+          <div className="flex gap-2">
+            <NewServiceDialog onServiceCreated={refetch} />
+            <NewPackageDialog onPackageCreated={refetchPackages} />
+          </div>
         </div>
 
         <TabsContent value="services" className="mt-0">
@@ -69,7 +71,6 @@ const Servicos = () => {
                 </Badge>
               ))}
             </div>
-            <NewServiceDialog onServiceCreated={refetch} />
           </div>
 
           {/* Stats */}
@@ -137,10 +138,6 @@ const Servicos = () => {
         </TabsContent>
 
         <TabsContent value="packages" className="mt-0">
-          <div className="flex justify-end mb-6">
-            <NewPackageDialog onPackageCreated={refetchPackages} />
-          </div>
-
           {packagesLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Plus, Sparkles, Filter, Loader2, Package } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';

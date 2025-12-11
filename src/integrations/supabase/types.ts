@@ -498,6 +498,7 @@ export type Database = {
       service_packages: {
         Row: {
           auto_schedule: boolean
+          category: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -522,6 +523,7 @@ export type Database = {
         }
         Insert: {
           auto_schedule?: boolean
+          category?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -546,6 +548,7 @@ export type Database = {
         }
         Update: {
           auto_schedule?: boolean
+          category?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null

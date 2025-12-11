@@ -89,7 +89,7 @@ const Servicos: React.FC = () => {
               <NewServiceDialog onServiceCreated={refetch} />
             </div>
           ) : (
-            <NewPackageDialog onPackageCreated={refetchPackages} />
+            <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories} />
           )}
         </div>
 
@@ -213,6 +213,9 @@ const Servicos: React.FC = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {pkg.category && (
+                      <Badge variant="outline" className="text-xs">{pkg.category}</Badge>
+                    )}
                     {pkg.description && (
                       <p className="text-sm text-muted-foreground">{pkg.description}</p>
                     )}
@@ -252,7 +255,7 @@ const Servicos: React.FC = () => {
               <p className="mt-3 text-muted-foreground">
                 Nenhum pacote cadastrado
               </p>
-              <NewPackageDialog onPackageCreated={refetchPackages}>
+              <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
                 <Button className="mt-4" variant="secondary">
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Pacote
@@ -281,6 +284,7 @@ const Servicos: React.FC = () => {
           open={!!selectedPackage}
           onOpenChange={(open) => !open && setSelectedPackage(null)}
           onPackageUpdated={refetchPackages}
+          categories={allCategories}
         />
       )}
     </AppLayout>

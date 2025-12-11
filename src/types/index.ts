@@ -25,6 +25,8 @@ export interface Client {
   birthdate: string | null;
   notes: string | null;
   complementary_info: string | null;
+  is_active: boolean;
+  referral_source: string | null;
   created_at: string;
   updated_at: string;
 }

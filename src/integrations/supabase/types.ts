@@ -120,9 +120,11 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
           notes: string | null
           phone: string
+          referral_source: string | null
           updated_at: string
         }
         Insert: {
@@ -132,9 +134,11 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name: string
           notes?: string | null
           phone: string
+          referral_source?: string | null
           updated_at?: string
         }
         Update: {
@@ -144,9 +148,11 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           notes?: string | null
           phone?: string
+          referral_source?: string | null
           updated_at?: string
         }
         Relationships: []

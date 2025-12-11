@@ -20,19 +20,46 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { DuplicateClientAlert } from './DuplicateClientAlert';
+import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+
+const REFERRAL_SOURCES = [
+  'Instagram',
+  'Facebook',
+  'Google',
+  'Indicação de amigo',
+  'Indicação de cliente',
+  'Passou na frente',
+  'WhatsApp',
+  'TikTok',
+  'Outros',
+];
 
 const clientSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   email: z.string().trim().email('Email inválido').max(255, 'Email muito longo').or(z.literal('')),
   phone: z.string().trim().min(10, 'Telefone deve ter pelo menos 10 dígitos').max(20, 'Telefone muito longo'),
+  cpf: z.string().trim().optional().refine((val) => {
+    if (!val || val === '') return true;
+    return isValidCPF(val);
+  }, 'CPF inválido'),
   birthdate: z.string().optional(),
   notes: z.string().trim().max(500, 'Observações muito longas').optional(),
+  is_active: z.boolean().default(true),
+  referral_source: z.string().optional(),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -53,14 +80,18 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
       name: '',
       email: '',
       phone: '',
+      cpf: '',
       birthdate: '',
       notes: '',
+      is_active: true,
+      referral_source: '',
     },
   });
 
   const watchedName = useWatch({ control: form.control, name: 'name' });
   const watchedPhone = useWatch({ control: form.control, name: 'phone' });
   const watchedEmail = useWatch({ control: form.control, name: 'email' });
+  const watchedCpf = useWatch({ control: form.control, name: 'cpf' });
 
   const duplicatesByName = useMemo(() => {
     if (!watchedName || watchedName.length < 3) return [];
@@ -88,7 +119,16 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
     ).slice(0, 3);
   }, [watchedEmail, clients]);
 
-  const hasDuplicates = duplicatesByName.length > 0 || duplicatesByPhone.length > 0 || duplicatesByEmail.length > 0;
+  const duplicatesByCpf = useMemo(() => {
+    if (!watchedCpf || watchedCpf.length < 11) return [];
+    const cleanCpf = watchedCpf.replace(/\D/g, '');
+    return clients.filter(client => {
+      const clientCpf = client.cpf?.replace(/\D/g, '') || '';
+      return clientCpf === cleanCpf;
+    }).slice(0, 3);
+  }, [watchedCpf, clients]);
+
+  const hasDuplicates = duplicatesByName.length > 0 || duplicatesByPhone.length > 0 || duplicatesByEmail.length > 0 || duplicatesByCpf.length > 0;
 
   const onSubmit = async (data: ClientFormData) => {
     if (hasDuplicates) {
@@ -104,8 +144,11 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
         name: data.name,
         email: data.email || null,
         phone: data.phone,
+        cpf: data.cpf ? formatCPF(data.cpf) : null,
         birthdate: data.birthdate || null,
         notes: data.notes || null,
+        is_active: data.is_active,
+        referral_source: data.referral_source || null,
       });
 
       if (error) throw error;
@@ -159,6 +202,23 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
             
             <FormField
               control={form.control}
+              name="cpf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CPF</FormLabel>
+                  <FormControl>
+                    <Input placeholder="000.000.000-00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {duplicatesByCpf.length > 0 && (
+              <DuplicateClientAlert duplicates={duplicatesByCpf} matchType="cpf" />
+            )}
+            
+            <FormField
+              control={form.control}
               name="phone"
               render={({ field }) => (
                 <FormItem>
@@ -204,6 +264,53 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="referral_source"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Como nos conheceu?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma opção" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {REFERRAL_SOURCES.map((source) => (
+                        <SelectItem key={source} value={source}>
+                          {source}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Status</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      {field.value ? 'Cliente ativo' : 'Cliente inativo'}
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="notes"

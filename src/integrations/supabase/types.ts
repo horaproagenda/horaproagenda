@@ -94,6 +94,7 @@ export type Database = {
         Row: {
           closing_time: string
           created_at: string
+          drag_and_drop_enabled: boolean
           id: string
           opening_time: string
           slot_interval: number
@@ -104,6 +105,7 @@ export type Database = {
         Insert: {
           closing_time?: string
           created_at?: string
+          drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
           slot_interval?: number
@@ -114,6 +116,7 @@ export type Database = {
         Update: {
           closing_time?: string
           created_at?: string
+          drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
           slot_interval?: number

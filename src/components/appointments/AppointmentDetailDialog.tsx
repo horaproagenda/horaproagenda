@@ -111,15 +111,15 @@ export function AppointmentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Scissors className="h-5 w-5" />
             Detalhes do Agendamento
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
           {/* Client Info */}
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
             <User className="h-5 w-5 mt-0.5 text-primary" />

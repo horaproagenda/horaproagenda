@@ -9,6 +9,7 @@ export interface BusinessSettings {
   slot_interval: number;
   work_saturdays: boolean;
   work_sundays: boolean;
+  drag_and_drop_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

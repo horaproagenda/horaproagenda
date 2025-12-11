@@ -21,6 +21,7 @@ export interface Client {
   name: string;
   email: string | null;
   phone: string;
+  cpf: string | null;
   birthdate: string | null;
   notes: string | null;
   complementary_info: string | null;

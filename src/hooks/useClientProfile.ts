@@ -216,9 +216,19 @@ export function useClientProfile(clientId: string) {
     },
   });
 
-  // Calculate total services purchased
+  // Calculate detailed stats
   const completedAppointments = appointments.filter(a => a.status === 'completed');
+  const cancelledAppointments = appointments.filter(a => a.status === 'cancelled');
+  const scheduledAppointments = appointments.filter(a => a.status === 'scheduled');
+  const confirmedAppointments = appointments.filter(a => a.status === 'confirmed');
+  
+  // For now, we'll consider "missed" as appointments that were cancelled after the scheduled time
+  // and "rescheduled" would require tracking appointment history (not currently available)
+  const missedAppointments = 0; // Would need additional tracking
+  const rescheduledAppointments = 0; // Would need additional tracking
+  
   const totalRevenue = completedAppointments.reduce((sum, a) => sum + (a.service?.price || 0), 0);
+  const proceduresCount = completedAppointments.length;
 
   return {
     client,
@@ -235,8 +245,11 @@ export function useClientProfile(clientId: string) {
     stats: {
       totalAppointments: appointments.length,
       completedAppointments: completedAppointments.length,
-      cancelledAppointments: appointments.filter(a => a.status === 'cancelled').length,
+      cancelledAppointments: cancelledAppointments.length,
+      missedAppointments,
+      rescheduledAppointments,
       totalRevenue,
+      proceduresCount,
     },
   };
 }

@@ -49,7 +49,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 
-type ViewType = 'day' | 'week' | 'month';
+type ViewType = 'day' | 'week' | 'month' | 'professional';
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -164,7 +164,7 @@ const Agenda = () => {
   };
 
   const goToPrevious = () => {
-    if (viewType === 'day') {
+    if (viewType === 'day' || viewType === 'professional') {
       setSelectedDate(addDays(selectedDate, -1));
     } else if (viewType === 'week') {
       setWeekStart(addWeeks(weekStart, -1));
@@ -174,7 +174,7 @@ const Agenda = () => {
   };
 
   const goToNext = () => {
-    if (viewType === 'day') {
+    if (viewType === 'day' || viewType === 'professional') {
       setSelectedDate(addDays(selectedDate, 1));
     } else if (viewType === 'week') {
       setWeekStart(addWeeks(weekStart, 1));
@@ -249,7 +249,7 @@ const Agenda = () => {
   const activeRooms = rooms.filter(r => r.is_active);
 
   const getNavigationLabel = () => {
-    if (viewType === 'day') {
+    if (viewType === 'day' || viewType === 'professional') {
       return format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
     } else if (viewType === 'week') {
       return format(weekStart, "MMMM 'de' yyyy", { locale: ptBR });
@@ -498,6 +498,112 @@ const Agenda = () => {
     </div>
   );
 
+  // Render professional view (columns per professional)
+  const renderProfessionalView = () => {
+    const professionalsToShow = activeProfessionals;
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-foreground">
+            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </h2>
+          <Button onClick={handleNewAppointment} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Novo Agendamento
+          </Button>
+        </div>
+
+        {/* Professional columns header */}
+        <div className="grid gap-1" style={{ gridTemplateColumns: `64px repeat(${professionalsToShow.length}, 1fr)` }}>
+          <div className="w-16" />
+          {professionalsToShow.map(prof => (
+            <div 
+              key={prof.id}
+              className="flex flex-col items-center rounded-lg p-2 text-center"
+              style={{ borderBottom: `3px solid ${prof.agenda_color || '#3B82F6'}` }}
+            >
+              <span className="font-medium text-sm truncate w-full">{prof.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Time slots grid */}
+        <ScrollArea className="h-[500px]">
+          <div className="space-y-0.5">
+            {timeSlots.map(time => (
+              <div 
+                key={time} 
+                className="grid gap-1" 
+                style={{ gridTemplateColumns: `64px repeat(${professionalsToShow.length}, 1fr)` }}
+              >
+                <div className="w-16 flex items-center justify-center text-xs font-medium text-muted-foreground">
+                  {time}
+                </div>
+                {professionalsToShow.map(prof => {
+                  const apt = filteredByFilters.find(a => {
+                    const aptDate = new Date(a.start_time);
+                    const aptProfId = a.professional_id || a.service?.professional_id;
+                    const [hours, minutes] = time.split(':').map(Number);
+                    return isSameDay(aptDate, selectedDate) && 
+                           aptDate.getHours() === hours && 
+                           aptDate.getMinutes() === minutes &&
+                           aptProfId === prof.id;
+                  });
+                  
+                  const occupyingApt = filteredByFilters.find(a => {
+                    const aptStart = new Date(a.start_time);
+                    const aptEnd = new Date(a.end_time);
+                    const aptProfId = a.professional_id || a.service?.professional_id;
+                    const [hours, minutes] = time.split(':').map(Number);
+                    const slotTime = new Date(selectedDate);
+                    slotTime.setHours(hours, minutes, 0, 0);
+                    return isSameDay(aptStart, selectedDate) && 
+                           slotTime >= aptStart && 
+                           slotTime < aptEnd &&
+                           aptProfId === prof.id;
+                  });
+                  
+                  const isOccupied = occupyingApt && !apt;
+
+                  return (
+                    <div
+                      key={prof.id}
+                      className={cn(
+                        'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
+                        isOccupied && 'opacity-0 pointer-events-none',
+                        !occupyingApt && 'hover:bg-muted/30 hover:border-primary/30'
+                      )}
+                      onClick={() => {
+                        if (apt) {
+                          handleAppointmentClick(apt);
+                        } else if (!isOccupied) {
+                          setPrefilledDate(selectedDate);
+                          setPrefilledTime(time);
+                          setNewAppointmentDialogOpen(true);
+                        }
+                      }}
+                    >
+                      {apt && (
+                        <div 
+                          className="h-full rounded p-1 text-white text-xs"
+                          style={{ backgroundColor: prof.agenda_color || '#3B82F6' }}
+                        >
+                          <p className="font-medium truncate">{apt.client?.name}</p>
+                          <p className="truncate opacity-80">{apt.service?.name}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  };
+
   return (
     <AppLayout 
       title="Agenda" 
@@ -518,6 +624,10 @@ const Agenda = () => {
             <ToggleGroupItem value="month" aria-label="Ver mês">
               <CalendarIcon className="h-4 w-4 mr-1" />
               Mês
+            </ToggleGroupItem>
+            <ToggleGroupItem value="professional" aria-label="Ver por profissional">
+              <User className="h-4 w-4 mr-1" />
+              Profissional
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
@@ -595,7 +705,7 @@ const Agenda = () => {
             <Button variant="secondary" size="sm" onClick={goToToday}>
               Hoje
             </Button>
-            {viewType !== 'day' && (
+            {(viewType === 'week' || viewType === 'month') && (
               <Button size="sm" onClick={handleNewAppointment}>
                 <Plus className="h-4 w-4 mr-1" />
                 Novo
@@ -616,6 +726,7 @@ const Agenda = () => {
             {viewType === 'day' && renderTimeSlotDayView()}
             {viewType === 'week' && renderWeekView()}
             {viewType === 'month' && renderMonthView()}
+            {viewType === 'professional' && renderProfessionalView()}
           </>
         )}
       </div>

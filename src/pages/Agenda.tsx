@@ -238,11 +238,13 @@ const Agenda = () => {
     setNewAppointmentDialogOpen(true);
   };
 
-  const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[]) => {
+  const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
 
-    const totalPaid = (appointment.amount_paid || 0) + paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+    const paymentTotal = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+    const creditAmount = clientCredit || 0;
+    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + creditAmount;
     const totalPrice = appointment.service?.price || 0;
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
@@ -260,6 +262,8 @@ const Agenda = () => {
         payment_methods: newMethods,
         amount_paid: totalPaid,
         payment_status: paymentStatus,
+        client_credit: creditAmount > 0 ? creditAmount : undefined,
+        client_id: appointment.client_id,
       },
     });
   };

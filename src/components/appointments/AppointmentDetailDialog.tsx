@@ -36,16 +36,18 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
+  Gift,
 } from 'lucide-react';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
   professionals: Professional[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number }[]) => void;
+  onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => void;
 }
 
 const PAYMENT_METHODS = [
@@ -76,10 +78,14 @@ export function AppointmentDetailDialog({
   onOpenChange,
   onPayment,
 }: AppointmentDetailDialogProps) {
+  const { hasRole } = useAuth();
+  const canAddClientCredit = hasRole('admin');
+  
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [payments, setPayments] = useState<{ method: string; amount: string }[]>([
     { method: 'pix', amount: '' },
   ]);
+  const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   if (!appointment) return null;
@@ -108,8 +114,10 @@ export function AppointmentDetailDialog({
   };
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const newRemainingAmount = remainingAmount - totalPaymentAmount;
-  const hasPartialPayment = newRemainingAmount > 0 && totalPaymentAmount > 0;
+  const clientCredit = parseFloat(clientCreditAmount) || 0;
+  const totalWithCredit = totalPaymentAmount + clientCredit;
+  const newRemainingAmount = remainingAmount - totalWithCredit;
+  const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
 
   const handleConfirmPayment = () => {
     if (hasPartialPayment) {
@@ -124,10 +132,11 @@ export function AppointmentDetailDialog({
       .filter(p => p.amount && parseFloat(p.amount) > 0)
       .map(p => ({ method: p.method, amount: parseFloat(p.amount) }));
 
-    if (validPayments.length > 0) {
-      onPayment(appointment.id, validPayments);
+    if (validPayments.length > 0 || clientCredit > 0) {
+      onPayment(appointment.id, validPayments, clientCredit > 0 ? clientCredit : undefined);
       setShowPaymentForm(false);
       setPayments([{ method: 'pix', amount: '' }]);
+      setClientCreditAmount('');
       setShowConfirmDialog(false);
     }
   };
@@ -312,12 +321,47 @@ export function AppointmentDetailDialog({
                     Adicionar forma de pagamento
                   </Button>
 
+                  {/* Client Credit Section - Admin Only */}
+                  {canAddClientCredit && (
+                    <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Gift className="h-4 w-4 text-amber-500" />
+                        <Label className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                          Crédito ao Cliente
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        O valor não será contabilizado como recebimento, ficará como crédito do cliente.
+                      </p>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={clientCreditAmount}
+                        onChange={(e) => setClientCreditAmount(e.target.value)}
+                      />
+                    </div>
+                  )}
+
                   {/* Payment summary */}
-                  {totalPaymentAmount > 0 && (
+                  {(totalPaymentAmount > 0 || clientCredit > 0) && (
                     <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                      {totalPaymentAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>Valor recebido:</span>
+                          <span className="font-semibold text-success">R$ {totalPaymentAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {clientCredit > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>Crédito ao cliente:</span>
+                          <span className="font-semibold text-amber-500">R$ {clientCredit.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <Separator className="my-1" />
                       <div className="flex justify-between text-sm">
-                        <span>Total a registrar:</span>
-                        <span className="font-semibold">R$ {totalPaymentAmount.toFixed(2)}</span>
+                        <span>Total a quitar:</span>
+                        <span className="font-semibold">R$ {totalWithCredit.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Restante após pagamento:</span>
@@ -342,7 +386,7 @@ export function AppointmentDetailDialog({
                     <Button variant="outline" onClick={() => setShowPaymentForm(false)} className="flex-1">
                       Cancelar
                     </Button>
-                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalPaymentAmount <= 0}>
+                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalWithCredit <= 0}>
                       Confirmar Pagamento
                     </Button>
                   </div>

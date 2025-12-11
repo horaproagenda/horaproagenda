@@ -27,6 +27,7 @@ export interface Client {
   complementary_info: string | null;
   is_active: boolean;
   referral_source: string | null;
+  credit_balance: number;
   created_at: string;
   updated_at: string;
   updated_by: string | null;

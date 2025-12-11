@@ -65,9 +65,17 @@ export function NewAppointmentDialog({
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { appointments, createAppointment } = useAppointments();
-  const { generateTimeSlots } = useBusinessSettings();
+  const { settings, generateTimeSlots } = useBusinessSettings();
 
   const timeSlots = generateTimeSlots();
+
+  // Check if a date is a valid work day
+  const isWorkDay = (date: Date): boolean => {
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0 && !settings?.work_sundays) return false; // Sunday
+    if (dayOfWeek === 6 && !settings?.work_saturdays) return false; // Saturday
+    return true;
+  };
   const selectedServiceData = services.find(s => s.id === selectedService);
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
@@ -354,7 +362,13 @@ export function NewAppointmentDialog({
                       selected={date}
                       onSelect={setDate}
                       initialFocus
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      disabled={(date) => {
+                        // Disable past dates
+                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+                        // Disable non-work days
+                        if (!isWorkDay(date)) return true;
+                        return false;
+                      }}
                       className="pointer-events-auto"
                     />
                   </PopoverContent>

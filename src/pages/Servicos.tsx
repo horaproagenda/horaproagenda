@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Plus, Sparkles, Filter, Loader2, Package } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Sparkles, Filter, Loader2, Package, FolderPlus } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
 import { ServiceDetailDialog } from '@/components/services/ServiceDetailDialog';
 import { PackageDetailDialog } from '@/components/services/PackageDetailDialog';
+import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,19 +19,54 @@ import { Tables } from '@/integrations/supabase/types';
 
 type ServicePackageDB = Tables<'service_packages'>;
 
+// Default categories
+const defaultCategories = [
+  'Cabelo',
+  'Unhas',
+  'Estética',
+  'Massagem',
+  'Maquiagem',
+  'Depilação',
+  'Tratamentos',
+  'Outros',
+];
+
 const Servicos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('services');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ServicePackageDB | null>(null);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const { services, isLoading, refetch } = useServices();
   const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
 
-  const categories = [...new Set(services.map(s => s.category))];
+  // Load custom categories from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('customCategories');
+    if (saved) {
+      setCustomCategories(JSON.parse(saved));
+    }
+  }, []);
+
+  // Combine default, custom, and existing service categories
+  const allCategories = [...new Set([
+    ...defaultCategories,
+    ...customCategories,
+    ...services.map(s => s.category)
+  ])].sort();
+
+  // Categories that have services
+  const categoriesWithServices = [...new Set(services.map(s => s.category))];
   
   const filteredServices = selectedCategory
     ? services.filter(s => s.category === selectedCategory)
     : services;
+
+  const handleCategoryCreated = (category: string) => {
+    const updatedCategories = [...customCategories, category];
+    setCustomCategories(updatedCategories);
+    localStorage.setItem('customCategories', JSON.stringify(updatedCategories));
+  };
 
   return (
     <AppLayout 
@@ -45,7 +81,13 @@ const Servicos: React.FC = () => {
           </TabsList>
           
           {activeTab === 'services' ? (
-            <NewServiceDialog onServiceCreated={refetch} />
+            <div className="flex gap-2">
+              <NewCategoryDialog 
+                existingCategories={allCategories}
+                onCategoryCreated={handleCategoryCreated}
+              />
+              <NewServiceDialog onServiceCreated={refetch} />
+            </div>
           ) : (
             <NewPackageDialog onPackageCreated={refetchPackages} />
           )}
@@ -65,7 +107,7 @@ const Servicos: React.FC = () => {
               >
                 Todos
               </Badge>
-              {categories.map(category => (
+              {categoriesWithServices.map(category => (
                 <Badge
                   key={category}
                   variant="outline"
@@ -93,7 +135,7 @@ const Servicos: React.FC = () => {
             </div>
             <div className="h-10 w-px bg-border" />
             <div>
-              <p className="text-2xl font-display font-semibold">{categories.length}</p>
+              <p className="text-2xl font-display font-semibold">{categoriesWithServices.length}</p>
               <p className="text-xs text-muted-foreground">Categorias</p>
             </div>
             {services.length > 0 && (
@@ -227,6 +269,8 @@ const Servicos: React.FC = () => {
           service={selectedService}
           open={!!selectedService}
           onOpenChange={(open) => !open && setSelectedService(null)}
+          categories={allCategories}
+          onServiceUpdated={refetch}
         />
       )}
 
@@ -236,6 +280,7 @@ const Servicos: React.FC = () => {
           pkg={selectedPackage}
           open={!!selectedPackage}
           onOpenChange={(open) => !open && setSelectedPackage(null)}
+          onPackageUpdated={refetchPackages}
         />
       )}
     </AppLayout>

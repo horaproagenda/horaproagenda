@@ -15,6 +15,8 @@ export interface PaymentUpdate {
   payment_methods: string[];
   amount_paid: number;
   payment_status: PaymentStatus;
+  client_credit?: number;
+  client_id?: string;
 }
 
 export interface AppointmentUpdate {
@@ -73,6 +75,7 @@ export function useAppointments() {
 
   const updatePayment = useMutation({
     mutationFn: async ({ id, payment }: { id: string; payment: PaymentUpdate }) => {
+      // Update the appointment payment
       const { data, error } = await supabase
         .from('appointments')
         .update({
@@ -85,10 +88,31 @@ export function useAppointments() {
         .single();
 
       if (error) throw error;
+
+      // If there's client credit to add, update the client's credit balance
+      if (payment.client_credit && payment.client_credit > 0 && payment.client_id) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('credit_balance')
+          .eq('id', payment.client_id)
+          .single();
+
+        const currentBalance = clientData?.credit_balance || 0;
+        const newBalance = Number(currentBalance) + payment.client_credit;
+
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({ credit_balance: newBalance })
+          .eq('id', payment.client_id);
+
+        if (clientError) throw clientError;
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error) => {

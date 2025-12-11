@@ -50,12 +50,16 @@ import {
   Download,
   AlertTriangle,
   Phone,
+  Gift,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -91,6 +95,8 @@ export default function Caixa() {
   const { clients } = useClients();
   const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
   const { professionals } = useProfessionals();
+  const { hasRole } = useAuth();
+  const canAddClientCredit = hasRole('admin');
   
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>('');
@@ -107,8 +113,10 @@ export default function Caixa() {
 
   // Payment dialog state for receivables
   const [paymentAppointment, setPaymentAppointment] = useState<typeof receivables[0] | null>(null);
-  const [paymentValue, setPaymentValue] = useState('');
-  const [paymentMethodsSelected, setPaymentMethodsSelected] = useState<string[]>([]);
+  const [paymentEntries, setPaymentEntries] = useState<{ method: string; amount: string }[]>([
+    { method: 'pix', amount: '' },
+  ]);
+  const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Filter packages that don't have a client assigned yet (available for sale)
@@ -325,29 +333,55 @@ export default function Caixa() {
 
   const openPaymentDialog = (apt: typeof receivables[0]) => {
     setPaymentAppointment(apt);
-    setPaymentValue(apt.remainingAmount.toFixed(2));
-    setPaymentMethodsSelected([]);
+    setPaymentEntries([{ method: 'pix', amount: apt.remainingAmount.toFixed(2) }]);
+    setClientCreditAmount('');
   };
 
+  const addPaymentEntry = () => {
+    setPaymentEntries([...paymentEntries, { method: 'pix', amount: '' }]);
+  };
+
+  const removePaymentEntry = (index: number) => {
+    setPaymentEntries(paymentEntries.filter((_, i) => i !== index));
+  };
+
+  const updatePaymentEntry = (index: number, field: 'method' | 'amount', value: string) => {
+    const newEntries = [...paymentEntries];
+    newEntries[index][field] = value;
+    setPaymentEntries(newEntries);
+  };
+
+  const totalPaymentValue = paymentEntries.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const clientCredit = parseFloat(clientCreditAmount) || 0;
+  const totalWithCredit = totalPaymentValue + clientCredit;
+
   const handleRegisterPayment = async () => {
-    if (!paymentAppointment || paymentMethodsSelected.length === 0) {
-      toast.error('Selecione pelo menos uma forma de pagamento');
+    if (!paymentAppointment) return;
+
+    const hasPayments = totalPaymentValue > 0;
+    const hasCredit = clientCredit > 0;
+
+    if (!hasPayments && !hasCredit) {
+      toast.error('Informe pelo menos um valor de pagamento ou crédito');
       return;
     }
 
-    const value = parseFloat(paymentValue.replace(',', '.'));
-    if (isNaN(value) || value <= 0) {
-      toast.error('Informe um valor válido');
+    const paymentMethods = paymentEntries
+      .filter(p => parseFloat(p.amount) > 0)
+      .map(p => p.method);
+
+    if (hasPayments && paymentMethods.length === 0) {
+      toast.error('Selecione pelo menos uma forma de pagamento');
       return;
     }
 
     setIsProcessingPayment(true);
     try {
-      const newAmountPaid = (paymentAppointment.amount_paid || 0) + value;
+      const newAmountPaid = (paymentAppointment.amount_paid || 0) + totalWithCredit;
       const servicePrice = paymentAppointment.service?.price || 0;
       const newPaymentStatus = newAmountPaid >= servicePrice ? 'paid' : 'partial';
       const existingMethods = paymentAppointment.payment_methods || [];
-      const allMethods = [...new Set([...existingMethods, ...paymentMethodsSelected])];
+      const allMethods = [...new Set([...existingMethods, ...paymentMethods])];
 
       await updatePayment.mutateAsync({
         id: paymentAppointment.id,
@@ -355,12 +389,14 @@ export default function Caixa() {
           payment_methods: allMethods,
           amount_paid: newAmountPaid,
           payment_status: newPaymentStatus,
+          client_credit: clientCredit > 0 ? clientCredit : undefined,
+          client_id: paymentAppointment.client_id,
         },
       });
 
       setPaymentAppointment(null);
-      setPaymentValue('');
-      setPaymentMethodsSelected([]);
+      setPaymentEntries([{ method: 'pix', amount: '' }]);
+      setClientCreditAmount('');
     } catch (error) {
       // Error is handled by the mutation
     } finally {
@@ -1139,37 +1175,95 @@ export default function Caixa() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="payment-value">Valor</Label>
-                <Input
-                  id="payment-value"
-                  value={paymentValue}
-                  onChange={(e) => setPaymentValue(e.target.value)}
-                  placeholder="0,00"
-                />
+              <div className="space-y-3">
+                <Label>Formas de Pagamento</Label>
+                {paymentEntries.map((entry, index) => (
+                  <div key={index} className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <Label className="text-xs">Forma de Pagamento</Label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                        value={entry.method}
+                        onChange={(e) => updatePaymentEntry(index, 'method', e.target.value)}
+                      >
+                        {PAYMENT_METHODS.map(m => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={entry.amount}
+                        onChange={(e) => updatePaymentEntry(index, 'amount', e.target.value)}
+                      />
+                    </div>
+                    {paymentEntries.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => removePaymentEntry(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+
+                <Button variant="outline" size="sm" onClick={addPaymentEntry} className="w-full">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar forma de pagamento
+                </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label>Formas de Pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {PAYMENT_METHODS.map(method => (
-                    <Button
-                      key={method.value}
-                      variant={paymentMethodsSelected.includes(method.value) ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        if (paymentMethodsSelected.includes(method.value)) {
-                          setPaymentMethodsSelected(prev => prev.filter(m => m !== method.value));
-                        } else {
-                          setPaymentMethodsSelected(prev => [...prev, method.value]);
-                        }
-                      }}
-                    >
-                      {method.label}
-                    </Button>
-                  ))}
+              {/* Client Credit Section - Admin Only */}
+              {canAddClientCredit && (
+                <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gift className="h-4 w-4 text-amber-500" />
+                    <Label className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      Crédito ao Cliente
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    O valor não será contabilizado como recebimento, ficará como crédito do cliente.
+                  </p>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={clientCreditAmount}
+                    onChange={(e) => setClientCreditAmount(e.target.value)}
+                  />
                 </div>
-              </div>
+              )}
+
+              {/* Payment summary */}
+              {(totalPaymentValue > 0 || clientCredit > 0) && (
+                <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                  {totalPaymentValue > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Valor recebido:</span>
+                      <span className="font-semibold text-success">R$ {totalPaymentValue.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {clientCredit > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Crédito ao cliente:</span>
+                      <span className="font-semibold text-amber-500">R$ {clientCredit.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <Separator className="my-1" />
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Total a quitar:</span>
+                    <span>R$ {totalWithCredit.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2 justify-end pt-4">
                 <Button variant="outline" onClick={() => setPaymentAppointment(null)}>
@@ -1177,7 +1271,7 @@ export default function Caixa() {
                 </Button>
                 <Button
                   onClick={handleRegisterPayment}
-                  disabled={isProcessingPayment || paymentMethodsSelected.length === 0}
+                  disabled={isProcessingPayment || totalWithCredit <= 0}
                 >
                   {isProcessingPayment ? 'Processando...' : 'Confirmar Pagamento'}
                 </Button>

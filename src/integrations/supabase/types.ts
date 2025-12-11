@@ -176,6 +176,7 @@ export type Database = {
           complementary_info: string | null
           cpf: string | null
           created_at: string
+          credit_balance: number
           email: string | null
           id: string
           is_active: boolean
@@ -191,6 +192,7 @@ export type Database = {
           complementary_info?: string | null
           cpf?: string | null
           created_at?: string
+          credit_balance?: number
           email?: string | null
           id?: string
           is_active?: boolean
@@ -206,6 +208,7 @@ export type Database = {
           complementary_info?: string | null
           cpf?: string | null
           created_at?: string
+          credit_balance?: number
           email?: string | null
           id?: string
           is_active?: boolean

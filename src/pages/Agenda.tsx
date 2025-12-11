@@ -25,10 +25,12 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
+  Plus,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
+import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -38,26 +40,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 
 type ViewType = 'day' | 'week' | 'month';
-
-const paymentStatusIcon = {
-  pending: AlertCircle,
-  partial: Clock,
-  paid: CheckCircle,
-};
-
-const paymentStatusColor = {
-  pending: 'text-warning',
-  partial: 'text-info',
-  paid: 'text-success',
-};
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -68,10 +60,16 @@ const Agenda = () => {
   const [viewType, setViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [newAppointmentDialogOpen, setNewAppointmentDialogOpen] = useState(false);
+  const [prefilledDate, setPrefilledDate] = useState<Date | undefined>();
+  const [prefilledTime, setPrefilledTime] = useState<string | undefined>();
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
+  const { generateTimeSlots, settings } = useBusinessSettings();
+
+  const timeSlots = generateTimeSlots();
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -82,14 +80,12 @@ const Agenda = () => {
     const end = endOfMonth(monthStart);
     const days = eachDayOfInterval({ start, end });
     
-    // Add days from previous month to fill the first week
     const firstDayOfMonth = getDay(start);
     const daysFromPrevMonth = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
     const prevMonthDays = Array.from({ length: daysFromPrevMonth }, (_, i) => 
       addDays(start, -(daysFromPrevMonth - i))
     );
     
-    // Add days from next month to fill the last week
     const lastDayOfMonth = getDay(end);
     const daysFromNextMonth = lastDayOfMonth === 0 ? 0 : 7 - lastDayOfMonth;
     const nextMonthDays = Array.from({ length: daysFromNextMonth }, (_, i) => 
@@ -122,6 +118,43 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  // Get appointments for a specific day and time slot
+  const getAppointmentsForSlot = (day: Date, time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return filteredByFilters.filter(apt => {
+      const aptDate = new Date(apt.start_time);
+      return isSameDay(aptDate, day) && 
+             aptDate.getHours() === hours && 
+             aptDate.getMinutes() === minutes;
+    });
+  };
+
+  // Check if a slot overlaps with any existing appointment
+  const isSlotOccupied = (day: Date, time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    
+    return filteredByFilters.some(apt => {
+      const aptStart = new Date(apt.start_time);
+      const aptEnd = new Date(apt.end_time);
+      return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
+    });
+  };
+
+  // Get appointment that occupies a specific slot
+  const getAppointmentAtSlot = (day: Date, time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    
+    return filteredByFilters.find(apt => {
+      const aptStart = new Date(apt.start_time);
+      const aptEnd = new Date(apt.end_time);
+      return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
+    });
+  };
 
   // Get appointment count for each day (with filters applied)
   const getAppointmentsForDay = (day: Date) => {
@@ -167,6 +200,23 @@ const Agenda = () => {
     setDetailDialogOpen(true);
   };
 
+  const handleSlotClick = (day: Date, time: string) => {
+    const apt = getAppointmentAtSlot(day, time);
+    if (apt) {
+      handleAppointmentClick(apt);
+    } else {
+      setPrefilledDate(day);
+      setPrefilledTime(time);
+      setNewAppointmentDialogOpen(true);
+    }
+  };
+
+  const handleNewAppointment = () => {
+    setPrefilledDate(selectedDate);
+    setPrefilledTime(undefined);
+    setNewAppointmentDialogOpen(true);
+  };
+
   const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[]) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
@@ -208,62 +258,106 @@ const Agenda = () => {
     }
   };
 
-  const renderDayView = () => (
+  // Render time slot grid for day view
+  const renderTimeSlotDayView = () => (
     <div className="space-y-4">
-      <h2 className="font-display text-xl font-semibold text-foreground">
-        {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-xl font-semibold text-foreground">
+          {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+        </h2>
+        <Button onClick={handleNewAppointment} size="sm">
+          <Plus className="h-4 w-4 mr-1" />
+          Novo Agendamento
+        </Button>
+      </div>
       
-      {isLoadingAppointments ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
-          ))}
+      <ScrollArea className="h-[600px]">
+        <div className="space-y-1">
+          {timeSlots.map(time => {
+            const apt = getAppointmentAtSlot(selectedDate, time);
+            const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
+            const profId = apt?.professional_id || apt?.service?.professional_id;
+            const prof = professionals.find(p => p.id === profId);
+            const color = prof?.agenda_color || '#3B82F6';
+            
+            // Calculate slot height based on duration
+            const slotDuration = settings?.slot_interval || 30;
+            const aptDuration = apt?.service?.duration || slotDuration;
+            const slotsSpan = Math.ceil(aptDuration / slotDuration);
+
+            return (
+              <div
+                key={time}
+                className={cn(
+                  'flex items-stretch gap-3 min-h-[50px] rounded-lg transition-all cursor-pointer',
+                  apt ? '' : 'hover:bg-muted/50'
+                )}
+                onClick={() => handleSlotClick(selectedDate, time)}
+              >
+                <div className="w-16 flex-shrink-0 flex items-center justify-center text-sm font-medium text-muted-foreground">
+                  {time}
+                </div>
+                <div className={cn(
+                  'flex-1 rounded-lg border border-dashed border-border p-2 min-h-[50px]',
+                  apt && !isStart && 'opacity-0 pointer-events-none'
+                )}>
+                  {isStart && apt && (
+                    <div 
+                      className="h-full rounded-lg p-3 text-white"
+                      style={{ 
+                        backgroundColor: color,
+                        minHeight: `${slotsSpan * 50 - 8}px`
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">{apt.client?.name}</p>
+                          <p className="text-sm opacity-90">{apt.service?.name}</p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p>R$ {apt.service?.price.toFixed(2)}</p>
+                          <p className="opacity-80">{apt.payment_status === 'paid' ? '✓ Pago' : apt.payment_status === 'partial' ? 'Parcial' : 'Pendente'}</p>
+                        </div>
+                      </div>
+                      {prof && (
+                        <p className="text-xs mt-2 opacity-80">{prof.name}</p>
+                      )}
+                    </div>
+                  )}
+                  {!apt && (
+                    <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      ) : filteredAppointments.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredAppointments.map((appointment, index) => (
-            <div 
-              key={appointment.id}
-              style={{ animationDelay: `${index * 100}ms` }}
-              className="animate-slide-up cursor-pointer"
-              onClick={() => handleAppointmentClick(appointment)}
-            >
-              <AppointmentCard appointment={appointment} professionals={professionals} />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
-          <p className="text-muted-foreground">
-            {hasActiveFilters 
-              ? 'Nenhum agendamento encontrado com os filtros aplicados' 
-              : 'Nenhum agendamento para esta data'}
-          </p>
-          <Button className="mt-4" variant="secondary">
-            Criar Agendamento
-          </Button>
-        </div>
-      )}
+      </ScrollArea>
     </div>
   );
 
   const renderWeekView = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-7 gap-2">
+      {/* Week days header */}
+      <div className="grid grid-cols-8 gap-1">
+        <div className="w-16" /> {/* Empty space for time column */}
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
-          const dayAppointments = getAppointmentsForDay(day);
 
           return (
             <button
               key={day.toISOString()}
-              onClick={() => setSelectedDate(day)}
+              onClick={() => {
+                setSelectedDate(day);
+                setViewType('day');
+              }}
               className={cn(
-                'flex flex-col items-center rounded-xl p-3 transition-all duration-200',
+                'flex flex-col items-center rounded-lg p-2 transition-all duration-200',
                 isSelected 
-                  ? 'bg-primary text-primary-foreground shadow-glow' 
+                  ? 'bg-primary text-primary-foreground' 
                   : 'hover:bg-secondary',
                 isToday && !isSelected && 'ring-2 ring-primary/30'
               )}
@@ -275,83 +369,57 @@ const Agenda = () => {
                 {format(day, 'EEE', { locale: ptBR })}
               </span>
               <span className={cn(
-                'mt-1 text-xl font-semibold',
+                'text-lg font-semibold',
                 isSelected ? 'text-primary-foreground' : 'text-foreground'
               )}>
                 {format(day, 'd')}
               </span>
-              {dayAppointments.length > 0 && (
-                <div className="mt-1 flex gap-0.5">
-                  {dayAppointments.slice(0, 3).map((apt, i) => {
-                    const profId = apt.professional_id || apt.service?.professional_id;
-                    const prof = professionals.find(p => p.id === profId);
-                    const color = prof?.agenda_color || '#3B82F6';
-                    return (
-                      <div 
-                        key={i} 
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
-                      />
-                    );
-                  })}
-                  {dayAppointments.length > 3 && (
-                    <span className={cn(
-                      'text-[10px] ml-0.5',
-                      isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    )}>
-                      +{dayAppointments.length - 3}
-                    </span>
-                  )}
-                </div>
-              )}
             </button>
           );
         })}
       </div>
 
-      {/* Appointments List */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </h2>
-          <span className="text-sm text-muted-foreground">
-            {filteredAppointments.length} agendamento{filteredAppointments.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {isLoadingAppointments ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40 rounded-xl" />
-            ))}
-          </div>
-        ) : filteredAppointments.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredAppointments.map((appointment, index) => (
-              <div 
-                key={appointment.id}
-                style={{ animationDelay: `${index * 100}ms` }}
-                className="animate-slide-up cursor-pointer"
-                onClick={() => handleAppointmentClick(appointment)}
-              >
-                <AppointmentCard appointment={appointment} professionals={professionals} />
+      {/* Time slots grid */}
+      <ScrollArea className="h-[500px]">
+        <div className="space-y-0.5">
+          {timeSlots.map(time => (
+            <div key={time} className="grid grid-cols-8 gap-1 min-h-[40px]">
+              <div className="w-16 flex items-center justify-center text-xs font-medium text-muted-foreground">
+                {time}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
-            <p className="text-muted-foreground">
-              {hasActiveFilters 
-                ? 'Nenhum agendamento encontrado com os filtros aplicados' 
-                : 'Nenhum agendamento para esta data'}
-            </p>
-            <Button className="mt-4" variant="secondary">
-              Criar Agendamento
-            </Button>
-          </div>
-        )}
-      </div>
+              {weekDays.map(day => {
+                const apt = getAppointmentAtSlot(day, time);
+                const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
+                const profId = apt?.professional_id || apt?.service?.professional_id;
+                const prof = professionals.find(p => p.id === profId);
+                const color = prof?.agenda_color || '#3B82F6';
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={cn(
+                      'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
+                      apt && !isStart && 'opacity-0 pointer-events-none',
+                      !apt && 'hover:bg-muted/30 hover:border-primary/30'
+                    )}
+                    onClick={() => handleSlotClick(day, time)}
+                  >
+                    {isStart && apt && (
+                      <div 
+                        className="h-full rounded p-1 text-white text-xs"
+                        style={{ backgroundColor: color }}
+                      >
+                        <p className="font-medium truncate">{apt.client?.name}</p>
+                        <p className="truncate opacity-80">{apt.service?.name}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 
@@ -403,7 +471,6 @@ const Agenda = () => {
                     const profId = apt.professional_id || apt.service?.professional_id;
                     const prof = professionals.find(p => p.id === profId);
                     const color = prof?.agenda_color || '#3B82F6';
-                    const PaymentIcon = paymentStatusIcon[apt.payment_status || 'pending'];
                     
                     return (
                       <div 
@@ -524,15 +591,33 @@ const Agenda = () => {
               {getNavigationLabel()}
             </span>
           </div>
-          <Button variant="secondary" size="sm" onClick={goToToday}>
-            Hoje
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={goToToday}>
+              Hoje
+            </Button>
+            {viewType !== 'day' && (
+              <Button size="sm" onClick={handleNewAppointment}>
+                <Plus className="h-4 w-4 mr-1" />
+                Novo
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Calendar Views */}
-        {viewType === 'day' && renderDayView()}
-        {viewType === 'week' && renderWeekView()}
-        {viewType === 'month' && renderMonthView()}
+        {isLoadingAppointments ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-12 rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {viewType === 'day' && renderTimeSlotDayView()}
+            {viewType === 'week' && renderWeekView()}
+            {viewType === 'month' && renderMonthView()}
+          </>
+        )}
       </div>
 
       {/* Appointment Detail Dialog */}
@@ -542,6 +627,14 @@ const Agenda = () => {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         onPayment={handlePayment}
+      />
+
+      {/* New Appointment Dialog */}
+      <NewAppointmentDialog
+        open={newAppointmentDialogOpen}
+        onOpenChange={setNewAppointmentDialogOpen}
+        prefilledDate={prefilledDate}
+        prefilledTime={prefilledTime}
       />
     </AppLayout>
   );

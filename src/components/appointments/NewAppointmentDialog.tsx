@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock } from 'lucide-react';
@@ -25,31 +25,52 @@ import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 
 interface NewAppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefilledDate?: Date;
+  prefilledTime?: string;
 }
 
-const timeSlots = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
-];
-
-export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialogProps) {
+export function NewAppointmentDialog({ 
+  open, 
+  onOpenChange, 
+  prefilledDate, 
+  prefilledTime 
+}: NewAppointmentDialogProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedService, setSelectedService] = useState('');
-  const [date, setDate] = useState<Date>();
-  const [time, setTime] = useState('');
+  const [selectedProfessional, setSelectedProfessional] = useState('');
+  const [date, setDate] = useState<Date | undefined>(prefilledDate);
+  const [time, setTime] = useState(prefilledTime || '');
   const [notes, setNotes] = useState('');
 
   const { clients } = useClients();
   const { services } = useServices();
+  const { professionals } = useProfessionals();
   const { createAppointment } = useAppointments();
+  const { generateTimeSlots } = useBusinessSettings();
 
+  const timeSlots = generateTimeSlots();
   const selectedServiceData = services.find(s => s.id === selectedService);
+  const activeProfessionals = professionals.filter(p => p.is_active);
+  const activeClients = clients.filter(c => c.is_active);
+
+  // Update date/time when prefilled values change
+  useEffect(() => {
+    if (prefilledDate) setDate(prefilledDate);
+    if (prefilledTime) setTime(prefilledTime);
+  }, [prefilledDate, prefilledTime]);
+
+  // Auto-select professional from service if available
+  useEffect(() => {
+    if (selectedServiceData?.professional_id) {
+      setSelectedProfessional(selectedServiceData.professional_id);
+    }
+  }, [selectedServiceData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +101,7 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
   const resetForm = () => {
     setSelectedClient('');
     setSelectedService('');
+    setSelectedProfessional('');
     setDate(undefined);
     setTime('');
     setNotes('');
@@ -103,9 +125,12 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((client) => (
+                {activeClients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
-                    {client.name}
+                    <div className="flex flex-col">
+                      <span>{client.name}</span>
+                      <span className="text-xs text-muted-foreground">{client.phone}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -137,6 +162,30 @@ export function NewAppointmentDialog({ open, onOpenChange }: NewAppointmentDialo
                 Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Profissional</Label>
+            <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um profissional (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeProfessionals.map((prof) => (
+                  <SelectItem key={prof.id} value={prof.id}>
+                    <div className="flex items-center gap-2">
+                      {prof.agenda_color && (
+                        <div 
+                          className="h-3 w-3 rounded-full" 
+                          style={{ backgroundColor: prof.agenda_color }}
+                        />
+                      )}
+                      {prof.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Building2, Clock, Bell, Palette } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,8 +6,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { toast } from 'sonner';
 
 const Configuracoes = () => {
+  const { settings, updateSettings, isLoading } = useBusinessSettings();
+  
+  const [openingTime, setOpeningTime] = useState('08:00');
+  const [closingTime, setClosingTime] = useState('20:00');
+  const [slotInterval, setSlotInterval] = useState(30);
+  const [workSaturdays, setWorkSaturdays] = useState(true);
+  const [workSundays, setWorkSundays] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setOpeningTime(settings.opening_time || '08:00');
+      setClosingTime(settings.closing_time || '20:00');
+      setSlotInterval(settings.slot_interval || 30);
+      setWorkSaturdays(settings.work_saturdays ?? true);
+      setWorkSundays(settings.work_sundays ?? false);
+    }
+  }, [settings]);
+
+  const handleSaveHours = () => {
+    updateSettings.mutate({
+      opening_time: openingTime,
+      closing_time: closingTime,
+      slot_interval: slotInterval,
+      work_saturdays: workSaturdays,
+      work_sundays: workSundays,
+    });
+  };
+
   return (
     <AppLayout 
       title="Configurações" 
@@ -56,7 +87,7 @@ const Configuracoes = () => {
               </div>
               <div>
                 <CardTitle className="text-lg">Horário de Funcionamento</CardTitle>
-                <CardDescription>Configure os horários disponíveis</CardDescription>
+                <CardDescription>Configure os horários disponíveis na agenda</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -64,26 +95,60 @@ const Configuracoes = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Abertura</Label>
-                <Input type="time" defaultValue="08:00" />
+                <Input 
+                  type="time" 
+                  value={openingTime}
+                  onChange={(e) => setOpeningTime(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Fechamento</Label>
-                <Input type="time" defaultValue="20:00" />
+                <Input 
+                  type="time" 
+                  value={closingTime}
+                  onChange={(e) => setClosingTime(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Intervalo entre agendamentos</Label>
-              <Input type="number" defaultValue="30" />
-              <p className="text-xs text-muted-foreground">Tempo em minutos</p>
+              <Input 
+                type="number" 
+                value={slotInterval}
+                onChange={(e) => setSlotInterval(Number(e.target.value))}
+                min={15}
+                max={120}
+                step={15}
+              />
+              <p className="text-xs text-muted-foreground">Tempo em minutos (15, 30, 45, 60...)</p>
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label>Trabalhar aos sábados</Label>
                 <p className="text-xs text-muted-foreground">Habilitar agendamentos no sábado</p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={workSaturdays} 
+                onCheckedChange={setWorkSaturdays}
+              />
             </div>
-            <Button className="w-full">Salvar Horários</Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Trabalhar aos domingos</Label>
+                <p className="text-xs text-muted-foreground">Habilitar agendamentos no domingo</p>
+              </div>
+              <Switch 
+                checked={workSundays} 
+                onCheckedChange={setWorkSundays}
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handleSaveHours}
+              disabled={updateSettings.isPending}
+            >
+              {updateSettings.isPending ? 'Salvando...' : 'Salvar Horários'}
+            </Button>
           </CardContent>
         </Card>
 

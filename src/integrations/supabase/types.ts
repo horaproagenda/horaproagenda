@@ -90,6 +90,39 @@ export type Database = {
           },
         ]
       }
+      business_settings: {
+        Row: {
+          closing_time: string
+          created_at: string
+          id: string
+          opening_time: string
+          slot_interval: number
+          updated_at: string
+          work_saturdays: boolean
+          work_sundays: boolean
+        }
+        Insert: {
+          closing_time?: string
+          created_at?: string
+          id?: string
+          opening_time?: string
+          slot_interval?: number
+          updated_at?: string
+          work_saturdays?: boolean
+          work_sundays?: boolean
+        }
+        Update: {
+          closing_time?: string
+          created_at?: string
+          id?: string
+          opening_time?: string
+          slot_interval?: number
+          updated_at?: string
+          work_saturdays?: boolean
+          work_sundays?: boolean
+        }
+        Relationships: []
+      }
       client_documents: {
         Row: {
           client_id: string

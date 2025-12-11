@@ -1,11 +1,11 @@
-import { AlertTriangle, User, Phone, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, User, Phone, Mail, CheckCircle, XCircle, CreditCard } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Client } from '@/types';
 
 interface DuplicateClientAlertProps {
   duplicates: Client[];
-  matchType: 'name' | 'phone' | 'email';
+  matchType: 'name' | 'phone' | 'email' | 'cpf';
 }
 
 export function DuplicateClientAlert({ duplicates, matchType }: DuplicateClientAlertProps) {
@@ -14,7 +14,8 @@ export function DuplicateClientAlert({ duplicates, matchType }: DuplicateClientA
   const matchLabels = {
     name: 'nome',
     phone: 'telefone',
-    email: 'email'
+    email: 'email',
+    cpf: 'CPF'
   };
 
   return (
@@ -31,17 +32,26 @@ export function DuplicateClientAlert({ duplicates, matchType }: DuplicateClientA
               className="flex items-center justify-between p-2 rounded-md bg-background/80 border"
             >
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <User className="h-3 w-3 text-muted-foreground" />
                   <span className="font-medium text-foreground">{client.name}</span>
-                  <Badge 
-                    variant="outline" 
-                    className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" /> Cadastrado
-                  </Badge>
+                  {client.is_active ? (
+                    <Badge 
+                      variant="outline" 
+                      className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" /> Ativo
+                    </Badge>
+                  ) : (
+                    <Badge 
+                      variant="outline" 
+                      className="bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" /> Inativo
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                   {client.phone && (
                     <span className="flex items-center gap-1">
                       <Phone className="h-3 w-3" />
@@ -52,6 +62,12 @@ export function DuplicateClientAlert({ duplicates, matchType }: DuplicateClientA
                     <span className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
                       {client.email}
+                    </span>
+                  )}
+                  {client.cpf && (
+                    <span className="flex items-center gap-1">
+                      <CreditCard className="h-3 w-3" />
+                      {client.cpf}
                     </span>
                   )}
                 </div>

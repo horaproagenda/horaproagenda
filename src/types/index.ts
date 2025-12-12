@@ -28,9 +28,11 @@ export interface Client {
   is_active: boolean;
   referral_source: string | null;
   credit_balance: number;
+  assigned_professional_id: string | null;
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  assigned_professional?: Professional;
 }
 
 export interface Room {

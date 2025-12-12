@@ -172,6 +172,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          assigned_professional_id: string | null
           birthdate: string | null
           complementary_info: string | null
           cpf: string | null
@@ -188,6 +189,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          assigned_professional_id?: string | null
           birthdate?: string | null
           complementary_info?: string | null
           cpf?: string | null
@@ -204,6 +206,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          assigned_professional_id?: string | null
           birthdate?: string | null
           complementary_info?: string | null
           cpf?: string | null
@@ -219,7 +222,15 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_assigned_professional_id_fkey"
+            columns: ["assigned_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_templates: {
         Row: {

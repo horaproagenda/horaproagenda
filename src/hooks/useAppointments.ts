@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Appointment, PaymentStatus } from '@/types';
+import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 
 export interface AppointmentInsert {
   client_id: string;
@@ -9,6 +9,8 @@ export interface AppointmentInsert {
   start_time: string;
   end_time: string;
   notes?: string;
+  professional_id?: string | null;
+  room_id?: string | null;
 }
 
 export interface PaymentUpdate {
@@ -25,7 +27,7 @@ export interface AppointmentUpdate {
   professional_id?: string | null;
   room_id?: string | null;
   notes?: string;
-  status?: 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
+  status?: AppointmentStatus;
 }
 
 export function useAppointments() {
@@ -49,15 +51,53 @@ export function useAppointments() {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      return data as Appointment[];
+      
+      // Fetch profile info for created_by and updated_by separately
+      const appointmentsWithProfiles = await Promise.all(
+        (data || []).map(async (apt) => {
+          let created_by_profile = null;
+          let updated_by_profile = null;
+          
+          if (apt.created_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', apt.created_by)
+              .single();
+            created_by_profile = profile;
+          }
+          
+          if (apt.updated_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', apt.updated_by)
+              .single();
+            updated_by_profile = profile;
+          }
+          
+          return {
+            ...apt,
+            created_by_profile,
+            updated_by_profile,
+          };
+        })
+      );
+      
+      return appointmentsWithProfiles as Appointment[];
     },
   });
 
   const createAppointment = useMutation({
     mutationFn: async (appointment: AppointmentInsert) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('appointments')
-        .insert(appointment)
+        .insert({
+          ...appointment,
+          created_by: user?.id,
+        })
         .select()
         .single();
 
@@ -122,9 +162,14 @@ export function useAppointments() {
 
   const updateAppointment = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: AppointmentUpdate }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('appointments')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_by: user?.id,
+        })
         .eq('id', id)
         .select()
         .single();

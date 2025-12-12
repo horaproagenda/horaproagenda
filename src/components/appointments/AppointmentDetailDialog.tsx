@@ -23,6 +23,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   User,
   Calendar,
   Clock,
@@ -37,10 +44,13 @@ import {
   Trash2,
   AlertTriangle,
   Gift,
+  Edit,
+  History,
 } from 'lucide-react';
-import { Appointment, Professional } from '@/types';
+import { Appointment, Professional, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppointments } from '@/hooks/useAppointments';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -58,11 +68,13 @@ const PAYMENT_METHODS = [
   { value: 'bank_transfer', label: 'Transferência' },
 ];
 
-const statusConfig = {
+const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
   scheduled: { label: 'Agendado', className: 'bg-info/10 text-info border-info/20' },
   confirmed: { label: 'Confirmado', className: 'bg-success/10 text-success border-success/20' },
-  completed: { label: 'Concluído', className: 'bg-muted text-muted-foreground border-muted' },
+  completed: { label: 'Atendido', className: 'bg-muted text-muted-foreground border-muted' },
   cancelled: { label: 'Cancelado', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+  missed: { label: 'Faltou', className: 'bg-warning/10 text-warning border-warning/20' },
+  rescheduled: { label: 'Reagendado', className: 'bg-primary/10 text-primary border-primary/20' },
 };
 
 const paymentStatusConfig = {
@@ -79,6 +91,7 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
+  const { updateAppointment } = useAppointments();
   const canAddClientCredit = hasRole('admin');
   
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -87,8 +100,17 @@ export function AppointmentDetailDialog({
   ]);
   const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
 
   if (!appointment) return null;
+
+  const handleStatusChange = (newStatus: AppointmentStatus) => {
+    setSelectedStatus(newStatus);
+    updateAppointment.mutate({
+      id: appointment.id,
+      updates: { status: newStatus },
+    });
+  };
 
   const professionalId = appointment.professional_id || appointment.service?.professional_id;
   const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
@@ -163,9 +185,19 @@ export function AppointmentDetailDialog({
                   {appointment.client?.phone}
                 </div>
               </div>
-              <Badge variant="outline" className={cn('text-xs', status.className)}>
-                {status.label}
-              </Badge>
+              <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}>
+                <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Agendado</SelectItem>
+                  <SelectItem value="confirmed">Confirmado</SelectItem>
+                  <SelectItem value="completed">Atendido</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                  <SelectItem value="missed">Faltou</SelectItem>
+                  <SelectItem value="rescheduled">Reagendado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Service Info */}
@@ -409,6 +441,27 @@ export function AppointmentDetailDialog({
                 </div>
               </>
             )}
+
+            {/* Created/Updated By Info */}
+            <Separator />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div className="flex items-center gap-1">
+                <History className="h-3 w-3" />
+                <span>
+                  Criado em {format(new Date(appointment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {appointment.created_by_profile && ` por ${appointment.created_by_profile.full_name}`}
+                </span>
+              </div>
+              {appointment.updated_by_profile && (
+                <div className="flex items-center gap-1">
+                  <Edit className="h-3 w-3" />
+                  <span>
+                    Editado em {format(new Date(appointment.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {` por ${appointment.updated_by_profile.full_name}`}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

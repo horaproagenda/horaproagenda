@@ -56,10 +56,13 @@ import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
+import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
+import { Wrench, UserX } from 'lucide-react';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -69,6 +72,7 @@ const Agenda = () => {
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
+  const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
   const [viewType, setViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -81,13 +85,15 @@ const Agenda = () => {
     newStartTime: Date;
     newEndTime: Date;
   } | null>(null);
+  const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
+  const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { generateTimeSlots, settings, isLoading: isLoadingSettings } = useBusinessSettings();
 
-  const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings;
+  const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
   const timeSlots = generateTimeSlots();

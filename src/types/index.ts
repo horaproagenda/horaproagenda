@@ -158,7 +158,7 @@ export interface DocumentTemplate {
   updated_at: string;
 }
 
-export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'missed' | 'rescheduled';
 
 export type PaymentStatus = 'pending' | 'partial' | 'paid';
 
@@ -177,12 +177,15 @@ export interface Appointment {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
   updated_by: string | null;
   // Joined data
   client?: Client;
   service?: Service;
   professional?: Professional;
   room?: Room;
+  created_by_profile?: { full_name: string } | null;
+  updated_by_profile?: { full_name: string } | null;
 }
 
 export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';

@@ -159,6 +159,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
   {
@@ -178,6 +179,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
   {
@@ -197,6 +199,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
   {
@@ -216,6 +219,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
   {
@@ -235,6 +239,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
   {
@@ -254,6 +259,7 @@ export const mockAppointments: Appointment[] = [
     notes: null,
     created_at: now,
     updated_at: now,
+    created_by: null,
     updated_by: null,
   },
 ];

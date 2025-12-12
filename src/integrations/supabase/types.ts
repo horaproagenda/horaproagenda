@@ -19,6 +19,7 @@ export type Database = {
           amount_paid: number | null
           client_id: string
           created_at: string
+          created_by: string | null
           end_time: string
           id: string
           notes: string | null
@@ -36,6 +37,7 @@ export type Database = {
           amount_paid?: number | null
           client_id: string
           created_at?: string
+          created_by?: string | null
           end_time: string
           id?: string
           notes?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           amount_paid?: number | null
           client_id?: string
           created_at?: string
+          created_by?: string | null
           end_time?: string
           id?: string
           notes?: string | null
@@ -92,6 +95,7 @@ export type Database = {
       }
       business_settings: {
         Row: {
+          auto_complete_appointments: boolean
           closing_time: string
           created_at: string
           drag_and_drop_enabled: boolean
@@ -103,6 +107,7 @@ export type Database = {
           work_sundays: boolean
         }
         Insert: {
+          auto_complete_appointments?: boolean
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -114,6 +119,7 @@ export type Database = {
           work_sundays?: boolean
         }
         Update: {
+          auto_complete_appointments?: boolean
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -411,6 +417,50 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_absences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_time: string
+          id: string
+          notes: string | null
+          professional_id: string
+          reason: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_time: string
+          id?: string
+          notes?: string | null
+          professional_id: string
+          reason?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          id?: string
+          notes?: string | null
+          professional_id?: string
+          reason?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_absences_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -858,7 +908,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "receptionist" | "professional"
-      appointment_status: "scheduled" | "confirmed" | "completed" | "cancelled"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "completed"
+        | "cancelled"
+        | "missed"
+        | "rescheduled"
       document_type: "anamnese" | "contract" | "quote" | "photo" | "other"
       quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
       treatment_stage: "before" | "during" | "after"
@@ -990,7 +1046,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "receptionist", "professional"],
-      appointment_status: ["scheduled", "confirmed", "completed", "cancelled"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "missed",
+        "rescheduled",
+      ],
       document_type: ["anamnese", "contract", "quote", "photo", "other"],
       quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
       treatment_stage: ["before", "during", "after"],

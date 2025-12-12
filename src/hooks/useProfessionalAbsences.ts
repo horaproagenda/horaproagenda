@@ -1,0 +1,120 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+export interface ProfessionalAbsence {
+  id: string;
+  professional_id: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  professional?: {
+    id: string;
+    name: string;
+    agenda_color: string | null;
+  };
+}
+
+export interface AbsenceInsert {
+  professional_id: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
+  notes?: string;
+}
+
+export function useProfessionalAbsences() {
+  const queryClient = useQueryClient();
+
+  const { data: absences = [], isLoading } = useQuery({
+    queryKey: ['professional-absences'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professional_absences')
+        .select(`
+          *,
+          professional:professionals(id, name, agenda_color)
+        `)
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+      return data as ProfessionalAbsence[];
+    },
+  });
+
+  const createAbsence = useMutation({
+    mutationFn: async (absence: AbsenceInsert) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('professional_absences')
+        .insert({
+          ...absence,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['professional-absences'] });
+      toast.success('Ausência registrada com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao registrar ausência: ' + error.message);
+    },
+  });
+
+  const updateAbsence = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<AbsenceInsert> }) => {
+      const { data, error } = await supabase
+        .from('professional_absences')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['professional-absences'] });
+      toast.success('Ausência atualizada!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar ausência: ' + error.message);
+    },
+  });
+
+  const deleteAbsence = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('professional_absences')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['professional-absences'] });
+      toast.success('Ausência removida!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao remover ausência: ' + error.message);
+    },
+  });
+
+  return {
+    absences,
+    isLoading,
+    createAbsence,
+    updateAbsence,
+    deleteAbsence,
+  };
+}

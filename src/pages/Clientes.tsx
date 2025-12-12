@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Search, Users, Loader2, UserCheck, UserX } from 'lucide-react';
+import { Search, Users, Loader2, UserCheck, UserX, Filter } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useClients } from '@/hooks/useClients';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Select,
   SelectContent,
@@ -19,7 +21,13 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const { clients, isLoading, refetch } = useClients();
+  const { professionals } = useProfessionals();
+  const { hasRole } = useAuth();
+  
+  const isAdmin = hasRole('admin');
+  const isReceptionist = hasRole('receptionist');
 
   const activeClients = clients.filter(c => c.is_active);
   const inactiveClients = clients.filter(c => !c.is_active);
@@ -36,7 +44,12 @@ const Clientes = () => {
       (statusFilter === 'active' && client.is_active) ||
       (statusFilter === 'inactive' && !client.is_active);
 
-    return matchesSearch && matchesStatus;
+    const matchesProfessional = 
+      professionalFilter === 'all' ||
+      client.assigned_professional_id === professionalFilter ||
+      (professionalFilter === 'unassigned' && !client.assigned_professional_id);
+
+    return matchesSearch && matchesStatus && matchesProfessional;
   });
 
   return (
@@ -58,7 +71,7 @@ const Clientes = () => {
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -67,6 +80,21 @@ const Clientes = () => {
               <SelectItem value="inactive">Inativos</SelectItem>
             </SelectContent>
           </Select>
+          {(isAdmin || isReceptionist) && (
+            <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Profissionais</SelectItem>
+                <SelectItem value="unassigned">Sem profissional</SelectItem>
+                {professionals.filter(p => p.is_active).map(pro => (
+                  <SelectItem key={pro.id} value={pro.id}>{pro.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <NewClientDialog onClientCreated={refetch} />
       </div>

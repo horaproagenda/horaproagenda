@@ -190,6 +190,33 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
   const handleDelete = async () => {
     try {
+      // Check for dependencies first
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('service_id', service.id)
+        .limit(1);
+      
+      if (appointments && appointments.length > 0) {
+        toast.error('Não é possível excluir: serviço possui agendamentos vinculados.');
+        setShowDeleteDialog(false);
+        return;
+      }
+
+      const { data: serviceProducts } = await supabase
+        .from('service_products')
+        .select('id')
+        .eq('service_id', service.id)
+        .limit(1);
+      
+      if (serviceProducts && serviceProducts.length > 0) {
+        // Delete service products first
+        await supabase
+          .from('service_products')
+          .delete()
+          .eq('service_id', service.id);
+      }
+
       const { error } = await supabase
         .from('services')
         .delete()
@@ -201,7 +228,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       onServiceUpdated?.();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error('Erro ao excluir serviço: ' + error.message);
+      if (error.message?.includes('violates foreign key constraint')) {
+        toast.error('Não é possível excluir: serviço possui dados vinculados no sistema.');
+      } else {
+        toast.error('Erro ao excluir serviço: ' + error.message);
+      }
     }
     setShowDeleteDialog(false);
   };

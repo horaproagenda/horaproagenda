@@ -172,13 +172,42 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover este profissional?')) return;
+    
     try {
+      // Check for dependencies
+      const { data: services } = await supabase
+        .from('services')
+        .select('id')
+        .eq('professional_id', id)
+        .limit(1);
+      
+      if (services && services.length > 0) {
+        toast.error('Não é possível remover: profissional possui serviços vinculados. Remova os serviços primeiro ou desvincule o profissional.');
+        return;
+      }
+
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', id)
+        .limit(1);
+      
+      if (appointments && appointments.length > 0) {
+        toast.error('Não é possível remover: profissional possui agendamentos vinculados.');
+        return;
+      }
+
       const { error } = await supabase.from('professionals').delete().eq('id', id);
       if (error) throw error;
       toast.success('Profissional removido!');
       refetch();
     } catch (error: any) {
-      toast.error('Erro ao remover: ' + error.message);
+      if (error.message?.includes('violates foreign key constraint')) {
+        toast.error('Não é possível remover: profissional possui dados vinculados no sistema.');
+      } else {
+        toast.error('Erro ao remover: ' + error.message);
+      }
     }
   };
 

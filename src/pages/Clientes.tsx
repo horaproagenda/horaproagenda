@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Search, Users, Loader2, UserCheck, UserX, Filter } from 'lucide-react';
+import { Search, Users, Loader2, UserCheck, UserX, Filter, Upload } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
+import { BulkImportClientsDialog } from '@/components/clients/BulkImportClientsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useClients } from '@/hooks/useClients';
@@ -96,7 +97,15 @@ const Clientes = () => {
             </Select>
           )}
         </div>
-        <NewClientDialog onClientCreated={refetch} />
+        <div className="flex gap-2">
+          <BulkImportClientsDialog onImported={refetch}>
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
+          </BulkImportClientsDialog>
+          <NewClientDialog onClientCreated={refetch} />
+        </div>
       </div>
 
       {/* Stats */}

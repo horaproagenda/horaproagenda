@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,10 +31,11 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { Appointment } from '@/types';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment';
+  type: 'professional' | 'room' | 'equipment' | 'absence';
   message: string;
   appointment?: Appointment;
 }
@@ -66,6 +67,7 @@ export function NewAppointmentDialog({
   const { rooms } = useRooms();
   const { appointments, createAppointment } = useAppointments();
   const { settings, generateTimeSlots } = useBusinessSettings();
+  const { absences } = useProfessionalAbsences();
 
   const timeSlots = generateTimeSlots();
 
@@ -125,6 +127,23 @@ export function NewAppointmentDialog({
     const { startTime, endTime } = appointmentTimes;
     const foundConflicts: ConflictInfo[] = [];
 
+    // Check for professional absence
+    if (selectedProfessional) {
+      absences.forEach(absence => {
+        const absenceStart = new Date(absence.start_time);
+        const absenceEnd = new Date(absence.end_time);
+        
+        const overlaps = startTime < absenceEnd && endTime > absenceStart;
+        if (overlaps && absence.professional_id === selectedProfessional) {
+          const prof = professionals.find(p => p.id === selectedProfessional);
+          foundConflicts.push({
+            type: 'absence',
+            message: `${prof?.name || 'Profissional'} está ausente neste horário (${absence.reason || 'sem motivo informado'})`,
+          });
+        }
+      });
+    }
+
     appointments.forEach(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
@@ -157,7 +176,7 @@ export function NewAppointmentDialog({
     });
 
     return foundConflicts;
-  }, [appointmentTimes, appointments, selectedProfessional, selectedRoom, professionals, rooms]);
+  }, [appointmentTimes, appointments, absences, selectedProfessional, selectedRoom, professionals, rooms]);
 
   // Get available time slots for the selected date
   const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
@@ -174,6 +193,19 @@ export function NewAppointmentDialog({
 
       let isAvailable = true;
       let conflictReason = '';
+
+      // Check for professional absences
+      if (selectedProfessional) {
+        absences.forEach(absence => {
+          const absenceStart = new Date(absence.start_time);
+          const absenceEnd = new Date(absence.end_time);
+          const overlaps = slotStart < absenceEnd && slotEnd > absenceStart;
+          if (overlaps && absence.professional_id === selectedProfessional) {
+            isAvailable = false;
+            conflictReason = 'Profissional ausente';
+          }
+        });
+      }
 
       appointments.forEach(apt => {
         const aptStart = new Date(apt.start_time);
@@ -197,7 +229,7 @@ export function NewAppointmentDialog({
 
       return { slot, isAvailable, conflictReason };
     });
-  }, [date, selectedServiceData, appointments, selectedProfessional, selectedRoom, timeSlots]);
+  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -435,7 +467,8 @@ export function NewAppointmentDialog({
                     <div key={i} className="flex items-center gap-2">
                       <Badge variant="destructive" className="text-xs">
                         {conflict.type === 'professional' ? 'Profissional' : 
-                         conflict.type === 'room' ? 'Sala' : 'Equipamento'}
+                         conflict.type === 'room' ? 'Sala' : 
+                         conflict.type === 'absence' ? 'Ausência' : 'Equipamento'}
                       </Badge>
                       <span className="text-sm">{conflict.message}</span>
                     </div>

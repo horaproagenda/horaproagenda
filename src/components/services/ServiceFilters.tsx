@@ -26,12 +26,14 @@ interface ServiceFiltersProps {
   selectedProfessional: string | null;
   selectedRoom: string | null;
   selectedClient: string | null;
+  selectedStatus: string | null;
   searchTerm: string;
   sortBy: string;
   onCategoryChange: (category: string | null) => void;
   onProfessionalChange: (professionalId: string | null) => void;
   onRoomChange: (roomId: string | null) => void;
   onClientChange: (clientId: string | null) => void;
+  onStatusChange: (status: string | null) => void;
   onSearchChange: (search: string) => void;
   onSortChange: (sort: string) => void;
   onClearFilters: () => void;
@@ -47,12 +49,14 @@ export function ServiceFilters({
   selectedProfessional,
   selectedRoom,
   selectedClient,
+  selectedStatus,
   searchTerm,
   sortBy,
   onCategoryChange,
   onProfessionalChange,
   onRoomChange,
   onClientChange,
+  onStatusChange,
   onSearchChange,
   onSortChange,
   onClearFilters,
@@ -62,7 +66,7 @@ export function ServiceFilters({
   const [roomSearch, setRoomSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
 
-  const hasActiveFilters = selectedCategory || selectedProfessional || selectedRoom || selectedClient || searchTerm;
+  const hasActiveFilters = selectedCategory || selectedProfessional || selectedRoom || selectedClient || selectedStatus || searchTerm;
 
   const filteredProfessionals = useMemo(() => 
     professionals.filter(p => p.name.toLowerCase().includes(professionalSearch.toLowerCase())),
@@ -114,18 +118,54 @@ export function ServiceFilters({
         </Button>
       </div>
 
-      {/* Category filter as badges */}
+      {/* Category and Status filters as badges */}
       <div className="flex items-center gap-2 flex-wrap">
         <Filter className="h-4 w-4 text-muted-foreground" />
+        
+        {/* Status badges */}
         <Badge
           variant="outline"
           className={cn(
             'cursor-pointer transition-colors',
-            !selectedCategory && 'bg-primary text-primary-foreground border-primary'
+            !selectedStatus && 'bg-primary text-primary-foreground border-primary'
+          )}
+          onClick={() => onStatusChange(null)}
+        >
+          Todos
+        </Badge>
+        <Badge
+          variant="outline"
+          className={cn(
+            'cursor-pointer transition-colors',
+            selectedStatus === 'active' && 'bg-green-500 text-white border-green-500'
+          )}
+          onClick={() => onStatusChange('active')}
+        >
+          Ativos
+        </Badge>
+        <Badge
+          variant="outline"
+          className={cn(
+            'cursor-pointer transition-colors',
+            selectedStatus === 'inactive' && 'bg-muted-foreground text-white border-muted-foreground'
+          )}
+          onClick={() => onStatusChange('inactive')}
+        >
+          Inativos
+        </Badge>
+
+        <div className="h-4 w-px bg-border mx-2" />
+
+        {/* Category badges */}
+        <Badge
+          variant="outline"
+          className={cn(
+            'cursor-pointer transition-colors',
+            !selectedCategory && !selectedStatus && 'bg-secondary'
           )}
           onClick={() => onCategoryChange(null)}
         >
-          Todas
+          Categorias
         </Badge>
         {categories.map(category => (
           <Badge

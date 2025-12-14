@@ -24,11 +24,14 @@ export function useServicePackages() {
     },
   });
 
+  const activePackages = packages.filter(p => p.is_active);
+  const inactivePackages = packages.filter(p => !p.is_active);
+
   const refetch = () => {
     queryClient.invalidateQueries({ queryKey: ['service_packages'] });
   };
 
-  return { packages, isLoading, error, refetch };
+  return { packages, activePackages, inactivePackages, isLoading, error, refetch };
 }
 
 export function usePackageAppointments(packageId: string | null) {

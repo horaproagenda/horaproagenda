@@ -481,6 +481,146 @@ export type Database = {
           },
         ]
       }
+      product_purchases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_days: number | null
+          finished_at: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          purchase_date: string
+          quantity: number
+          started_using_at: string | null
+          supplier: string | null
+          total_price: number
+          unit_price: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          purchase_date?: string
+          quantity?: number
+          started_using_at?: string | null
+          supplier?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          purchase_date?: string
+          quantity?: number
+          started_using_at?: string | null
+          supplier?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          current_stock: number
+          description: string | null
+          expiry_date: string | null
+          finished_at: string | null
+          id: string
+          is_active: boolean
+          min_stock_alert: number | null
+          name: string
+          notes: string | null
+          product_type: string
+          purchase_date: string | null
+          quantity_purchased: number
+          started_using_at: string | null
+          supplier: string | null
+          total_price: number
+          unit: string
+          unit_price: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          expiry_date?: string | null
+          finished_at?: string | null
+          id?: string
+          is_active?: boolean
+          min_stock_alert?: number | null
+          name: string
+          notes?: string | null
+          product_type?: string
+          purchase_date?: string | null
+          quantity_purchased?: number
+          started_using_at?: string | null
+          supplier?: string | null
+          total_price?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          expiry_date?: string | null
+          finished_at?: string | null
+          id?: string
+          is_active?: boolean
+          min_stock_alert?: number | null
+          name?: string
+          notes?: string | null
+          product_type?: string
+          purchase_date?: string | null
+          quantity_purchased?: number
+          started_using_at?: string | null
+          supplier?: string | null
+          total_price?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       professional_absences: {
         Row: {
           created_at: string

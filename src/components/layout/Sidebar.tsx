@@ -8,7 +8,8 @@ import {
   Plus,
   BarChart3,
   ShoppingCart,
-  ClipboardList
+  ClipboardList,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Serviços', href: '/servicos', icon: Sparkles },
   { name: 'Cadastros', href: '/cadastros', icon: ClipboardList },
   { name: 'Caixa', href: '/caixa', icon: ShoppingCart },
+  { name: 'Produtos', href: '/produtos', icon: Package },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
 ];

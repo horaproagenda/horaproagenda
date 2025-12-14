@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 
 const REFERRAL_SOURCES = [
   { value: 'instagram', label: 'Instagram' },
@@ -35,6 +37,12 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastEditorName, setLastEditorName] = useState<string | null>(null);
+  const { professionals } = useProfessionals();
+  const { hasRole } = useAuth();
+  
+  const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
+  const activeProfessionals = professionals.filter(p => p.is_active);
+  
   const [formData, setFormData] = useState({
     name: client.name,
     email: client.email || '',
@@ -45,6 +53,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
     complementary_info: client.complementary_info || '',
     is_active: client.is_active,
     referral_source: client.referral_source || '',
+    assigned_professional_id: client.assigned_professional_id || '',
   });
 
   useEffect(() => {
@@ -77,6 +86,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
         complementary_info: formData.complementary_info.trim() || null,
         is_active: formData.is_active,
         referral_source: formData.referral_source || null,
+        assigned_professional_id: formData.assigned_professional_id || null,
         updated_by: user?.id || null,
       });
       setEditing(false);
@@ -98,6 +108,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
       complementary_info: client.complementary_info || '',
       is_active: client.is_active,
       referral_source: client.referral_source || '',
+      assigned_professional_id: client.assigned_professional_id || '',
     });
     setEditing(false);
   };
@@ -235,6 +246,34 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
                 </p>
               )}
             </div>
+
+            {isAdminOrReceptionist && (
+              <div className="space-y-2">
+                <Label>Profissional Responsável</Label>
+                {editing ? (
+                  <Select 
+                    value={formData.assigned_professional_id} 
+                    onValueChange={(v) => setFormData({ ...formData, assigned_professional_id: v === 'none' ? '' : v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um profissional..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {activeProfessionals.map(professional => (
+                        <SelectItem key={professional.id} value={professional.id}>
+                          {professional.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-foreground">
+                    {client.assigned_professional?.name || 'Nenhum profissional atribuído'}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

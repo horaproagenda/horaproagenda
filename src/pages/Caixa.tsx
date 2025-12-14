@@ -51,6 +51,7 @@ import {
   Plus,
   Trash2,
   History,
+  Percent,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -65,6 +66,7 @@ import { toast } from 'sonner';
 import { CashRegisterFilters } from '@/components/caixa/CashRegisterFilters';
 import { CashRegisterStatus } from '@/components/caixa/CashRegisterStatus';
 import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
+import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -455,6 +457,10 @@ export default function Caixa() {
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
               Histórico
+            </TabsTrigger>
+            <TabsTrigger value="commissions" className="gap-2">
+              <Percent className="h-4 w-4" />
+              Comissões
             </TabsTrigger>
           </TabsList>
 
@@ -922,6 +928,39 @@ export default function Caixa() {
             <CashRegisterHistory
               closedRegisters={closedRegisters}
               isLoading={isLoadingCashRegisters}
+            />
+          </TabsContent>
+
+          {/* Commissions Tab */}
+          <TabsContent value="commissions" className="space-y-4">
+            <CashRegisterFilters
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              customStartDate={customStartDate}
+              setCustomStartDate={setCustomStartDate}
+              customEndDate={customEndDate}
+              setCustomEndDate={setCustomEndDate}
+              paymentMethodFilter={paymentMethodFilter}
+              setPaymentMethodFilter={setPaymentMethodFilter}
+              professionalFilter={professionalFilter}
+              setProfessionalFilter={setProfessionalFilter}
+              clientFilter={clientFilter}
+              setClientFilter={setClientFilter}
+              professionals={professionals}
+              clients={clients}
+            />
+            <CommissionsReport
+              appointments={appointments}
+              professionals={professionals}
+              dateRange={getDateRange()}
+              dateRangeLabel={
+                dateRange === 'today' ? 'Hoje' :
+                dateRange === 'yesterday' ? 'Ontem' :
+                dateRange === 'last7days' ? 'Últimos 7 dias' :
+                dateRange === 'last30days' ? 'Últimos 30 dias' :
+                dateRange === 'thisMonth' ? 'Este mês' :
+                'Período Personalizado'
+              }
             />
           </TabsContent>
         </Tabs>

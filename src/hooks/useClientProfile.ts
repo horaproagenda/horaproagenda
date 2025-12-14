@@ -6,13 +6,16 @@ import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem }
 export function useClientProfile(clientId: string) {
   const queryClient = useQueryClient();
 
-  // Fetch client details
+  // Fetch client details with assigned professional
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['client', clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)
+        `)
         .eq('id', clientId)
         .maybeSingle();
 

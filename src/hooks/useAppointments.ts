@@ -186,11 +186,30 @@ export function useAppointments() {
     },
   });
 
+  const deleteAppointment = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      toast.success('Agendamento excluído com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir agendamento: ' + error.message);
+    },
+  });
+
   return {
     appointments,
     isLoading,
     createAppointment,
     updatePayment,
     updateAppointment,
+    deleteAppointment,
   };
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Clock, Bell, Palette, GripVertical } from 'lucide-react';
+import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ const Configuracoes = () => {
   const [workSaturdays, setWorkSaturdays] = useState(true);
   const [workSundays, setWorkSundays] = useState(false);
   const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
+  const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -27,6 +28,7 @@ const Configuracoes = () => {
       setWorkSaturdays(settings.work_saturdays ?? true);
       setWorkSundays(settings.work_sundays ?? false);
       setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
+      setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
     }
   }, [settings]);
 
@@ -40,11 +42,6 @@ const Configuracoes = () => {
     });
   };
 
-  const handleSaveDragDrop = () => {
-    updateSettings.mutate({
-      drag_and_drop_enabled: dragAndDropEnabled,
-    });
-  };
 
   return (
     <AppLayout 
@@ -224,16 +221,28 @@ const Configuracoes = () => {
               </div>
               <Switch 
                 checked={dragAndDropEnabled} 
-                onCheckedChange={setDragAndDropEnabled}
+                onCheckedChange={(checked) => {
+                  setDragAndDropEnabled(checked);
+                  updateSettings.mutate({ drag_and_drop_enabled: checked });
+                }}
               />
             </div>
-            <Button 
-              className="w-full" 
-              onClick={handleSaveDragDrop}
-              disabled={updateSettings.isPending}
-            >
-              {updateSettings.isPending ? 'Salvando...' : 'Salvar Configurações'}
-            </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4" />
+                  Auto-completar agendamentos
+                </Label>
+                <p className="text-xs text-muted-foreground">Mudar automaticamente para "Atendido" após o horário passar</p>
+              </div>
+              <Switch 
+                checked={autoCompleteAppointments} 
+                onCheckedChange={(checked) => {
+                  setAutoCompleteAppointments(checked);
+                  updateSettings.mutate({ auto_complete_appointments: checked });
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
 

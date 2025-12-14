@@ -10,6 +10,7 @@ export interface BusinessSettings {
   work_saturdays: boolean;
   work_sundays: boolean;
   drag_and_drop_enabled: boolean;
+  auto_complete_appointments: boolean;
   created_at: string;
   updated_at: string;
 }

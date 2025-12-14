@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -163,7 +164,7 @@ export function ProfessionalAbsenceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? <Edit className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
@@ -171,118 +172,120 @@ export function ProfessionalAbsenceDialog({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Profissional *</Label>
-              <Select value={professionalId} onValueChange={setProfessionalId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o profissional" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeProfessionals.map((prof) => (
-                    <SelectItem key={prof.id} value={prof.id}>
-                      <div className="flex items-center gap-2">
-                        {prof.agenda_color && (
-                          <div 
-                            className="h-3 w-3 rounded-full" 
-                            style={{ backgroundColor: prof.agenda_color }}
-                          />
-                        )}
-                        {prof.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Profissional *</Label>
+                <Select value={professionalId} onValueChange={setProfessionalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o profissional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeProfessionals.map((prof) => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        <div className="flex items-center gap-2">
+                          {prof.agenda_color && (
+                            <div 
+                              className="h-3 w-3 rounded-full" 
+                              style={{ backgroundColor: prof.agenda_color }}
+                            />
+                          )}
+                          {prof.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Data
-              </Label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Início
+                  <Calendar className="h-4 w-4" />
+                  Data
                 </Label>
                 <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Início
+                  </Label>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Término
+                  </Label>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motivo</Label>
+                <Select value={reason} onValueChange={setReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ABSENCE_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ABSENCE_STATUS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        <div className="flex items-center gap-2">
+                          <s.icon className="h-4 w-4" />
+                          {s.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Término
+                  <FileText className="h-4 w-4" />
+                  Detalhes (opcional)
                 </Label>
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                <Textarea
+                  value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Informações adicionais sobre a ausência..."
+                  rows={3}
                 />
               </div>
             </div>
+          </ScrollArea>
 
-            <div className="space-y-2">
-              <Label>Motivo</Label>
-              <Select value={reason} onValueChange={setReason}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o motivo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ABSENCE_REASONS.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ABSENCE_STATUS.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      <div className="flex items-center gap-2">
-                        <s.icon className="h-4 w-4" />
-                        {s.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Detalhes (opcional)
-              </Label>
-              <Textarea
-                value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Informações adicionais sobre a ausência..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
+          <DialogFooter className="flex gap-2 pt-4 border-t">
             {isEditing && (
               <Button 
                 variant="destructive" 

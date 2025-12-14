@@ -24,20 +24,46 @@ export function useBusinessSettings() {
       const { data, error } = await supabase
         .from('business_settings')
         .select('*')
-        .maybeSingle();
+        .limit(1)
+        .single();
 
       if (error) throw error;
+      
+      // Format time fields to ensure they're in HH:mm format
+      if (data) {
+        data.opening_time = data.opening_time?.substring(0, 5) || '08:00';
+        data.closing_time = data.closing_time?.substring(0, 5) || '20:00';
+      }
+      
       return data as BusinessSettings | null;
     },
   });
 
   const updateSettings = useMutation({
     mutationFn: async (updates: Partial<BusinessSettings>) => {
-      if (!settings?.id) throw new Error('Settings not found');
+      // Format time fields if present
+      const formattedUpdates = { ...updates };
+      if (formattedUpdates.opening_time && formattedUpdates.opening_time.length === 5) {
+        formattedUpdates.opening_time = formattedUpdates.opening_time + ':00';
+      }
+      if (formattedUpdates.closing_time && formattedUpdates.closing_time.length === 5) {
+        formattedUpdates.closing_time = formattedUpdates.closing_time + ':00';
+      }
+      
+      if (!settings?.id) {
+        // Create settings if they don't exist
+        const { data, error } = await supabase
+          .from('business_settings')
+          .insert(formattedUpdates)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
       
       const { data, error } = await supabase
         .from('business_settings')
-        .update(updates)
+        .update(formattedUpdates)
         .eq('id', settings.id)
         .select()
         .single();

@@ -132,6 +132,66 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_registers: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closing_balance: number | null
+          created_at: string
+          difference: number | null
+          expected_balance: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          opening_balance: number
+          payment_breakdown: Json | null
+          payments_count: number | null
+          status: string
+          total_receivables: number | null
+          total_received: number | null
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          difference?: number | null
+          expected_balance?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          payment_breakdown?: Json | null
+          payments_count?: number | null
+          status?: string
+          total_receivables?: number | null
+          total_received?: number | null
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          difference?: number | null
+          expected_balance?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          payment_breakdown?: Json | null
+          payments_count?: number | null
+          status?: string
+          total_receivables?: number | null
+          total_received?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_documents: {
         Row: {
           client_id: string

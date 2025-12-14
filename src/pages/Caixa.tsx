@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -31,8 +32,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ShoppingCart, 
@@ -45,23 +44,27 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
-  CalendarIcon,
-  Filter,
   Download,
   AlertTriangle,
   Phone,
   Gift,
   Plus,
   Trash2,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+import { CashRegisterFilters } from '@/components/caixa/CashRegisterFilters';
+import { CashRegisterStatus } from '@/components/caixa/CashRegisterStatus';
+import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -81,20 +84,18 @@ const PAYMENT_METHODS = [
   { value: 'installments', label: 'Parcelado' },
 ];
 
-const DATE_RANGES = [
-  { value: 'today', label: 'Hoje' },
-  { value: 'yesterday', label: 'Ontem' },
-  { value: 'last7days', label: 'Últimos 7 dias' },
-  { value: 'last30days', label: 'Últimos 30 dias' },
-  { value: 'thisMonth', label: 'Este mês' },
-  { value: 'custom', label: 'Personalizado' },
-];
-
 export default function Caixa() {
   const { packages, refetch: refetchPackages } = useServicePackages();
   const { clients } = useClients();
   const { appointments, isLoading: isLoadingAppointments, updatePayment } = useAppointments();
   const { professionals } = useProfessionals();
+  const { 
+    currentOpenRegister, 
+    closedRegisters, 
+    isLoading: isLoadingCashRegisters,
+    openCashRegister,
+    closeCashRegister,
+  } = useCashRegisters();
   const { hasRole } = useAuth();
   const canAddClientCredit = hasRole('admin');
   
@@ -105,11 +106,12 @@ export default function Caixa() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   
   // Report filters
-  const [dateRange, setDateRange] = useState('thisMonth');
+  const [dateRange, setDateRange] = useState('today');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
+  const [clientFilter, setClientFilter] = useState<string>('all');
 
   // Payment dialog state for receivables
   const [paymentAppointment, setPaymentAppointment] = useState<typeof receivables[0] | null>(null);
@@ -148,7 +150,7 @@ export default function Caixa() {
           end: customEndDate ? endOfDay(customEndDate) : endOfDay(today),
         };
       default:
-        return { start: startOfMonth(today), end: endOfMonth(today) };
+        return { start: startOfDay(today), end: endOfDay(today) };
     }
   };
 
@@ -183,10 +185,17 @@ export default function Caixa() {
           return false;
         }
       }
+
+      // Client filter
+      if (clientFilter !== 'all') {
+        if (apt.client_id !== clientFilter) {
+          return false;
+        }
+      }
       
       return true;
     });
-  }, [appointments, dateRange, customStartDate, customEndDate, paymentMethodFilter, professionalFilter]);
+  }, [appointments, dateRange, customStartDate, customEndDate, paymentMethodFilter, professionalFilter, clientFilter]);
 
   // Filter appointments with pending amounts (receivables)
   const receivables = useMemo(() => {
@@ -208,13 +217,20 @@ export default function Caixa() {
       if (!isWithinInterval(aptDate, { start, end })) {
         return false;
       }
+
+      // Client filter
+      if (clientFilter !== 'all') {
+        if (apt.client_id !== clientFilter) {
+          return false;
+        }
+      }
       
       return true;
     }).map(apt => ({
       ...apt,
       remainingAmount: (apt.service?.price || 0) - (apt.amount_paid || 0),
     }));
-  }, [appointments, dateRange, customStartDate, customEndDate]);
+  }, [appointments, dateRange, customStartDate, customEndDate, clientFilter]);
 
   // Group receivables by client
   const receivablesByClient = useMemo(() => {
@@ -406,174 +422,460 @@ export default function Caixa() {
 
   return (
     <AppLayout title="Caixa" subtitle="Vendas e relatório financeiro">
-      <Tabs defaultValue="sales" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="sales" className="gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Vendas
-          </TabsTrigger>
-          <TabsTrigger value="report" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Relatório de Caixa
-          </TabsTrigger>
-          <TabsTrigger value="receivables" className="gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            A Receber
-            {totalReceivables > 0 && (
-              <Badge variant="destructive" className="ml-1 text-xs">
-                R$ {totalReceivables.toFixed(0)}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <div className="space-y-6">
+        {/* Cash Register Status */}
+        <CashRegisterStatus
+          currentRegister={currentOpenRegister}
+          totals={totals}
+          totalReceivables={totalReceivables}
+          onOpenCashRegister={(balance) => openCashRegister.mutate(balance)}
+          onCloseCashRegister={(params) => closeCashRegister.mutate(params)}
+          isLoading={isLoadingCashRegisters || openCashRegister.isPending || closeCashRegister.isPending}
+        />
 
-        {/* Sales Tab */}
-        <TabsContent value="sales" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Available Packages */}
-            <div className="lg:col-span-2 space-y-4">
+        <Tabs defaultValue="report" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="report" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Relatório
+            </TabsTrigger>
+            <TabsTrigger value="receivables" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              A Receber
+              {totalReceivables > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  R$ {totalReceivables.toFixed(0)}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Vendas
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <History className="h-4 w-4" />
+              Histórico
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Report Tab */}
+          <TabsContent value="report" className="space-y-4">
+            {/* Compact Filters */}
+            <CashRegisterFilters
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              customStartDate={customStartDate}
+              setCustomStartDate={setCustomStartDate}
+              customEndDate={customEndDate}
+              setCustomEndDate={setCustomEndDate}
+              paymentMethodFilter={paymentMethodFilter}
+              setPaymentMethodFilter={setPaymentMethodFilter}
+              professionalFilter={professionalFilter}
+              setProfessionalFilter={setProfessionalFilter}
+              clientFilter={clientFilter}
+              setClientFilter={setClientFilter}
+              professionals={professionals}
+              clients={clients}
+            />
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Pacotes Disponíveis
-                  </CardTitle>
-                  <CardDescription>
-                    Selecione um pacote para vender
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {availablePackages.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhum pacote disponível para venda</p>
-                      <p className="text-sm">Crie pacotes na aba Serviços</p>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Recebido</p>
+                      <p className="text-xl font-bold text-primary">
+                        R$ {totals.total.toFixed(2)}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {availablePackages.map(pkg => (
-                        <Card
-                          key={pkg.id}
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedPackage === pkg.id
-                              ? 'ring-2 ring-primary bg-primary/5'
-                              : 'hover:bg-muted/50'
-                          }`}
-                          onClick={() => setSelectedPackage(pkg.id)}
-                        >
+                    <DollarSign className="h-8 w-8 text-primary/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pagamentos</p>
+                      <p className="text-xl font-bold">{totals.count}</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-success/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                      <p className="text-xl font-bold">
+                        R$ {totals.count > 0 ? (totals.total / totals.count).toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-blue-500/20" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">A Receber</p>
+                      <p className="text-xl font-bold text-warning">
+                        R$ {totalReceivables.toFixed(2)}
+                      </p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-warning/20" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payments by Method */}
+            {Object.keys(totals.byMethod).length > 0 && (
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
+                <span className="text-sm text-muted-foreground">Por forma:</span>
+                {Object.entries(totals.byMethod).map(([method, amount]) => (
+                  <Badge key={method} variant="secondary">
+                    {PAYMENT_LABELS[method] || method}: R$ {Number(amount).toFixed(2)}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Transactions Table */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Transações
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={exportReport} disabled={paidAppointments.length === 0}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Exportar
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoadingAppointments ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <Skeleton key={i} className="h-12 rounded-lg" />
+                    ))}
+                  </div>
+                ) : paidAppointments.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>Nenhum pagamento no período</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[300px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Serviço</TableHead>
+                          <TableHead>Profissional</TableHead>
+                          <TableHead>Pagamento</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paidAppointments.map(apt => (
+                          <TableRow key={apt.id}>
+                            <TableCell className="text-sm">
+                              {format(parseISO(apt.updated_at), 'dd/MM HH:mm', { locale: ptBR })}
+                            </TableCell>
+                            <TableCell className="font-medium text-sm">
+                              {apt.client?.name || '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {apt.service?.name || '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {apt.service?.professional?.name || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {(apt.payment_methods || []).map(method => (
+                                  <Badge key={method} variant="secondary" className="text-xs">
+                                    {PAYMENT_LABELS[method] || method}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-primary">
+                              R$ {Number(apt.amount_paid).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell colSpan={5} className="text-right">TOTAL:</TableCell>
+                          <TableCell className="text-right text-primary">
+                            R$ {totals.total.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Receivables Tab */}
+          <TabsContent value="receivables" className="space-y-4">
+            {/* Compact Filters */}
+            <CashRegisterFilters
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              customStartDate={customStartDate}
+              setCustomStartDate={setCustomStartDate}
+              customEndDate={customEndDate}
+              setCustomEndDate={setCustomEndDate}
+              paymentMethodFilter={paymentMethodFilter}
+              setPaymentMethodFilter={setPaymentMethodFilter}
+              professionalFilter={professionalFilter}
+              setProfessionalFilter={setProfessionalFilter}
+              clientFilter={clientFilter}
+              setClientFilter={setClientFilter}
+              professionals={professionals}
+              clients={clients}
+            />
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total a Receber</p>
+                      <p className="text-xl font-bold text-warning">
+                        R$ {totalReceivables.toFixed(2)}
+                      </p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-warning/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Clientes Pendentes</p>
+                      <p className="text-xl font-bold">{receivablesByClient.length}</p>
+                    </div>
+                    <User className="h-8 w-8 text-blue-500/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Agendamentos</p>
+                      <p className="text-xl font-bold">{receivables.length}</p>
+                    </div>
+                    <CalendarDays className="h-8 w-8 text-orange-500/20" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Receivables by Client */}
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Valores a Receber por Cliente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoadingAppointments ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <Skeleton key={i} className="h-20 rounded-lg" />
+                    ))}
+                  </div>
+                ) : receivablesByClient.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-10 w-10 mx-auto mb-3 text-success opacity-50" />
+                    <p>Nenhum valor pendente</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[400px]">
+                    <div className="p-4 space-y-3">
+                      {receivablesByClient.map(({ client, appointments: clientAppointments, totalRemaining }) => (
+                        <Card key={client?.id} className="border-warning/30 bg-warning/5">
                           <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-semibold">{pkg.name}</h3>
-                              {selectedPackage === pkg.id && (
-                                <CheckCircle className="h-5 w-5 text-primary" />
-                              )}
-                            </div>
-                            {pkg.description && (
-                              <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
-                            )}
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <CalendarDays className="h-4 w-4" />
-                                <span>{pkg.total_sessions} sessões</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Clock className="h-4 w-4" />
-                                <span>{pkg.duration || 60} min cada</span>
-                              </div>
-                              {pkg.professional && (
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <User className="h-4 w-4" />
-                                  <span>{pkg.professional.name}</span>
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
+                                  <User className="h-5 w-5 text-warning" />
                                 </div>
-                              )}
+                                <div>
+                                  <h4 className="font-semibold">{client?.name || 'Cliente não identificado'}</h4>
+                                  {client?.phone && (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <Phone className="h-3 w-3" />
+                                      {client.phone}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Total em aberto</p>
+                                <p className="text-lg font-bold text-warning">R$ {totalRemaining.toFixed(2)}</p>
+                              </div>
                             </div>
-                            <div className="mt-3 pt-3 border-t">
-                              <span className="text-lg font-bold text-primary">
-                                R$ {Number(pkg.total_price).toFixed(2)}
-                              </span>
+
+                            <Separator className="my-3" />
+
+                            <div className="space-y-2">
+                              {clientAppointments.map(apt => (
+                                <div
+                                  key={apt.id}
+                                  className="flex items-center justify-between p-2 rounded bg-background/50"
+                                >
+                                  <div>
+                                    <p className="text-sm font-medium">{apt.service?.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                      <p className="text-xs">
+                                        <span className="text-muted-foreground">Pago: </span>
+                                        <span className="text-success">R$ {(apt.amount_paid || 0).toFixed(2)}</span>
+                                      </p>
+                                      <p className="text-sm font-semibold text-warning">
+                                        Pendente: R$ {apt.remainingAmount.toFixed(2)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => openPaymentDialog(apt)}
+                                      className="gap-1"
+                                    >
+                                      <CreditCard className="h-3 w-3" />
+                                      Pagar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              {/* Recent Sales */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Vendas Recentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {soldPackages.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">Nenhuma venda realizada ainda</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {soldPackages.slice(0, 5).map(pkg => (
-                        <div
-                          key={pkg.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                        >
-                          <div>
-                            <p className="font-medium">{pkg.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {pkg.client?.name} • {pkg.total_sessions} sessões
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">R$ {Number(pkg.total_price).toFixed(2)}</p>
-                            <div className="flex gap-1 mt-1">
-                              {(pkg.payment_methods || [pkg.payment_method]).filter(Boolean).map((method: string) => (
-                                <Badge key={method} variant="secondary" className="text-xs">
-                                  {PAYMENT_LABELS[method] || method}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
+          {/* Sales Tab */}
+          <TabsContent value="sales" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Available Packages */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Pacotes Disponíveis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {availablePackages.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Package className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p>Nenhum pacote disponível</p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[300px]">
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {availablePackages.map(pkg => (
+                            <Card
+                              key={pkg.id}
+                              className={cn(
+                                'cursor-pointer transition-all hover:shadow-md',
+                                selectedPackage === pkg.id
+                                  ? 'ring-2 ring-primary bg-primary/5'
+                                  : 'hover:bg-muted/50'
+                              )}
+                              onClick={() => setSelectedPackage(pkg.id)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex justify-between items-start mb-2">
+                                  <h3 className="font-semibold text-sm">{pkg.name}</h3>
+                                  {selectedPackage === pkg.id && (
+                                    <CheckCircle className="h-4 w-4 text-primary" />
+                                  )}
+                                </div>
+                                <div className="space-y-1 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <CalendarDays className="h-3 w-3" />
+                                    <span>{pkg.total_sessions} sessões</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{pkg.duration || 60} min</span>
+                                  </div>
+                                </div>
+                                <div className="mt-2 pt-2 border-t">
+                                  <span className="text-base font-bold text-primary">
+                                    R$ {Number(pkg.total_price).toFixed(2)}
+                                  </span>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-            {/* Sale Panel */}
-            <div className="space-y-4">
+              {/* Sale Panel */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
+                <CardHeader className="py-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
                     Finalizar Venda
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {currentPackage ? (
                     <>
-                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                        <h3 className="font-semibold">{currentPackage.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <h3 className="font-semibold text-sm">{currentPackage.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">
                           {currentPackage.total_sessions} sessões • {currentPackage.duration || 60} min
                         </p>
-                        <p className="text-2xl font-bold text-primary mt-2">
+                        <p className="text-xl font-bold text-primary mt-2">
                           R$ {Number(currentPackage.total_price).toFixed(2)}
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Cliente *</Label>
+                        <Label className="text-sm">Cliente *</Label>
                         <Select value={selectedClient} onValueChange={setSelectedClient}>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-9">
                             <SelectValue placeholder="Selecione o cliente" />
                           </SelectTrigger>
                           <SelectContent>
                             {clients.map(client => (
                               <SelectItem key={client.id} value={client.id}>
-                                {client.name} - {client.phone}
+                                {client.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -581,13 +883,13 @@ export default function Caixa() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Forma de Pagamento *</Label>
-                        <div className="flex flex-wrap gap-2">
+                        <Label className="text-sm">Forma de Pagamento *</Label>
+                        <div className="flex flex-wrap gap-1">
                           {PAYMENT_METHODS.map(method => (
                             <Badge
                               key={method.value}
                               variant={selectedPaymentMethods.includes(method.value) ? 'default' : 'outline'}
-                              className="cursor-pointer"
+                              className="cursor-pointer text-xs"
                               onClick={() => togglePaymentMethod(method.value)}
                             >
                               {method.label}
@@ -598,7 +900,6 @@ export default function Caixa() {
 
                       <Button
                         className="w-full"
-                        size="lg"
                         onClick={handleSale}
                         disabled={isProcessing || !selectedClient || selectedPaymentMethods.length === 0}
                       >
@@ -606,531 +907,36 @@ export default function Caixa() {
                       </Button>
                     </>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Selecione um pacote para iniciar a venda</p>
+                    <div className="text-center py-6 text-muted-foreground">
+                      <ShoppingCart className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">Selecione um pacote</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Report Tab */}
-        <TabsContent value="report" className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Recebido</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {totals.total.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pagamentos</p>
-                    <p className="text-2xl font-bold">{totals.count}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ticket Médio</p>
-                    <p className="text-2xl font-bold">
-                      R$ {totals.count > 0 ? (totals.total / totals.count).toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-blue-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filtros
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Período</Label>
-                  <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DATE_RANGES.map(range => (
-                        <SelectItem key={range.value} value={range.value}>
-                          {range.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {dateRange === 'custom' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Data Inicial</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full justify-start text-left font-normal',
-                              !customStartDate && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customStartDate ? format(customStartDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={customStartDate}
-                            onSelect={setCustomStartDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Data Final</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full justify-start text-left font-normal',
-                              !customEndDate && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customEndDate ? format(customEndDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={customEndDate}
-                            onSelect={setCustomEndDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Forma de Pagamento</Label>
-                  <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
-                      {PAYMENT_METHODS.map(method => (
-                        <SelectItem key={method.value} value={method.value}>
-                          {method.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Profissional</Label>
-                  <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {professionals.filter(p => p.is_active).map(prof => (
-                        <SelectItem key={prof.id} value={prof.id}>
-                          {prof.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payments by Method */}
-          {Object.keys(totals.byMethod).length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Por Forma de Pagamento</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {Object.entries(totals.byMethod).map(([method, amount]) => (
-                    <div
-                      key={method}
-                      className="p-4 rounded-lg bg-muted/50 text-center"
-                    >
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {PAYMENT_LABELS[method] || method}
-                      </p>
-                      <p className="font-bold">R$ {Number(amount).toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Transactions Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Transações
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={exportReport} disabled={paidAppointments.length === 0}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {isLoadingAppointments ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <Skeleton key={i} className="h-12 rounded-lg" />
-                  ))}
-                </div>
-              ) : paidAppointments.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum pagamento encontrado no período selecionado</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Serviço</TableHead>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead>Pagamento</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paidAppointments.map(apt => (
-                        <TableRow key={apt.id}>
-                          <TableCell>
-                            {format(parseISO(apt.updated_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {apt.client?.name || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {apt.service?.name || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {apt.service?.professional?.name || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {(apt.payment_methods || []).map(method => (
-                                <Badge key={method} variant="secondary" className="text-xs">
-                                  {PAYMENT_LABELS[method] || method}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-primary">
-                            R$ {Number(apt.amount_paid).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="bg-muted/50 font-bold">
-                        <TableCell colSpan={5}>TOTAL</TableCell>
-                        <TableCell className="text-right text-primary">
-                          R$ {totals.total.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Receivables Tab */}
-        <TabsContent value="receivables" className="space-y-6">
-          {/* Summary Card */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total a Receber</p>
-                    <p className="text-2xl font-bold text-warning">
-                      R$ {totalReceivables.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6 text-warning" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Clientes com Pendência</p>
-                    <p className="text-2xl font-bold">{receivablesByClient.length}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <User className="h-6 w-6 text-blue-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Agendamentos Pendentes</p>
-                    <p className="text-2xl font-bold">{receivables.length}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                    <CalendarDays className="h-6 w-6 text-orange-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Date Filter for Receivables */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filtrar por Período
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Período</Label>
-                  <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DATE_RANGES.map(range => (
-                        <SelectItem key={range.value} value={range.value}>
-                          {range.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {dateRange === 'custom' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Data Inicial</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full justify-start text-left font-normal',
-                              !customStartDate && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customStartDate ? format(customStartDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={customStartDate}
-                            onSelect={setCustomStartDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Data Final</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full justify-start text-left font-normal',
-                              !customEndDate && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customEndDate ? format(customEndDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={customEndDate}
-                            onSelect={setCustomEndDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Receivables by Client */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Valores a Receber por Cliente
-              </CardTitle>
-              <CardDescription>
-                Clientes com valores pendentes de pagamento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingAppointments ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <Skeleton key={i} className="h-20 rounded-lg" />
-                  ))}
-                </div>
-              ) : receivablesByClient.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success opacity-50" />
-                  <p>Nenhum valor pendente no período selecionado</p>
-                  <p className="text-sm">Todos os pagamentos estão em dia!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {receivablesByClient.map(({ client, appointments: clientAppointments, totalRemaining }) => (
-                    <Card key={client?.id} className="border-warning/30 bg-warning/5">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
-                              <User className="h-5 w-5 text-warning" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold">{client?.name || 'Cliente não identificado'}</h4>
-                              {client?.phone && (
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                  <Phone className="h-3 w-3" />
-                                  {client.phone}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Total em aberto</p>
-                            <p className="text-xl font-bold text-warning">R$ {totalRemaining.toFixed(2)}</p>
-                          </div>
-                        </div>
-
-                        <Separator className="my-3" />
-
-                        <div className="space-y-2">
-                          {clientAppointments.map(apt => (
-                            <div
-                              key={apt.id}
-                              className="flex items-center justify-between p-2 rounded bg-background/50"
-                            >
-                              <div>
-                                <p className="text-sm font-medium">{apt.service?.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(parseISO(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                  <p className="text-sm">
-                                    <span className="text-muted-foreground">Pago: </span>
-                                    <span className="text-success">R$ {(apt.amount_paid || 0).toFixed(2)}</span>
-                                  </p>
-                                  <p className="text-sm font-semibold text-warning">
-                                    Pendente: R$ {apt.remainingAmount.toFixed(2)}
-                                  </p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => openPaymentDialog(apt)}
-                                  className="gap-1"
-                                >
-                                  <CreditCard className="h-3 w-3" />
-                                  Pagar
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {/* History Tab */}
+          <TabsContent value="history">
+            <CashRegisterHistory
+              closedRegisters={closedRegisters}
+              isLoading={isLoadingCashRegisters}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-6 w-6 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-success" />
               Venda Realizada!
             </DialogTitle>
             <DialogDescription>
-              O pacote foi vendido com sucesso. O cliente agora pode agendar suas sessões.
+              O pacote foi vendido com sucesso.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 justify-end">
@@ -1146,7 +952,7 @@ export default function Caixa() {
 
       {/* Payment Dialog */}
       <Dialog open={!!paymentAppointment} onOpenChange={(open) => !open && setPaymentAppointment(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
@@ -1180,7 +986,7 @@ export default function Caixa() {
                 {paymentEntries.map((entry, index) => (
                   <div key={index} className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <Label className="text-xs">Forma de Pagamento</Label>
+                      <Label className="text-xs">Forma</Label>
                       <select
                         className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                         value={entry.method}
@@ -1199,6 +1005,7 @@ export default function Caixa() {
                         placeholder="0,00"
                         value={entry.amount}
                         onChange={(e) => updatePaymentEntry(index, 'amount', e.target.value)}
+                        className="h-9"
                       />
                     </div>
                     {paymentEntries.length > 1 && (
@@ -1216,11 +1023,10 @@ export default function Caixa() {
 
                 <Button variant="outline" size="sm" onClick={addPaymentEntry} className="w-full">
                   <Plus className="h-4 w-4 mr-1" />
-                  Adicionar forma de pagamento
+                  Adicionar forma
                 </Button>
               </div>
 
-              {/* Client Credit Section - Admin Only */}
               {canAddClientCredit && (
                 <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
                   <div className="flex items-center gap-2 mb-2">
@@ -1229,20 +1035,17 @@ export default function Caixa() {
                       Crédito ao Cliente
                     </Label>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    O valor não será contabilizado como recebimento, ficará como crédito do cliente.
-                  </p>
                   <Input
                     type="number"
                     step="0.01"
                     placeholder="0,00"
                     value={clientCreditAmount}
                     onChange={(e) => setClientCreditAmount(e.target.value)}
+                    className="h-9"
                   />
                 </div>
               )}
 
-              {/* Payment summary */}
               {(totalPaymentValue > 0 || clientCredit > 0) && (
                 <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                   {totalPaymentValue > 0 && (
@@ -1253,19 +1056,19 @@ export default function Caixa() {
                   )}
                   {clientCredit > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span>Crédito ao cliente:</span>
+                      <span>Crédito:</span>
                       <span className="font-semibold text-amber-500">R$ {clientCredit.toFixed(2)}</span>
                     </div>
                   )}
                   <Separator className="my-1" />
                   <div className="flex justify-between text-sm font-medium">
-                    <span>Total a quitar:</span>
+                    <span>Total:</span>
                     <span>R$ {totalWithCredit.toFixed(2)}</span>
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-2 justify-end pt-4">
+              <div className="flex gap-2 justify-end pt-2">
                 <Button variant="outline" onClick={() => setPaymentAppointment(null)}>
                   Cancelar
                 </Button>
@@ -1273,7 +1076,7 @@ export default function Caixa() {
                   onClick={handleRegisterPayment}
                   disabled={isProcessingPayment || totalWithCredit <= 0}
                 >
-                  {isProcessingPayment ? 'Processando...' : 'Confirmar Pagamento'}
+                  {isProcessingPayment ? 'Processando...' : 'Confirmar'}
                 </Button>
               </div>
             </div>

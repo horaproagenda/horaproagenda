@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -91,8 +92,9 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
-  const { updateAppointment } = useAppointments();
+  const { updateAppointment, deleteAppointment } = useAppointments();
   const canAddClientCredit = hasRole('admin');
+  const canDelete = hasRole('admin');
   
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [payments, setPayments] = useState<{ method: string; amount: string }[]>([
@@ -100,9 +102,19 @@ export function AppointmentDetailDialog({
   ]);
   const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
 
   if (!appointment) return null;
+  
+  const handleDelete = () => {
+    deleteAppointment.mutate(appointment.id, {
+      onSuccess: () => {
+        setShowDeleteDialog(false);
+        onOpenChange(false);
+      },
+    });
+  };
 
   const handleStatusChange = (newStatus: AppointmentStatus) => {
     setSelectedStatus(newStatus);
@@ -462,9 +474,49 @@ export function AppointmentDetailDialog({
                 </div>
               )}
             </div>
+
+            {/* Delete Button */}
+            {canDelete && (
+              <>
+                <Separator />
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Agendamento
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Excluir Agendamento
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong> para <strong>{appointment.service?.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Partial Payment Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

@@ -95,6 +95,7 @@ const Agenda = () => {
     newEndTime: Date;
   } | null>(null);
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
+  const [editingAbsence, setEditingAbsence] = useState<typeof absences[0] | null>(null);
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
@@ -264,7 +265,15 @@ const Agenda = () => {
     setDetailDialogOpen(true);
   };
 
-  const handleSlotClick = (day: Date, time: string) => {
+  const handleSlotClick = (day: Date, time: string, professionalId?: string) => {
+    // Check for absence first
+    const absence = getAbsenceAtSlot(day, time, professionalId);
+    if (absence) {
+      setEditingAbsence(absence);
+      setAbsenceDialogOpen(true);
+      return;
+    }
+    
     const apt = getAppointmentAtSlot(day, time);
     if (apt) {
       handleAppointmentClick(apt);
@@ -273,6 +282,16 @@ const Agenda = () => {
       setPrefilledTime(time);
       setNewAppointmentDialogOpen(true);
     }
+  };
+
+  const handleAbsenceClick = (absence: typeof absences[0]) => {
+    setEditingAbsence(absence);
+    setAbsenceDialogOpen(true);
+  };
+
+  const handleOpenNewAbsence = () => {
+    setEditingAbsence(null);
+    setAbsenceDialogOpen(true);
   };
 
   const handleNewAppointment = () => {
@@ -522,8 +541,12 @@ const Agenda = () => {
                   )}
                   {isAbsenceStart && absence && !apt && (
                     <div 
-                      className="h-full rounded-lg p-3 bg-destructive/20 border-2 border-destructive/40 text-destructive-foreground"
+                      className="h-full rounded-lg p-3 bg-destructive/20 border-2 border-destructive/40 text-destructive-foreground cursor-pointer hover:bg-destructive/30 transition-colors"
                       style={{ minHeight: `${absenceSlotsSpan * 50 - 8}px` }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAbsenceClick(absence);
+                      }}
                     >
                       <div className="flex items-center gap-2">
                         <UserX className="h-4 w-4 text-destructive" />
@@ -647,7 +670,13 @@ const Agenda = () => {
                       </div>
                     )}
                     {isAbsenceStart && absence && !apt && (
-                      <div className="h-full rounded p-1 bg-destructive/20 border border-destructive/30 text-xs">
+                      <div 
+                        className="h-full rounded p-1 bg-destructive/20 border border-destructive/30 text-xs cursor-pointer hover:bg-destructive/30"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAbsenceClick(absence);
+                        }}
+                      >
                         <div className="flex items-center gap-1">
                           <UserX className="h-3 w-3 text-destructive" />
                           <span className="text-destructive font-medium truncate">Ausência</span>
@@ -985,7 +1014,7 @@ const Agenda = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setAbsenceDialogOpen(true)}
+          onClick={handleOpenNewAbsence}
           className="h-9 gap-1"
         >
           <UserX className="h-3.5 w-3.5" />
@@ -1094,8 +1123,12 @@ const Agenda = () => {
       <ProfessionalAbsenceDialog
         professionals={professionals}
         open={absenceDialogOpen}
-        onOpenChange={setAbsenceDialogOpen}
+        onOpenChange={(open) => {
+          setAbsenceDialogOpen(open);
+          if (!open) setEditingAbsence(null);
+        }}
         prefilledDate={selectedDate}
+        editingAbsence={editingAbsence}
       />
     </AppLayout>
   );

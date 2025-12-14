@@ -36,6 +36,8 @@ import { useClients } from '@/hooks/useClients';
 import { DuplicateClientAlert } from './DuplicateClientAlert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 
 const REFERRAL_SOURCES = [
   'Instagram',
@@ -61,6 +63,7 @@ const clientSchema = z.object({
   notes: z.string().trim().max(500, 'Observações muito longas').optional(),
   is_active: z.boolean().default(true),
   referral_source: z.string().optional(),
+  assigned_professional_id: z.string().optional(),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -75,6 +78,11 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
   const [isLoading, setIsLoading] = useState(false);
   const { clients } = useClients();
   const { professionalId, isProfessional } = useCurrentProfessional();
+  const { professionals } = useProfessionals();
+  const { hasRole } = useAuth();
+  
+  const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
+  const activeProfessionals = professionals.filter(p => p.is_active);
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -87,6 +95,7 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
       notes: '',
       is_active: true,
       referral_source: '',
+      assigned_professional_id: '',
     },
   });
 
@@ -142,6 +151,14 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
 
     setIsLoading(true);
     try {
+      // Determine which professional to assign
+      let assignedProfessionalId: string | null = null;
+      if (isProfessional) {
+        assignedProfessionalId = professionalId;
+      } else if (isAdminOrReceptionist && data.assigned_professional_id) {
+        assignedProfessionalId = data.assigned_professional_id;
+      }
+
       const { error } = await supabase.from('clients').insert({
         name: data.name,
         email: data.email || null,
@@ -151,8 +168,7 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
         notes: data.notes || null,
         is_active: data.is_active,
         referral_source: data.referral_source || null,
-        // Auto-assign professional if user is a professional
-        assigned_professional_id: isProfessional ? professionalId : null,
+        assigned_professional_id: assignedProfessionalId,
       });
 
       if (error) throw error;
@@ -293,6 +309,33 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                 </FormItem>
               )}
             />
+
+            {isAdminOrReceptionist && (
+              <FormField
+                control={form.control}
+                name="assigned_professional_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profissional Responsável</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um profissional (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {activeProfessionals.map((professional) => (
+                          <SelectItem key={professional.id} value={professional.id}>
+                            {professional.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

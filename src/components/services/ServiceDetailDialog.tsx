@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DurationSelect } from '@/components/ui/duration-select';
 import { Service } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryColor } from '@/lib/categoryColors';
@@ -397,9 +398,14 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Duração (min) *</FormLabel>
+                        <FormLabel>Duração *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={5} max={480} {...field} />
+                          <DurationSelect
+                            value={field.value}
+                            onChange={field.onChange}
+                            minDuration={5}
+                            maxDuration={480}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

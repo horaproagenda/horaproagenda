@@ -84,110 +84,89 @@ export function ServiceFilters({
   );
 
   return (
-    <div className="space-y-4">
-      {/* Search and Sort */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+    <div className="space-y-3">
+      {/* Search, Sort and Filters - Compact Layout */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-[180px] max-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome..."
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9"
           />
         </div>
 
-        <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[180px]">
-            <ArrowUpDown className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Ordenar por" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">Nome A-Z</SelectItem>
-            <SelectItem value="name-desc">Nome Z-A</SelectItem>
-            <SelectItem value="price-asc">Preço ↑</SelectItem>
-            <SelectItem value="price-desc">Preço ↓</SelectItem>
-            <SelectItem value="date-asc">Mais antigo</SelectItem>
-            <SelectItem value="date-desc">Mais recente</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" size="sm" onClick={onExport}>
-          <Download className="h-4 w-4 mr-2" />
-          Exportar
-        </Button>
-      </div>
-
-      {/* Category and Status filters as badges */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        
-        {/* Status badges */}
-        <Badge
-          variant="outline"
-          className={cn(
-            'cursor-pointer transition-colors',
-            !selectedStatus && 'bg-primary text-primary-foreground border-primary'
-          )}
-          onClick={() => onStatusChange(null)}
-        >
-          Todos
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            'cursor-pointer transition-colors',
-            selectedStatus === 'active' && 'bg-green-500 text-white border-green-500'
-          )}
-          onClick={() => onStatusChange('active')}
-        >
-          Ativos
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            'cursor-pointer transition-colors',
-            selectedStatus === 'inactive' && 'bg-muted-foreground text-white border-muted-foreground'
-          )}
-          onClick={() => onStatusChange('inactive')}
-        >
-          Inativos
-        </Badge>
-
-        <div className="h-4 w-px bg-border mx-2" />
-
-        {/* Category badges */}
-        <Badge
-          variant="outline"
-          className={cn(
-            'cursor-pointer transition-colors',
-            !selectedCategory && !selectedStatus && 'bg-secondary'
-          )}
-          onClick={() => onCategoryChange(null)}
-        >
-          Categorias
-        </Badge>
-        {categories.map(category => (
+        {/* Status filter badges */}
+        <div className="flex items-center gap-1 border rounded-md px-2 py-1 bg-background">
           <Badge
-            key={category}
             variant="outline"
             className={cn(
-              'cursor-pointer transition-colors',
-              selectedCategory === category && 'bg-primary text-primary-foreground border-primary'
+              'cursor-pointer transition-colors text-xs px-2 py-0.5',
+              !selectedStatus && 'bg-primary text-primary-foreground border-primary'
             )}
-            onClick={() => onCategoryChange(category)}
+            onClick={() => onStatusChange(null)}
           >
-            {category}
+            Todos
           </Badge>
-        ))}
-      </div>
+          <Badge
+            variant="outline"
+            className={cn(
+              'cursor-pointer transition-colors text-xs px-2 py-0.5',
+              selectedStatus === 'active' && 'bg-green-500 text-white border-green-500'
+            )}
+            onClick={() => onStatusChange('active')}
+          >
+            Ativos
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              'cursor-pointer transition-colors text-xs px-2 py-0.5',
+              selectedStatus === 'inactive' && 'bg-muted-foreground text-white border-muted-foreground'
+            )}
+            onClick={() => onStatusChange('inactive')}
+          >
+            Inativos
+          </Badge>
+        </div>
 
-      {/* Additional filters with search */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Professional filter with search */}
+        {/* Category dropdown */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[180px] justify-start">
+            <Button variant="outline" size="sm" className="h-9 gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              {selectedCategory || 'Categoria'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-2">
+            <div className="space-y-1 max-h-[250px] overflow-y-auto">
+              <Button
+                variant={!selectedCategory ? "secondary" : "ghost"}
+                className="w-full justify-start text-sm h-8"
+                onClick={() => onCategoryChange(null)}
+              >
+                Todas categorias
+              </Button>
+              {categories.map(category => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "secondary" : "ghost"}
+                  className="w-full justify-start text-sm h-8"
+                  onClick={() => onCategoryChange(category)}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Professional filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 max-w-[150px] truncate">
               {selectedProfessional 
                 ? professionals.find(p => p.id === selectedProfessional)?.name 
                 : 'Profissional'}
@@ -195,27 +174,27 @@ export function ServiceFilters({
           </PopoverTrigger>
           <PopoverContent className="w-[220px] p-2">
             <Input
-              placeholder="Buscar profissional..."
+              placeholder="Buscar..."
               value={professionalSearch}
               onChange={(e) => setProfessionalSearch(e.target.value)}
-              className="mb-2"
+              className="mb-2 h-8"
             />
             <div className="max-h-[200px] overflow-y-auto space-y-1">
               <Button
                 variant={!selectedProfessional ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm"
+                className="w-full justify-start text-sm h-8"
                 onClick={() => {
                   onProfessionalChange(null);
                   setProfessionalSearch('');
                 }}
               >
-                Todos profissionais
+                Todos
               </Button>
               {filteredProfessionals.map(prof => (
                 <Button
                   key={prof.id}
                   variant={selectedProfessional === prof.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm"
+                  className="w-full justify-start text-sm h-8"
                   onClick={() => {
                     onProfessionalChange(prof.id);
                     setProfessionalSearch('');
@@ -228,38 +207,38 @@ export function ServiceFilters({
           </PopoverContent>
         </Popover>
 
-        {/* Room filter with search */}
+        {/* Room filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[180px] justify-start">
+            <Button variant="outline" size="sm" className="h-9 max-w-[130px] truncate">
               {selectedRoom 
                 ? rooms.find(r => r.id === selectedRoom)?.name 
                 : 'Sala'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-2">
+          <PopoverContent className="w-[200px] p-2">
             <Input
-              placeholder="Buscar sala..."
+              placeholder="Buscar..."
               value={roomSearch}
               onChange={(e) => setRoomSearch(e.target.value)}
-              className="mb-2"
+              className="mb-2 h-8"
             />
             <div className="max-h-[200px] overflow-y-auto space-y-1">
               <Button
                 variant={!selectedRoom ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm"
+                className="w-full justify-start text-sm h-8"
                 onClick={() => {
                   onRoomChange(null);
                   setRoomSearch('');
                 }}
               >
-                Todas salas
+                Todas
               </Button>
               {filteredRooms.map(room => (
                 <Button
                   key={room.id}
                   variant={selectedRoom === room.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm"
+                  className="w-full justify-start text-sm h-8"
                   onClick={() => {
                     onRoomChange(room.id);
                     setRoomSearch('');
@@ -272,10 +251,10 @@ export function ServiceFilters({
           </PopoverContent>
         </Popover>
 
-        {/* Client filter with search */}
+        {/* Client filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[180px] justify-start">
+            <Button variant="outline" size="sm" className="h-9 max-w-[130px] truncate">
               {selectedClient 
                 ? clients.find(c => c.id === selectedClient)?.name 
                 : 'Cliente'}
@@ -283,27 +262,27 @@ export function ServiceFilters({
           </PopoverTrigger>
           <PopoverContent className="w-[220px] p-2">
             <Input
-              placeholder="Buscar cliente..."
+              placeholder="Buscar..."
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
-              className="mb-2"
+              className="mb-2 h-8"
             />
             <div className="max-h-[200px] overflow-y-auto space-y-1">
               <Button
                 variant={!selectedClient ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm"
+                className="w-full justify-start text-sm h-8"
                 onClick={() => {
                   onClientChange(null);
                   setClientSearch('');
                 }}
               >
-                Todos clientes
+                Todos
               </Button>
               {filteredClients.map(client => (
                 <Button
                   key={client.id}
                   variant={selectedClient === client.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm"
+                  className="w-full justify-start text-sm h-8"
                   onClick={() => {
                     onClientChange(client.id);
                     setClientSearch('');
@@ -316,10 +295,33 @@ export function ServiceFilters({
           </PopoverContent>
         </Popover>
 
+        {/* Sort */}
+        <Select value={sortBy} onValueChange={onSortChange}>
+          <SelectTrigger className="w-[140px] h-9">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
+            <SelectValue placeholder="Ordenar" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name-asc">Nome A-Z</SelectItem>
+            <SelectItem value="name-desc">Nome Z-A</SelectItem>
+            <SelectItem value="price-asc">Preço ↑</SelectItem>
+            <SelectItem value="price-desc">Preço ↓</SelectItem>
+            <SelectItem value="date-asc">Mais antigo</SelectItem>
+            <SelectItem value="date-desc">Mais recente</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Export */}
+        <Button variant="outline" size="sm" className="h-9" onClick={onExport}>
+          <Download className="h-3.5 w-3.5 mr-1" />
+          Exportar
+        </Button>
+
+        {/* Clear filters */}
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={onClearFilters}>
-            <X className="h-4 w-4 mr-1" />
-            Limpar filtros
+          <Button variant="ghost" size="sm" className="h-9" onClick={onClearFilters}>
+            <X className="h-3.5 w-3.5 mr-1" />
+            Limpar
           </Button>
         )}
       </div>

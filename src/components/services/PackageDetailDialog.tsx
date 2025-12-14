@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DurationSelect } from '@/components/ui/duration-select';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useRooms } from '@/hooks/useRooms';
@@ -517,9 +518,14 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Duração (min) *</FormLabel>
+                        <FormLabel>Duração *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={5} max={480} {...field} />
+                          <DurationSelect
+                            value={field.value}
+                            onChange={field.onChange}
+                            minDuration={15}
+                            maxDuration={480}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

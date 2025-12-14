@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { DurationSelect } from '@/components/ui/duration-select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useRooms } from '@/hooks/useRooms';
@@ -207,9 +208,14 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duração (min) *</FormLabel>
+                    <FormLabel>Duração *</FormLabel>
                     <FormControl>
-                      <Input type="number" min={5} max={480} {...field} />
+                      <DurationSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        minDuration={5}
+                        maxDuration={480}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

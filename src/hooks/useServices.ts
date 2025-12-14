@@ -19,9 +19,12 @@ export function useServices() {
     },
   });
 
+  const activeServices = services.filter(s => s.is_active);
+  const inactiveServices = services.filter(s => !s.is_active);
+
   const refetch = () => {
     queryClient.invalidateQueries({ queryKey: ['services'] });
   };
 
-  return { services, isLoading, error, refetch };
+  return { services, activeServices, inactiveServices, isLoading, error, refetch };
 }

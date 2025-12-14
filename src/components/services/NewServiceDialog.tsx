@@ -34,6 +34,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
+import { useAuth } from '@/contexts/AuthContext';
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -70,6 +72,10 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const [isLoading, setIsLoading] = useState(false);
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
+  const { professionalId } = useCurrentProfessional();
+  const { hasRole } = useAuth();
+  
+  const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -89,6 +95,14 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const onSubmit = async (data: ServiceFormData) => {
     setIsLoading(true);
     try {
+      // Determine professional_id based on role
+      let assignedProfessionalId: string | null = null;
+      if (isAdminOrReceptionist) {
+        assignedProfessionalId = data.professional_id || null;
+      } else {
+        assignedProfessionalId = professionalId;
+      }
+
       const { error } = await supabase.from('services').insert({
         name: data.name,
         description: data.description || null,
@@ -96,7 +110,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         price: data.price,
         category: data.category,
         room_id: data.room_id || null,
-        professional_id: data.professional_id || null,
+        professional_id: assignedProfessionalId,
         return_days: data.return_days || null,
         is_active: data.is_active,
       });

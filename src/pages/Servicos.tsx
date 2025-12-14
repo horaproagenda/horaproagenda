@@ -9,6 +9,7 @@ import { PackageDetailDialog } from '@/components/services/PackageDetailDialog';
 import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
 import { ServiceFilters } from '@/components/services/ServiceFilters';
 import { PackageFilters } from '@/components/services/PackageFilters';
+import { BulkImportDialog } from '@/components/services/BulkImportDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,6 +48,7 @@ const Servicos: React.FC = () => {
   const [serviceProfessional, setServiceProfessional] = useState<string | null>(null);
   const [serviceRoom, setServiceRoom] = useState<string | null>(null);
   const [serviceClient, setServiceClient] = useState<string | null>(null);
+  const [serviceStatus, setServiceStatus] = useState<string | null>(null);
   const [serviceSearch, setServiceSearch] = useState('');
   const [serviceSort, setServiceSort] = useState('name-asc');
 
@@ -108,6 +110,8 @@ const Servicos: React.FC = () => {
       if (serviceCategory && service.category !== serviceCategory) return false;
       if (serviceProfessional && service.professional_id !== serviceProfessional) return false;
       if (serviceRoom && service.room_id !== serviceRoom) return false;
+      if (serviceStatus === 'active' && !service.is_active) return false;
+      if (serviceStatus === 'inactive' && service.is_active) return false;
       if (serviceClient) {
         const serviceAppointments = appointments.filter(a => a.service_id === service.id);
         if (!serviceAppointments.some(a => a.client_id === serviceClient)) return false;
@@ -130,7 +134,7 @@ const Servicos: React.FC = () => {
     });
 
     return result;
-  }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceSearch, serviceSort, appointments]);
+  }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, serviceSearch, serviceSort, appointments]);
 
   // Filter and sort packages
   const filteredPackages = useMemo(() => {
@@ -182,6 +186,7 @@ const Servicos: React.FC = () => {
     setServiceProfessional(null);
     setServiceRoom(null);
     setServiceClient(null);
+    setServiceStatus(null);
     setServiceSearch('');
   };
 
@@ -251,7 +256,8 @@ const Servicos: React.FC = () => {
           </TabsList>
           
           {activeTab === 'services' ? (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <BulkImportDialog type="services" onImportComplete={refetch} />
               <NewCategoryDialog 
                 existingCategories={allCategories}
                 onCategoryCreated={handleCategoryCreated}
@@ -259,7 +265,10 @@ const Servicos: React.FC = () => {
               <NewServiceDialog onServiceCreated={refetch} />
             </div>
           ) : (
-            <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories} />
+            <div className="flex gap-2 flex-wrap">
+              <BulkImportDialog type="services" onImportComplete={refetchPackages} />
+              <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories} />
+            </div>
           )}
         </div>
 
@@ -273,12 +282,14 @@ const Servicos: React.FC = () => {
             selectedProfessional={serviceProfessional}
             selectedRoom={serviceRoom}
             selectedClient={serviceClient}
+            selectedStatus={serviceStatus}
             searchTerm={serviceSearch}
             sortBy={serviceSort}
             onCategoryChange={setServiceCategory}
             onProfessionalChange={setServiceProfessional}
             onRoomChange={setServiceRoom}
             onClientChange={setServiceClient}
+            onStatusChange={setServiceStatus}
             onSearchChange={setServiceSearch}
             onSortChange={setServiceSort}
             onClearFilters={clearServiceFilters}

@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DurationSelect } from '@/components/ui/duration-select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -257,9 +258,14 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duração (min) *</FormLabel>
+                    <FormLabel>Duração *</FormLabel>
                     <FormControl>
-                      <Input type="number" min={15} max={480} step={15} {...field} />
+                      <DurationSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        minDuration={15}
+                        maxDuration={480}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

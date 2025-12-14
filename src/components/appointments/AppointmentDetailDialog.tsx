@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -47,11 +48,14 @@ import {
   Gift,
   Edit,
   History,
+  Save,
+  X,
 } from 'lucide-react';
-import { Appointment, Professional, AppointmentStatus } from '@/types';
+import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useRooms } from '@/hooks/useRooms';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -93,8 +97,10 @@ export function AppointmentDetailDialog({
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment } = useAppointments();
+  const { rooms } = useRooms();
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
+  const canEdit = hasRole('admin') || hasRole('receptionist');
   
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [payments, setPayments] = useState<{ method: string; amount: string }[]>([
@@ -104,6 +110,36 @@ export function AppointmentDetailDialog({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
+  const [editRoomId, setEditRoomId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState('');
+
+  // Initialize edit form when appointment changes or edit mode is activated
+  useEffect(() => {
+    if (appointment && isEditing) {
+      const startDate = new Date(appointment.start_time);
+      const endDate = new Date(appointment.end_time);
+      setEditDate(format(startDate, 'yyyy-MM-dd'));
+      setEditStartTime(format(startDate, 'HH:mm'));
+      setEditEndTime(format(endDate, 'HH:mm'));
+      setEditProfessionalId(appointment.professional_id || null);
+      setEditRoomId(appointment.room_id || null);
+      setEditNotes(appointment.notes || '');
+    }
+  }, [appointment, isEditing]);
+
+  // Reset edit mode when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditing(false);
+    }
+  }, [open]);
 
   if (!appointment) return null;
   
@@ -122,6 +158,30 @@ export function AppointmentDetailDialog({
       id: appointment.id,
       updates: { status: newStatus },
     });
+  };
+
+  const handleSaveEdit = () => {
+    const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
+    const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
+    
+    updateAppointment.mutate({
+      id: appointment.id,
+      updates: {
+        start_time: newStartTime.toISOString(),
+        end_time: newEndTime.toISOString(),
+        professional_id: editProfessionalId,
+        room_id: editRoomId,
+        notes: editNotes || undefined,
+      },
+    }, {
+      onSuccess: () => {
+        setIsEditing(false);
+      },
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
   };
 
   const professionalId = appointment.professional_id || appointment.service?.professional_id;
@@ -197,66 +257,164 @@ export function AppointmentDetailDialog({
                   {appointment.client?.phone}
                 </div>
               </div>
-              <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}>
-                <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Agendado</SelectItem>
-                  <SelectItem value="confirmed">Confirmado</SelectItem>
-                  <SelectItem value="completed">Atendido</SelectItem>
-                  <SelectItem value="cancelled">Cancelado</SelectItem>
-                  <SelectItem value="missed">Faltou</SelectItem>
-                  <SelectItem value="rescheduled">Reagendado</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                {canEdit && !isEditing && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
+                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}>
+                  <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Agendado</SelectItem>
+                    <SelectItem value="confirmed">Confirmado</SelectItem>
+                    <SelectItem value="completed">Atendido</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                    <SelectItem value="missed">Faltou</SelectItem>
+                    <SelectItem value="rescheduled">Reagendado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Service Info */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Scissors className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{appointment.service?.name}</p>
-                  <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
+            {/* Edit Mode */}
+            {isEditing ? (
+              <div className="space-y-4 p-4 rounded-lg border border-primary/30 bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold flex items-center gap-2 text-primary">
+                    <Edit className="h-4 w-4" />
+                    Editar Agendamento
+                  </h4>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{format(new Date(appointment.start_time), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
-                  <span className="text-muted-foreground ml-1">({appointment.service?.duration} min)</span>
-                </span>
-              </div>
-
-              {professional && (
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex items-center gap-2">
-                    <span>{professional.name}</span>
-                    {professional.agenda_color && (
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: professional.agenda_color }}
-                      />
-                    )}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Data</Label>
+                    <Input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Início</Label>
+                    <Input
+                      type="time"
+                      value={editStartTime}
+                      onChange={(e) => setEditStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Fim</Label>
+                    <Input
+                      type="time"
+                      value={editEndTime}
+                      onChange={(e) => setEditEndTime(e.target.value)}
+                    />
                   </div>
                 </div>
-              )}
 
-              {(appointment.room || appointment.service?.room) && (
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{appointment.room?.name || appointment.service?.room?.name}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Profissional</Label>
+                    <Select value={editProfessionalId || 'none'} onValueChange={(v) => setEditProfessionalId(v === 'none' ? null : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {professionals.filter(p => p.is_active).map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Sala</Label>
+                    <Select value={editRoomId || 'none'} onValueChange={(v) => setEditRoomId(v === 'none' ? null : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {rooms.filter(r => r.is_active).map(r => (
+                          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div>
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    placeholder="Adicione observações..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
+                    <X className="h-4 w-4 mr-1" />
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveEdit} className="flex-1" disabled={updateAppointment.isPending}>
+                    <Save className="h-4 w-4 mr-1" />
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* Service Info - View Mode */
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Scissors className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{appointment.service?.name}</p>
+                    <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>{format(new Date(appointment.start_time), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
+                    <span className="text-muted-foreground ml-1">({appointment.service?.duration} min)</span>
+                  </span>
+                </div>
+
+                {professional && (
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <span>{professional.name}</span>
+                      {professional.agenda_color && (
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: professional.agenda_color }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(appointment.room || appointment.service?.room) && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{appointment.room?.name || appointment.service?.room?.name}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Separator />
 

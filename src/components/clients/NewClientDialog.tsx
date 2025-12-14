@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { DuplicateClientAlert } from './DuplicateClientAlert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 
 const REFERRAL_SOURCES = [
   'Instagram',
@@ -73,6 +74,7 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { clients } = useClients();
+  const { professionalId, isProfessional } = useCurrentProfessional();
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -149,6 +151,8 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
         notes: data.notes || null,
         is_active: data.is_active,
         referral_source: data.referral_source || null,
+        // Auto-assign professional if user is a professional
+        assigned_professional_id: isProfessional ? professionalId : null,
       });
 
       if (error) throw error;

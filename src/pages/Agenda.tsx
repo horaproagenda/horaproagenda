@@ -220,6 +220,7 @@ const Agenda = () => {
   const clearFilters = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');
+    setEquipmentFilter('all');
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -274,7 +275,8 @@ const Agenda = () => {
     });
   };
 
-  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all';
+  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all';
+  const activeEquipment = equipment.filter(e => e.is_active);
 
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
@@ -845,6 +847,33 @@ const Agenda = () => {
             </Select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+            <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Equipamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {activeEquipment.map((eq) => (
+                  <SelectItem key={eq.id} value={eq.id}>
+                    {eq.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setAbsenceDialogOpen(true)}
+            className="gap-1"
+          >
+            <UserX className="h-4 w-4" />
+            Ausência
+          </Button>
+
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Limpar filtros
@@ -949,6 +978,14 @@ const Agenda = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Professional Absence Dialog */}
+      <ProfessionalAbsenceDialog
+        professionals={professionals}
+        open={absenceDialogOpen}
+        onOpenChange={setAbsenceDialogOpen}
+        prefilledDate={selectedDate}
+      />
     </AppLayout>
   );
 };

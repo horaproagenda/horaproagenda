@@ -27,11 +27,15 @@ import {
   Clock,
   Plus,
   GripVertical,
+  Wrench, 
+  UserX,
+  ChevronDown,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
+import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -52,17 +56,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
-import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
-import { Wrench, UserX } from 'lucide-react';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -91,9 +100,10 @@ const Agenda = () => {
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
-  const { generateTimeSlots, settings, isLoading: isLoadingSettings } = useBusinessSettings();
+  const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
+  const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
 
-  const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment;
+  const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
   const timeSlots = generateTimeSlots();
@@ -180,6 +190,32 @@ const Agenda = () => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
       return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
+    });
+  };
+
+  // Check if a slot has a professional absence
+  const getAbsenceAtSlot = (day: Date, time: string, professionalId?: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    
+    return absences.find(absence => {
+      const absenceStart = new Date(absence.start_time);
+      const absenceEnd = new Date(absence.end_time);
+      const overlaps = slotStart >= absenceStart && slotStart < absenceEnd;
+      
+      if (professionalId) {
+        return overlaps && absence.professional_id === professionalId;
+      }
+      return overlaps;
+    });
+  };
+
+  // Get absences for a specific day
+  const getAbsencesForDay = (day: Date) => {
+    return absences.filter(absence => {
+      const absenceStart = new Date(absence.start_time);
+      return isSameDay(absenceStart, day);
     });
   };
 
@@ -320,6 +356,21 @@ const Agenda = () => {
 
     const newEndTime = new Date(newStartTime.getTime() + duration);
 
+    // Check for professional absence conflicts
+    const dragProfId = draggedAppointment.professional_id || draggedAppointment.service?.professional_id;
+    const hasAbsenceConflict = absences.some(absence => {
+      if (absence.professional_id !== dragProfId) return false;
+      const absenceStart = new Date(absence.start_time);
+      const absenceEnd = new Date(absence.end_time);
+      return newStartTime < absenceEnd && newEndTime > absenceStart;
+    });
+
+    if (hasAbsenceConflict) {
+      toast.error('Profissional está ausente neste horário!');
+      setDraggedAppointment(null);
+      return;
+    }
+
     // Check for conflicts at new time
     const hasConflict = appointments.some(apt => {
       if (apt.id === draggedAppointment.id) return false;
@@ -330,7 +381,6 @@ const Agenda = () => {
       if (!overlaps) return false;
 
       // Check if same professional or room
-      const dragProfId = draggedAppointment.professional_id || draggedAppointment.service?.professional_id;
       const aptProfId = apt.professional_id || apt.service?.professional_id;
       const dragRoomId = draggedAppointment.room_id || draggedAppointment.service?.room_id;
       const aptRoomId = apt.room_id || apt.service?.room_id;
@@ -351,7 +401,7 @@ const Agenda = () => {
       newEndTime,
     });
     setDraggedAppointment(null);
-  }, [dragAndDropEnabled, draggedAppointment, appointments]);
+  }, [dragAndDropEnabled, draggedAppointment, appointments, absences]);
 
   const confirmMove = useCallback(() => {
     if (!pendingMove) return;
@@ -392,9 +442,12 @@ const Agenda = () => {
         <div className="space-y-1">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
+            const absence = getAbsenceAtSlot(selectedDate, time);
             const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
+            const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
+            const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
             const color = prof?.agenda_color || '#3B82F6';
             
             // Calculate slot height based on duration
@@ -403,15 +456,20 @@ const Agenda = () => {
             const slotsSpan = Math.ceil(aptDuration / slotDuration);
             const isDragging = draggedAppointment?.id === apt?.id;
 
+            // Calculate absence span
+            const absenceDuration = absence ? 
+              (new Date(absence.end_time).getTime() - new Date(absence.start_time).getTime()) / 60000 : 0;
+            const absenceSlotsSpan = Math.ceil(absenceDuration / slotDuration);
+
             return (
               <div
                 key={time}
                 className={cn(
                   'flex items-stretch gap-3 min-h-[50px] rounded-lg transition-all',
-                  apt ? '' : 'hover:bg-muted/50 cursor-pointer',
-                  draggedAppointment && !apt && 'bg-primary/5 border-2 border-dashed border-primary/30'
+                  apt ? '' : absence ? '' : 'hover:bg-muted/50 cursor-pointer',
+                  draggedAppointment && !apt && !absence && 'bg-primary/5 border-2 border-dashed border-primary/30'
                 )}
-                onClick={() => !draggedAppointment && handleSlotClick(selectedDate, time)}
+                onClick={() => !draggedAppointment && !absence && handleSlotClick(selectedDate, time)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, selectedDate, time)}
               >
@@ -420,7 +478,8 @@ const Agenda = () => {
                 </div>
                 <div className={cn(
                   'flex-1 rounded-lg border border-dashed border-border p-2 min-h-[50px]',
-                  apt && !isStart && 'opacity-0 pointer-events-none'
+                  (apt && !isStart) && 'opacity-0 pointer-events-none',
+                  (absence && !isAbsenceStart) && 'opacity-0 pointer-events-none'
                 )}>
                   {isStart && apt && (
                     <div 
@@ -461,7 +520,26 @@ const Agenda = () => {
                       )}
                     </div>
                   )}
-                  {!apt && (
+                  {isAbsenceStart && absence && !apt && (
+                    <div 
+                      className="h-full rounded-lg p-3 bg-destructive/20 border-2 border-destructive/40 text-destructive-foreground"
+                      style={{ minHeight: `${absenceSlotsSpan * 50 - 8}px` }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <UserX className="h-4 w-4 text-destructive" />
+                        <div>
+                          <p className="font-semibold text-destructive">Ausência</p>
+                          <p className="text-sm text-muted-foreground">
+                            {absenceProf?.name || absence.professional?.name}
+                          </p>
+                          {absence.reason && (
+                            <p className="text-xs text-muted-foreground mt-1">{absence.reason}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!apt && !absence && (
                     <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                       <Plus className="h-5 w-5 text-muted-foreground" />
                     </div>
@@ -526,7 +604,9 @@ const Agenda = () => {
               </div>
               {weekDays.map(day => {
                 const apt = getAppointmentAtSlot(day, time);
+                const absence = getAbsenceAtSlot(day, time);
                 const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
+                const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
                 const color = prof?.agenda_color || '#3B82F6';
@@ -537,11 +617,12 @@ const Agenda = () => {
                     key={day.toISOString()}
                     className={cn(
                       'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
-                      apt && !isStart && 'opacity-0 pointer-events-none',
-                      !apt && 'hover:bg-muted/30 hover:border-primary/30',
-                      draggedAppointment && !apt && 'bg-primary/5 border-primary/30'
+                      (apt && !isStart) && 'opacity-0 pointer-events-none',
+                      (absence && !isAbsenceStart && !apt) && 'opacity-0 pointer-events-none',
+                      !apt && !absence && 'hover:bg-muted/30 hover:border-primary/30',
+                      draggedAppointment && !apt && !absence && 'bg-primary/5 border-primary/30'
                     )}
-                    onClick={() => !draggedAppointment && handleSlotClick(day, time)}
+                    onClick={() => !draggedAppointment && !absence && handleSlotClick(day, time)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, day, time)}
                   >
@@ -563,6 +644,14 @@ const Agenda = () => {
                       >
                         <p className="font-medium truncate">{apt.client?.name}</p>
                         <p className="truncate opacity-80">{apt.service?.name}</p>
+                      </div>
+                    )}
+                    {isAbsenceStart && absence && !apt && (
+                      <div className="h-full rounded p-1 bg-destructive/20 border border-destructive/30 text-xs">
+                        <div className="flex items-center gap-1">
+                          <UserX className="h-3 w-3 text-destructive" />
+                          <span className="text-destructive font-medium truncate">Ausência</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -777,109 +866,131 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
-      {/* View Toggle and Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)}>
-            <ToggleGroupItem value="day" aria-label="Ver dia">
-              <List className="h-4 w-4 mr-1" />
-              Dia
-            </ToggleGroupItem>
-            <ToggleGroupItem value="week" aria-label="Ver semana">
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              Semana
-            </ToggleGroupItem>
-            <ToggleGroupItem value="month" aria-label="Ver mês">
-              <CalendarIcon className="h-4 w-4 mr-1" />
-              Mês
-            </ToggleGroupItem>
-            <ToggleGroupItem value="professional" aria-label="Ver por profissional">
-              <User className="h-4 w-4 mr-1" />
-              Profissional
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
+      {/* Compact Header with View Toggle and Filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* View Toggle */}
+        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="h-9">
+          <ToggleGroupItem value="day" aria-label="Ver dia" className="px-2 text-xs">
+            <List className="h-3.5 w-3.5 mr-1" />
+            Dia
+          </ToggleGroupItem>
+          <ToggleGroupItem value="week" aria-label="Ver semana" className="px-2 text-xs">
+            <LayoutGrid className="h-3.5 w-3.5 mr-1" />
+            Semana
+          </ToggleGroupItem>
+          <ToggleGroupItem value="month" aria-label="Ver mês" className="px-2 text-xs">
+            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+            Mês
+          </ToggleGroupItem>
+          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="px-2 text-xs">
+            <User className="h-3.5 w-3.5 mr-1" />
+            Profissional
+          </ToggleGroupItem>
+        </ToggleGroup>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Profissional" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os profissionais</SelectItem>
-                {activeProfessionals.map((prof) => (
-                  <SelectItem key={prof.id} value={prof.id}>
-                    <div className="flex items-center gap-2">
-                      {prof.agenda_color && (
-                        <div 
-                          className="h-3 w-3 rounded-full" 
-                          style={{ backgroundColor: prof.agenda_color }}
-                        />
-                      )}
-                      {prof.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <DoorOpen className="h-4 w-4 text-muted-foreground" />
-            <Select value={roomFilter} onValueChange={setRoomFilter}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Sala" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as salas</SelectItem>
-                {activeRooms.map((room) => (
-                  <SelectItem key={room.id} value={room.id}>
-                    {room.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-            <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Equipamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {activeEquipment.map((eq) => (
-                  <SelectItem key={eq.id} value={eq.id}>
-                    {eq.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setAbsenceDialogOpen(true)}
-            className="gap-1"
-          >
-            <UserX className="h-4 w-4" />
-            Ausência
-          </Button>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Limpar filtros
+        {/* Compact Filters Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              Filtros
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {[professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all'].filter(Boolean).length}
+                </Badge>
+              )}
+              <ChevronDown className="h-3.5 w-3.5" />
             </Button>
-          )}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3" align="start">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  Profissional
+                </label>
+                <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {activeProfessionals.map((prof) => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        <div className="flex items-center gap-2">
+                          {prof.agenda_color && (
+                            <div 
+                              className="h-2.5 w-2.5 rounded-full" 
+                              style={{ backgroundColor: prof.agenda_color }}
+                            />
+                          )}
+                          {prof.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium flex items-center gap-1.5">
+                  <DoorOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                  Sala
+                </label>
+                <Select value={roomFilter} onValueChange={setRoomFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {activeRooms.map((room) => (
+                      <SelectItem key={room.id} value={room.id}>
+                        {room.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium flex items-center gap-1.5">
+                  <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                  Equipamento
+                </label>
+                <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {activeEquipment.map((eq) => (
+                      <SelectItem key={eq.id} value={eq.id}>
+                        {eq.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full h-8 text-xs">
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Absence Button */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setAbsenceDialogOpen(true)}
+          className="h-9 gap-1"
+        >
+          <UserX className="h-3.5 w-3.5" />
+          Ausência
+        </Button>
       </div>
 
       {/* Navigation */}

@@ -494,6 +494,7 @@ export type Database = {
           quantity: number
           started_using_at: string | null
           supplier: string | null
+          supplier_id: string | null
           total_price: number
           unit_price: number
           updated_at: string
@@ -511,6 +512,7 @@ export type Database = {
           quantity?: number
           started_using_at?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           total_price?: number
           unit_price?: number
           updated_at?: string
@@ -528,6 +530,7 @@ export type Database = {
           quantity?: number
           started_using_at?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           total_price?: number
           unit_price?: number
           updated_at?: string
@@ -539,6 +542,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -563,6 +573,7 @@ export type Database = {
           quantity_purchased: number
           started_using_at: string | null
           supplier: string | null
+          supplier_id: string | null
           total_price: number
           unit: string
           unit_price: number
@@ -588,6 +599,7 @@ export type Database = {
           quantity_purchased?: number
           started_using_at?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           total_price?: number
           unit?: string
           unit_price?: number
@@ -613,13 +625,22 @@ export type Database = {
           quantity_purchased?: number
           started_using_at?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           total_price?: number
           unit?: string
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       professional_absences: {
         Row: {
@@ -957,6 +978,51 @@ export type Database = {
           },
         ]
       }
+      service_products: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity_per_use: number
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity_per_use?: number
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity_per_use?: number
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_products_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           category: string
@@ -1019,6 +1085,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       treatment_photos: {
         Row: {

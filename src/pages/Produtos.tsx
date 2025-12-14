@@ -67,10 +67,14 @@ import {
   DollarSign,
   TrendingUp,
   BarChart3,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { useAuth } from '@/contexts/AuthContext';
+import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
+import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },
@@ -94,6 +98,7 @@ const getUnitLabel = (unit: ProductUnit) => PRODUCT_UNITS.find(u => u.value === 
 export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
+  const { suppliers, activeSuppliers } = useSuppliers();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
@@ -116,6 +121,7 @@ export default function Produtos() {
     unit_price: 0,
     total_price: 0,
     supplier: '',
+    supplier_id: '',
     purchase_date: format(new Date(), 'yyyy-MM-dd'),
     expiry_date: '',
     started_using_at: '',
@@ -136,6 +142,7 @@ export default function Produtos() {
     unit_price: 0,
     total_price: 0,
     supplier: '',
+    supplier_id: '',
     purchase_date: format(new Date(), 'yyyy-MM-dd'),
     started_using_at: '',
     finished_at: '',
@@ -182,6 +189,7 @@ export default function Produtos() {
       unit_price: 0,
       total_price: 0,
       supplier: '',
+      supplier_id: '',
       purchase_date: format(new Date(), 'yyyy-MM-dd'),
       expiry_date: '',
       started_using_at: '',
@@ -201,6 +209,7 @@ export default function Produtos() {
       unit_price: 0,
       total_price: 0,
       supplier: '',
+      supplier_id: '',
       purchase_date: format(new Date(), 'yyyy-MM-dd'),
       started_using_at: '',
       finished_at: '',
@@ -223,6 +232,7 @@ export default function Produtos() {
       unit_price: product.unit_price,
       total_price: product.total_price,
       supplier: product.supplier || '',
+      supplier_id: (product as any).supplier_id || '',
       purchase_date: product.purchase_date || '',
       expiry_date: product.expiry_date || '',
       started_using_at: product.started_using_at || '',
@@ -243,6 +253,7 @@ export default function Produtos() {
       unit_price: purchase.unit_price,
       total_price: purchase.total_price,
       supplier: purchase.supplier || '',
+      supplier_id: (purchase as any).supplier_id || '',
       purchase_date: purchase.purchase_date,
       started_using_at: purchase.started_using_at || '',
       finished_at: purchase.finished_at || '',
@@ -263,6 +274,7 @@ export default function Produtos() {
       brand: productForm.brand || null,
       category: productForm.category || null,
       supplier: productForm.supplier || null,
+      supplier_id: productForm.supplier_id || null,
       purchase_date: productForm.purchase_date || null,
       expiry_date: productForm.expiry_date || null,
       started_using_at: productForm.started_using_at || null,
@@ -288,6 +300,7 @@ export default function Produtos() {
     const purchaseData = {
       ...purchaseForm,
       supplier: purchaseForm.supplier || null,
+      supplier_id: purchaseForm.supplier_id || null,
       started_using_at: purchaseForm.started_using_at || null,
       finished_at: purchaseForm.finished_at || null,
       notes: purchaseForm.notes || null,
@@ -412,6 +425,12 @@ export default function Produtos() {
 
           {/* Products Tab */}
           <TabsContent value="products" className="space-y-4">
+            {/* Action Buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <ManageSuppliersDialog />
+              <ServiceProductsDialog />
+            </div>
+
             {/* Filters */}
             <Card>
               <CardContent className="p-4">
@@ -630,7 +649,37 @@ export default function Produtos() {
 
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label>Fornecedor</Label>
+                                <Label>Fornecedor Cadastrado</Label>
+                                <Select
+                                  value={productForm.supplier_id}
+                                  onValueChange={(v) => {
+                                    const supplier = activeSuppliers.find(s => s.id === v);
+                                    setProductForm({ 
+                                      ...productForm, 
+                                      supplier_id: v,
+                                      supplier: supplier?.name || productForm.supplier 
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um fornecedor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">Nenhum</SelectItem>
+                                    {activeSuppliers.map(s => (
+                                      <SelectItem key={s.id} value={s.id}>
+                                        <div className="flex items-center gap-2">
+                                          <Truck className="h-3 w-3" />
+                                          {s.name}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label>Ou Digite o Fornecedor</Label>
                                 <Input
                                   value={productForm.supplier}
                                   onChange={(e) => setProductForm({ ...productForm, supplier: e.target.value })}

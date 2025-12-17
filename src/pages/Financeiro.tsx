@@ -814,93 +814,37 @@ export default function Financeiro() {
 
         {/* Card Brand Dialog */}
         <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingBrand ? 'Editar' : 'Nova'} Bandeira de Cartão</DialogTitle>
+              <DialogDescription>
+                Configure a bandeira e as taxas por parcela
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input
-                  value={brandForm.name}
-                  onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
-                  placeholder="Ex: Visa, Mastercard..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={brandForm.type} onValueChange={(v: 'credit' | 'debit' | 'both') => setBrandForm({ ...brandForm, type: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="credit">Apenas Crédito</SelectItem>
-                    <SelectItem value="debit">Apenas Débito</SelectItem>
-                    <SelectItem value="both">Crédito e Débito</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Taxas por parcela para crédito */}
-              {(brandForm.type === 'credit' || brandForm.type === 'both') && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <Label>Taxas por Parcela (Crédito)</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addFeeRow}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Adicionar
-                    </Button>
-                  </div>
-                  {brandFees.length > 0 ? (
-                    <ScrollArea className="h-[200px]">
-                      <div className="space-y-2 pr-4">
-                        {brandFees
-                          .sort((a, b) => a.installment_number - b.installment_number)
-                          .map((fee, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className="flex-1">
-                              <Input
-                                type="number"
-                                min="1"
-                                value={fee.installment_number}
-                                onChange={(e) => updateFeeRow(index, 'installment_number', parseInt(e.target.value) || 1)}
-                                placeholder="Parcela"
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground">x</span>
-                            <div className="flex-1">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={fee.fee_percentage}
-                                onChange={(e) => updateFeeRow(index, 'fee_percentage', parseFloat(e.target.value) || 0)}
-                                placeholder="Taxa %"
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground">%</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeFeeRow(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Clique em "Adicionar" para configurar as taxas por parcela
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Configure a taxa de cada parcela. Ex: 1x = 2%, 2x = 3%, 3x = 4%...
-                  </p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome *</Label>
+                  <Input
+                    value={brandForm.name}
+                    onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
+                    placeholder="Ex: Visa, Mastercard..."
+                  />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={brandForm.type} onValueChange={(v: 'credit' | 'debit' | 'both') => setBrandForm({ ...brandForm, type: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="credit">Apenas Crédito</SelectItem>
+                      <SelectItem value="debit">Apenas Débito</SelectItem>
+                      <SelectItem value="both">Crédito e Débito</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               {/* Taxa única para débito */}
               {(brandForm.type === 'debit' || brandForm.type === 'both') && (
@@ -910,7 +854,8 @@ export default function Financeiro() {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={brandFees.find(f => f.installment_number === 0)?.fee_percentage || 0}
+                    className="max-w-[150px]"
+                    value={brandFees.find(f => f.installment_number === 0)?.fee_percentage || ''}
                     onChange={(e) => {
                       const debitFee = parseFloat(e.target.value) || 0;
                       const otherFees = brandFees.filter(f => f.installment_number !== 0);
@@ -923,21 +868,93 @@ export default function Financeiro() {
                     placeholder="Ex: 1.5"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Taxa cobrada para pagamentos no débito (parcela 0)
+                    Taxa cobrada para pagamentos no débito
                   </p>
                 </div>
               )}
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={brandForm.is_active}
-                  onCheckedChange={(checked) => setBrandForm({ ...brandForm, is_active: checked })}
-                />
-                <Label>Ativo</Label>
+              {/* Taxas por parcela para crédito - Grid de 12 colunas */}
+              {(brandForm.type === 'credit' || brandForm.type === 'both') && (
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Taxas por Parcela (Crédito)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Informe a taxa (%) para cada número de parcelas
+                  </p>
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((installment) => {
+                      const feeValue = brandFees.find(f => f.installment_number === installment)?.fee_percentage;
+                      return (
+                        <div key={installment} className="space-y-1">
+                          <Label className="text-xs font-medium text-center block">
+                            {installment}x
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="text-center h-9 text-sm"
+                            value={feeValue ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                              const otherFees = brandFees.filter(f => f.installment_number !== installment);
+                              if (value !== null && value >= 0) {
+                                setBrandFees([...otherFees, { installment_number: installment, fee_percentage: value }]);
+                              } else {
+                                setBrandFees(otherFees);
+                              }
+                            }}
+                            placeholder="%"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Separator className="my-3" />
+                  <p className="text-sm text-muted-foreground font-medium">Parcelas adicionais (13x em diante)</p>
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
+                    {[13, 14, 15, 16, 17, 18].map((installment) => {
+                      const feeValue = brandFees.find(f => f.installment_number === installment)?.fee_percentage;
+                      return (
+                        <div key={installment} className="space-y-1">
+                          <Label className="text-xs font-medium text-center block">
+                            {installment}x
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="text-center h-9 text-sm"
+                            value={feeValue ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                              const otherFees = brandFees.filter(f => f.installment_number !== installment);
+                              if (value !== null && value >= 0) {
+                                setBrandFees([...otherFees, { installment_number: installment, fee_percentage: value }]);
+                              } else {
+                                setBrandFees(otherFees);
+                              }
+                            }}
+                            placeholder="%"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={brandForm.is_active}
+                    onCheckedChange={(checked) => setBrandForm({ ...brandForm, is_active: checked })}
+                  />
+                  <Label>Ativo</Label>
+                </div>
+                <Button onClick={handleBrandSubmit}>
+                  {editingBrand ? 'Salvar Alterações' : 'Criar Bandeira'}
+                </Button>
               </div>
-              <Button onClick={handleBrandSubmit} className="w-full">
-                {editingBrand ? 'Salvar' : 'Criar'}
-              </Button>
             </div>
           </DialogContent>
         </Dialog>

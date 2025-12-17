@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -50,6 +51,7 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   RefreshCw,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBanks } from '@/hooks/useBanks';
@@ -58,6 +60,7 @@ import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useClients } from '@/hooks/useClients';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useCardBrands, type CardBrand, type CardBrandFee } from '@/hooks/useCardBrands';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 
 export default function Financeiro() {
@@ -67,11 +70,18 @@ export default function Financeiro() {
   const { entries, receivables, payables, pendingReceivables, pendingPayables, totalReceivables, totalPayables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { clients } = useClients();
   const { professionals } = useProfessionals();
+  const { cardBrands, creditBrands, debitBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
 
   // Payment Method Dialog
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
   const [editingPm, setEditingPm] = useState<any>(null);
   const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true, installment_fee: 0, max_installments: 1 });
+
+  // Card Brand Dialog
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [editingBrand, setEditingBrand] = useState<CardBrand | null>(null);
+  const [brandForm, setBrandForm] = useState({ name: '', type: 'both' as 'credit' | 'debit' | 'both', is_active: true });
+  const [brandFees, setBrandFees] = useState<{ installment_number: number; fee_percentage: number }[]>([]);
 
   // Category Dialog
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -118,6 +128,48 @@ export default function Financeiro() {
       await createPaymentMethod.mutateAsync(pmForm);
     }
     setPmDialogOpen(false);
+  };
+
+  // Card Brand handlers
+  const openBrandDialog = (brand?: CardBrand) => {
+    if (brand) {
+      setEditingBrand(brand);
+      setBrandForm({ name: brand.name, type: brand.type, is_active: brand.is_active });
+      setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || []);
+    } else {
+      setEditingBrand(null);
+      setBrandForm({ name: '', type: 'both', is_active: true });
+      setBrandFees([]);
+    }
+    setBrandDialogOpen(true);
+  };
+
+  const handleBrandSubmit = async () => {
+    if (editingBrand) {
+      await updateCardBrand.mutateAsync({ id: editingBrand.id, ...brandForm });
+      await saveBrandFees.mutateAsync({ brandId: editingBrand.id, fees: brandFees });
+    } else {
+      const result = await createCardBrand.mutateAsync(brandForm);
+      if (result && brandFees.length > 0) {
+        await saveBrandFees.mutateAsync({ brandId: result.id, fees: brandFees });
+      }
+    }
+    setBrandDialogOpen(false);
+  };
+
+  const addFeeRow = () => {
+    const nextInstallment = brandFees.length > 0 ? Math.max(...brandFees.map(f => f.installment_number)) + 1 : 1;
+    setBrandFees([...brandFees, { installment_number: nextInstallment, fee_percentage: 0 }]);
+  };
+
+  const removeFeeRow = (index: number) => {
+    setBrandFees(brandFees.filter((_, i) => i !== index));
+  };
+
+  const updateFeeRow = (index: number, field: 'installment_number' | 'fee_percentage', value: number) => {
+    const newFees = [...brandFees];
+    newFees[index][field] = value;
+    setBrandFees(newFees);
   };
 
   // Category handlers
@@ -322,6 +374,10 @@ export default function Financeiro() {
             <TabsTrigger value="payment-methods" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Formas de Pagamento
+            </TabsTrigger>
+            <TabsTrigger value="card-brands" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Bandeiras
             </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2">
               <Tag className="h-4 w-4" />
@@ -558,6 +614,66 @@ export default function Financeiro() {
             </Card>
           </TabsContent>
 
+          {/* Card Brands Tab */}
+          <TabsContent value="card-brands" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Bandeiras de Cartão</h3>
+              <Button onClick={() => openBrandDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Bandeira
+              </Button>
+            </div>
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bandeira</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Parcelas Configuradas</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cardBrands.map((brand) => (
+                    <TableRow key={brand.id}>
+                      <TableCell className="font-medium">{brand.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Crédito/Débito'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {brand.fees && brand.fees.length > 0 ? (
+                          <span className="text-sm text-muted-foreground">
+                            {brand.fees.length} parcela(s) - até {Math.max(...brand.fees.map(f => f.fee_percentage))}%
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={brand.is_active ? 'default' : 'secondary'}>
+                          {brand.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openBrandDialog(brand)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteCardBrand.mutate(brand.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
           {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-4">
             <div className="flex justify-between items-center">
@@ -691,6 +807,136 @@ export default function Financeiro() {
               </div>
               <Button onClick={handlePmSubmit} className="w-full">
                 {editingPm ? 'Salvar' : 'Criar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Card Brand Dialog */}
+        <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingBrand ? 'Editar' : 'Nova'} Bandeira de Cartão</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome *</Label>
+                <Input
+                  value={brandForm.name}
+                  onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
+                  placeholder="Ex: Visa, Mastercard..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={brandForm.type} onValueChange={(v: 'credit' | 'debit' | 'both') => setBrandForm({ ...brandForm, type: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="credit">Apenas Crédito</SelectItem>
+                    <SelectItem value="debit">Apenas Débito</SelectItem>
+                    <SelectItem value="both">Crédito e Débito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Taxas por parcela para crédito */}
+              {(brandForm.type === 'credit' || brandForm.type === 'both') && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Taxas por Parcela (Crédito)</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addFeeRow}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                  {brandFees.length > 0 ? (
+                    <ScrollArea className="h-[200px]">
+                      <div className="space-y-2 pr-4">
+                        {brandFees
+                          .sort((a, b) => a.installment_number - b.installment_number)
+                          .map((fee, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={fee.installment_number}
+                                onChange={(e) => updateFeeRow(index, 'installment_number', parseInt(e.target.value) || 1)}
+                                placeholder="Parcela"
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground">x</span>
+                            <div className="flex-1">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={fee.fee_percentage}
+                                onChange={(e) => updateFeeRow(index, 'fee_percentage', parseFloat(e.target.value) || 0)}
+                                placeholder="Taxa %"
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground">%</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeFeeRow(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Clique em "Adicionar" para configurar as taxas por parcela
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Configure a taxa de cada parcela. Ex: 1x = 2%, 2x = 3%, 3x = 4%...
+                  </p>
+                </div>
+              )}
+
+              {/* Taxa única para débito */}
+              {(brandForm.type === 'debit' || brandForm.type === 'both') && (
+                <div className="space-y-2">
+                  <Label>Taxa Débito (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={brandFees.find(f => f.installment_number === 0)?.fee_percentage || 0}
+                    onChange={(e) => {
+                      const debitFee = parseFloat(e.target.value) || 0;
+                      const otherFees = brandFees.filter(f => f.installment_number !== 0);
+                      if (debitFee > 0) {
+                        setBrandFees([...otherFees, { installment_number: 0, fee_percentage: debitFee }]);
+                      } else {
+                        setBrandFees(otherFees);
+                      }
+                    }}
+                    placeholder="Ex: 1.5"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Taxa cobrada para pagamentos no débito (parcela 0)
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={brandForm.is_active}
+                  onCheckedChange={(checked) => setBrandForm({ ...brandForm, is_active: checked })}
+                />
+                <Label>Ativo</Label>
+              </div>
+              <Button onClick={handleBrandSubmit} className="w-full">
+                {editingBrand ? 'Salvar' : 'Criar'}
               </Button>
             </div>
           </DialogContent>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, subDays, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +44,7 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Download,
   AlertTriangle,
   Phone,
@@ -59,6 +60,7 @@ import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -99,6 +101,7 @@ export default function Caixa() {
     openCashRegister,
     closeCashRegister,
   } = useCashRegisters();
+  const { transactions } = useCashTransactions();
   const { hasRole } = useAuth();
   const canAddClientCredit = hasRole('admin');
   
@@ -277,6 +280,51 @@ export default function Caixa() {
     
     return { total, count, byMethod };
   }, [paidAppointments]);
+
+  // Calculate expense summaries from transactions
+  const expenseSummaries = useMemo(() => {
+    const today = new Date();
+    const dayStart = startOfDay(today);
+    const dayEnd = endOfDay(today);
+    const weekStart = startOfWeek(today, { weekStartsOn: 0 });
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+
+    const expenses = transactions.filter(t => t.type === 'expense');
+
+    const todayExpenses = expenses.filter(t => {
+      const date = parseISO(t.created_at);
+      return isWithinInterval(date, { start: dayStart, end: dayEnd });
+    });
+
+    const weekExpenses = expenses.filter(t => {
+      const date = parseISO(t.created_at);
+      return isWithinInterval(date, { start: weekStart, end: dayEnd });
+    });
+
+    const monthExpenses = expenses.filter(t => {
+      const date = parseISO(t.created_at);
+      return isWithinInterval(date, { start: monthStart, end: monthEnd });
+    });
+
+    return {
+      today: {
+        total: todayExpenses.reduce((sum, t) => sum + Number(t.amount), 0),
+        count: todayExpenses.length,
+        items: todayExpenses,
+      },
+      week: {
+        total: weekExpenses.reduce((sum, t) => sum + Number(t.amount), 0),
+        count: weekExpenses.length,
+        items: weekExpenses,
+      },
+      month: {
+        total: monthExpenses.reduce((sum, t) => sum + Number(t.amount), 0),
+        count: monthExpenses.length,
+        items: monthExpenses,
+      },
+    };
+  }, [transactions]);
 
   const togglePaymentMethod = (method: string) => {
     if (selectedPaymentMethods.includes(method)) {
@@ -547,7 +595,51 @@ export default function Caixa() {
               </Card>
             </div>
 
-            {/* Payments by Method */}
+            {/* Expense Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="border-red-200 dark:border-red-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Despesas Hoje</p>
+                      <p className="text-lg font-bold text-red-600">
+                        R$ {expenseSummaries.today.total.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{expenseSummaries.today.count} lançamento(s)</p>
+                    </div>
+                    <TrendingDown className="h-6 w-6 text-red-500/30" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-orange-200 dark:border-orange-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Despesas Semana</p>
+                      <p className="text-lg font-bold text-orange-600">
+                        R$ {expenseSummaries.week.total.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{expenseSummaries.week.count} lançamento(s)</p>
+                    </div>
+                    <TrendingDown className="h-6 w-6 text-orange-500/30" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-yellow-200 dark:border-yellow-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Despesas Mês</p>
+                      <p className="text-lg font-bold text-yellow-600">
+                        R$ {expenseSummaries.month.total.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{expenseSummaries.month.count} lançamento(s)</p>
+                    </div>
+                    <TrendingDown className="h-6 w-6 text-yellow-500/30" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             {Object.keys(totals.byMethod).length > 0 && (
               <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
                 <span className="text-sm text-muted-foreground">Por forma:</span>

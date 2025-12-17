@@ -12,6 +12,7 @@ import ClienteDetalhes from "./pages/ClienteDetalhes";
 import Servicos from "./pages/Servicos";
 import Cadastros from "./pages/Cadastros";
 import Caixa from "./pages/Caixa";
+import Financeiro from "./pages/Financeiro";
 import Produtos from "./pages/Produtos";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
             <Route path="/cadastros" element={<ProtectedRoute><Cadastros /></ProtectedRoute>} />
             <Route path="/caixa" element={<ProtectedRoute><Caixa /></ProtectedRoute>} />
+            <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />

@@ -54,6 +54,45 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
     return phone.toString().replace(/\D/g, '');
   };
 
+  const parseBirthdate = (dateStr: string): string | undefined => {
+    if (!dateStr) return undefined;
+    
+    // Try different date formats
+    const cleanDate = dateStr.toString().trim();
+    
+    // Already in ISO format (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+      return cleanDate;
+    }
+    
+    // DD/MM/YYYY or DD-MM-YYYY
+    const brMatch = cleanDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // MM/DD/YYYY
+    const usMatch = cleanDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (usMatch) {
+      const [, month, day, year] = usMatch;
+      // If first number > 12, assume DD/MM/YYYY format
+      if (parseInt(month) > 12) {
+        return `${year}-${day.padStart(2, '0')}-${month.padStart(2, '0')}`;
+      }
+    }
+
+    // Excel serial date number
+    const serialNumber = parseFloat(cleanDate);
+    if (!isNaN(serialNumber) && serialNumber > 10000 && serialNumber < 100000) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const date = new Date(excelEpoch.getTime() + serialNumber * 86400000);
+      return date.toISOString().split('T')[0];
+    }
+
+    return undefined;
+  };
+
   const validateClient = (client: Partial<ParsedClient>): ParsedClient => {
     const errors: string[] = [];
     
@@ -63,15 +102,17 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
     
     const phone = normalizePhone(client.phone || '');
     if (!phone || phone.length < 10) {
-      errors.push('Telefone inválido');
+      errors.push('Telefone inválido (mín. 10 dígitos)');
     }
+
+    const birthdate = parseBirthdate(client.birthdate || '');
 
     return {
       name: client.name?.trim() || '',
       phone: phone,
       email: client.email?.trim() || undefined,
       cpf: client.cpf?.toString().replace(/\D/g, '') || undefined,
-      birthdate: client.birthdate || undefined,
+      birthdate: birthdate,
       notes: client.notes?.trim() || undefined,
       referral_source: client.referral_source?.trim() || undefined,
       valid: errors.length === 0,
@@ -129,26 +170,68 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
           const text = e.target?.result as string;
           const lines = text.split('\n').filter(line => line.trim());
           
-          // Try to detect if it's CSV
-          const delimiter = text.includes(';') ? ';' : text.includes('\t') ? '\t' : ',';
+          if (lines.length === 0) {
+            reject(new Error('Arquivo vazio'));
+            return;
+          }
+          
+          // Try to detect delimiter - prioritize semicolon (common in BR Excel exports)
+          const firstLine = lines[0];
+          let delimiter = ',';
+          if (firstLine.includes(';')) {
+            delimiter = ';';
+          } else if (firstLine.includes('\t')) {
+            delimiter = '\t';
+          }
           
           const clients: ParsedClient[] = [];
           
-          // Skip header if exists
-          const startIndex = lines[0]?.toLowerCase().includes('nome') ? 1 : 0;
+          // Check if first line is header
+          const firstLineLower = firstLine.toLowerCase();
+          const hasHeader = firstLineLower.includes('nome') || 
+                           firstLineLower.includes('name') || 
+                           firstLineLower.includes('telefone') ||
+                           firstLineLower.includes('phone');
+          
+          const startIndex = hasHeader ? 1 : 0;
+          
+          // Parse header to find column indices
+          let nameIdx = 0, phoneIdx = 1, emailIdx = 2, cpfIdx = 3, birthdateIdx = 4, notesIdx = 5, referralIdx = 6;
+          
+          if (hasHeader) {
+            const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+            nameIdx = headers.findIndex(h => h.includes('nome') || h === 'name');
+            phoneIdx = headers.findIndex(h => h.includes('telefone') || h === 'phone' || h.includes('celular'));
+            emailIdx = headers.findIndex(h => h.includes('email') || h.includes('e-mail'));
+            cpfIdx = headers.findIndex(h => h.includes('cpf'));
+            birthdateIdx = headers.findIndex(h => h.includes('nascimento') || h.includes('birthdate') || h.includes('data'));
+            notesIdx = headers.findIndex(h => h.includes('obs') || h.includes('notes') || h.includes('observa'));
+            referralIdx = headers.findIndex(h => h.includes('indica') || h.includes('referral') || h.includes('origem'));
+            
+            // Set defaults for required fields
+            if (nameIdx === -1) nameIdx = 0;
+            if (phoneIdx === -1) phoneIdx = 1;
+          }
           
           for (let i = startIndex; i < lines.length; i++) {
             const parts = lines[i].split(delimiter).map(p => p.trim().replace(/^["']|["']$/g, ''));
             
-            if (parts.length >= 2) {
+            if (parts.length >= 1 && parts[nameIdx]?.trim()) {
               clients.push(validateClient({
-                name: parts[0],
-                phone: parts[1],
-                email: parts[2] || undefined,
-                cpf: parts[3] || undefined,
-                notes: parts[4] || undefined,
+                name: parts[nameIdx] || '',
+                phone: phoneIdx >= 0 ? parts[phoneIdx] || '' : '',
+                email: emailIdx >= 0 ? parts[emailIdx] || undefined : undefined,
+                cpf: cpfIdx >= 0 ? parts[cpfIdx] || undefined : undefined,
+                birthdate: birthdateIdx >= 0 ? parts[birthdateIdx] || undefined : undefined,
+                notes: notesIdx >= 0 ? parts[notesIdx] || undefined : undefined,
+                referral_source: referralIdx >= 0 ? parts[referralIdx] || undefined : undefined,
               }));
             }
+          }
+
+          if (clients.length === 0) {
+            reject(new Error('Nenhum cliente encontrado. Verifique o formato do arquivo.'));
+            return;
           }
 
           resolve(clients);

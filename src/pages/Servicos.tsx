@@ -338,7 +338,11 @@ const Servicos: React.FC = () => {
                     className="animate-slide-up cursor-pointer"
                     onClick={() => setSelectedService(service)}
                   >
-                    <ServiceCard service={service} />
+                    <ServiceCard 
+                      service={service} 
+                      onEdit={(s) => setSelectedService(s)}
+                      onDelete={refetch}
+                    />
                   </div>
                 ))}
               </div>

@@ -9,6 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,15 +26,18 @@ import {
   LockOpen,
   Lock,
   DollarSign,
-  Clock,
   TrendingUp,
-  CreditCard,
   AlertTriangle,
   CheckCircle,
   ArrowUp,
-  ArrowDown,
+  Plus,
+  Trash2,
+  Building2,
+  Banknote,
+  Receipt,
 } from 'lucide-react';
-import { CashRegister } from '@/hooks/useCashRegisters';
+import { CashRegister, BankDeposit } from '@/hooks/useCashRegisters';
+import { useBanks } from '@/hooks/useBanks';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -56,6 +66,9 @@ interface CashRegisterStatusProps {
     paymentsCount: number;
     paymentBreakdown: Record<string, number>;
     notes?: string;
+    cashAmount?: number;
+    checkAmount?: number;
+    bankDeposits?: BankDeposit[];
   }) => void;
   isLoading: boolean;
 }
@@ -68,11 +81,15 @@ export function CashRegisterStatus({
   onCloseCashRegister,
   isLoading,
 }: CashRegisterStatusProps) {
+  const { activeBanks } = useBanks();
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [openingBalance, setOpeningBalance] = useState('');
   const [closingBalance, setClosingBalance] = useState('');
   const [notes, setNotes] = useState('');
+  const [cashAmount, setCashAmount] = useState('');
+  const [checkAmount, setCheckAmount] = useState('');
+  const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   const expectedBalance = currentRegister
     ? Number(currentRegister.opening_balance) + totals.total
@@ -99,14 +116,41 @@ export function CashRegisterStatus({
       paymentsCount: totals.count,
       paymentBreakdown: totals.byMethod,
       notes: notes || undefined,
+      cashAmount: parseFloat(cashAmount) || 0,
+      checkAmount: parseFloat(checkAmount) || 0,
+      bankDeposits,
     });
     
     setClosingBalance('');
     setNotes('');
+    setCashAmount('');
+    setCheckAmount('');
+    setBankDeposits([]);
     setShowCloseDialog(false);
   };
 
+  const addBankDeposit = () => {
+    setBankDeposits([...bankDeposits, { bank_id: '', bank_name: '', amount: 0 }]);
+  };
+
+  const updateBankDeposit = (index: number, field: keyof BankDeposit, value: string | number) => {
+    const updated = [...bankDeposits];
+    if (field === 'bank_id') {
+      const bank = activeBanks.find(b => b.id === value);
+      updated[index] = { ...updated[index], bank_id: value as string, bank_name: bank?.name || '' };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setBankDeposits(updated);
+  };
+
+  const removeBankDeposit = (index: number) => {
+    setBankDeposits(bankDeposits.filter((_, i) => i !== index));
+  };
+
   const difference = closingBalance ? parseFloat(closingBalance) - expectedBalance : 0;
+  const totalBankDeposits = bankDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+  const totalDistributed = (parseFloat(cashAmount) || 0) + (parseFloat(checkAmount) || 0) + totalBankDeposits;
 
   return (
     <>
@@ -330,6 +374,108 @@ export function CashRegisterStatus({
                 </div>
               </div>
             )}
+
+            <Separator />
+
+            {/* Distribution Section */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Distribuição do Fechamento</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Banknote className="h-3 w-3" />
+                    Dinheiro (R$)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Receipt className="h-3 w-3" />
+                    Cheques (R$)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={checkAmount}
+                    onChange={(e) => setCheckAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Bank Deposits */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    Depósitos Bancários
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addBankDeposit}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+                
+                {bankDeposits.map((deposit, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Select
+                      value={deposit.bank_id}
+                      onValueChange={(value) => updateBankDeposit(index, 'bank_id', value)}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione o banco" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeBanks.map(bank => (
+                          <SelectItem key={bank.id} value={bank.id}>
+                            {bank.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Valor"
+                      className="w-24"
+                      value={deposit.amount || ''}
+                      onChange={(e) => updateBankDeposit(index, 'amount', parseFloat(e.target.value) || 0)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeBankDeposit(index)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Distribution Summary */}
+              <div className="p-2 rounded bg-muted/50 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span>Total distribuído:</span>
+                  <span className="font-medium">R$ {totalDistributed.toFixed(2)}</span>
+                </div>
+                {closingBalance && (
+                  <div className="flex justify-between">
+                    <span>Falta distribuir:</span>
+                    <span className={`font-medium ${parseFloat(closingBalance) - totalDistributed !== 0 ? 'text-warning' : 'text-success'}`}>
+                      R$ {(parseFloat(closingBalance) - totalDistributed).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label>Observações (opcional)</Label>

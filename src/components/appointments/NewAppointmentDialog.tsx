@@ -65,6 +65,7 @@ export function NewAppointmentDialog({
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
+  const [packageSearch, setPackageSearch] = useState('');
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -345,22 +346,32 @@ export function NewAppointmentDialog({
                     </SelectContent>
                   </Select>
                 </TabsContent>
-                <TabsContent value="package" className="mt-2">
+                <TabsContent value="package" className="mt-2 space-y-2">
+                  <Input
+                    placeholder="Digite para buscar pacotes..."
+                    value={packageSearch}
+                    onChange={(e) => setPackageSearch(e.target.value)}
+                    className="mb-2"
+                  />
                   <Select value={selectedService} onValueChange={setSelectedService}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um pacote" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      {activePackages.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          <div className="flex items-center justify-between w-full gap-4">
-                            <span>{pkg.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {pkg.total_sessions} sessões • R$ {pkg.total_price}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {activePackages
+                        .filter((pkg) => 
+                          pkg.name.toLowerCase().includes(packageSearch.toLowerCase())
+                        )
+                        .map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span>{pkg.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {pkg.total_sessions} sessões • R$ {pkg.total_price}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </TabsContent>

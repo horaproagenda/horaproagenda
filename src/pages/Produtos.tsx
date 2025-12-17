@@ -651,12 +651,13 @@ export default function Produtos() {
                               <div>
                                 <Label>Fornecedor Cadastrado</Label>
                                 <Select
-                                  value={productForm.supplier_id}
+                                  value={productForm.supplier_id || "none"}
                                   onValueChange={(v) => {
-                                    const supplier = activeSuppliers.find(s => s.id === v);
+                                    const actualValue = v === "none" ? "" : v;
+                                    const supplier = activeSuppliers.find(s => s.id === actualValue);
                                     setProductForm({ 
                                       ...productForm, 
-                                      supplier_id: v,
+                                      supplier_id: actualValue,
                                       supplier: supplier?.name || productForm.supplier 
                                     });
                                   }}
@@ -665,7 +666,7 @@ export default function Produtos() {
                                     <SelectValue placeholder="Selecione um fornecedor" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Nenhum</SelectItem>
+                                    <SelectItem value="none">Nenhum</SelectItem>
                                     {activeSuppliers.map(s => (
                                       <SelectItem key={s.id} value={s.id}>
                                         <div className="flex items-center gap-2">

@@ -174,6 +174,74 @@ export type Database = {
         }
         Relationships: []
       }
+      card_brand_fees: {
+        Row: {
+          card_brand_id: string
+          created_at: string
+          fee_percentage: number
+          id: string
+          installment_number: number
+          updated_at: string
+        }
+        Insert: {
+          card_brand_id: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          installment_number?: number
+          updated_at?: string
+        }
+        Update: {
+          card_brand_id?: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          installment_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_brand_fees_card_brand_id_fkey"
+            columns: ["card_brand_id"]
+            isOneToOne: false
+            referencedRelation: "card_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_brands: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       cash_registers: {
         Row: {
           bank_deposits: Json | null
@@ -763,6 +831,7 @@ export type Database = {
           card_fee: number | null
           created_at: string
           created_by: string | null
+          debit_fee: number | null
           description: string | null
           id: string
           installment_fee: number | null
@@ -776,6 +845,7 @@ export type Database = {
           card_fee?: number | null
           created_at?: string
           created_by?: string | null
+          debit_fee?: number | null
           description?: string | null
           id?: string
           installment_fee?: number | null
@@ -789,6 +859,7 @@ export type Database = {
           card_fee?: number | null
           created_at?: string
           created_by?: string | null
+          debit_fee?: number | null
           description?: string | null
           id?: string
           installment_fee?: number | null

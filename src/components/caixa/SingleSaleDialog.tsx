@@ -27,7 +27,6 @@ import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
-import { useBanks } from '@/hooks/useBanks';
 import { useSingleSales } from '@/hooks/useSingleSales';
 import { ptBR } from 'date-fns/locale';
 
@@ -45,7 +44,6 @@ export function SingleSaleDialog() {
   const [originalAmount, setOriginalAmount] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
-  const [selectedBank, setSelectedBank] = useState('');
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
   
@@ -59,7 +57,6 @@ export function SingleSaleDialog() {
   const { services } = useServices();
   const { packages } = useServicePackages();
   const { activePaymentMethods } = usePaymentMethods();
-  const { banks } = useBanks();
   const { createSale } = useSingleSales();
 
   // Click outside handler
@@ -150,7 +147,7 @@ export function SingleSaleDialog() {
       discount_amount: discount,
       final_amount: finalAmount,
       payment_method_id: selectedPaymentMethod,
-      bank_id: selectedBank || null,
+      bank_id: null,
       sale_date: format(saleDate, 'yyyy-MM-dd'),
       notes: notes || null,
     });
@@ -170,7 +167,6 @@ export function SingleSaleDialog() {
     setOriginalAmount('');
     setDiscountAmount('');
     setSelectedPaymentMethod('');
-    setSelectedBank('');
     setSaleDate(new Date());
     setNotes('');
     setShowClientSuggestions(false);
@@ -366,22 +362,6 @@ export function SingleSaleDialog() {
             </Select>
           </div>
 
-          {/* Bank */}
-          <div className="space-y-2">
-            <Label>Banco (opcional)</Label>
-            <Select value={selectedBank} onValueChange={setSelectedBank}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o banco" />
-              </SelectTrigger>
-              <SelectContent>
-                {banks.filter(b => b.is_active).map((bank) => (
-                  <SelectItem key={bank.id} value={bank.id}>
-                    {bank.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Sale Date */}
           <div className="space-y-2">

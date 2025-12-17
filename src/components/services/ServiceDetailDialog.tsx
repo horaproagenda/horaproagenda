@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Form,
   FormControl,
@@ -43,6 +51,13 @@ import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { toast } from 'sonner';
 
+interface ServiceAppointment {
+  id: string;
+  start_time: string;
+  status: string;
+  client: { name: string } | null;
+}
+
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
@@ -74,6 +89,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [serviceAppointments, setServiceAppointments] = useState<ServiceAppointment[]>([]);
+  const [showAppointments, setShowAppointments] = useState(false);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
@@ -121,10 +138,18 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
       const { data: appointments } = await supabase
         .from('appointments')
-        .select('client_id')
-        .eq('service_id', service.id);
+        .select('id, client_id, start_time, status, client:clients(name)')
+        .eq('service_id', service.id)
+        .order('start_time', { ascending: false })
+        .limit(50);
 
       const uniqueClients = new Set(appointments?.map(a => a.client_id) || []);
+      setServiceAppointments(appointments?.map(a => ({
+        id: a.id,
+        start_time: a.start_time,
+        status: a.status,
+        client: a.client,
+      })) || []);
 
       if (service.room_id) {
         const { data: room } = await supabase
@@ -154,6 +179,22 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       console.error('Error fetching service stats:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+      
+      if (error) throw error;
+      
+      toast.success('Agendamento excluído!');
+      fetchServiceStats();
+    } catch (error: any) {
+      toast.error('Erro ao excluir agendamento: ' + error.message);
     }
   };
 
@@ -340,7 +381,62 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                 </div>
               </div>
 
-              <Separator />
+              {/* Appointments List */}
+              {appointmentsCount > 0 && (
+                <>
+                  <Collapsible open={showAppointments} onOpenChange={setShowAppointments}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Agendamentos vinculados ({appointmentsCount})
+                        </span>
+                        {showAppointments ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <ScrollArea className="h-[200px] rounded border p-2 mt-2">
+                        <div className="space-y-2">
+                          {serviceAppointments.map(apt => (
+                            <div key={apt.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                              <div>
+                                <p className="text-sm font-medium">{apt.client?.name || 'Cliente'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={apt.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
+                                  {apt.status === 'scheduled' ? 'Agendado' : 
+                                   apt.status === 'confirmed' ? 'Confirmado' : 
+                                   apt.status === 'completed' ? 'Concluído' : 
+                                   apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive"
+                                  onClick={() => handleDeleteAppointment(apt.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Exclua os agendamentos acima se desejar excluir este serviço.
+                      </p>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <Separator />
+                </>
+              )}
 
               <div className="flex justify-between gap-2">
                 <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>

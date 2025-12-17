@@ -32,6 +32,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
     address: editingSupplier?.address || '',
     notes: editingSupplier?.notes || '',
     is_active: editingSupplier?.is_active ?? true,
+    cnpj: editingSupplier?.cnpj || '',
+    uf: editingSupplier?.uf || '',
+    company_name: editingSupplier?.company_name || '',
+    state_registration: editingSupplier?.state_registration || '',
+    municipal_registration: editingSupplier?.municipal_registration || '',
   });
 
   const resetForm = () => {
@@ -43,6 +48,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
       address: '',
       notes: '',
       is_active: true,
+      cnpj: '',
+      uf: '',
+      company_name: '',
+      state_registration: '',
+      municipal_registration: '',
     });
   };
 
@@ -56,6 +66,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
       phone: form.phone || null,
       address: form.address || null,
       notes: form.notes || null,
+      cnpj: form.cnpj || null,
+      uf: form.uf || null,
+      company_name: form.company_name || null,
+      state_registration: form.state_registration || null,
+      municipal_registration: form.municipal_registration || null,
     };
 
     if (editingSupplier) {
@@ -96,13 +111,62 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-4">
-            <div>
-              <Label>Nome *</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Nome do fornecedor"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nome Fantasia *</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Nome do fornecedor"
+                />
+              </div>
+              <div>
+                <Label>Razão Social</Label>
+                <Input
+                  value={form.company_name}
+                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                  placeholder="Razão social da empresa"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>CNPJ</Label>
+                <Input
+                  value={form.cnpj}
+                  onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+              <div>
+                <Label>UF</Label>
+                <Input
+                  value={form.uf}
+                  onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase().slice(0, 2) })}
+                  placeholder="SP"
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Inscrição Estadual</Label>
+                <Input
+                  value={form.state_registration}
+                  onChange={(e) => setForm({ ...form, state_registration: e.target.value })}
+                  placeholder="Inscrição estadual"
+                />
+              </div>
+              <div>
+                <Label>Inscrição Municipal</Label>
+                <Input
+                  value={form.municipal_registration}
+                  onChange={(e) => setForm({ ...form, municipal_registration: e.target.value })}
+                  placeholder="Inscrição municipal"
+                />
+              </div>
             </div>
 
             <div>

@@ -56,7 +56,7 @@ export default function ClienteDetalhes() {
         </div>
 
         {/* Client Header with full info */}
-        <ClientHeader client={client} />
+        <ClientHeader client={client} onEdit={() => setActiveTab('info')} />
 
         {/* Stats Section */}
         <ClientStatsSection stats={stats} />

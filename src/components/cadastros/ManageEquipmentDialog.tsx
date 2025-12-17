@@ -112,6 +112,8 @@ export function ManageEquipmentDialog({ children }: ManageEquipmentDialogProps) 
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
+    
     try {
       const { error } = await supabase
         .from('equipment')
@@ -121,9 +123,12 @@ export function ManageEquipmentDialog({ children }: ManageEquipmentDialogProps) 
       if (error) throw error;
       toast.success('Equipamento excluído com sucesso!');
       refetch();
-    } catch (error) {
-      console.error('Error deleting equipment:', error);
-      toast.error('Erro ao excluir equipamento');
+    } catch (error: any) {
+      if (error.message?.includes('violates foreign key constraint')) {
+        toast.error('Não é possível excluir: equipamento possui dados vinculados no sistema.');
+      } else {
+        toast.error('Erro ao excluir equipamento: ' + error.message);
+      }
     }
   };
 

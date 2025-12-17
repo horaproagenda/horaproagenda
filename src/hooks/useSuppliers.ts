@@ -11,6 +11,11 @@ export interface Supplier {
   address: string | null;
   notes: string | null;
   is_active: boolean;
+  cnpj: string | null;
+  uf: string | null;
+  company_name: string | null;
+  state_registration: string | null;
+  municipal_registration: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;

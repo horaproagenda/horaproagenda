@@ -1203,43 +1203,58 @@ export type Database = {
       suppliers: {
         Row: {
           address: string | null
+          cnpj: string | null
+          company_name: string | null
           contact_name: string | null
           created_at: string
           created_by: string | null
           email: string | null
           id: string
           is_active: boolean
+          municipal_registration: string | null
           name: string
           notes: string | null
           phone: string | null
+          state_registration: string | null
+          uf: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           address?: string | null
+          cnpj?: string | null
+          company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
+          municipal_registration?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          state_registration?: string | null
+          uf?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           address?: string | null
+          cnpj?: string | null
+          company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
+          municipal_registration?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          state_registration?: string | null
+          uf?: string | null
           updated_at?: string
           updated_by?: string | null
         }

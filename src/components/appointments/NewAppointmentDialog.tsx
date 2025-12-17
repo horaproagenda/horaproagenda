@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -27,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
@@ -60,9 +63,12 @@ export function NewAppointmentDialog({
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
+  const [manualDuration, setManualDuration] = useState(60);
 
   const { clients } = useClients();
   const { services } = useServices();
+  const { packages } = useServicePackages();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { appointments, createAppointment } = useAppointments();
@@ -79,9 +85,14 @@ export function NewAppointmentDialog({
     return true;
   };
   const selectedServiceData = services.find(s => s.id === selectedService);
+  const selectedPackageData = packages.find(p => p.id === selectedService);
+  const currentDuration = serviceType === 'service' 
+    ? (selectedServiceData?.duration || manualDuration) 
+    : (selectedPackageData?.duration || manualDuration);
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
+  const activePackages = packages.filter(p => p.is_active && !p.client_id);
 
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
@@ -306,24 +317,54 @@ export function NewAppointmentDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="service">Serviço *</Label>
-              <Select value={selectedService} onValueChange={setSelectedService}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {services.filter(s => s.is_active).map((service) => (
-                    <SelectItem key={service.id} value={service.id}>
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span>{service.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {service.duration}min • R$ {service.price}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Serviço ou Pacote *</Label>
+              <Tabs value={serviceType} onValueChange={(v) => { setServiceType(v as 'service' | 'package'); setSelectedService(''); }}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="service" className="flex-1">Serviços</TabsTrigger>
+                  <TabsTrigger value="package" className="flex-1 gap-1">
+                    <Package className="h-3 w-3" />
+                    Pacotes
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="service" className="mt-2">
+                  <Select value={selectedService} onValueChange={setSelectedService}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um serviço" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {services.filter(s => s.is_active).map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span>{service.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {service.duration}min • R$ {service.price}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TabsContent>
+                <TabsContent value="package" className="mt-2">
+                  <Select value={selectedService} onValueChange={setSelectedService}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um pacote" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {activePackages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span>{pkg.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {pkg.total_sessions} sessões • R$ {pkg.total_price}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TabsContent>
+              </Tabs>
               {selectedServiceData && (
                 <p className="text-xs text-muted-foreground">
                   Duração: {selectedServiceData.duration} minutos • 

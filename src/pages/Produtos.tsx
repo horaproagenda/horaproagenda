@@ -335,6 +335,18 @@ export default function Produtos() {
     }));
   };
 
+  // Update unit price when total price changes
+  const updateProductFromTotal = (qty: number, total: number) => {
+    const unitPrice = qty > 0 ? total / qty : 0;
+    setProductForm(prev => ({
+      ...prev,
+      quantity_purchased: qty,
+      unit_price: unitPrice,
+      total_price: total,
+      current_stock: prev.current_stock || qty,
+    }));
+  };
+
   const updatePurchaseTotal = (qty: number, price: number) => {
     setPurchaseForm(prev => ({
       ...prev,
@@ -593,7 +605,10 @@ export default function Produtos() {
                                 <Input
                                   type="number"
                                   value={productForm.quantity_purchased}
-                                  onChange={(e) => updateProductTotal(parseFloat(e.target.value) || 0, productForm.unit_price)}
+                                  onChange={(e) => {
+                                    const qty = parseFloat(e.target.value) || 0;
+                                    updateProductTotal(qty, productForm.unit_price);
+                                  }}
                                   min="0"
                                   step="0.01"
                                 />
@@ -607,7 +622,11 @@ export default function Produtos() {
                                   onChange={(e) => updateProductTotal(productForm.quantity_purchased, parseFloat(e.target.value) || 0)}
                                   min="0"
                                   step="0.01"
+                                  placeholder="Digite ou calcule pelo total"
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Ou digite o total para calcular
+                                </p>
                               </div>
 
                               <div>
@@ -615,8 +634,10 @@ export default function Produtos() {
                                 <Input
                                   type="number"
                                   value={productForm.total_price}
-                                  readOnly
-                                  className="bg-muted"
+                                  onChange={(e) => updateProductFromTotal(productForm.quantity_purchased, parseFloat(e.target.value) || 0)}
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Digite para calcular unitário"
                                 />
                               </div>
                             </div>

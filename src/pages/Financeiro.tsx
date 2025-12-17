@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -52,6 +52,7 @@ import {
   ArrowDownCircle,
   RefreshCw,
   Wallet,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBanks } from '@/hooks/useBanks';
@@ -109,6 +110,85 @@ export default function Financeiro() {
     recurring_frequency: 'monthly',
   });
 
+  // Mark as Paid Dialog
+  const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
+  const [markPaidEntry, setMarkPaidEntry] = useState<any>(null);
+  const [markPaidForm, setMarkPaidForm] = useState({
+    payment_method_id: '',
+    card_brand_id: '',
+    installments: 1,
+    bank_id: '',
+  });
+
+  // Calculate final amount with card fees
+  const calculatedFinalAmount = useMemo(() => {
+    if (!markPaidEntry) return 0;
+    
+    const originalAmount = Number(markPaidEntry.amount);
+    const selectedPaymentMethod = activePaymentMethods.find(pm => pm.id === markPaidForm.payment_method_id);
+    
+    if (!selectedPaymentMethod) return originalAmount;
+    
+    const isCredit = selectedPaymentMethod.name.toLowerCase().includes('crédito');
+    const isDebit = selectedPaymentMethod.name.toLowerCase().includes('débito');
+    
+    if (isCredit && markPaidForm.card_brand_id) {
+      const brand = cardBrands.find(b => b.id === markPaidForm.card_brand_id);
+      if (brand && brand.fees) {
+        const fee = brand.fees.find(f => f.installment_number === markPaidForm.installments);
+        if (fee) {
+          const feeAmount = originalAmount * (fee.fee_percentage / 100);
+          return originalAmount - feeAmount;
+        }
+      }
+    } else if (isDebit && markPaidForm.card_brand_id) {
+      const brand = cardBrands.find(b => b.id === markPaidForm.card_brand_id);
+      if (brand && brand.fees) {
+        // For debit, use installment 1 fee (or first available fee)
+        const fee = brand.fees.find(f => f.installment_number === 1) || brand.fees[0];
+        if (fee) {
+          const feeAmount = originalAmount * (fee.fee_percentage / 100);
+          return originalAmount - feeAmount;
+        }
+      }
+    }
+    
+    return originalAmount;
+  }, [markPaidEntry, markPaidForm, activePaymentMethods, cardBrands]);
+
+  const selectedPaymentMethodForMarkPaid = useMemo(() => {
+    return activePaymentMethods.find(pm => pm.id === markPaidForm.payment_method_id);
+  }, [activePaymentMethods, markPaidForm.payment_method_id]);
+
+  const isCardPayment = useMemo(() => {
+    if (!selectedPaymentMethodForMarkPaid) return false;
+    const name = selectedPaymentMethodForMarkPaid.name.toLowerCase();
+    return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
+  }, [selectedPaymentMethodForMarkPaid]);
+
+  const isCreditCard = useMemo(() => {
+    if (!selectedPaymentMethodForMarkPaid) return false;
+    return selectedPaymentMethodForMarkPaid.name.toLowerCase().includes('crédito');
+  }, [selectedPaymentMethodForMarkPaid]);
+
+  const isDebitCard = useMemo(() => {
+    if (!selectedPaymentMethodForMarkPaid) return false;
+    return selectedPaymentMethodForMarkPaid.name.toLowerCase().includes('débito');
+  }, [selectedPaymentMethodForMarkPaid]);
+
+  const availableBrandsForPayment = useMemo(() => {
+    if (isCreditCard) return creditBrands;
+    if (isDebitCard) return debitBrands;
+    return cardBrands.filter(b => b.is_active);
+  }, [isCreditCard, isDebitCard, creditBrands, debitBrands, cardBrands]);
+
+  const maxInstallmentsForBrand = useMemo(() => {
+    if (!markPaidForm.card_brand_id) return 1;
+    const brand = cardBrands.find(b => b.id === markPaidForm.card_brand_id);
+    if (!brand || !brand.fees || brand.fees.length === 0) return 1;
+    return Math.max(...brand.fees.map(f => f.installment_number));
+  }, [markPaidForm.card_brand_id, cardBrands]);
+
   // Payment Method handlers
   const openPmDialog = (pm?: any) => {
     if (pm) {
@@ -155,21 +235,6 @@ export default function Financeiro() {
       }
     }
     setBrandDialogOpen(false);
-  };
-
-  const addFeeRow = () => {
-    const nextInstallment = brandFees.length > 0 ? Math.max(...brandFees.map(f => f.installment_number)) + 1 : 1;
-    setBrandFees([...brandFees, { installment_number: nextInstallment, fee_percentage: 0 }]);
-  };
-
-  const removeFeeRow = (index: number) => {
-    setBrandFees(brandFees.filter((_, i) => i !== index));
-  };
-
-  const updateFeeRow = (index: number, field: 'installment_number' | 'fee_percentage', value: number) => {
-    const newFees = [...brandFees];
-    newFees[index][field] = value;
-    setBrandFees(newFees);
   };
 
   // Category handlers
@@ -266,6 +331,34 @@ export default function Financeiro() {
       await createEntry.mutateAsync(entryData);
     }
     setEntryDialogOpen(false);
+  };
+
+  // Mark as Paid handlers
+  const openMarkPaidDialog = (entry: any) => {
+    setMarkPaidEntry(entry);
+    setMarkPaidForm({
+      payment_method_id: entry.payment_method_id || '',
+      card_brand_id: '',
+      installments: 1,
+      bank_id: entry.bank_id || '',
+    });
+    setMarkPaidDialogOpen(true);
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!markPaidEntry) return;
+    
+    await updateEntry.mutateAsync({
+      id: markPaidEntry.id,
+      status: 'paid',
+      paid_date: format(new Date(), 'yyyy-MM-dd'),
+      payment_method_id: markPaidForm.payment_method_id || null,
+      bank_id: markPaidForm.bank_id || null,
+      installments: markPaidForm.installments,
+    });
+    
+    setMarkPaidDialogOpen(false);
+    setMarkPaidEntry(null);
   };
 
   const markAsPaid = async (entry: any) => {
@@ -375,14 +468,6 @@ export default function Financeiro() {
               <CreditCard className="h-4 w-4" />
               Formas de Pagamento
             </TabsTrigger>
-            <TabsTrigger value="card-brands" className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Bandeiras
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2">
-              <Tag className="h-4 w-4" />
-              Categorias
-            </TabsTrigger>
           </TabsList>
 
           {/* Entries Tab */}
@@ -429,7 +514,7 @@ export default function Financeiro() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {entry.status === 'pending' && (
-                            <Button variant="ghost" size="icon" onClick={() => markAsPaid(entry)} title="Marcar como pago">
+                            <Button variant="ghost" size="icon" onClick={() => openMarkPaidDialog(entry)} title="Dar baixa">
                               <RefreshCw className="h-4 w-4 text-green-600" />
                             </Button>
                           )}
@@ -479,7 +564,7 @@ export default function Financeiro() {
                       <TableCell>{getStatusBadge(entry.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => markAsPaid(entry)}>
+                          <Button variant="outline" size="sm" onClick={() => openMarkPaidDialog(entry)}>
                             Receber
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => openEntryDialog(entry)}>
@@ -494,50 +579,127 @@ export default function Financeiro() {
             </Card>
           </TabsContent>
 
-          {/* Payables Tab */}
+          {/* Payables Tab with Categories Sub-tabs */}
           <TabsContent value="payables" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Contas a Pagar</h3>
-              <Button onClick={() => openEntryDialog(undefined, 'payable')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Conta a Pagar
-              </Button>
-            </div>
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingPayables.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{entry.description}</TableCell>
-                      <TableCell>{entry.category?.name || '-'}</TableCell>
-                      <TableCell className="text-red-600 font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
-                      <TableCell>{getStatusBadge(entry.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => markAsPaid(entry)}>
-                            Pagar
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEntryDialog(entry)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+            <Tabs defaultValue="payables-list" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="payables-list" className="gap-2">
+                  <ArrowDownCircle className="h-4 w-4" />
+                  Contas
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="gap-2">
+                  <Tag className="h-4 w-4" />
+                  Categorias
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="payables-list" className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Contas a Pagar</h3>
+                  <Button onClick={() => openEntryDialog(undefined, 'payable')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Conta a Pagar
+                  </Button>
+                </div>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Funcionário</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingPayables.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{entry.description}</TableCell>
+                          <TableCell>{entry.category?.name || '-'}</TableCell>
+                          <TableCell>
+                            {entry.professional?.name || '-'}
+                          </TableCell>
+                          <TableCell className="text-red-600 font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
+                          <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => openMarkPaidDialog(entry)}>
+                                Pagar
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEntryDialog(entry)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="categories" className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Categorias Financeiras</h3>
+                  <Button onClick={() => openCatDialog()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Categoria
+                  </Button>
+                </div>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Recorrente</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {categories.map((cat) => (
+                        <TableRow key={cat.id}>
+                          <TableCell className="font-medium">{cat.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={cat.type === 'income' ? 'text-green-600 border-green-600' : 'text-red-600 border-red-600'}>
+                              {cat.type === 'income' ? 'Receita' : 'Despesa'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {cat.is_recurring && (
+                              <Badge variant="secondary">
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Mensal
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={cat.is_active ? 'default' : 'secondary'}>
+                              {cat.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openCatDialog(cat)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => deleteCategory.mutate(cat.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Banks Tab */}
@@ -568,169 +730,124 @@ export default function Financeiro() {
             </div>
           </TabsContent>
 
-          {/* Payment Methods Tab */}
+          {/* Payment Methods Tab with Card Brands Sub-tabs */}
           <TabsContent value="payment-methods" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Formas de Pagamento</h3>
-              <Button onClick={() => openPmDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Forma de Pagamento
-              </Button>
-            </div>
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentMethods.map((pm) => (
-                    <TableRow key={pm.id}>
-                      <TableCell className="font-medium">{pm.name}</TableCell>
-                      <TableCell>{pm.description || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={pm.is_active ? 'default' : 'secondary'}>
-                          {pm.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openPmDialog(pm)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deletePaymentMethod.mutate(pm.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
+            <Tabs defaultValue="methods-list" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="methods-list" className="gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Métodos
+                </TabsTrigger>
+                <TabsTrigger value="card-brands" className="gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Bandeiras
+                </TabsTrigger>
+              </TabsList>
 
-          {/* Card Brands Tab */}
-          <TabsContent value="card-brands" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Bandeiras de Cartão</h3>
-              <Button onClick={() => openBrandDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Bandeira
-              </Button>
-            </div>
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Bandeira</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Parcelas Configuradas</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cardBrands.map((brand) => (
-                    <TableRow key={brand.id}>
-                      <TableCell className="font-medium">{brand.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Crédito/Débito'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {brand.fees && brand.fees.length > 0 ? (
-                          <span className="text-sm text-muted-foreground">
-                            {brand.fees.length} parcela(s) - até {Math.max(...brand.fees.map(f => f.fee_percentage))}%
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={brand.is_active ? 'default' : 'secondary'}>
-                          {brand.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openBrandDialog(brand)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteCardBrand.mutate(brand.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
+              <TabsContent value="methods-list" className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Formas de Pagamento</h3>
+                  <Button onClick={() => openPmDialog()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Forma de Pagamento
+                  </Button>
+                </div>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentMethods.map((pm) => (
+                        <TableRow key={pm.id}>
+                          <TableCell className="font-medium">{pm.name}</TableCell>
+                          <TableCell>{pm.description || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={pm.is_active ? 'default' : 'secondary'}>
+                              {pm.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openPmDialog(pm)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => deletePaymentMethod.mutate(pm.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
 
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Categorias Financeiras</h3>
-              <Button onClick={() => openCatDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Categoria
-              </Button>
-            </div>
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Recorrente</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {categories.map((cat) => (
-                    <TableRow key={cat.id}>
-                      <TableCell className="font-medium">{cat.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cat.type === 'income' ? 'text-green-600 border-green-600' : 'text-red-600 border-red-600'}>
-                          {cat.type === 'income' ? 'Receita' : 'Despesa'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {cat.is_recurring && (
-                          <Badge variant="secondary">
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Mensal
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={cat.is_active ? 'default' : 'secondary'}>
-                          {cat.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openCatDialog(cat)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteCategory.mutate(cat.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+              <TabsContent value="card-brands" className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Bandeiras de Cartão</h3>
+                  <Button onClick={() => openBrandDialog()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Bandeira
+                  </Button>
+                </div>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Bandeira</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Parcelas Configuradas</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cardBrands.map((brand) => (
+                        <TableRow key={brand.id}>
+                          <TableCell className="font-medium">{brand.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Crédito/Débito'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {brand.fees && brand.fees.length > 0 ? (
+                              <span className="text-sm text-muted-foreground">
+                                {brand.fees.length} parcela(s) - até {Math.max(...brand.fees.map(f => f.fee_percentage))}%
+                              </span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={brand.is_active ? 'default' : 'secondary'}>
+                              {brand.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openBrandDialog(brand)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => deleteCardBrand.mutate(brand.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
 
@@ -757,47 +874,6 @@ export default function Financeiro() {
                   placeholder="Descrição opcional"
                 />
               </div>
-              {/* Cartão de Crédito - taxa por parcela e máx parcelas */}
-              {pmForm.name.toLowerCase().includes('crédito') && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Máx. Parcelas</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={pmForm.max_installments}
-                      onChange={(e) => setPmForm({ ...pmForm, max_installments: parseInt(e.target.value) || 1 })}
-                      placeholder="Ex: 12"
-                    />
-                    <p className="text-xs text-muted-foreground">Quantidade máxima de parcelas aceitas</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Taxa Adicional por Parcela (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={pmForm.installment_fee}
-                      onChange={(e) => setPmForm({ ...pmForm, installment_fee: parseFloat(e.target.value) || 0 })}
-                      placeholder="Ex: 1.5"
-                    />
-                    <p className="text-xs text-muted-foreground">Taxa adicional cobrada por parcela</p>
-                  </div>
-                </div>
-              )}
-              {/* Parcelado no Boleto - apenas máx parcelas */}
-              {pmForm.name.toLowerCase().includes('boleto') && (
-                <div className="space-y-2">
-                  <Label>Máx. Parcelas no Boleto</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={pmForm.max_installments}
-                    onChange={(e) => setPmForm({ ...pmForm, max_installments: parseInt(e.target.value) || 1 })}
-                    placeholder="Ex: 6"
-                  />
-                  <p className="text-xs text-muted-foreground">Quantidade máxima de parcelas aceitas no boleto</p>
-                </div>
-              )}
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={pmForm.is_active}
@@ -846,40 +922,18 @@ export default function Financeiro() {
                 </div>
               </div>
 
-              {/* Taxa única para débito */}
-              {(brandForm.type === 'debit' || brandForm.type === 'both') && (
-                <div className="space-y-2">
-                  <Label>Taxa Débito (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="max-w-[150px]"
-                    value={brandFees.find(f => f.installment_number === 0)?.fee_percentage || ''}
-                    onChange={(e) => {
-                      const debitFee = parseFloat(e.target.value) || 0;
-                      const otherFees = brandFees.filter(f => f.installment_number !== 0);
-                      if (debitFee > 0) {
-                        setBrandFees([...otherFees, { installment_number: 0, fee_percentage: debitFee }]);
-                      } else {
-                        setBrandFees(otherFees);
-                      }
-                    }}
-                    placeholder="Ex: 1.5"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Taxa cobrada para pagamentos no débito
-                  </p>
-                </div>
-              )}
-
-              {/* Taxas por parcela para crédito - Grid de 12 colunas */}
+              {/* Credit Card Fees Grid */}
               {(brandForm.type === 'credit' || brandForm.type === 'both') && (
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Taxas por Parcela (Crédito)</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Informe a taxa (%) para cada número de parcelas
-                  </p>
+                <div className="space-y-4">
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">Taxas por Parcela (Crédito)</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Configure a taxa de cada parcela. O valor líquido será calculado automaticamente.
+                    </p>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground font-medium">Parcelas padrão (1x a 12x)</p>
                   <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((installment) => {
                       const feeValue = brandFees.find(f => f.installment_number === installment)?.fee_percentage;
@@ -939,6 +993,39 @@ export default function Financeiro() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Debit Card Fee */}
+              {(brandForm.type === 'debit' || brandForm.type === 'both') && (
+                <div className="space-y-4">
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">Taxa de Débito</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Configure a taxa para pagamentos no débito.
+                    </p>
+                  </div>
+                  <div className="w-32">
+                    <Label className="text-xs font-medium">Taxa (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="text-center h-9 text-sm"
+                      value={brandFees.find(f => f.installment_number === 0)?.fee_percentage ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                        const otherFees = brandFees.filter(f => f.installment_number !== 0);
+                        if (value !== null && value >= 0) {
+                          setBrandFees([...otherFees, { installment_number: 0, fee_percentage: value }]);
+                        } else {
+                          setBrandFees(otherFees);
+                        }
+                      }}
+                      placeholder="%"
+                    />
                   </div>
                 </div>
               )}
@@ -1117,15 +1204,24 @@ export default function Financeiro() {
                 </Select>
               </div>
 
-              {/* Show employee selection for Pró-labore or Vale categories */}
-              {entryForm.category_id && (() => {
+              {/* Show employee selection when category is selected and it's a payable */}
+              {entryForm.type === 'payable' && entryForm.category_id && (() => {
                 const selectedCategory = activeCategories.find(c => c.id === entryForm.category_id);
-                const needsEmployee = selectedCategory?.name.toLowerCase().includes('pró-labore') || 
+                const needsEmployee = selectedCategory?.name.toLowerCase().includes('funcionário') ||
+                                     selectedCategory?.name.toLowerCase().includes('funcionario') ||
+                                     selectedCategory?.name.toLowerCase().includes('pró-labore') || 
                                      selectedCategory?.name.toLowerCase().includes('pro-labore') ||
-                                     selectedCategory?.name.toLowerCase().includes('vale');
+                                     selectedCategory?.name.toLowerCase().includes('salário') ||
+                                     selectedCategory?.name.toLowerCase().includes('salario') ||
+                                     selectedCategory?.name.toLowerCase().includes('vale') ||
+                                     selectedCategory?.name.toLowerCase().includes('comissão') ||
+                                     selectedCategory?.name.toLowerCase().includes('comissao');
                 return needsEmployee ? (
-                  <div className="space-y-2">
-                    <Label>Funcionário</Label>
+                  <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Funcionário
+                    </Label>
                     <Select value={entryForm.professional_id} onValueChange={(v) => setEntryForm({ ...entryForm, professional_id: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o funcionário" />
@@ -1248,6 +1344,142 @@ export default function Financeiro() {
 
               <Button onClick={handleEntrySubmit} className="w-full">
                 {editingEntry ? 'Salvar' : 'Criar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Mark as Paid Dialog */}
+        <Dialog open={markPaidDialogOpen} onOpenChange={setMarkPaidDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Dar Baixa no Pagamento</DialogTitle>
+              <DialogDescription>
+                {markPaidEntry?.description} - R$ {Number(markPaidEntry?.amount || 0).toFixed(2)}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Forma de Pagamento *</Label>
+                <Select 
+                  value={markPaidForm.payment_method_id} 
+                  onValueChange={(v) => setMarkPaidForm({ ...markPaidForm, payment_method_id: v, card_brand_id: '', installments: 1 })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a forma de pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activePaymentMethods.map((pm) => (
+                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Card Brand Selection - shown for credit/debit card payments */}
+              {isCardPayment && (
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                  <Label className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Bandeira do Cartão
+                  </Label>
+                  <Select 
+                    value={markPaidForm.card_brand_id} 
+                    onValueChange={(v) => setMarkPaidForm({ ...markPaidForm, card_brand_id: v, installments: 1 })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a bandeira" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBrandsForPayment.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Installments Selection - shown for credit card payments */}
+              {isCreditCard && markPaidForm.card_brand_id && (
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                  <Label>Número de Parcelas</Label>
+                  <Select 
+                    value={markPaidForm.installments.toString()} 
+                    onValueChange={(v) => setMarkPaidForm({ ...markPaidForm, installments: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o número de parcelas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: maxInstallmentsForBrand }, (_, i) => i + 1).map((num) => {
+                        const brand = cardBrands.find(b => b.id === markPaidForm.card_brand_id);
+                        const fee = brand?.fees?.find(f => f.installment_number === num);
+                        return (
+                          <SelectItem key={num} value={num.toString()}>
+                            {num}x {fee ? `(taxa: ${fee.fee_percentage}%)` : ''}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Bank Selection */}
+              {markPaidEntry?.type === 'payable' && (
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Select value={markPaidForm.bank_id} onValueChange={(v) => setMarkPaidForm({ ...markPaidForm, bank_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o banco" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {banks.filter(b => b.is_active).map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Final Amount Calculation */}
+              {isCardPayment && markPaidForm.card_brand_id && (
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Valor Original:</span>
+                    <span>R$ {Number(markPaidEntry?.amount || 0).toFixed(2)}</span>
+                  </div>
+                  {(() => {
+                    const brand = cardBrands.find(b => b.id === markPaidForm.card_brand_id);
+                    let fee = null;
+                    if (isCreditCard) {
+                      fee = brand?.fees?.find(f => f.installment_number === markPaidForm.installments);
+                    } else if (isDebitCard) {
+                      fee = brand?.fees?.find(f => f.installment_number === 0) || brand?.fees?.find(f => f.installment_number === 1);
+                    }
+                    if (fee) {
+                      const feeAmount = Number(markPaidEntry?.amount || 0) * (fee.fee_percentage / 100);
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm text-muted-foreground">
+                            <span>Taxa ({fee.fee_percentage}%):</span>
+                            <span className="text-red-600">- R$ {feeAmount.toFixed(2)}</span>
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between font-semibold">
+                            <span>Valor Líquido:</span>
+                            <span className="text-green-600">R$ {calculatedFinalAmount.toFixed(2)}</span>
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+
+              <Button onClick={handleMarkAsPaid} className="w-full" disabled={!markPaidForm.payment_method_id}>
+                Confirmar Pagamento
               </Button>
             </div>
           </DialogContent>

@@ -16,6 +16,7 @@ export interface FinancialEntry {
   payment_method_id: string | null;
   bank_id: string | null;
   client_id: string | null;
+  professional_id: string | null;
   appointment_id: string | null;
   notes: string | null;
   is_recurring: boolean;
@@ -30,6 +31,7 @@ export interface FinancialEntry {
   payment_method?: PaymentMethod;
   client?: { id: string; name: string };
   bank?: { id: string; name: string };
+  professional?: { id: string; name: string };
 }
 
 export function useFinancialEntries() {
@@ -45,7 +47,8 @@ export function useFinancialEntries() {
           category:financial_categories(*),
           payment_method:payment_methods(*),
           client:clients(id, name),
-          bank:banks(id, name)
+          bank:banks(id, name),
+          professional:professionals(id, name)
         `)
         .order('due_date', { ascending: false });
 
@@ -83,7 +86,7 @@ export function useFinancialEntries() {
     mutationFn: async ({ id, ...updates }: Partial<FinancialEntry> & { id: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { category, payment_method, client, bank, ...cleanUpdates } = updates as any;
+      const { category, payment_method, client, bank, professional, ...cleanUpdates } = updates as any;
       
       const { data, error } = await supabase
         .from('financial_entries')

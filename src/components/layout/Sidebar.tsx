@@ -66,7 +66,7 @@ export function Sidebar({ onNewAppointment }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-2">
+        <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto">
           {navigation.map((item) => (
             <NavLink
               key={item.name}

@@ -58,17 +58,53 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
   const { hasRole } = useAuth();
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
 
+  const parseBirthdate = (dateStr: string): string | undefined => {
+    if (!dateStr) return undefined;
+    const cleanDate = dateStr.toString().trim();
+    
+    // Already in ISO format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return cleanDate;
+    
+    // DD/MM/YYYY or DD-MM-YYYY
+    const brMatch = cleanDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Excel serial date
+    const serialNumber = parseFloat(cleanDate);
+    if (!isNaN(serialNumber) && serialNumber > 10000 && serialNumber < 100000) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const date = new Date(excelEpoch.getTime() + serialNumber * 86400000);
+      return date.toISOString().split('T')[0];
+    }
+
+    return undefined;
+  };
+
+  const normalizePhone = (phone: string): string => {
+    if (!phone) return '';
+    return phone.toString().replace(/\D/g, '');
+  };
+
   const parseCSVContent = (content: string): ParsedService[] | ParsedClient[] => {
-    const lines = content.trim().split('\n');
+    const lines = content.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) {
       throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Detect delimiter (prioritize semicolon for BR Excel exports)
+    const firstLine = lines[0];
+    let delimiter = ',';
+    if (firstLine.includes(';')) delimiter = ';';
+    else if (firstLine.includes('\t')) delimiter = '\t';
+
+    const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
     const data: any[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
       const row: any = {};
       
       headers.forEach((header, idx) => {
@@ -76,24 +112,26 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
       });
       
       if (type === 'services') {
-        if (!row.nome && !row.name) continue;
+        const name = row.nome || row.name || '';
+        if (!name) continue;
         data.push({
-          name: row.nome || row.name || '',
+          name: name,
           category: row.categoria || row.category || 'Outros',
-          price: parseFloat(row.preco || row.price || '0') || 0,
+          price: parseFloat((row.preco || row.price || '0').replace(',', '.')) || 0,
           duration: parseInt(row.duracao || row.duration || '60') || 60,
           description: row.descricao || row.description || undefined,
           return_days: row.retorno || row.return_days ? parseInt(row.retorno || row.return_days) : undefined,
         } as ParsedService);
       } else {
-        if (!row.nome && !row.name) continue;
+        const name = row.nome || row.name || '';
+        if (!name) continue;
         data.push({
-          name: row.nome || row.name || '',
-          phone: row.telefone || row.phone || '',
-          email: row.email || undefined,
-          cpf: row.cpf || undefined,
-          birthdate: row.nascimento || row.birthdate || undefined,
-          notes: row.observacoes || row.notes || undefined,
+          name: name,
+          phone: normalizePhone(row.telefone || row.phone || row.celular || ''),
+          email: row.email || row['e-mail'] || undefined,
+          cpf: row.cpf ? row.cpf.replace(/\D/g, '') : undefined,
+          birthdate: parseBirthdate(row.nascimento || row.birthdate || row['data_nascimento'] || ''),
+          notes: row.observacoes || row.obs || row.notes || undefined,
         } as ParsedClient);
       }
     }
@@ -231,9 +269,17 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
       } else {
         for (const client of parsedData as ParsedClient[]) {
           try {
+            // Validate phone - at least 10 digits
+            const phone = client.phone?.replace(/\D/g, '') || '';
+            if (phone.length < 10) {
+              errors.push(`${client.name}: Telefone inválido (mín. 10 dígitos)`);
+              failed++;
+              continue;
+            }
+
             const { error } = await supabase.from('clients').insert({
               name: client.name,
-              phone: client.phone || '00000000000',
+              phone: phone,
               email: client.email || null,
               cpf: client.cpf || null,
               birthdate: client.birthdate || null,

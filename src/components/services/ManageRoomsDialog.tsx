@@ -118,13 +118,43 @@ export function ManageRoomsDialog({ children }: ManageRoomsDialogProps) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta sala?')) return;
+    
     try {
+      // Check for linked services
+      const { data: services } = await supabase
+        .from('services')
+        .select('id')
+        .eq('room_id', id)
+        .limit(1);
+      
+      if (services && services.length > 0) {
+        toast.error('Não é possível excluir: sala possui serviços vinculados.');
+        return;
+      }
+
+      // Check for linked appointments
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('room_id', id)
+        .limit(1);
+      
+      if (appointments && appointments.length > 0) {
+        toast.error('Não é possível excluir: sala possui agendamentos vinculados.');
+        return;
+      }
+
       const { error } = await supabase.from('rooms').delete().eq('id', id);
       if (error) throw error;
       toast.success('Sala removida!');
       refetch();
     } catch (error: any) {
-      toast.error('Erro ao remover: ' + error.message);
+      if (error.message?.includes('violates foreign key constraint')) {
+        toast.error('Não é possível excluir: sala possui dados vinculados no sistema.');
+      } else {
+        toast.error('Erro ao remover: ' + error.message);
+      }
     }
   };
 

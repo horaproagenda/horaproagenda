@@ -95,15 +95,15 @@ export default function Auditoria() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Tabela</Label>
-                <Select
-                  value={filters.tableName}
-                  onValueChange={(value) => setFilters({ ...filters, tableName: value })}
+              <Select
+                  value={filters.tableName || "all"}
+                  onValueChange={(value) => setFilters({ ...filters, tableName: value === "all" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todas as tabelas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as tabelas</SelectItem>
+                    <SelectItem value="all">Todas as tabelas</SelectItem>
                     {Object.entries(tableNameMap).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
@@ -113,14 +113,14 @@ export default function Auditoria() {
               <div className="space-y-2">
                 <Label>Ação</Label>
                 <Select
-                  value={filters.action}
-                  onValueChange={(value) => setFilters({ ...filters, action: value })}
+                  value={filters.action || "all"}
+                  onValueChange={(value) => setFilters({ ...filters, action: value === "all" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todas as ações" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as ações</SelectItem>
+                    <SelectItem value="all">Todas as ações</SelectItem>
                     <SelectItem value="INSERT">Criação</SelectItem>
                     <SelectItem value="UPDATE">Edição</SelectItem>
                     <SelectItem value="DELETE">Exclusão</SelectItem>

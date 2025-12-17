@@ -65,8 +65,10 @@ export function NewAppointmentDialog({
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
-  const [packageSearch, setPackageSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const [showServiceSuggestions, setShowServiceSuggestions] = useState(false);
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -299,94 +301,120 @@ export function NewAppointmentDialog({
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label htmlFor="client">Cliente *</Label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {activeClients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      <div className="flex flex-col">
-                        <span>{client.name}</span>
-                        <span className="text-xs text-muted-foreground">{client.phone}</span>
+              <Input
+                placeholder="Digite para buscar cliente..."
+                value={clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setShowClientSuggestions(true);
+                  if (!e.target.value) setSelectedClient('');
+                }}
+                onFocus={() => setShowClientSuggestions(true)}
+              />
+              {showClientSuggestions && clientSearch && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[200px] overflow-y-auto">
+                  {activeClients
+                    .filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.phone.includes(clientSearch))
+                    .slice(0, 10)
+                    .map(client => (
+                      <div
+                        key={client.id}
+                        className="p-2 hover:bg-accent cursor-pointer"
+                        onClick={() => {
+                          setSelectedClient(client.id);
+                          setClientSearch(client.name);
+                          setShowClientSuggestions(false);
+                        }}
+                      >
+                        <div className="font-medium">{client.name}</div>
+                        <div className="text-xs text-muted-foreground">{client.phone}</div>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ))}
+                  {activeClients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-muted-foreground text-sm">Nenhum cliente encontrado</div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label>Serviço ou Pacote *</Label>
-              <Tabs value={serviceType} onValueChange={(v) => { setServiceType(v as 'service' | 'package'); setSelectedService(''); }}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="service" className="flex-1">Serviços</TabsTrigger>
-                  <TabsTrigger value="package" className="flex-1 gap-1">
-                    <Package className="h-3 w-3" />
-                    Pacotes
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="service" className="mt-2 space-y-2">
-                  <Input
-                    placeholder="Digite para buscar serviços..."
-                    value={serviceSearch}
-                    onChange={(e) => setServiceSearch(e.target.value)}
-                    className="mb-2"
-                  />
-                  <Select value={selectedService} onValueChange={setSelectedService}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um serviço" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {services
-                        .filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
-                        .map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <span>{service.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {service.duration}min • R$ {service.price}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </TabsContent>
-                <TabsContent value="package" className="mt-2 space-y-2">
-                  <Input
-                    placeholder="Digite para buscar pacotes..."
-                    value={packageSearch}
-                    onChange={(e) => setPackageSearch(e.target.value)}
-                    className="mb-2"
-                  />
-                  <Select value={selectedService} onValueChange={setSelectedService}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um pacote" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {activePackages
-                        .filter((pkg) => 
-                          pkg.name.toLowerCase().includes(packageSearch.toLowerCase())
-                        )
-                        .map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <span>{pkg.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {pkg.total_sessions} sessões • R$ {pkg.total_price}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </TabsContent>
-              </Tabs>
+              <Input
+                placeholder="Digite para buscar serviço ou pacote..."
+                value={serviceSearch}
+                onChange={(e) => {
+                  setServiceSearch(e.target.value);
+                  setShowServiceSuggestions(true);
+                  if (!e.target.value) {
+                    setSelectedService('');
+                    setServiceType('service');
+                  }
+                }}
+                onFocus={() => setShowServiceSuggestions(true)}
+              />
+              {showServiceSuggestions && serviceSearch && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[250px] overflow-y-auto">
+                  {/* Services */}
+                  {services
+                    .filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                    .slice(0, 5)
+                    .map(service => (
+                      <div
+                        key={service.id}
+                        className="p-2 hover:bg-accent cursor-pointer border-b"
+                        onClick={() => {
+                          setSelectedService(service.id);
+                          setServiceSearch(service.name);
+                          setServiceType('service');
+                          setShowServiceSuggestions(false);
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{service.name}</span>
+                          <Badge variant="outline" className="text-xs">Serviço</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  {/* Packages */}
+                  {activePackages
+                    .filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                    .slice(0, 5)
+                    .map(pkg => (
+                      <div
+                        key={pkg.id}
+                        className="p-2 hover:bg-accent cursor-pointer border-b"
+                        onClick={() => {
+                          setSelectedService(pkg.id);
+                          setServiceSearch(pkg.name);
+                          setServiceType('package');
+                          setShowServiceSuggestions(false);
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{pkg.name}</span>
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Package className="h-3 w-3" />
+                            Pacote
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
+                   activePackages.filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-muted-foreground text-sm">Nenhum serviço ou pacote encontrado</div>
+                  )}
+                </div>
+              )}
               {selectedServiceData && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-2">
                   Duração: {selectedServiceData.duration} minutos • 
                   Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
                 </p>

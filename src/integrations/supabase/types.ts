@@ -538,6 +538,7 @@ export type Database = {
           paid_by: string | null
           paid_date: string | null
           payment_method_id: string | null
+          professional_id: string | null
           recurring_count: number | null
           recurring_day: number | null
           recurring_frequency: string | null
@@ -563,6 +564,7 @@ export type Database = {
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
+          professional_id?: string | null
           recurring_count?: number | null
           recurring_day?: number | null
           recurring_frequency?: string | null
@@ -588,6 +590,7 @@ export type Database = {
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
+          professional_id?: string | null
           recurring_count?: number | null
           recurring_day?: number | null
           recurring_frequency?: string | null
@@ -630,6 +633,13 @@ export type Database = {
             columns: ["payment_method_id"]
             isOneToOne: false
             referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -757,6 +767,7 @@ export type Database = {
           id: string
           installment_fee: number | null
           is_active: boolean
+          max_installments: number | null
           name: string
           updated_at: string
           updated_by: string | null
@@ -769,6 +780,7 @@ export type Database = {
           id?: string
           installment_fee?: number | null
           is_active?: boolean
+          max_installments?: number | null
           name: string
           updated_at?: string
           updated_by?: string | null
@@ -781,6 +793,7 @@ export type Database = {
           id?: string
           installment_fee?: number | null
           is_active?: boolean
+          max_installments?: number | null
           name?: string
           updated_at?: string
           updated_by?: string | null

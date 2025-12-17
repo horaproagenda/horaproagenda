@@ -9,6 +9,7 @@ export interface PaymentMethod {
   is_active: boolean;
   card_fee: number | null;
   installment_fee: number | null;
+  max_installments: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,7 +31,7 @@ export function usePaymentMethods() {
   });
 
   const createPaymentMethod = useMutation({
-    mutationFn: async (paymentMethod: Omit<PaymentMethod, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (paymentMethod: Partial<Omit<PaymentMethod, 'id' | 'created_at' | 'updated_at'>> & { name: string; is_active: boolean }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase

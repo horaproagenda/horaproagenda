@@ -57,6 +57,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useClients } from '@/hooks/useClients';
+import { useProfessionals } from '@/hooks/useProfessionals';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 
 export default function Financeiro() {
@@ -65,11 +66,12 @@ export default function Financeiro() {
   const { categories, activeCategories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
   const { entries, receivables, payables, pendingReceivables, pendingPayables, totalReceivables, totalPayables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { clients } = useClients();
+  const { professionals } = useProfessionals();
 
   // Payment Method Dialog
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
   const [editingPm, setEditingPm] = useState<any>(null);
-  const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true, card_fee: 0, installment_fee: 0 });
+  const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true, installment_fee: 0, max_installments: 1 });
 
   // Category Dialog
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -89,6 +91,7 @@ export default function Financeiro() {
     payment_method_id: '',
     bank_id: '',
     client_id: '',
+    professional_id: '',
     notes: '',
     is_recurring: false,
     recurring_day: '',
@@ -100,10 +103,10 @@ export default function Financeiro() {
   const openPmDialog = (pm?: any) => {
     if (pm) {
       setEditingPm(pm);
-      setPmForm({ name: pm.name, description: pm.description || '', is_active: pm.is_active, card_fee: pm.card_fee || 0, installment_fee: pm.installment_fee || 0 });
+      setPmForm({ name: pm.name, description: pm.description || '', is_active: pm.is_active, installment_fee: pm.installment_fee || 0, max_installments: pm.max_installments || 1 });
     } else {
       setEditingPm(null);
-      setPmForm({ name: '', description: '', is_active: true, card_fee: 0, installment_fee: 0 });
+      setPmForm({ name: '', description: '', is_active: true, installment_fee: 0, max_installments: 1 });
     }
     setPmDialogOpen(true);
   };
@@ -152,6 +155,7 @@ export default function Financeiro() {
         payment_method_id: entry.payment_method_id || '',
         bank_id: entry.bank_id || '',
         client_id: entry.client_id || '',
+        professional_id: entry.professional_id || '',
         notes: entry.notes || '',
         is_recurring: entry.is_recurring,
         recurring_day: entry.recurring_day?.toString() || '',
@@ -170,6 +174,7 @@ export default function Financeiro() {
         payment_method_id: '',
         bank_id: '',
         client_id: '',
+        professional_id: '',
         notes: '',
         is_recurring: false,
         recurring_day: '',
@@ -191,6 +196,7 @@ export default function Financeiro() {
       payment_method_id: entryForm.payment_method_id || null,
       bank_id: entryForm.bank_id || null,
       client_id: entryForm.client_id || null,
+      professional_id: entryForm.professional_id || null,
       notes: entryForm.notes || null,
       is_recurring: entryForm.is_recurring,
       recurring_day: entryForm.recurring_day ? parseInt(entryForm.recurring_day) : null,
@@ -635,21 +641,22 @@ export default function Financeiro() {
                   placeholder="Descrição opcional"
                 />
               </div>
-              {(pmForm.name.toLowerCase().includes('crédito') || pmForm.name.toLowerCase().includes('débito') || pmForm.name.toLowerCase().includes('cartao') || pmForm.name.toLowerCase().includes('cartão')) && (
+              {/* Cartão de Crédito - taxa por parcela e máx parcelas */}
+              {pmForm.name.toLowerCase().includes('crédito') && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Taxa da Maquininha (%)</Label>
+                    <Label>Máx. Parcelas</Label>
                     <Input
                       type="number"
-                      step="0.01"
-                      value={pmForm.card_fee}
-                      onChange={(e) => setPmForm({ ...pmForm, card_fee: parseFloat(e.target.value) || 0 })}
-                      placeholder="Ex: 2.5"
+                      min="1"
+                      value={pmForm.max_installments}
+                      onChange={(e) => setPmForm({ ...pmForm, max_installments: parseInt(e.target.value) || 1 })}
+                      placeholder="Ex: 12"
                     />
-                    <p className="text-xs text-muted-foreground">Taxa cobrada por transação</p>
+                    <p className="text-xs text-muted-foreground">Quantidade máxima de parcelas aceitas</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Taxa por Parcela (%)</Label>
+                    <Label>Taxa Adicional por Parcela (%)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -657,8 +664,22 @@ export default function Financeiro() {
                       onChange={(e) => setPmForm({ ...pmForm, installment_fee: parseFloat(e.target.value) || 0 })}
                       placeholder="Ex: 1.5"
                     />
-                    <p className="text-xs text-muted-foreground">Taxa adicional por parcela</p>
+                    <p className="text-xs text-muted-foreground">Taxa adicional cobrada por parcela</p>
                   </div>
+                </div>
+              )}
+              {/* Parcelado no Boleto - apenas máx parcelas */}
+              {pmForm.name.toLowerCase().includes('boleto') && (
+                <div className="space-y-2">
+                  <Label>Máx. Parcelas no Boleto</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={pmForm.max_installments}
+                    onChange={(e) => setPmForm({ ...pmForm, max_installments: parseInt(e.target.value) || 1 })}
+                    placeholder="Ex: 6"
+                  />
+                  <p className="text-xs text-muted-foreground">Quantidade máxima de parcelas aceitas no boleto</p>
                 </div>
               )}
               <div className="flex items-center space-x-2">
@@ -819,7 +840,7 @@ export default function Financeiro() {
 
               <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Select value={entryForm.category_id} onValueChange={(v) => setEntryForm({ ...entryForm, category_id: v })}>
+                <Select value={entryForm.category_id} onValueChange={(v) => setEntryForm({ ...entryForm, category_id: v, professional_id: '' })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
@@ -832,6 +853,30 @@ export default function Financeiro() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Show employee selection for Pró-labore or Vale categories */}
+              {entryForm.category_id && (() => {
+                const selectedCategory = activeCategories.find(c => c.id === entryForm.category_id);
+                const needsEmployee = selectedCategory?.name.toLowerCase().includes('pró-labore') || 
+                                     selectedCategory?.name.toLowerCase().includes('pro-labore') ||
+                                     selectedCategory?.name.toLowerCase().includes('vale');
+                return needsEmployee ? (
+                  <div className="space-y-2">
+                    <Label>Funcionário</Label>
+                    <Select value={entryForm.professional_id} onValueChange={(v) => setEntryForm({ ...entryForm, professional_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o funcionário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {professionals.filter(p => p.is_active).map((prof) => (
+                          <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Funcionário que está recebendo este valor</p>
+                  </div>
+                ) : null;
+              })()}
 
               {entryForm.type === 'receivable' && (
                 <div className="space-y-2">

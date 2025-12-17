@@ -7,6 +7,8 @@ export interface PaymentMethod {
   name: string;
   description: string | null;
   is_active: boolean;
+  card_fee: number | null;
+  installment_fee: number | null;
   created_at: string;
   updated_at: string;
 }

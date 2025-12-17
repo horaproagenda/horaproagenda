@@ -142,6 +142,8 @@ export function SingleSaleDialog() {
     await createSale.mutateAsync({
       client_id: selectedClient || null,
       service_id: selectedItemType === 'service' ? selectedService : null,
+      package_id: selectedItemType === 'package' ? selectedService : null,
+      item_type: selectedItemType || 'service',
       description: selectedServiceName || null,
       original_amount: original,
       discount_amount: discount,
@@ -150,6 +152,11 @@ export function SingleSaleDialog() {
       bank_id: null,
       sale_date: format(saleDate, 'yyyy-MM-dd'),
       notes: notes || null,
+      created_by: null,
+      paid_by: null,
+      paid_at: new Date().toISOString(),
+      installments: 1,
+      card_fee_amount: 0,
     });
 
     resetForm();

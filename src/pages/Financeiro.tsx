@@ -69,7 +69,7 @@ export default function Financeiro() {
   // Payment Method Dialog
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
   const [editingPm, setEditingPm] = useState<any>(null);
-  const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true });
+  const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true, card_fee: 0, installment_fee: 0 });
 
   // Category Dialog
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -85,22 +85,25 @@ export default function Financeiro() {
     description: '',
     amount: '',
     due_date: new Date(),
+    paid_date: null as Date | null,
     payment_method_id: '',
     bank_id: '',
     client_id: '',
     notes: '',
     is_recurring: false,
     recurring_day: '',
+    recurring_count: '',
+    recurring_frequency: 'monthly',
   });
 
   // Payment Method handlers
   const openPmDialog = (pm?: any) => {
     if (pm) {
       setEditingPm(pm);
-      setPmForm({ name: pm.name, description: pm.description || '', is_active: pm.is_active });
+      setPmForm({ name: pm.name, description: pm.description || '', is_active: pm.is_active, card_fee: pm.card_fee || 0, installment_fee: pm.installment_fee || 0 });
     } else {
       setEditingPm(null);
-      setPmForm({ name: '', description: '', is_active: true });
+      setPmForm({ name: '', description: '', is_active: true, card_fee: 0, installment_fee: 0 });
     }
     setPmDialogOpen(true);
   };
@@ -145,12 +148,15 @@ export default function Financeiro() {
         description: entry.description,
         amount: entry.amount.toString(),
         due_date: parseISO(entry.due_date),
+        paid_date: entry.paid_date ? parseISO(entry.paid_date) : null,
         payment_method_id: entry.payment_method_id || '',
         bank_id: entry.bank_id || '',
         client_id: entry.client_id || '',
         notes: entry.notes || '',
         is_recurring: entry.is_recurring,
         recurring_day: entry.recurring_day?.toString() || '',
+        recurring_count: entry.recurring_count?.toString() || '',
+        recurring_frequency: entry.recurring_frequency || 'monthly',
       });
     } else {
       setEditingEntry(null);
@@ -160,12 +166,15 @@ export default function Financeiro() {
         description: '',
         amount: '',
         due_date: new Date(),
+        paid_date: null,
         payment_method_id: '',
         bank_id: '',
         client_id: '',
         notes: '',
         is_recurring: false,
         recurring_day: '',
+        recurring_count: '',
+        recurring_frequency: 'monthly',
       });
     }
     setEntryDialogOpen(true);
@@ -185,8 +194,12 @@ export default function Financeiro() {
       notes: entryForm.notes || null,
       is_recurring: entryForm.is_recurring,
       recurring_day: entryForm.recurring_day ? parseInt(entryForm.recurring_day) : null,
-      paid_date: null,
+      recurring_count: entryForm.recurring_count ? parseInt(entryForm.recurring_count) : null,
+      recurring_frequency: entryForm.recurring_frequency,
+      paid_date: entryForm.paid_date ? format(entryForm.paid_date, 'yyyy-MM-dd') : null,
       appointment_id: null,
+      installments: 1,
+      paid_by: null,
     };
 
     if (editingEntry) {
@@ -315,10 +328,6 @@ export default function Financeiro() {
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Extrato</h3>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => openEntryDialog(undefined, 'receivable')}>
-                  <ArrowUpCircle className="h-4 w-4 mr-2" />
-                  Nova Receita
-                </Button>
                 <Button onClick={() => openEntryDialog(undefined, 'payable')}>
                   <ArrowDownCircle className="h-4 w-4 mr-2" />
                   Nova Despesa
@@ -626,6 +635,32 @@ export default function Financeiro() {
                   placeholder="Descrição opcional"
                 />
               </div>
+              {(pmForm.name.toLowerCase().includes('crédito') || pmForm.name.toLowerCase().includes('débito') || pmForm.name.toLowerCase().includes('cartao') || pmForm.name.toLowerCase().includes('cartão')) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Taxa da Maquininha (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={pmForm.card_fee}
+                      onChange={(e) => setPmForm({ ...pmForm, card_fee: parseFloat(e.target.value) || 0 })}
+                      placeholder="Ex: 2.5"
+                    />
+                    <p className="text-xs text-muted-foreground">Taxa cobrada por transação</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Taxa por Parcela (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={pmForm.installment_fee}
+                      onChange={(e) => setPmForm({ ...pmForm, installment_fee: parseFloat(e.target.value) || 0 })}
+                      placeholder="Ex: 1.5"
+                    />
+                    <p className="text-xs text-muted-foreground">Taxa adicional por parcela</p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={pmForm.is_active}
@@ -738,24 +773,48 @@ export default function Financeiro() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Data de Vencimento</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {format(entryForm.due_date, 'dd/MM/yyyy', { locale: ptBR })}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={entryForm.due_date}
-                      onSelect={(date) => date && setEntryForm({ ...entryForm, due_date: date })}
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de Vencimento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        {format(entryForm.due_date, 'dd/MM/yyyy', { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={entryForm.due_date}
+                        onSelect={(date) => date && setEntryForm({ ...entryForm, due_date: date })}
+                        locale={ptBR}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Data de Pagamento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        {entryForm.paid_date ? format(entryForm.paid_date, 'dd/MM/yyyy', { locale: ptBR }) : 'Não pago'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={entryForm.paid_date || undefined}
+                        onSelect={(date) => setEntryForm({ ...entryForm, paid_date: date || null })}
+                        locale={ptBR}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -804,19 +863,24 @@ export default function Financeiro() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Banco</Label>
-                <Select value={entryForm.bank_id} onValueChange={(v) => setEntryForm({ ...entryForm, bank_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o banco" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.filter(b => b.is_active).map((bank) => (
-                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {entryForm.type === 'payable' && (
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Select value={entryForm.bank_id} onValueChange={(v) => setEntryForm({ ...entryForm, bank_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o banco" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {banks.filter(b => b.is_active).map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Banco de onde o dinheiro foi retirado para pagar esta conta
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Switch
@@ -827,16 +891,41 @@ export default function Financeiro() {
               </div>
 
               {entryForm.is_recurring && (
-                <div className="space-y-2">
-                  <Label>Dia do mês</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={entryForm.recurring_day}
-                    onChange={(e) => setEntryForm({ ...entryForm, recurring_day: e.target.value })}
-                    placeholder="Ex: 10"
-                  />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Dia do mês</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={entryForm.recurring_day}
+                      onChange={(e) => setEntryForm({ ...entryForm, recurring_day: e.target.value })}
+                      placeholder="Ex: 10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Repetições</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={entryForm.recurring_count}
+                      onChange={(e) => setEntryForm({ ...entryForm, recurring_count: e.target.value })}
+                      placeholder="Ex: 12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Frequência</Label>
+                    <Select value={entryForm.recurring_frequency} onValueChange={(v) => setEntryForm({ ...entryForm, recurring_frequency: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 

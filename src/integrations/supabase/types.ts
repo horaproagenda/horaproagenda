@@ -532,11 +532,15 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          installments: number | null
           is_recurring: boolean
           notes: string | null
+          paid_by: string | null
           paid_date: string | null
           payment_method_id: string | null
+          recurring_count: number | null
           recurring_day: number | null
+          recurring_frequency: string | null
           status: string
           type: string
           updated_at: string
@@ -553,11 +557,15 @@ export type Database = {
           description: string
           due_date: string
           id?: string
+          installments?: number | null
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
+          recurring_count?: number | null
           recurring_day?: number | null
+          recurring_frequency?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -574,11 +582,15 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          installments?: number | null
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
+          recurring_count?: number | null
           recurring_day?: number | null
+          recurring_frequency?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -738,30 +750,36 @@ export type Database = {
       }
       payment_methods: {
         Row: {
+          card_fee: number | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
+          installment_fee: number | null
           is_active: boolean
           name: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          card_fee?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          installment_fee?: number | null
           is_active?: boolean
           name: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          card_fee?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          installment_fee?: number | null
           is_active?: boolean
           name?: string
           updated_at?: string
@@ -1377,6 +1395,7 @@ export type Database = {
       single_sales: {
         Row: {
           bank_id: string | null
+          card_fee_amount: number | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -1384,8 +1403,13 @@ export type Database = {
           discount_amount: number
           final_amount: number
           id: string
+          installments: number | null
+          item_type: string | null
           notes: string | null
           original_amount: number
+          package_id: string | null
+          paid_at: string | null
+          paid_by: string | null
           payment_method_id: string | null
           sale_date: string
           service_id: string | null
@@ -1394,6 +1418,7 @@ export type Database = {
         }
         Insert: {
           bank_id?: string | null
+          card_fee_amount?: number | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1401,8 +1426,13 @@ export type Database = {
           discount_amount?: number
           final_amount?: number
           id?: string
+          installments?: number | null
+          item_type?: string | null
           notes?: string | null
           original_amount?: number
+          package_id?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
           payment_method_id?: string | null
           sale_date?: string
           service_id?: string | null
@@ -1411,6 +1441,7 @@ export type Database = {
         }
         Update: {
           bank_id?: string | null
+          card_fee_amount?: number | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1418,8 +1449,13 @@ export type Database = {
           discount_amount?: number
           final_amount?: number
           id?: string
+          installments?: number | null
+          item_type?: string | null
           notes?: string | null
           original_amount?: number
+          package_id?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
           payment_method_id?: string | null
           sale_date?: string
           service_id?: string | null
@@ -1439,6 +1475,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "single_sales_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
             referencedColumns: ["id"]
           },
           {

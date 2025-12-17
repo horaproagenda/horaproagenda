@@ -6,6 +6,8 @@ export interface SingleSale {
   id: string;
   client_id: string | null;
   service_id: string | null;
+  package_id: string | null;
+  item_type: 'service' | 'package';
   description: string | null;
   original_amount: number;
   discount_amount: number;
@@ -14,10 +16,16 @@ export interface SingleSale {
   bank_id: string | null;
   sale_date: string;
   notes: string | null;
+  created_by: string | null;
+  paid_by: string | null;
+  paid_at: string | null;
+  installments: number;
+  card_fee_amount: number;
   created_at: string;
   updated_at: string;
   client?: { id: string; name: string };
   service?: { id: string; name: string; price: number };
+  package?: { id: string; name: string; total_price: number };
   payment_method?: { id: string; name: string };
   bank?: { id: string; name: string };
 }
@@ -34,6 +42,7 @@ export function useSingleSales() {
           *,
           client:clients(id, name),
           service:services(id, name, price),
+          package:service_packages(id, name, total_price),
           payment_method:payment_methods(id, name),
           bank:banks(id, name)
         `)

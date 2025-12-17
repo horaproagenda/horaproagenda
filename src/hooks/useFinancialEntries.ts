@@ -20,6 +20,10 @@ export interface FinancialEntry {
   notes: string | null;
   is_recurring: boolean;
   recurring_day: number | null;
+  recurring_count: number | null;
+  recurring_frequency: string | null;
+  installments: number | null;
+  paid_by: string | null;
   created_at: string;
   updated_at: string;
   category?: FinancialCategory;

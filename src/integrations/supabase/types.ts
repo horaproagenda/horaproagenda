@@ -93,6 +93,48 @@ export type Database = {
           },
         ]
       }
+      banks: {
+        Row: {
+          account_number: string | null
+          agency: string | null
+          bank_code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       business_settings: {
         Row: {
           auto_complete_appointments: boolean
@@ -134,6 +176,9 @@ export type Database = {
       }
       cash_registers: {
         Row: {
+          bank_deposits: Json | null
+          cash_amount: number | null
+          check_amount: number | null
           closed_at: string | null
           closed_by: string | null
           closing_balance: number | null
@@ -153,6 +198,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_deposits?: Json | null
+          cash_amount?: number | null
+          check_amount?: number | null
           closed_at?: string | null
           closed_by?: string | null
           closing_balance?: number | null
@@ -172,6 +220,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_deposits?: Json | null
+          cash_amount?: number | null
+          check_amount?: number | null
           closed_at?: string | null
           closed_by?: string | null
           closing_balance?: number | null
@@ -191,6 +242,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      cash_transactions: {
+        Row: {
+          amount: number
+          bank_id: string | null
+          cash_register_id: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          payment_method: string | null
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          bank_id?: string | null
+          cash_register_id?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_method?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_id?: string | null
+          cash_register_id?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_method?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_transactions_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_transactions_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_documents: {
         Row: {

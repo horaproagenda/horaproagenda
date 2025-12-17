@@ -67,7 +67,7 @@ import { CashRegisterFilters } from '@/components/caixa/CashRegisterFilters';
 import { CashRegisterStatus } from '@/components/caixa/CashRegisterStatus';
 import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
-import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
+import { SingleSaleDialog } from '@/components/caixa/SingleSaleDialog';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -436,9 +436,9 @@ export default function Caixa() {
           isLoading={isLoadingCashRegisters || openCashRegister.isPending || closeCashRegister.isPending}
         />
 
-        {/* Management Buttons */}
+        {/* Single Sale Button */}
         <div className="flex gap-2">
-          <ManageBanksDialog />
+          <SingleSaleDialog />
         </div>
 
         <Tabs defaultValue="report" className="space-y-4">

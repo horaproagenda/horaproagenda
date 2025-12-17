@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { toast } from 'sonner';
+import UserManagement from '@/components/settings/UserManagement';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -48,8 +49,11 @@ const Configuracoes = () => {
       title="Configurações" 
       subtitle="Personalize seu sistema"
     >
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Business Info */}
+      <div className="space-y-6">
+        {/* User Management */}
+        <UserManagement />
+
+        <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -247,6 +251,7 @@ const Configuracoes = () => {
         </Card>
 
         {/* Appearance */}
+        {/* Business Info */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -288,6 +293,7 @@ const Configuracoes = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </AppLayout>
   );

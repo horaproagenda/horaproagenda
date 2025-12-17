@@ -618,26 +618,29 @@ export default function Produtos() {
                                 <Label>Preço Unitário (R$)</Label>
                                 <Input
                                   type="number"
-                                  value={productForm.unit_price}
-                                  onChange={(e) => updateProductTotal(productForm.quantity_purchased, parseFloat(e.target.value) || 0)}
+                                  value={productForm.unit_price || ''}
+                                  onChange={(e) => {
+                                    const price = parseFloat(e.target.value) || 0;
+                                    updateProductTotal(productForm.quantity_purchased, price);
+                                  }}
                                   min="0"
                                   step="0.01"
-                                  placeholder="Digite ou calcule pelo total"
+                                  placeholder="0,00"
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Ou digite o total para calcular
-                                </p>
                               </div>
 
                               <div>
                                 <Label>Preço Total (R$)</Label>
                                 <Input
                                   type="number"
-                                  value={productForm.total_price}
-                                  onChange={(e) => updateProductFromTotal(productForm.quantity_purchased, parseFloat(e.target.value) || 0)}
+                                  value={productForm.total_price || ''}
+                                  onChange={(e) => {
+                                    const total = parseFloat(e.target.value) || 0;
+                                    updateProductFromTotal(productForm.quantity_purchased, total);
+                                  }}
                                   min="0"
                                   step="0.01"
-                                  placeholder="Digite para calcular unitário"
+                                  placeholder="0,00"
                                 />
                               </div>
                             </div>

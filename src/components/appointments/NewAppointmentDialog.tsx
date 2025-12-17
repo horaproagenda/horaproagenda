@@ -66,6 +66,7 @@ export function NewAppointmentDialog({
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
   const [packageSearch, setPackageSearch] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -327,22 +328,30 @@ export function NewAppointmentDialog({
                     Pacotes
                   </TabsTrigger>
                 </TabsList>
-                <TabsContent value="service" className="mt-2">
+                <TabsContent value="service" className="mt-2 space-y-2">
+                  <Input
+                    placeholder="Digite para buscar serviços..."
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    className="mb-2"
+                  />
                   <Select value={selectedService} onValueChange={setSelectedService}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um serviço" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      {services.filter(s => s.is_active).map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          <div className="flex items-center justify-between w-full gap-4">
-                            <span>{service.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {service.duration}min • R$ {service.price}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {services
+                        .filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                        .map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span>{service.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {service.duration}min • R$ {service.price}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </TabsContent>

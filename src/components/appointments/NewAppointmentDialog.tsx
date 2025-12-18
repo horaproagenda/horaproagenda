@@ -322,7 +322,7 @@ export function NewAppointmentDialog({
         if (!existingClientPackage) {
           const newPackage = await createClientPackage.mutateAsync({
             clientId: selectedClient,
-            templateId: selectedService,
+            templateId: selectedPackageData.template_id || null,
             templateData: {
               name: selectedPackageData.name,
               total_sessions: selectedPackageData.total_sessions,

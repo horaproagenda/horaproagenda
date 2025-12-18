@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
@@ -33,6 +34,7 @@ import { useServicePackages } from '@/hooks/useServicePackages';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { Appointment } from '@/types';
@@ -60,6 +62,7 @@ export function NewAppointmentDialog({
   const [selectedService, setSelectedService] = useState('');
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -75,6 +78,7 @@ export function NewAppointmentDialog({
   const { packages } = useServicePackages();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
+  const { equipment } = useEquipment();
   const { appointments, createAppointment } = useAppointments();
   const { settings, generateTimeSlots } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
@@ -96,6 +100,7 @@ export function NewAppointmentDialog({
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
+  const activeEquipment = equipment.filter(e => e.is_active);
   const activePackages = packages.filter(p => p.is_active && !p.client_id);
 
   // Reset form and apply prefilled values when dialog opens
@@ -105,6 +110,7 @@ export function NewAppointmentDialog({
       setSelectedService('');
       setSelectedProfessional('');
       setSelectedRoom('');
+      setSelectedEquipment([]);
       setNotes('');
       setDate(prefilledDate || undefined);
       setTime(prefilledTime || '');
@@ -282,6 +288,7 @@ export function NewAppointmentDialog({
     setSelectedService('');
     setSelectedProfessional('');
     setSelectedRoom('');
+    setSelectedEquipment([]);
     setDate(undefined);
     setTime('');
     setNotes('');
@@ -423,42 +430,65 @@ export function NewAppointmentDialog({
 
             <div className="space-y-2">
               <Label>Profissional</Label>
-              <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um profissional (opcional)" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {activeProfessionals.map((prof) => (
-                    <SelectItem key={prof.id} value={prof.id}>
-                      <div className="flex items-center gap-2">
-                        {prof.agenda_color && (
-                          <div 
-                            className="h-3 w-3 rounded-full" 
-                            style={{ backgroundColor: prof.agenda_color }}
-                          />
-                        )}
-                        {prof.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={activeProfessionals.map(p => ({
+                  value: p.id,
+                  label: p.name,
+                  color: p.agenda_color || undefined,
+                }))}
+                value={selectedProfessional}
+                onChange={setSelectedProfessional}
+                placeholder="Selecione um profissional (opcional)"
+                searchPlaceholder="Buscar profissional..."
+                emptyMessage="Nenhum profissional encontrado"
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Sala</Label>
-              <Select value={selectedRoom} onValueChange={setSelectedRoom}>
+              <SearchableSelect
+                options={activeRooms.map(r => ({
+                  value: r.id,
+                  label: r.name,
+                }))}
+                value={selectedRoom}
+                onChange={setSelectedRoom}
+                placeholder="Selecione uma sala (opcional)"
+                searchPlaceholder="Buscar sala..."
+                emptyMessage="Nenhuma sala encontrada"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Equipamentos</Label>
+              <Select 
+                value={selectedEquipment[0] || ''} 
+                onValueChange={(val) => setSelectedEquipment(val ? [val] : [])}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma sala (opcional)" />
+                  <SelectValue placeholder="Selecione equipamento (opcional)" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
-                  {activeRooms.map((room) => (
-                    <SelectItem key={room.id} value={room.id}>
-                      {room.name}
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {activeEquipment.map((eq) => (
+                    <SelectItem key={eq.id} value={eq.id}>
+                      {eq.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedEquipment.length > 0 && selectedEquipment[0] !== '_none' && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {selectedEquipment.filter(id => id !== '_none').map(eqId => {
+                    const eq = activeEquipment.find(e => e.id === eqId);
+                    return eq ? (
+                      <Badge key={eqId} variant="secondary" className="text-xs">
+                        {eq.name}
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

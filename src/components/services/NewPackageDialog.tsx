@@ -36,6 +36,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 
 const DAYS_OF_WEEK = [
   { value: '0', label: 'Domingo' },
@@ -61,6 +62,7 @@ const packageSchema = z.object({
   whatsapp_reminder: z.boolean(),
   professional_id: z.string().optional(),
   room_id: z.string().optional(),
+  equipment: z.array(z.string()).optional(),
 });
 
 type PackageFormData = z.infer<typeof packageSchema>;
@@ -76,6 +78,7 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
   const [isLoading, setIsLoading] = useState(false);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
+  const { equipment } = useEquipment();
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
@@ -93,6 +96,7 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
       whatsapp_reminder: true,
       professional_id: '_none',
       room_id: '_none',
+      equipment: [],
     },
   });
 
@@ -119,6 +123,7 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
           whatsapp_reminder: data.whatsapp_reminder,
           professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
           room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
+          equipment: data.equipment && data.equipment.length > 0 ? data.equipment : null,
         })
         .select()
         .single();
@@ -320,12 +325,41 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             </div>
+
+            <FormField
+              control={form.control}
+              name="equipment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Equipamentos</FormLabel>
+                  <Select 
+                    onValueChange={(val) => field.onChange(val && val !== '_none' ? [val] : [])} 
+                    value={field.value?.[0] || '_none'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="_none">Nenhum</SelectItem>
+                      {equipment.filter(e => e.is_active).map(eq => (
+                        <SelectItem key={eq.id} value={eq.id}>
+                          {eq.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

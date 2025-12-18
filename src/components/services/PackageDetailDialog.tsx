@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Clock, DollarSign, Users, Calendar, Home, User, Package, Layers, Timer, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, Home, User, Package, Layers, Timer, Pencil, Trash2, ChevronDown, ChevronUp, ListChecks } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PackageClientsList } from './PackageClientsList';
+import { PackageSessionsManager } from './PackageSessionsManager';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showClientsList, setShowClientsList] = useState(false);
+  const [showSessionsList, setShowSessionsList] = useState(false);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
@@ -290,6 +292,34 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                 
                 {showClientsList && clientsCount > 0 && (
                   <PackageClientsList packageName={pkg.name} />
+                )}
+
+                {/* Sessions Management - Only show for client-specific packages */}
+                {pkg.client_id && (
+                  <div 
+                    className="rounded-lg bg-blue-500/10 p-4 cursor-pointer hover:bg-blue-500/15 transition-colors"
+                    onClick={() => setShowSessionsList(!showSessionsList)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <ListChecks className="h-6 w-6 text-blue-500" />
+                        <div className="text-left">
+                          <p className="text-2xl font-bold">{pkg.sessions_scheduled} / {pkg.total_sessions}</p>
+                          <p className="text-xs text-muted-foreground">Gerenciar Sessões</p>
+                        </div>
+                      </div>
+                      {showSessionsList ? <ChevronUp className="h-5 w-5 text-blue-500" /> : <ChevronDown className="h-5 w-5 text-blue-500" />}
+                    </div>
+                  </div>
+                )}
+                
+                {showSessionsList && pkg.client_id && (
+                  <PackageSessionsManager 
+                    packageId={pkg.id}
+                    packageName={pkg.name}
+                    totalSessions={pkg.total_sessions}
+                    onSessionRescheduled={fetchPackageStats}
+                  />
                 )}
               </div>
 

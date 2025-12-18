@@ -115,6 +115,18 @@ export function useAppointments() {
 
   const updatePayment = useMutation({
     mutationFn: async ({ id, payment }: { id: string; payment: PaymentUpdate }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Get the current appointment data first
+      const { data: currentApt } = await supabase
+        .from('appointments')
+        .select('*, client:clients(name), service:services(name, price)')
+        .eq('id', id)
+        .single();
+
+      const previousAmountPaid = currentApt?.amount_paid || 0;
+      const newPaymentAmount = payment.amount_paid - previousAmountPaid;
+
       // Update the appointment payment
       const { data, error } = await supabase
         .from('appointments')
@@ -148,11 +160,31 @@ export function useAppointments() {
         if (clientError) throw clientError;
       }
 
+      // Create a financial entry to sync with Financeiro
+      if (newPaymentAmount > 0) {
+        const clientName = currentApt?.client?.name || 'Cliente';
+        const serviceName = currentApt?.service?.name || 'Serviço';
+        
+        await supabase.from('financial_entries').insert({
+          type: 'income',
+          description: `Pagamento: ${serviceName} - ${clientName}`,
+          amount: newPaymentAmount,
+          due_date: new Date().toISOString().split('T')[0],
+          paid_date: new Date().toISOString().split('T')[0],
+          status: 'paid',
+          client_id: payment.client_id,
+          appointment_id: id,
+          created_by: user?.id,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error) => {

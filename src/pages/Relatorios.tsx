@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles } from 'lucide-react';
+import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Package, TrendingUp } from 'lucide-react';
 import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,6 +18,7 @@ const Relatorios = () => {
   const [activeTab, setActiveTab] = useState('aniversariantes');
   const { clients, isLoading: clientsLoading } = useClients();
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
+  const { packages, isLoading: packagesLoading } = useServicePackages();
   const navigate = useNavigate();
 
   const today = new Date();
@@ -119,7 +122,26 @@ const Relatorios = () => {
       .sort((a, b) => b.daysSinceVisit - a.daysSinceVisit);
   }, [clients, appointments, today]);
 
-  const isLoading = clientsLoading || appointmentsLoading;
+  // Package Progress Report
+  const packageProgress = useMemo(() => {
+    return packages
+      .filter(pkg => pkg.client_id && pkg.is_active)
+      .map(pkg => {
+        const client = clients.find(c => c.id === pkg.client_id);
+        const progress = pkg.total_sessions > 0 
+          ? (pkg.sessions_scheduled / pkg.total_sessions) * 100 
+          : 0;
+        return {
+          ...pkg,
+          client,
+          progress,
+          remaining: pkg.total_sessions - pkg.sessions_scheduled,
+        };
+      })
+      .sort((a, b) => b.progress - a.progress);
+  }, [packages, clients]);
+
+  const isLoading = clientsLoading || appointmentsLoading || packagesLoading;
 
   const ClientCard = ({ client, children }: { client: typeof clients[0], children?: React.ReactNode }) => (
     <Card 
@@ -160,7 +182,7 @@ const Relatorios = () => {
       subtitle="Acompanhe aniversariantes, retornos e clientes sumidos"
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="aniversariantes" className="gap-2">
             <Cake className="h-4 w-4" />
             <span className="hidden sm:inline">Aniversariantes</span>
@@ -175,6 +197,11 @@ const Relatorios = () => {
             <UserX className="h-4 w-4" />
             <span className="hidden sm:inline">Sumidos</span>
             <Badge variant="secondary" className="ml-1">{sumidos.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="pacotes" className="gap-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Pacotes</span>
+            <Badge variant="secondary" className="ml-1">{packageProgress.length}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -287,6 +314,70 @@ const Relatorios = () => {
                         </p>
                       </div>
                     </ClientCard>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="pacotes" className="space-y-4">
+              <div className="text-sm text-muted-foreground mb-4">
+                Progresso dos pacotes de clientes ativos
+              </div>
+              {packageProgress.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
+                  <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                  <p className="mt-3 text-muted-foreground">
+                    Nenhum pacote ativo
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {packageProgress.map(pkg => (
+                    <Card 
+                      key={pkg.id}
+                      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                      onClick={() => pkg.client && navigate(`/clientes/${pkg.client.id}`)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                  {pkg.client?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N/A'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h3 className="font-medium text-foreground">{pkg.client?.name || 'Cliente'}</h3>
+                                <p className="text-xs text-muted-foreground">{pkg.name}</p>
+                              </div>
+                            </div>
+                            <Badge variant={pkg.progress >= 100 ? 'default' : 'secondary'}>
+                              {pkg.progress >= 100 ? 'Concluído' : `${pkg.remaining} restantes`}
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Progresso</span>
+                              <span className="font-medium">{pkg.sessions_scheduled}/{pkg.total_sessions}</span>
+                            </div>
+                            <Progress value={pkg.progress} className="h-2" />
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              {pkg.progress.toFixed(0)}% completo
+                            </span>
+                            {pkg.client?.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {pkg.client.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}

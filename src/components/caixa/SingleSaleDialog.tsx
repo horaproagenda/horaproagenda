@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,12 +21,13 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarDays, Plus, DollarSign, Percent, Package, Briefcase } from 'lucide-react';
+import { CalendarDays, Plus, DollarSign, Percent, Package, Briefcase, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useCardBrands } from '@/hooks/useCardBrands';
 import { useSingleSales } from '@/hooks/useSingleSales';
 import { ptBR } from 'date-fns/locale';
 
@@ -44,6 +45,8 @@ export function SingleSaleDialog() {
   const [originalAmount, setOriginalAmount] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [selectedCardBrand, setSelectedCardBrand] = useState('');
+  const [installments, setInstallments] = useState(1);
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
   
@@ -57,6 +60,7 @@ export function SingleSaleDialog() {
   const { services } = useServices();
   const { packages } = useServicePackages();
   const { activePaymentMethods } = usePaymentMethods();
+  const { cardBrands, creditBrands, debitBrands } = useCardBrands();
   const { createSale } = useSingleSales();
 
   // Click outside handler
@@ -132,7 +136,56 @@ export function SingleSaleDialog() {
 
   const discount = parseFloat(discountAmount) || 0;
   const original = parseFloat(originalAmount) || 0;
+
+  // Card payment detection
+  const selectedPaymentMethodObj = useMemo(() => {
+    return activePaymentMethods.find(pm => pm.id === selectedPaymentMethod);
+  }, [activePaymentMethods, selectedPaymentMethod]);
+
+  const isCardPayment = useMemo(() => {
+    if (!selectedPaymentMethodObj) return false;
+    const name = selectedPaymentMethodObj.name.toLowerCase();
+    return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
+  }, [selectedPaymentMethodObj]);
+
+  const isCreditCard = useMemo(() => {
+    if (!selectedPaymentMethodObj) return false;
+    return selectedPaymentMethodObj.name.toLowerCase().includes('crédito');
+  }, [selectedPaymentMethodObj]);
+
+  const isDebitCard = useMemo(() => {
+    if (!selectedPaymentMethodObj) return false;
+    return selectedPaymentMethodObj.name.toLowerCase().includes('débito');
+  }, [selectedPaymentMethodObj]);
+
+  const availableBrands = useMemo(() => {
+    if (isCreditCard) return creditBrands;
+    if (isDebitCard) return debitBrands;
+    return cardBrands.filter(b => b.is_active);
+  }, [isCreditCard, isDebitCard, creditBrands, debitBrands, cardBrands]);
+
+  const maxInstallments = useMemo(() => {
+    if (!selectedCardBrand) return 1;
+    const brand = cardBrands.find(b => b.id === selectedCardBrand);
+    if (!brand || !brand.fees || brand.fees.length === 0) return 1;
+    return Math.max(...brand.fees.map(f => f.installment_number));
+  }, [selectedCardBrand, cardBrands]);
+
+  const cardFeeAmount = useMemo(() => {
+    if (!isCardPayment || !selectedCardBrand) return 0;
+    const brand = cardBrands.find(b => b.id === selectedCardBrand);
+    if (!brand || !brand.fees) return 0;
+    
+    const fee = isCreditCard 
+      ? brand.fees.find(f => f.installment_number === installments)
+      : brand.fees.find(f => f.installment_number === 1) || brand.fees[0];
+    
+    if (!fee) return 0;
+    return original * (fee.fee_percentage / 100);
+  }, [isCardPayment, selectedCardBrand, cardBrands, isCreditCard, installments, original]);
+
   const finalAmount = Math.max(0, original - discount);
+  const netAmount = finalAmount - cardFeeAmount;
 
   const handleSubmit = async () => {
     if (!selectedPaymentMethod) {
@@ -155,8 +208,8 @@ export function SingleSaleDialog() {
       created_by: null,
       paid_by: null,
       paid_at: new Date().toISOString(),
-      installments: 1,
-      card_fee_amount: 0,
+      installments: isCreditCard ? installments : 1,
+      card_fee_amount: cardFeeAmount,
     });
 
     resetForm();
@@ -174,6 +227,8 @@ export function SingleSaleDialog() {
     setOriginalAmount('');
     setDiscountAmount('');
     setSelectedPaymentMethod('');
+    setSelectedCardBrand('');
+    setInstallments(1);
     setSaleDate(new Date());
     setNotes('');
     setShowClientSuggestions(false);
@@ -343,19 +398,31 @@ export function SingleSaleDialog() {
           </div>
 
           {/* Final Amount */}
-          <div className="p-4 bg-muted rounded-lg">
+          <div className="p-4 bg-muted rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-medium">Valor Final:</span>
               <span className="text-xl font-bold text-primary">
                 R$ {finalAmount.toFixed(2)}
               </span>
             </div>
+            {cardFeeAmount > 0 && (
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Taxa do cartão:</span>
+                <span className="text-destructive">- R$ {cardFeeAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {cardFeeAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span>Valor líquido:</span>
+                <span className="font-medium text-green-600">R$ {netAmount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {/* Payment Method */}
           <div className="space-y-2">
             <Label>Forma de Pagamento *</Label>
-            <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+            <Select value={selectedPaymentMethod} onValueChange={(v) => { setSelectedPaymentMethod(v); setSelectedCardBrand(''); setInstallments(1); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a forma de pagamento" />
               </SelectTrigger>
@@ -369,6 +436,47 @@ export function SingleSaleDialog() {
             </Select>
           </div>
 
+          {/* Card Brand Selection */}
+          {isCardPayment && availableBrands.length > 0 && (
+            <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CreditCard className="h-4 w-4" />
+                Dados do Cartão
+              </div>
+              <div className="space-y-2">
+                <Label>Bandeira</Label>
+                <Select value={selectedCardBrand} onValueChange={(v) => { setSelectedCardBrand(v); setInstallments(1); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a bandeira" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableBrands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {isCreditCard && selectedCardBrand && maxInstallments > 1 && (
+                <div className="space-y-2">
+                  <Label>Parcelas</Label>
+                  <Select value={installments.toString()} onValueChange={(v) => setInstallments(parseInt(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={n.toString()}>
+                          {n}x {n === 1 ? 'à vista' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sale Date */}
           <div className="space-y-2">

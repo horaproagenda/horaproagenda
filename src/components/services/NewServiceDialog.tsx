@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -35,6 +36,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useEquipment } from '@/hooks/useEquipment';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -46,6 +48,7 @@ const serviceSchema = z.object({
   category: z.string().trim().min(1, 'Selecione uma categoria'),
   room_id: z.string().optional(),
   professional_id: z.string().optional(),
+  equipment: z.array(z.string()).optional(),
   return_days: z.coerce.number().min(0).max(365).optional().nullable(),
   is_active: z.boolean(),
 });
@@ -73,6 +76,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const [isLoading, setIsLoading] = useState(false);
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
+  const { equipment } = useEquipment();
   const { professionalId } = useCurrentProfessional();
   const { hasRole } = useAuth();
   
@@ -88,6 +92,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       category: '',
       room_id: '',
       professional_id: '',
+      equipment: [],
       return_days: null,
       is_active: true,
     },
@@ -312,6 +317,38 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 </FormItem>
               )}
             />
+
+            {/* Equipment Selection */}
+            <div className="space-y-2">
+              <Label>Equipamentos</Label>
+              <div className="border rounded-lg p-3 max-h-[150px] overflow-y-auto space-y-2">
+                {equipment.filter(e => e.is_active).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado</p>
+                ) : (
+                  equipment.filter(e => e.is_active).map((eq) => (
+                    <div key={eq.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`equip-${eq.id}`}
+                        checked={form.watch('equipment')?.includes(eq.id) || false}
+                        onChange={(e) => {
+                          const current = form.getValues('equipment') || [];
+                          if (e.target.checked) {
+                            form.setValue('equipment', [...current, eq.id]);
+                          } else {
+                            form.setValue('equipment', current.filter(id => id !== eq.id));
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <label htmlFor={`equip-${eq.id}`} className="text-sm cursor-pointer">
+                        {eq.name}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
             <FormField
               control={form.control}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useClientPackages } from '@/hooks/useClientPackages';
+import { useClientServices } from '@/hooks/useClientServices';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
@@ -96,6 +97,7 @@ export function NewAppointmentDialog({
   const { services } = useServices();
   const { packages } = useServicePackages();
   const { clientPackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
+  const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
@@ -104,6 +106,9 @@ export function NewAppointmentDialog({
   const { absences } = useProfessionalAbsences();
 
   const timeSlots = generateTimeSlots();
+
+  // State to track if using a paid service
+  const [usingPaidServiceId, setUsingPaidServiceId] = useState<string | null>(null);
 
   // Check if a date is a valid work day
   const isWorkDay = (date: Date): boolean => {
@@ -399,15 +404,23 @@ export function NewAppointmentDialog({
         }
       } else {
         // Regular service appointment
-        await createAppointment.mutateAsync({
+        const appointmentResult = await createAppointment.mutateAsync({
           client_id: selectedClient,
           service_id: selectedService,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
-          notes: notes || undefined,
+          notes: usingPaidServiceId ? `${notes ? notes + ' - ' : ''}Serviço pago utilizado` : (notes || undefined),
           professional_id: selectedProfessional || undefined,
           room_id: selectedRoom || undefined,
         });
+
+        // If using a paid service, mark it as used
+        if (usingPaidServiceId) {
+          await markServiceAsUsed.mutateAsync({
+            serviceId: usingPaidServiceId,
+            appointmentId: appointmentResult.id,
+          });
+        }
       }
 
       onOpenChange(false);
@@ -432,6 +445,7 @@ export function NewAppointmentDialog({
     setServiceType('service');
     setServiceSearch('');
     setClientSearch('');
+    setUsingPaidServiceId(null);
   };
 
   const hasConflicts = conflicts.length > 0;
@@ -502,12 +516,48 @@ export function NewAppointmentDialog({
                 onFocus={() => setShowServiceSuggestions(true)}
               />
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
-                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto">
-                  {/* Client's paid packages - shown first */}
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
+                  {/* Client's paid services - shown first */}
+                  {selectedClient && clientPaidServices.length > 0 && (
+                    <div className="border-b-2 border-green-500/20">
+                      <div className="px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-500/10 flex items-center gap-1">
+                        <Briefcase className="h-3 w-3" />
+                        Serviços Pagos do Cliente
+                      </div>
+                      {clientPaidServices
+                        .filter(s => !serviceSearch || s.service?.name?.toLowerCase().includes(serviceSearch.toLowerCase()))
+                        .map(paidService => (
+                          <div
+                            key={`client-svc-${paidService.id}`}
+                            className="p-2 hover:bg-green-500/10 cursor-pointer border-b bg-green-500/5"
+                            onClick={() => {
+                              setSelectedService(paidService.service_id);
+                              setServiceSearch(paidService.service?.name || '');
+                              setServiceType('service');
+                              setUsingPaidServiceId(paidService.id);
+                              setShowServiceSuggestions(false);
+                            }}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-green-700">{paidService.service?.name}</span>
+                              <Badge className="text-xs bg-green-500 text-white">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                PAGO
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {paidService.service?.duration}min • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Client's paid packages */}
                   {selectedClient && clientPackages.length > 0 && (
                     <div className="border-b-2 border-primary/20">
                       <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3" />
+                        <Package className="h-3 w-3" />
                         Pacotes Pagos do Cliente
                       </div>
                       {clientPackages
@@ -522,6 +572,7 @@ export function NewAppointmentDialog({
                                 setSelectedService(pkg.id);
                                 setServiceSearch(pkg.name);
                                 setServiceType('package');
+                                setUsingPaidServiceId(null);
                                 setShowServiceSuggestions(false);
                               }}
                             >

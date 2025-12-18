@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard } from 'lucide-react';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
 import { ClientStatsSection } from '@/components/client-profile/ClientStatsSection';
 import { ClientAppointmentsTab } from '@/components/client-profile/ClientAppointmentsTab';
@@ -13,6 +13,7 @@ import { ClientPhotosTab } from '@/components/client-profile/ClientPhotosTab';
 import { ClientQuotesTab } from '@/components/client-profile/ClientQuotesTab';
 import { ClientInfoTab } from '@/components/client-profile/ClientInfoTab';
 import { ClientReportTab } from '@/components/client-profile/ClientReportTab';
+import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClienteDetalhes() {
@@ -63,10 +64,14 @@ export default function ClienteDetalhes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="report" className="flex items-center gap-1">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Relatório</span>
+            </TabsTrigger>
+            <TabsTrigger value="credits" className="flex items-center gap-1">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Créditos</span>
             </TabsTrigger>
             <TabsTrigger value="appointments" className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
@@ -92,6 +97,9 @@ export default function ClienteDetalhes() {
           
           <TabsContent value="report">
             <ClientReportTab appointments={appointments} clientName={client.name} />
+          </TabsContent>
+          <TabsContent value="credits">
+            <ClientCreditsTab clientId={client.id} />
           </TabsContent>
           <TabsContent value="appointments">
             <ClientAppointmentsTab appointments={appointments} />

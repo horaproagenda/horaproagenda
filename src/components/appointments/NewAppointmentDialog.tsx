@@ -608,14 +608,14 @@ export function NewAppointmentDialog({
                             <div className="space-y-1">
                               <Label className="text-xs">Dia preferido</Label>
                               <Select
-                                value={preferredDayOfWeek?.toString() || ''}
-                                onValueChange={(v) => setPreferredDayOfWeek(v ? parseInt(v) : null)}
+                                value={preferredDayOfWeek !== null ? preferredDayOfWeek.toString() : '_any'}
+                                onValueChange={(v) => setPreferredDayOfWeek(v === '_any' ? null : parseInt(v))}
                               >
                                 <SelectTrigger className="h-8 text-xs">
                                   <SelectValue placeholder="Qualquer dia" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Qualquer dia</SelectItem>
+                                  <SelectItem value="_any">Qualquer dia</SelectItem>
                                   {DAYS_OF_WEEK.map(day => (
                                     <SelectItem key={day.value} value={day.value.toString()}>
                                       {day.label}
@@ -627,14 +627,14 @@ export function NewAppointmentDialog({
                             <div className="space-y-1">
                               <Label className="text-xs">Horário preferido</Label>
                               <Select
-                                value={preferredTime}
-                                onValueChange={setPreferredTime}
+                                value={preferredTime || '_same'}
+                                onValueChange={(v) => setPreferredTime(v === '_same' ? '' : v)}
                               >
                                 <SelectTrigger className="h-8 text-xs">
                                   <SelectValue placeholder="Mesmo horário" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[200px]">
-                                  <SelectItem value="">Mesmo horário</SelectItem>
+                                  <SelectItem value="_same">Mesmo horário</SelectItem>
                                   {timeSlots.map(slot => (
                                     <SelectItem key={slot} value={slot}>{slot}</SelectItem>
                                   ))}

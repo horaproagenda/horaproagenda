@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
+import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -52,6 +53,9 @@ const Configuracoes = () => {
       <div className="space-y-6">
         {/* User Management */}
         <UserManagement />
+
+        {/* WhatsApp Templates */}
+        <WhatsappTemplatesSettings />
 
         <div className="grid gap-6 lg:grid-cols-2">
         <Card>

@@ -81,7 +81,7 @@ export default function Financeiro() {
   // Card Brand Dialog
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<CardBrand | null>(null);
-  const [brandForm, setBrandForm] = useState({ name: '', type: 'both' as 'credit' | 'debit' | 'both', is_active: true });
+  const [brandForm, setBrandForm] = useState({ name: '', type: 'both' as 'credit' | 'debit' | 'both', is_active: true, fee_behavior: 'deduct_from_provider' as 'add_to_client' | 'deduct_from_provider' });
   const [brandFees, setBrandFees] = useState<{ installment_number: number; fee_percentage: number }[]>([]);
 
   // Category Dialog
@@ -214,11 +214,11 @@ export default function Financeiro() {
   const openBrandDialog = (brand?: CardBrand) => {
     if (brand) {
       setEditingBrand(brand);
-      setBrandForm({ name: brand.name, type: brand.type, is_active: brand.is_active });
+      setBrandForm({ name: brand.name, type: brand.type, is_active: brand.is_active, fee_behavior: brand.fee_behavior || 'deduct_from_provider' });
       setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || []);
     } else {
       setEditingBrand(null);
-      setBrandForm({ name: '', type: 'both', is_active: true });
+      setBrandForm({ name: '', type: 'both', is_active: true, fee_behavior: 'deduct_from_provider' });
       setBrandFees([]);
     }
     setBrandDialogOpen(true);
@@ -1029,6 +1029,32 @@ export default function Financeiro() {
                   </div>
                 </div>
               )}
+
+              {/* Fee Behavior */}
+              <div className="space-y-3 pt-4 border-t">
+                <Label className="font-semibold">Como aplicar a taxa?</Label>
+                <Select 
+                  value={brandForm.fee_behavior} 
+                  onValueChange={(v: 'add_to_client' | 'deduct_from_provider') => setBrandForm({ ...brandForm, fee_behavior: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deduct_from_provider">
+                      Descontar do valor recebido (profissional/clínica)
+                    </SelectItem>
+                    <SelectItem value="add_to_client">
+                      Adicionar ao valor cobrado do cliente
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {brandForm.fee_behavior === 'add_to_client' 
+                    ? 'O cliente pagará o valor do serviço + taxa do cartão.' 
+                    : 'O cliente paga o valor normal e a taxa é descontada do que você recebe.'}
+                </p>
+              </div>
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center space-x-2">

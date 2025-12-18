@@ -66,7 +66,7 @@ export function useClientPackages(clientId: string | null) {
   const createClientPackage = useMutation({
     mutationFn: async (data: {
       clientId: string;
-      templateId: string;
+      templateId?: string | null;
       templateData: {
         name: string;
         total_sessions: number;
@@ -81,13 +81,26 @@ export function useClientPackages(clientId: string | null) {
       preferredDayOfWeek?: number;
       preferredTime?: string;
     }) => {
+      // If templateId is provided, verify it exists in package_templates
+      // Otherwise, don't set template_id (it's optional)
+      let validTemplateId: string | null = null;
+      if (data.templateId) {
+        const { data: existingTemplate } = await supabase
+          .from('package_templates')
+          .select('id')
+          .eq('id', data.templateId)
+          .maybeSingle();
+        
+        validTemplateId = existingTemplate ? data.templateId : null;
+      }
+
       // Create the client-specific package
       const { data: newPackage, error: packageError } = await supabase
         .from('service_packages')
         .insert({
           name: data.templateData.name,
           client_id: data.clientId,
-          template_id: data.templateId,
+          template_id: validTemplateId,
           total_sessions: data.templateData.total_sessions,
           duration: data.templateData.duration || 60,
           interval_days: data.templateData.interval_days || 7,

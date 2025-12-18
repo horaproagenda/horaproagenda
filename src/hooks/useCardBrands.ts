@@ -16,6 +16,7 @@ export interface CardBrand {
   name: string;
   type: 'credit' | 'debit' | 'both';
   is_active: boolean;
+  fee_behavior: 'add_to_client' | 'deduct_from_provider';
   created_at: string;
   updated_at: string;
   fees?: CardBrandFee[];
@@ -38,7 +39,7 @@ export function useCardBrands() {
   });
 
   const createCardBrand = useMutation({
-    mutationFn: async (brand: { name: string; type: string; is_active: boolean }) => {
+    mutationFn: async (brand: { name: string; type: string; is_active: boolean; fee_behavior?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase

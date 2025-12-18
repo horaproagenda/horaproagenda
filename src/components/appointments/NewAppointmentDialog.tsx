@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,10 +27,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { useClientPackages } from '@/hooks/useClientPackages';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
@@ -38,6 +40,8 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { Appointment } from '@/types';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -51,6 +55,16 @@ interface NewAppointmentDialogProps {
   prefilledDate?: Date;
   prefilledTime?: string;
 }
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Domingo' },
+  { value: 1, label: 'Segunda-feira' },
+  { value: 2, label: 'Terça-feira' },
+  { value: 3, label: 'Quarta-feira' },
+  { value: 4, label: 'Quinta-feira' },
+  { value: 5, label: 'Sexta-feira' },
+  { value: 6, label: 'Sábado' },
+];
 
 export function NewAppointmentDialog({ 
   open, 
@@ -72,10 +86,16 @@ export function NewAppointmentDialog({
   const [clientSearch, setClientSearch] = useState('');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showServiceSuggestions, setShowServiceSuggestions] = useState(false);
+  
+  // Auto-schedule settings for packages
+  const [autoScheduleEnabled, setAutoScheduleEnabled] = useState(false);
+  const [preferredDayOfWeek, setPreferredDayOfWeek] = useState<number | null>(null);
+  const [preferredTime, setPreferredTime] = useState('');
 
   const { clients } = useClients();
   const { services } = useServices();
   const { packages } = useServicePackages();
+  const { clientPackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
@@ -103,6 +123,15 @@ export function NewAppointmentDialog({
   const activeEquipment = equipment.filter(e => e.is_active);
   const activePackages = packages.filter(p => p.is_active && !p.client_id);
 
+  // Check if client already has this package
+  const existingClientPackage = serviceType === 'package' && selectedService && selectedClient
+    ? findClientPackageByTemplate(selectedService)
+    : null;
+
+  const packageRemainingSessions = existingClientPackage
+    ? existingClientPackage.total_sessions - existingClientPackage.sessions_scheduled
+    : selectedPackageData?.total_sessions || 0;
+
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
     if (open) {
@@ -114,6 +143,12 @@ export function NewAppointmentDialog({
       setNotes('');
       setDate(prefilledDate || undefined);
       setTime(prefilledTime || '');
+      setAutoScheduleEnabled(false);
+      setPreferredDayOfWeek(null);
+      setPreferredTime('');
+      setServiceType('service');
+      setServiceSearch('');
+      setClientSearch('');
     }
   }, [open, prefilledDate, prefilledTime]);
 
@@ -129,17 +164,21 @@ export function NewAppointmentDialog({
 
   // Calculate appointment start and end times
   const appointmentTimes = useMemo(() => {
-    if (!date || !time || !selectedServiceData) return null;
+    if (!date || !time) return null;
+    
+    const duration = serviceType === 'service' 
+      ? (selectedServiceData?.duration || 60) 
+      : (selectedPackageData?.duration || 60);
     
     const [hours, minutes] = time.split(':').map(Number);
     const startTime = new Date(date);
     startTime.setHours(hours, minutes, 0, 0);
 
     const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + selectedServiceData.duration);
+    endTime.setMinutes(endTime.getMinutes() + duration);
 
     return { startTime, endTime };
-  }, [date, time, selectedServiceData]);
+  }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
 
   // Check for conflicts
   const conflicts = useMemo<ConflictInfo[]>(() => {
@@ -255,7 +294,10 @@ export function NewAppointmentDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedClient || !selectedService || !date || !time || !selectedServiceData) {
+    const isPackageAppointment = serviceType === 'package';
+    const serviceOrPackage = isPackageAppointment ? selectedPackageData : selectedServiceData;
+    
+    if (!selectedClient || !selectedService || !date || !time || !serviceOrPackage) {
       return;
     }
 
@@ -264,23 +306,115 @@ export function NewAppointmentDialog({
       return;
     }
 
+    const duration = serviceOrPackage.duration || 60;
     const [hours, minutes] = time.split(':').map(Number);
     const startTime = new Date(date);
     startTime.setHours(hours, minutes, 0, 0);
 
     const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + selectedServiceData.duration);
+    endTime.setMinutes(endTime.getMinutes() + duration);
 
-    await createAppointment.mutateAsync({
-      client_id: selectedClient,
-      service_id: selectedService,
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      notes: notes || undefined,
-    });
+    try {
+      if (isPackageAppointment && selectedPackageData) {
+        let clientPackageId = existingClientPackage?.id;
+        
+        // If it's a new package for this client, create it first
+        if (!existingClientPackage) {
+          const newPackage = await createClientPackage.mutateAsync({
+            clientId: selectedClient,
+            templateId: selectedService,
+            templateData: {
+              name: selectedPackageData.name,
+              total_sessions: selectedPackageData.total_sessions,
+              duration: selectedPackageData.duration || 60,
+              interval_days: selectedPackageData.interval_days || 7,
+              total_price: selectedPackageData.total_price,
+              professional_id: selectedProfessional || selectedPackageData.professional_id,
+              room_id: selectedRoom || selectedPackageData.room_id,
+              equipment: selectedPackageData.equipment || [],
+            },
+            autoSchedule: autoScheduleEnabled,
+            preferredDayOfWeek: preferredDayOfWeek ?? undefined,
+            preferredTime: preferredTime || time,
+          });
+          clientPackageId = newPackage.id;
+        }
 
-    onOpenChange(false);
-    resetForm();
+        // Create the first/next appointment
+        const appointmentResult = await createAppointment.mutateAsync({
+          client_id: selectedClient,
+          service_id: selectedService,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          notes: notes || undefined,
+          professional_id: selectedProfessional || undefined,
+          room_id: selectedRoom || undefined,
+        });
+
+        // Link the appointment to the package session
+        if (clientPackageId) {
+          await incrementPackageSession.mutateAsync({
+            packageId: clientPackageId,
+            appointmentId: appointmentResult.id,
+          });
+        }
+
+        // If auto-schedule is enabled and it's the first appointment, create future appointments
+        if (autoScheduleEnabled && !existingClientPackage && selectedPackageData.total_sessions > 1) {
+          const intervalDays = selectedPackageData.interval_days || 7;
+          const sessionsToCreate = selectedPackageData.total_sessions - 1;
+
+          for (let i = 1; i <= sessionsToCreate; i++) {
+            const futureDate = addDays(startTime, intervalDays * i);
+            
+            // Adjust to preferred day of week if set
+            if (preferredDayOfWeek !== null) {
+              while (futureDate.getDay() !== preferredDayOfWeek) {
+                futureDate.setDate(futureDate.getDate() + 1);
+              }
+            }
+
+            const futureEnd = new Date(futureDate);
+            futureEnd.setMinutes(futureEnd.getMinutes() + duration);
+
+            const futureAppointment = await createAppointment.mutateAsync({
+              client_id: selectedClient,
+              service_id: selectedService,
+              start_time: futureDate.toISOString(),
+              end_time: futureEnd.toISOString(),
+              notes: `Sessão ${i + 1} de ${selectedPackageData.total_sessions} - Agendamento automático`,
+              professional_id: selectedProfessional || undefined,
+              room_id: selectedRoom || undefined,
+            });
+
+            if (clientPackageId) {
+              await incrementPackageSession.mutateAsync({
+                packageId: clientPackageId,
+                appointmentId: futureAppointment.id,
+              });
+            }
+          }
+
+          toast.success(`${sessionsToCreate + 1} agendamentos criados automaticamente!`);
+        }
+      } else {
+        // Regular service appointment
+        await createAppointment.mutateAsync({
+          client_id: selectedClient,
+          service_id: selectedService,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          notes: notes || undefined,
+          professional_id: selectedProfessional || undefined,
+          room_id: selectedRoom || undefined,
+        });
+      }
+
+      onOpenChange(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+    }
   };
 
   const resetForm = () => {
@@ -292,6 +426,12 @@ export function NewAppointmentDialog({
     setDate(undefined);
     setTime('');
     setNotes('');
+    setAutoScheduleEnabled(false);
+    setPreferredDayOfWeek(null);
+    setPreferredTime('');
+    setServiceType('service');
+    setServiceSearch('');
+    setClientSearch('');
   };
 
   const hasConflicts = conflicts.length > 0;
@@ -425,6 +565,91 @@ export function NewAppointmentDialog({
                   Duração: {selectedServiceData.duration} minutos • 
                   Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
                 </p>
+              )}
+              {selectedPackageData && serviceType === 'package' && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Duração: {selectedPackageData.duration || 60} minutos • 
+                    {selectedPackageData.total_sessions} sessões • 
+                    Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
+                  </p>
+                  
+                  {/* Show remaining sessions for existing package */}
+                  {existingClientPackage && selectedClient && (
+                    <Alert className="py-2">
+                      <Info className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        <span className="font-medium">
+                          {packageRemainingSessions} sessão(ões) restante(s)
+                        </span> de {existingClientPackage.total_sessions} neste pacote
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Show auto-schedule options for new package */}
+                  {!existingClientPackage && selectedClient && (
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Agendamento Automático</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Agendar todas as {selectedPackageData.total_sessions} sessões automaticamente
+                          </p>
+                        </div>
+                        <Switch
+                          checked={autoScheduleEnabled}
+                          onCheckedChange={setAutoScheduleEnabled}
+                        />
+                      </div>
+
+                      {autoScheduleEnabled && (
+                        <div className="space-y-3 pt-2 border-t">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Dia preferido</Label>
+                              <Select
+                                value={preferredDayOfWeek?.toString() || ''}
+                                onValueChange={(v) => setPreferredDayOfWeek(v ? parseInt(v) : null)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Qualquer dia" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">Qualquer dia</SelectItem>
+                                  {DAYS_OF_WEEK.map(day => (
+                                    <SelectItem key={day.value} value={day.value.toString()}>
+                                      {day.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Horário preferido</Label>
+                              <Select
+                                value={preferredTime}
+                                onValueChange={setPreferredTime}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Mesmo horário" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                  <SelectItem value="">Mesmo horário</SelectItem>
+                                  {timeSlots.map(slot => (
+                                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Intervalo: a cada {selectedPackageData.interval_days || 7} dias
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

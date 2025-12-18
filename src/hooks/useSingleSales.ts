@@ -115,22 +115,17 @@ export function useSingleSales() {
         }
       }
 
-      // 3. If it's a service sale with a client, add credit to client
-      if (sale.item_type === 'service' && sale.client_id) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('credit_balance')
-          .eq('id', sale.client_id)
-          .single();
-
-        if (clientData) {
-          await supabase
-            .from('clients')
-            .update({
-              credit_balance: (clientData.credit_balance || 0) + sale.final_amount,
-            })
-            .eq('id', sale.client_id);
-        }
+      // 3. If it's a service sale with a client, create a client_service record
+      if (sale.item_type === 'service' && sale.service_id && sale.client_id) {
+        // Create a redeemable service for the client
+        await supabase.from('client_services').insert({
+          client_id: sale.client_id,
+          service_id: sale.service_id,
+          sale_id: saleData.id,
+          amount_paid: sale.final_amount,
+          status: 'available',
+          created_by: user?.id,
+        });
       }
 
       // 4. Create a financial entry for tracking

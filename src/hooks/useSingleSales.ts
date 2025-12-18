@@ -54,10 +54,11 @@ export function useSingleSales() {
   });
 
   const createSale = useMutation({
-    mutationFn: async (sale: Omit<SingleSale, 'id' | 'created_at' | 'updated_at' | 'client' | 'service' | 'payment_method' | 'bank'>) => {
+    mutationFn: async (sale: Omit<SingleSale, 'id' | 'created_at' | 'updated_at' | 'client' | 'service' | 'payment_method' | 'bank' | 'package'>) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase
+      // 1. Create the sale record
+      const { data: saleData, error: saleError } = await supabase
         .from('single_sales')
         .insert({
           ...sale,
@@ -66,12 +67,94 @@ export function useSingleSales() {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (saleError) throw saleError;
+
+      // 2. If it's a package sale with a client, create a client package with paid sessions
+      if (sale.item_type === 'package' && sale.package_id && sale.client_id) {
+        // Get the package template data
+        const { data: packageTemplate } = await supabase
+          .from('service_packages')
+          .select('*')
+          .eq('id', sale.package_id)
+          .single();
+
+        if (packageTemplate) {
+          // Create a new client-specific package (copy of the template)
+          const { data: clientPackage, error: pkgError } = await supabase
+            .from('service_packages')
+            .insert({
+              name: packageTemplate.name,
+              description: packageTemplate.description,
+              client_id: sale.client_id,
+              template_id: packageTemplate.template_id,
+              total_sessions: packageTemplate.total_sessions,
+              duration: packageTemplate.duration || 60,
+              interval_days: packageTemplate.interval_days || 7,
+              total_price: sale.final_amount,
+              professional_id: packageTemplate.professional_id,
+              room_id: packageTemplate.room_id,
+              equipment: packageTemplate.equipment || [],
+              payment_methods: sale.payment_method_id ? [sale.payment_method_id] : [],
+              sessions_scheduled: 0,
+              is_active: true,
+              category: 'Pago via Caixa',
+            })
+            .select()
+            .single();
+
+          if (!pkgError && clientPackage) {
+            // Create pending sessions for the package
+            const sessions = Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
+              package_id: clientPackage.id,
+              session_number: i + 1,
+              status: 'pending',
+            }));
+
+            await supabase.from('package_appointments').insert(sessions);
+          }
+        }
+      }
+
+      // 3. If it's a service sale with a client, add credit to client
+      if (sale.item_type === 'service' && sale.client_id) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('credit_balance')
+          .eq('id', sale.client_id)
+          .single();
+
+        if (clientData) {
+          await supabase
+            .from('clients')
+            .update({
+              credit_balance: (clientData.credit_balance || 0) + sale.final_amount,
+            })
+            .eq('id', sale.client_id);
+        }
+      }
+
+      // 4. Create a financial entry for tracking
+      await supabase.from('financial_entries').insert({
+        type: 'income',
+        description: `Venda: ${sale.description || 'Item avulso'}`,
+        amount: sale.final_amount,
+        due_date: sale.sale_date,
+        paid_date: sale.sale_date,
+        status: 'paid',
+        payment_method_id: sale.payment_method_id,
+        client_id: sale.client_id,
+        created_by: user?.id,
+      });
+
+      return saleData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       toast.success('Venda registrada com sucesso!');
     },
     onError: (error: any) => {

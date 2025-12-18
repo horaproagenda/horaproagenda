@@ -501,9 +501,47 @@ export function NewAppointmentDialog({
                 }}
                 onFocus={() => setShowServiceSuggestions(true)}
               />
-              {showServiceSuggestions && serviceSearch && (
-                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[250px] overflow-y-auto">
-                  {/* Services */}
+              {showServiceSuggestions && (serviceSearch || selectedClient) && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto">
+                  {/* Client's paid packages - shown first */}
+                  {selectedClient && clientPackages.length > 0 && (
+                    <div className="border-b-2 border-primary/20">
+                      <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Pacotes Pagos do Cliente
+                      </div>
+                      {clientPackages
+                        .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                        .map(pkg => {
+                          const remaining = pkg.total_sessions - pkg.sessions_scheduled;
+                          return (
+                            <div
+                              key={`client-pkg-${pkg.id}`}
+                              className="p-2 hover:bg-primary/5 cursor-pointer border-b bg-primary/5"
+                              onClick={() => {
+                                setSelectedService(pkg.id);
+                                setServiceSearch(pkg.name);
+                                setServiceType('package');
+                                setShowServiceSuggestions(false);
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-primary">{pkg.name}</span>
+                                <Badge className="text-xs bg-green-500 text-white">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  PAGO
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {remaining} de {pkg.total_sessions} sessões disponíveis
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                  
+                  {/* Regular Services */}
                   {services
                     .filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                     .slice(0, 5)
@@ -527,7 +565,7 @@ export function NewAppointmentDialog({
                         </div>
                       </div>
                     ))}
-                  {/* Packages */}
+                  {/* Packages (templates) */}
                   {activePackages
                     .filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                     .slice(0, 5)
@@ -555,9 +593,10 @@ export function NewAppointmentDialog({
                       </div>
                     ))}
                   {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   activePackages.filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
+                   activePackages.filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
+                   (!selectedClient || clientPackages.filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0) && (
                     <div className="p-2 text-muted-foreground text-sm">Nenhum serviço ou pacote encontrado</div>
-                  )}
+                   )}
                 </div>
               )}
               {selectedServiceData && (

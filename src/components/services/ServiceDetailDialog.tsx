@@ -55,7 +55,7 @@ interface ServiceAppointment {
   id: string;
   start_time: string;
   status: string;
-  client: { name: string } | null;
+  client: { id: string; name: string } | null;
 }
 
 const serviceSchema = z.object({
@@ -91,6 +91,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [serviceAppointments, setServiceAppointments] = useState<ServiceAppointment[]>([]);
   const [showAppointments, setShowAppointments] = useState(false);
+  const [showClients, setShowClients] = useState(false);
+  const [serviceClients, setServiceClients] = useState<{id: string; name: string; count: number}[]>([]);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
@@ -138,7 +140,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
       const { data: appointments } = await supabase
         .from('appointments')
-        .select('id, client_id, start_time, status, client:clients(name)')
+        .select('id, client_id, start_time, status, client:clients(id, name)')
         .eq('service_id', service.id)
         .order('start_time', { ascending: false })
         .limit(50);
@@ -150,6 +152,20 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         status: a.status,
         client: a.client,
       })) || []);
+
+      // Build client list with counts
+      const clientMap = new Map<string, { id: string; name: string; count: number }>();
+      appointments?.forEach(a => {
+        if (a.client) {
+          const existing = clientMap.get(a.client.id);
+          if (existing) {
+            existing.count++;
+          } else {
+            clientMap.set(a.client.id, { id: a.client.id, name: a.client.name, count: 1 });
+          }
+        }
+      });
+      setServiceClients(Array.from(clientMap.values()).sort((a, b) => b.count - a.count));
 
       if (service.room_id) {
         const { data: room } = await supabase
@@ -312,19 +328,69 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
               <Separator />
 
-              {/* Usage Stats */}
+              {/* Usage Stats - Clickable */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-primary/10 p-4 text-center">
-                  <Users className="mx-auto h-6 w-6 text-primary" />
+                <div 
+                  className="rounded-lg bg-primary/10 p-4 text-center cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => clientsCount > 0 && setShowClients(!showClients)}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Users className="h-6 w-6 text-primary" />
+                    {clientsCount > 0 && (showClients ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
+                  </div>
                   <p className="mt-2 text-2xl font-bold">{isLoading ? '...' : clientsCount}</p>
                   <p className="text-xs text-muted-foreground">Clientes usando</p>
                 </div>
-                <div className="rounded-lg bg-secondary/50 p-4 text-center">
-                  <Calendar className="mx-auto h-6 w-6 text-secondary-foreground" />
+                <div 
+                  className="rounded-lg bg-secondary/50 p-4 text-center cursor-pointer hover:bg-secondary/60 transition-colors"
+                  onClick={() => appointmentsCount > 0 && setShowAppointments(!showAppointments)}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Calendar className="h-6 w-6 text-secondary-foreground" />
+                    {appointmentsCount > 0 && (showAppointments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
+                  </div>
                   <p className="mt-2 text-2xl font-bold">{isLoading ? '...' : appointmentsCount}</p>
                   <p className="text-xs text-muted-foreground">Agendamentos</p>
                 </div>
               </div>
+
+              {/* Clients List */}
+              {showClients && serviceClients.length > 0 && (
+                <ScrollArea className="h-[150px] rounded border p-2">
+                  <div className="space-y-2">
+                    {serviceClients.map(client => (
+                      <div key={client.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                        <span className="text-sm font-medium">{client.name}</span>
+                        <Badge variant="secondary" className="text-xs">{client.count} atendimento{client.count > 1 ? 's' : ''}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {/* Appointments History */}
+              {showAppointments && serviceAppointments.length > 0 && (
+                <ScrollArea className="h-[200px] rounded border p-2">
+                  <div className="space-y-2">
+                    {serviceAppointments.map(apt => (
+                      <div key={apt.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                        <div>
+                          <p className="text-sm font-medium">{apt.client?.name || 'Cliente'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        <Badge variant={apt.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
+                          {apt.status === 'scheduled' ? 'Agendado' : 
+                           apt.status === 'confirmed' ? 'Confirmado' : 
+                           apt.status === 'completed' ? 'Concluído' : 
+                           apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
 
               <Separator />
 
@@ -381,62 +447,6 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                 </div>
               </div>
 
-              {/* Appointments List */}
-              {appointmentsCount > 0 && (
-                <>
-                  <Collapsible open={showAppointments} onOpenChange={setShowAppointments}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between">
-                        <span className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Agendamentos vinculados ({appointmentsCount})
-                        </span>
-                        {showAppointments ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <ScrollArea className="h-[200px] rounded border p-2 mt-2">
-                        <div className="space-y-2">
-                          {serviceAppointments.map(apt => (
-                            <div key={apt.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                              <div>
-                                <p className="text-sm font-medium">{apt.client?.name || 'Cliente'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={apt.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
-                                  {apt.status === 'scheduled' ? 'Agendado' : 
-                                   apt.status === 'confirmed' ? 'Confirmado' : 
-                                   apt.status === 'completed' ? 'Concluído' : 
-                                   apt.status === 'cancelled' ? 'Cancelado' : apt.status}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-destructive"
-                                  onClick={() => handleDeleteAppointment(apt.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Exclua os agendamentos acima se desejar excluir este serviço.
-                      </p>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  <Separator />
-                </>
-              )}
 
               <div className="flex justify-between gap-2">
                 <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>

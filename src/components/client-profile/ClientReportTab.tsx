@@ -252,18 +252,57 @@ export function ClientReportTab({ appointments, clientName }: ClientReportTabPro
         </Card>
       </div>
 
+      {/* Payment History - Compact */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Histórico de Pagamentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredAppointments.filter(a => a.status === 'completed' && a.amount_paid && a.amount_paid > 0).length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhum pagamento registrado</p>
+          ) : (
+            <div className="space-y-2">
+              {filteredAppointments
+                .filter(a => a.status === 'completed' && a.amount_paid && a.amount_paid > 0)
+                .slice(0, 10)
+                .map(apt => (
+                  <div key={apt.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground">{format(new Date(apt.start_time), 'dd/MM/yy')}</span>
+                      <span className="font-medium truncate max-w-[150px]">{apt.service?.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {apt.payment_methods && apt.payment_methods.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          {apt.payment_methods.join(', ')}
+                        </Badge>
+                      )}
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        R$ {Number(apt.amount_paid).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Services Summary */}
       {summary.byService.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg">Resumo por Procedimento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {summary.byService.map(service => (
-                <div key={service.name} className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium text-foreground">{service.name}</p>
-                  <p className="text-sm text-muted-foreground">
+                <div key={service.name} className="p-2 bg-muted/50 rounded-lg">
+                  <p className="font-medium text-sm text-foreground truncate">{service.name}</p>
+                  <p className="text-xs text-muted-foreground">
                     {service.count}x - R$ {service.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -275,14 +314,14 @@ export function ClientReportTab({ appointments, clientName }: ClientReportTabPro
 
       {/* Detailed Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-lg">Histórico Detalhado</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredAppointments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum agendamento encontrado com os filtros aplicados</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Nenhum agendamento encontrado</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -290,31 +329,29 @@ export function ClientReportTab({ appointments, clientName }: ClientReportTabPro
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
-                    <TableHead>Horário</TableHead>
                     <TableHead>Serviço</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Duração</TableHead>
                     <TableHead>Valor</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.map(appointment => {
+                  {filteredAppointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
                     return (
                       <TableRow key={appointment.id}>
-                        <TableCell className="font-medium">
-                          {format(new Date(appointment.start_time), "dd/MM/yyyy")}
+                        <TableCell className="text-sm">
+                          {format(new Date(appointment.start_time), "dd/MM/yy")}
+                        </TableCell>
+                        <TableCell className="text-sm">{appointment.service?.name || '-'}</TableCell>
+                        <TableCell className="text-sm">R$ {(appointment.service?.price || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm">
+                          {appointment.amount_paid && appointment.amount_paid > 0 ? (
+                            <span className="text-emerald-600">R$ {Number(appointment.amount_paid).toFixed(2)}</span>
+                          ) : '-'}
                         </TableCell>
                         <TableCell>
-                          {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
-                        </TableCell>
-                        <TableCell>{appointment.service?.name || '-'}</TableCell>
-                        <TableCell>{appointment.service?.category || '-'}</TableCell>
-                        <TableCell>{appointment.service?.duration} min</TableCell>
-                        <TableCell>R$ {(appointment.service?.price || 0).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge variant={status.variant}>{status.label}</Badge>
+                          <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
                         </TableCell>
                       </TableRow>
                     );

@@ -14,7 +14,9 @@ import {
   Landmark,
   Shield,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +34,8 @@ const navigation = [
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
+  { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },
+  { name: 'Suporte', href: '/suporte', icon: MessageSquare },
 ];
 
 interface SidebarProps {

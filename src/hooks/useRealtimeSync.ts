@@ -120,6 +120,36 @@ export function useRealtimeSync() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['service_products'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_purchases'
+        },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+          queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+          
+          if (payload.eventType === 'INSERT') {
+            toast.info('Nova compra de produto registrada', { duration: 2000 });
+          }
+        }
+      )
       .subscribe();
 
     return () => {

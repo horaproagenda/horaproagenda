@@ -309,7 +309,14 @@ export function NewAppointmentDialog({
     const isPackageAppointment = serviceType === 'package';
     const serviceOrPackage = isPackageAppointment ? selectedPackageData : selectedServiceData;
     
-    if (!selectedClient || !selectedService || !date || !time || !serviceOrPackage) {
+    // For packages, selectedService contains the package ID, not service ID
+    // For services, selectedService must be a valid service ID
+    if (!selectedClient || !date || !time || !serviceOrPackage) {
+      return;
+    }
+    
+    // For regular services, we need a service_id
+    if (!isPackageAppointment && !selectedService) {
       return;
     }
 
@@ -353,14 +360,17 @@ export function NewAppointmentDialog({
         }
 
         // Create the first/next appointment
+        // For packages, use the package's service_id if available, otherwise null
+        const packageServiceId = selectedPackageData?.service_id || null;
         const appointmentResult = await createAppointment.mutateAsync({
           client_id: selectedClient,
-          service_id: selectedService,
+          service_id: packageServiceId,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
-          notes: notes || undefined,
-          professional_id: selectedProfessional || undefined,
-          room_id: selectedRoom || undefined,
+          notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`,
+          professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
+          room_id: selectedRoom || selectedPackageData.room_id || undefined,
+          payment_status: existingClientPackage ? 'paid' : 'pending',
         });
 
         // Link the appointment to the package session
@@ -391,12 +401,13 @@ export function NewAppointmentDialog({
 
             const futureAppointment = await createAppointment.mutateAsync({
               client_id: selectedClient,
-              service_id: selectedService,
+              service_id: packageServiceId,
               start_time: futureDate.toISOString(),
               end_time: futureEnd.toISOString(),
-              notes: `Sessão ${i + 1} de ${selectedPackageData.total_sessions} - Agendamento automático`,
-              professional_id: selectedProfessional || undefined,
-              room_id: selectedRoom || undefined,
+              notes: `${selectedPackageData.name} - Sessão ${i + 1} de ${selectedPackageData.total_sessions}`,
+              professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
+              room_id: selectedRoom || selectedPackageData.room_id || undefined,
+              payment_status: 'paid',
             });
 
             if (clientPackageId) {
@@ -419,6 +430,7 @@ export function NewAppointmentDialog({
           notes: usingPaidServiceId ? `${notes ? notes + ' - ' : ''}Serviço pago utilizado` : (notes || undefined),
           professional_id: selectedProfessional || undefined,
           room_id: selectedRoom || undefined,
+          payment_status: usingPaidServiceId ? 'paid' : 'pending',
         });
 
         // If using a paid service, mark it as used

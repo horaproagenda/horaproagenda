@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { format, parseISO, isAfter } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -46,8 +46,12 @@ export function ContasAPagar() {
     description: '',
     amount: '',
     due_date: format(new Date(), 'yyyy-MM-dd'),
+    paid_date: '',
     category_id: '',
     payment_method_id: '',
+    bank_id: '',
+    is_recurring: false,
+    recurring_frequency: 'monthly',
     installments: '1',
   });
 
@@ -56,8 +60,12 @@ export function ContasAPagar() {
       description: '',
       amount: '',
       due_date: format(new Date(), 'yyyy-MM-dd'),
+      paid_date: '',
       category_id: '',
       payment_method_id: '',
+      bank_id: '',
+      is_recurring: false,
+      recurring_frequency: 'monthly',
       installments: '1',
     });
     setEditingEntry(null);
@@ -69,8 +77,12 @@ export function ContasAPagar() {
       description: entry.description,
       amount: entry.amount.toString(),
       due_date: entry.due_date,
+      paid_date: entry.paid_date || '',
       category_id: entry.category_id || '',
       payment_method_id: entry.payment_method_id || '',
+      bank_id: entry.bank_id || '',
+      is_recurring: entry.is_recurring || false,
+      recurring_frequency: entry.recurring_frequency || 'monthly',
       installments: entry.installments?.toString() || '1',
     });
     setDialogOpen(true);
@@ -84,10 +96,14 @@ export function ContasAPagar() {
         description: form.description,
         amount: parseFloat(form.amount) || 0,
         due_date: form.due_date,
+        paid_date: form.paid_date || null,
         category_id: form.category_id || null,
         payment_method_id: form.payment_method_id || null,
+        bank_id: form.bank_id || null,
+        is_recurring: form.is_recurring,
+        recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
         installments: parseInt(form.installments) || 1,
-        status: 'pending' as const,
+        status: form.paid_date ? 'paid' as const : 'pending' as const,
       });
     } else {
       await createEntry.mutateAsync({
@@ -95,21 +111,21 @@ export function ContasAPagar() {
         description: form.description,
         amount: parseFloat(form.amount) || 0,
         due_date: form.due_date,
+        paid_date: form.paid_date || null,
         category_id: form.category_id || null,
         payment_method_id: form.payment_method_id || null,
-        bank_id: null,
+        bank_id: form.bank_id || null,
         client_id: null,
         professional_id: null,
         notes: null,
-        is_recurring: false,
+        is_recurring: form.is_recurring,
         recurring_day: null,
         recurring_count: null,
-        recurring_frequency: 'monthly',
-        paid_date: null,
+        recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
         appointment_id: null,
         installments: parseInt(form.installments) || 1,
         paid_by: null,
-        status: 'pending',
+        status: form.paid_date ? 'paid' : 'pending',
       });
     }
     setDialogOpen(false);
@@ -133,7 +149,7 @@ export function ContasAPagar() {
     today.setHours(0, 0, 0, 0);
     
     if (isAfter(today, dueDate)) {
-      return <Badge variant="destructive">Pendente</Badge>;
+      return <Badge variant="destructive">Vencido</Badge>;
     }
     return <Badge variant="secondary">Pendente</Badge>;
   };
@@ -149,21 +165,31 @@ export function ContasAPagar() {
               Nova Conta
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingEntry ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>Data de Vencimento</Label>
-                <Input
-                  type="date"
-                  value={form.due_date}
-                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Data de Vencimento</Label>
+                  <Input
+                    type="date"
+                    value={form.due_date}
+                    onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Data de Pagamento</Label>
+                  <Input
+                    type="date"
+                    value={form.paid_date}
+                    onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
+                  />
+                </div>
               </div>
               <div>
-                <Label>Descrição</Label>
+                <Label>Nome da Conta</Label>
                 <Input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -196,6 +222,43 @@ export function ContasAPagar() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Conta Bancária (de onde sai)</Label>
+                <Select value={form.bank_id} onValueChange={(v) => setForm({ ...form, bank_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeBanks.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.is_recurring}
+                  onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
+                />
+                <Label>Conta recorrente</Label>
+              </div>
+              {form.is_recurring && (
+                <div>
+                  <Label>Frequência</Label>
+                  <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="biweekly">Quinzenal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="quarterly">Trimestral</SelectItem>
+                      <SelectItem value="annual">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Parcela</Label>

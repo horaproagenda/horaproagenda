@@ -57,7 +57,14 @@ export function useSingleSales() {
     mutationFn: async (sale: Omit<SingleSale, 'id' | 'created_at' | 'updated_at' | 'client' | 'service' | 'payment_method' | 'bank' | 'package'>) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // 1. Create the sale record
+      // 1. Get the current open cash register
+      const { data: openCashRegister } = await supabase
+        .from('cash_registers')
+        .select('id')
+        .eq('status', 'open')
+        .maybeSingle();
+
+      // 2. Create the sale record
       const { data: saleData, error: saleError } = await supabase
         .from('single_sales')
         .insert({
@@ -69,7 +76,7 @@ export function useSingleSales() {
 
       if (saleError) throw saleError;
 
-      // 2. If it's a package sale with a client, create a client package with paid sessions
+      // 3. If it's a package sale with a client, create a client package with paid sessions
       if (sale.item_type === 'package' && sale.package_id && sale.client_id) {
         // Get the package template data
         const { data: packageTemplate } = await supabase
@@ -86,7 +93,7 @@ export function useSingleSales() {
               name: packageTemplate.name,
               description: packageTemplate.description,
               client_id: sale.client_id,
-              template_id: packageTemplate.template_id,
+              template_id: packageTemplate.id, // Store the original package id as template_id
               total_sessions: packageTemplate.total_sessions,
               duration: packageTemplate.duration || 60,
               interval_days: packageTemplate.interval_days || 7,
@@ -115,7 +122,7 @@ export function useSingleSales() {
         }
       }
 
-      // 3. If it's a service sale with a client, create a client_service record
+      // 4. If it's a service sale with a client, create a client_service record
       if (sale.item_type === 'service' && sale.service_id && sale.client_id) {
         // Create a redeemable service for the client
         await supabase.from('client_services').insert({
@@ -128,7 +135,22 @@ export function useSingleSales() {
         });
       }
 
-      // 4. Create a financial entry for tracking
+      // 5. Create a cash transaction to update the cash register immediately
+      if (openCashRegister) {
+        await supabase.from('cash_transactions').insert({
+          cash_register_id: openCashRegister.id,
+          type: 'income',
+          category: sale.item_type === 'package' ? 'Venda de Pacote' : 'Venda de Serviço',
+          description: `Venda: ${sale.description || 'Item avulso'}`,
+          amount: sale.final_amount,
+          payment_method: sale.payment_method_id,
+          reference_id: saleData.id,
+          reference_type: 'single_sale',
+          created_by: user?.id,
+        });
+      }
+
+      // 6. Create a financial entry for tracking (INCOME, not expense)
       await supabase.from('financial_entries').insert({
         type: 'income',
         description: `Venda: ${sale.description || 'Item avulso'}`,
@@ -146,9 +168,11 @@ export function useSingleSales() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_services'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       toast.success('Venda registrada com sucesso!');
     },

@@ -1,14 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Appointment } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Download, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
 
 interface PaymentHistoryItem {
@@ -36,49 +32,9 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-
-  // Get unique categories
-  const categories = useMemo(() => {
-    const cats = new Set<string>();
-    appointments.forEach(a => {
-      if (a.service?.category) cats.add(a.service.category);
-    });
-    return Array.from(cats).sort();
-  }, [appointments]);
-
-  // Filter appointments
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter(appointment => {
-      // Category filter
-      if (categoryFilter !== 'all' && appointment.service?.category !== categoryFilter) {
-        return false;
-      }
-      
-      // Status filter
-      if (statusFilter !== 'all' && appointment.status !== statusFilter) {
-        return false;
-      }
-      
-      // Date range filter
-      const appointmentDate = new Date(appointment.start_time);
-      if (startDate && appointmentDate < new Date(startDate)) {
-        return false;
-      }
-      if (endDate && appointmentDate > new Date(endDate + 'T23:59:59')) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [appointments, categoryFilter, statusFilter, startDate, endDate]);
-
   // Calculate summary
   const summary = useMemo(() => {
-    const completed = filteredAppointments.filter(a => a.status === 'completed');
+    const completed = appointments.filter(a => a.status === 'completed');
     const totalValue = completed.reduce((sum, a) => sum + (a.amount_paid || a.service?.price || 0), 0);
     
     // Group by service
@@ -93,7 +49,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     });
     
     return {
-      total: filteredAppointments.length,
+      total: appointments.length,
       completed: completed.length,
       totalValue,
       byService: Array.from(serviceMap.entries()).map(([name, data]) => ({
@@ -101,11 +57,11 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
         ...data,
       })),
     };
-  }, [filteredAppointments]);
+  }, [appointments]);
 
   const exportToCSV = () => {
     const headers = ['Data', 'Horário', 'Serviço', 'Categoria', 'Duração (min)', 'Valor', 'Status'];
-    const rows = filteredAppointments.map(appointment => [
+    const rows = appointments.map(appointment => [
       format(new Date(appointment.start_time), 'dd/MM/yyyy'),
       `${format(new Date(appointment.start_time), 'HH:mm')} - ${format(new Date(appointment.end_time), 'HH:mm')}`,
       appointment.service?.name || '-',
@@ -137,74 +93,13 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     link.click();
   };
 
-  const clearFilters = () => {
-    setCategoryFilter('all');
-    setStatusFilter('all');
-    setStartDate('');
-    setEndDate('');
-  };
-
   return (
     <div className="space-y-6">
-      {/* Filters - simplified without extra card wrapper */}
-      <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-lg">
-        <div className="space-y-1">
-          <Label className="text-xs">Categoria</Label>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {categories.map(cat => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-1">
-          <Label className="text-xs">Status</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="completed">Realizado</SelectItem>
-              <SelectItem value="scheduled">Agendado</SelectItem>
-              <SelectItem value="confirmed">Confirmado</SelectItem>
-              <SelectItem value="cancelled">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-1">
-          <Label className="text-xs">Data Inicial</Label>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-[140px] h-9"
-          />
-        </div>
-        
-        <div className="space-y-1">
-          <Label className="text-xs">Data Final</Label>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-[140px] h-9"
-          />
-        </div>
-
-        <Button variant="outline" size="sm" onClick={clearFilters}>
-          Limpar
-        </Button>
+      {/* Export Button */}
+      <div className="flex justify-end">
         <Button size="sm" onClick={exportToCSV}>
           <Download className="h-4 w-4 mr-1" />
-          Exportar
+          Exportar CSV
         </Button>
       </div>
 
@@ -317,7 +212,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
           <CardTitle className="text-lg">Histórico Detalhado</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAppointments.length === 0 ? (
+          {appointments.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50" />
               <p className="text-sm">Nenhum agendamento encontrado</p>
@@ -337,7 +232,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.slice(0, 20).map(appointment => {
+                  {appointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
                     const isPaid = appointment.payment_status === 'paid' || 
                                    (appointment.package_appointment && appointment.package_appointment.package);

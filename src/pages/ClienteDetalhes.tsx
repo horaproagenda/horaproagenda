@@ -14,12 +14,15 @@ import { ClientQuotesTab } from '@/components/client-profile/ClientQuotesTab';
 import { ClientInfoTab } from '@/components/client-profile/ClientInfoTab';
 import { ClientReportTab } from '@/components/client-profile/ClientReportTab';
 import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
+import { EditAppointmentDialog } from '@/components/client-profile/EditAppointmentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Appointment } from '@/types';
 
 export default function ClienteDetalhes() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('report');
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
   const { client, appointments, documents, photos, quotes, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, stats } = useClientProfile(id || '');
 
@@ -96,7 +99,11 @@ export default function ClienteDetalhes() {
           </TabsList>
           
           <TabsContent value="report">
-            <ClientReportTab appointments={appointments} clientName={client.name} />
+            <ClientReportTab 
+              appointments={appointments} 
+              clientName={client.name} 
+              onEditAppointment={setEditingAppointment}
+            />
           </TabsContent>
           <TabsContent value="credits">
             <ClientCreditsTab clientId={client.id} />
@@ -118,6 +125,13 @@ export default function ClienteDetalhes() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit Appointment Dialog */}
+      <EditAppointmentDialog
+        appointment={editingAppointment}
+        open={!!editingAppointment}
+        onOpenChange={(open) => !open && setEditingAppointment(null)}
+      />
     </AppLayout>
   );
 }

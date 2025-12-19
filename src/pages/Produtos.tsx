@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -44,18 +44,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Package, 
   Plus, 
-  Search, 
   Edit, 
   Trash2, 
   ShoppingCart,
@@ -64,17 +57,15 @@ import {
   Calendar,
   Clock,
   AlertTriangle,
-  DollarSign,
-  TrendingUp,
-  BarChart3,
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { useServices } from '@/hooks/useServices';
+import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
-import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },
@@ -98,18 +89,17 @@ const getUnitLabel = (unit: ProductUnit) => PRODUCT_UNITS.find(u => u.value === 
 export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
-  const { suppliers, activeSuppliers } = useSuppliers();
+  const { activeSuppliers } = useSuppliers();
+  const { activeServices } = useServices();
+  const { serviceProducts, createServiceProduct } = useServiceProducts();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'low_stock'>('all');
-
   // Product Dialog State
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
@@ -125,7 +115,6 @@ export default function Produtos() {
     purchase_date: format(new Date(), 'yyyy-MM-dd'),
     expiry_date: '',
     started_using_at: '',
-    finished_at: '',
     current_stock: 0,
     min_stock_alert: 0,
     notes: '',
@@ -137,7 +126,6 @@ export default function Produtos() {
   // Purchase Dialog State
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<ProductPurchase | null>(null);
-  const [selectedProductForPurchase, setSelectedProductForPurchase] = useState<string>('');
   const [purchaseForm, setPurchaseForm] = useState({
     product_id: '',
     quantity: 1,
@@ -151,32 +139,9 @@ export default function Produtos() {
     notes: '',
   });
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesType = typeFilter === 'all' || product.product_type === typeFilter;
-      
-      const matchesStatus = 
-        statusFilter === 'all' ? true :
-        statusFilter === 'active' ? product.is_active :
-        statusFilter === 'inactive' ? !product.is_active :
-        statusFilter === 'low_stock' ? (product.current_stock <= (product.min_stock_alert || 0)) : true;
-
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [products, searchTerm, typeFilter, statusFilter]);
-
-  // Calculate totals
-  const totals = useMemo(() => {
-    const totalProducts = products.length;
-    const totalValue = products.reduce((sum, p) => sum + p.total_price, 0);
-    const lowStockCount = products.filter(p => p.current_stock <= (p.min_stock_alert || 0)).length;
-    const activeCount = products.filter(p => p.is_active).length;
-    return { totalProducts, totalValue, lowStockCount, activeCount };
+  // Low stock products
+  const lowStockProducts = useMemo(() => {
+    return products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active);
   }, [products]);
 
   const resetProductForm = () => {
@@ -195,7 +160,6 @@ export default function Produtos() {
       purchase_date: format(new Date(), 'yyyy-MM-dd'),
       expiry_date: '',
       started_using_at: '',
-      finished_at: '',
       current_stock: 0,
       min_stock_alert: 0,
       notes: '',
@@ -204,6 +168,7 @@ export default function Produtos() {
       sale_price: 0,
     });
     setEditingProduct(null);
+    setSelectedServiceId('');
   };
 
   const resetPurchaseForm = () => {
@@ -220,11 +185,13 @@ export default function Produtos() {
       notes: '',
     });
     setEditingPurchase(null);
-    setSelectedProductForPurchase('');
   };
 
   const openEditProduct = (product: Product) => {
     setEditingProduct(product);
+    // Find linked service
+    const linkedService = serviceProducts.find(sp => sp.product_id === product.id);
+    setSelectedServiceId(linkedService?.service_id || '');
     setProductForm({
       name: product.name,
       description: product.description || '',
@@ -240,7 +207,6 @@ export default function Produtos() {
       purchase_date: product.purchase_date || '',
       expiry_date: product.expiry_date || '',
       started_using_at: product.started_using_at || '',
-      finished_at: product.finished_at || '',
       current_stock: product.current_stock,
       min_stock_alert: product.min_stock_alert || 0,
       notes: product.notes || '',
@@ -265,7 +231,6 @@ export default function Produtos() {
       finished_at: purchase.finished_at || '',
       notes: purchase.notes || '',
     });
-    setSelectedProductForPurchase(purchase.product_id);
     setPurchaseDialogOpen(true);
   };
 
@@ -284,14 +249,30 @@ export default function Produtos() {
       purchase_date: productForm.purchase_date || null,
       expiry_date: productForm.expiry_date || null,
       started_using_at: productForm.started_using_at || null,
-      finished_at: productForm.finished_at || null,
+      finished_at: null,
       notes: productForm.notes || null,
     };
+
+    let productId = editingProduct?.id;
 
     if (editingProduct) {
       await updateProduct.mutateAsync({ id: editingProduct.id, ...productData });
     } else {
-      await createProduct.mutateAsync(productData);
+      const newProduct = await createProduct.mutateAsync(productData);
+      productId = newProduct.id;
+    }
+
+    // Link to service if selected
+    if (selectedServiceId && productId) {
+      const existingLink = serviceProducts.find(sp => sp.product_id === productId && sp.service_id === selectedServiceId);
+      if (!existingLink) {
+        await createServiceProduct.mutateAsync({
+          service_id: selectedServiceId,
+          product_id: productId,
+          quantity_per_use: 1,
+          notes: null,
+        });
+      }
     }
 
     setProductDialogOpen(false);
@@ -328,6 +309,13 @@ export default function Produtos() {
 
   const handleDeletePurchase = async (id: string) => {
     await deletePurchase.mutateAsync(id);
+  };
+
+  const handleUpdateFinishedAt = async (productId: string, finishedAt: string) => {
+    await updateProduct.mutateAsync({ 
+      id: productId, 
+      finished_at: finishedAt || null 
+    });
   };
 
   // Update total price when quantity or unit price changes
@@ -376,59 +364,6 @@ export default function Produtos() {
   return (
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e compras">
       <div className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Produtos</p>
-                  <p className="text-xl font-bold">{totals.totalProducts}</p>
-                </div>
-                <Package className="h-8 w-8 text-muted-foreground/20" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Ativos</p>
-                  <p className="text-xl font-bold text-primary">{totals.activeCount}</p>
-                </div>
-                <BarChart3 className="h-8 w-8 text-primary/20" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Estoque Baixo</p>
-                  <p className="text-xl font-bold text-warning">{totals.lowStockCount}</p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-warning/20" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Valor Total</p>
-                  <p className="text-xl font-bold text-green-600">
-                    R$ {totals.totalValue.toFixed(2)}
-                  </p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-600/20" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Tabs defaultValue="products" className="space-y-4">
           <TabsList>
             <TabsTrigger value="products" className="gap-2">
@@ -439,413 +374,518 @@ export default function Produtos() {
               <ShoppingCart className="h-4 w-4" />
               Compras
             </TabsTrigger>
+            <TabsTrigger value="low_stock" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Estoque Baixo
+              {lowStockProducts.length > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {lowStockProducts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Products Tab */}
           <TabsContent value="products" className="space-y-4">
-            {/* Action Buttons */}
+            {/* Action Buttons - Only essentials */}
             <div className="flex gap-2 flex-wrap">
+              {canEdit && (
+                <Dialog open={productDialogOpen} onOpenChange={(open) => {
+                  setProductDialogOpen(open);
+                  if (!open) resetProductForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Cadastro de Produtos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingProduct ? 'Atualize as informações do produto' : 'Cadastre um novo produto'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh] pr-4">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2">
+                            <Label>Nome *</Label>
+                            <Input
+                              value={productForm.name}
+                              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                              placeholder="Nome do produto"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Marca</Label>
+                            <Input
+                              value={productForm.brand}
+                              onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                              placeholder="Marca"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Categoria</Label>
+                            <Input
+                              value={productForm.category}
+                              onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                              placeholder="Categoria"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Tipo</Label>
+                            <Select
+                              value={productForm.product_type}
+                              onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PRODUCT_TYPES.map(type => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    <div className="flex items-center gap-2">
+                                      {type.icon}
+                                      {type.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label>Unidade</Label>
+                            <Select
+                              value={productForm.unit}
+                              onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PRODUCT_UNITS.map(unit => (
+                                  <SelectItem key={unit.value} value={unit.value}>
+                                    {unit.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Link to Service */}
+                        <div>
+                          <Label>Vincular ao Serviço</Label>
+                          <Select
+                            value={selectedServiceId || "none"}
+                            onValueChange={(v) => setSelectedServiceId(v === "none" ? "" : v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um serviço (opcional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhum</SelectItem>
+                              {activeServices.map(service => (
+                                <SelectItem key={service.id} value={service.id}>
+                                  {service.name} ({service.category})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label>Quantidade Comprada</Label>
+                            <Input
+                              type="number"
+                              value={productForm.quantity_purchased}
+                              onChange={(e) => {
+                                const qty = parseFloat(e.target.value) || 0;
+                                updateProductTotal(qty, productForm.unit_price);
+                              }}
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Preço Unitário (R$)</Label>
+                            <Input
+                              type="number"
+                              value={productForm.unit_price || ''}
+                              onChange={(e) => {
+                                const price = parseFloat(e.target.value) || 0;
+                                updateProductTotal(productForm.quantity_purchased, price);
+                              }}
+                              min="0"
+                              step="0.01"
+                              placeholder="0,00"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Preço Total (R$)</Label>
+                            <Input
+                              type="number"
+                              value={productForm.total_price || ''}
+                              onChange={(e) => {
+                                const total = parseFloat(e.target.value) || 0;
+                                updateProductFromTotal(productForm.quantity_purchased, total);
+                              }}
+                              min="0"
+                              step="0.01"
+                              placeholder="0,00"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Estoque Atual</Label>
+                            <Input
+                              type="number"
+                              value={productForm.current_stock}
+                              onChange={(e) => setProductForm({ ...productForm, current_stock: parseFloat(e.target.value) || 0 })}
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Alerta Estoque Mínimo</Label>
+                            <Input
+                              type="number"
+                              value={productForm.min_stock_alert}
+                              onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Fornecedor Cadastrado</Label>
+                            <Select
+                              value={productForm.supplier_id || "none"}
+                              onValueChange={(v) => {
+                                const actualValue = v === "none" ? "" : v;
+                                const supplier = activeSuppliers.find(s => s.id === actualValue);
+                                setProductForm({ 
+                                  ...productForm, 
+                                  supplier_id: actualValue,
+                                  supplier: supplier?.name || productForm.supplier 
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um fornecedor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {activeSuppliers.map(s => (
+                                  <SelectItem key={s.id} value={s.id}>
+                                    <div className="flex items-center gap-2">
+                                      <Truck className="h-3 w-3" />
+                                      {s.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label>Ou Digite o Fornecedor</Label>
+                            <Input
+                              value={productForm.supplier}
+                              onChange={(e) => setProductForm({ ...productForm, supplier: e.target.value })}
+                              placeholder="Nome do fornecedor"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Data da Compra</Label>
+                            <Input
+                              type="date"
+                              value={productForm.purchase_date}
+                              onChange={(e) => setProductForm({ ...productForm, purchase_date: e.target.value })}
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Data de Validade</Label>
+                            <Input
+                              type="date"
+                              value={productForm.expiry_date}
+                              onChange={(e) => setProductForm({ ...productForm, expiry_date: e.target.value })}
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Começou a Usar em</Label>
+                            <Input
+                              type="date"
+                              value={productForm.started_using_at}
+                              onChange={(e) => setProductForm({ ...productForm, started_using_at: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-6">
+                            <input
+                              type="checkbox"
+                              id="is_active"
+                              checked={productForm.is_active}
+                              onChange={(e) => setProductForm({ ...productForm, is_active: e.target.checked })}
+                              className="h-4 w-4 rounded border-input"
+                            />
+                            <Label htmlFor="is_active" className="cursor-pointer">
+                              Produto Ativo
+                            </Label>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-2">
+                            <input
+                              type="checkbox"
+                              id="is_for_sale"
+                              checked={productForm.is_for_sale}
+                              onChange={(e) => setProductForm({ ...productForm, is_for_sale: e.target.checked })}
+                              className="h-4 w-4 rounded border-input"
+                            />
+                            <Label htmlFor="is_for_sale" className="cursor-pointer">
+                              Produto para Venda
+                            </Label>
+                          </div>
+
+                          {productForm.is_for_sale && (
+                            <div>
+                              <Label>Preço de Venda (R$)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={productForm.sale_price}
+                                onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
+                                placeholder="0.00"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label>Descrição</Label>
+                          <Textarea
+                            value={productForm.description}
+                            onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                            placeholder="Descrição do produto"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Observações</Label>
+                          <Textarea
+                            value={productForm.notes}
+                            onChange={(e) => setProductForm({ ...productForm, notes: e.target.value })}
+                            placeholder="Observações adicionais"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setProductDialogOpen(false);
+                              resetProductForm();
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleProductSubmit}
+                            disabled={!productForm.name.trim() || createProduct.isPending || updateProduct.isPending}
+                          >
+                            {createProduct.isPending || updateProduct.isPending ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              <Dialog open={purchaseDialogOpen} onOpenChange={(open) => {
+                setPurchaseDialogOpen(open);
+                if (!open) resetPurchaseForm();
+              }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Nova Compra
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg max-h-[90vh]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingPurchase ? 'Editar Compra' : 'Nova Compra'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingPurchase ? 'Atualize os dados da compra' : 'Registre uma nova compra de produto'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[60vh] pr-4">
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Produto *</Label>
+                        <Select
+                          value={purchaseForm.product_id}
+                          onValueChange={(v) => setPurchaseForm({ ...purchaseForm, product_id: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um produto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map(product => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name} {product.brand && `(${product.brand})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label>Quantidade</Label>
+                          <Input
+                            type="number"
+                            value={purchaseForm.quantity}
+                            onChange={(e) => updatePurchaseTotal(parseFloat(e.target.value) || 0, purchaseForm.unit_price)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Preço Unit. (R$)</Label>
+                          <Input
+                            type="number"
+                            value={purchaseForm.unit_price}
+                            onChange={(e) => updatePurchaseTotal(purchaseForm.quantity, parseFloat(e.target.value) || 0)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Total (R$)</Label>
+                          <Input
+                            type="number"
+                            value={purchaseForm.total_price}
+                            readOnly
+                            className="bg-muted"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Fornecedor</Label>
+                          <Input
+                            value={purchaseForm.supplier}
+                            onChange={(e) => setPurchaseForm({ ...purchaseForm, supplier: e.target.value })}
+                            placeholder="Nome do fornecedor"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Data da Compra</Label>
+                          <Input
+                            type="date"
+                            value={purchaseForm.purchase_date}
+                            onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Começou a Usar em</Label>
+                          <Input
+                            type="date"
+                            value={purchaseForm.started_using_at}
+                            onChange={(e) => setPurchaseForm({ ...purchaseForm, started_using_at: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Terminou em</Label>
+                          <Input
+                            type="date"
+                            value={purchaseForm.finished_at}
+                            onChange={(e) => setPurchaseForm({ ...purchaseForm, finished_at: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Observações</Label>
+                        <Textarea
+                          value={purchaseForm.notes}
+                          onChange={(e) => setPurchaseForm({ ...purchaseForm, notes: e.target.value })}
+                          placeholder="Observações sobre a compra"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setPurchaseDialogOpen(false);
+                            resetPurchaseForm();
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handlePurchaseSubmit}
+                          disabled={!purchaseForm.product_id || createPurchase.isPending || updatePurchase.isPending}
+                        >
+                          {createPurchase.isPending || updatePurchase.isPending ? 'Salvando...' : 'Salvar'}
+                        </Button>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+
               <ManageSuppliersDialog />
-              <ServiceProductsDialog />
             </div>
 
-            {/* Filters */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex flex-wrap gap-3 items-center">
-                  <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar produto..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge
-                      variant={statusFilter === 'all' ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => setStatusFilter('all')}
-                    >
-                      Todos
-                    </Badge>
-                    <Badge
-                      variant={statusFilter === 'active' ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => setStatusFilter('active')}
-                    >
-                      Ativos
-                    </Badge>
-                    <Badge
-                      variant={statusFilter === 'inactive' ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => setStatusFilter('inactive')}
-                    >
-                      Inativos
-                    </Badge>
-                    <Badge
-                      variant={statusFilter === 'low_stock' ? 'destructive' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => setStatusFilter('low_stock')}
-                    >
-                      Estoque Baixo
-                    </Badge>
-                  </div>
-
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os tipos</SelectItem>
-                      {PRODUCT_TYPES.map(type => (
-                        <SelectItem key={type.value} value={type.value}>
-                          <div className="flex items-center gap-2">
-                            {type.icon}
-                            {type.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {canEdit && (
-                    <Dialog open={productDialogOpen} onOpenChange={(open) => {
-                      setProductDialogOpen(open);
-                      if (!open) resetProductForm();
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Novo Produto
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[90vh]">
-                        <DialogHeader>
-                          <DialogTitle>
-                            {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-                          </DialogTitle>
-                          <DialogDescription>
-                            {editingProduct ? 'Atualize as informações do produto' : 'Cadastre um novo produto'}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[60vh] pr-4">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="col-span-2">
-                                <Label>Nome *</Label>
-                                <Input
-                                  value={productForm.name}
-                                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                                  placeholder="Nome do produto"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Marca</Label>
-                                <Input
-                                  value={productForm.brand}
-                                  onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                                  placeholder="Marca"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Categoria</Label>
-                                <Input
-                                  value={productForm.category}
-                                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                                  placeholder="Categoria"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Tipo</Label>
-                                <Select
-                                  value={productForm.product_type}
-                                  onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {PRODUCT_TYPES.map(type => (
-                                      <SelectItem key={type.value} value={type.value}>
-                                        <div className="flex items-center gap-2">
-                                          {type.icon}
-                                          {type.label}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div>
-                                <Label>Unidade</Label>
-                                <Select
-                                  value={productForm.unit}
-                                  onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {PRODUCT_UNITS.map(unit => (
-                                      <SelectItem key={unit.value} value={unit.value}>
-                                        {unit.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="grid grid-cols-3 gap-4">
-                              <div>
-                                <Label>Quantidade Comprada</Label>
-                                <Input
-                                  type="number"
-                                  value={productForm.quantity_purchased}
-                                  onChange={(e) => {
-                                    const qty = parseFloat(e.target.value) || 0;
-                                    updateProductTotal(qty, productForm.unit_price);
-                                  }}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Preço Unitário (R$)</Label>
-                                <Input
-                                  type="number"
-                                  value={productForm.unit_price || ''}
-                                  onChange={(e) => {
-                                    const price = parseFloat(e.target.value) || 0;
-                                    updateProductTotal(productForm.quantity_purchased, price);
-                                  }}
-                                  min="0"
-                                  step="0.01"
-                                  placeholder="0,00"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Preço Total (R$)</Label>
-                                <Input
-                                  type="number"
-                                  value={productForm.total_price || ''}
-                                  onChange={(e) => {
-                                    const total = parseFloat(e.target.value) || 0;
-                                    updateProductFromTotal(productForm.quantity_purchased, total);
-                                  }}
-                                  min="0"
-                                  step="0.01"
-                                  placeholder="0,00"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Estoque Atual</Label>
-                                <Input
-                                  type="number"
-                                  value={productForm.current_stock}
-                                  onChange={(e) => setProductForm({ ...productForm, current_stock: parseFloat(e.target.value) || 0 })}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Alerta Estoque Mínimo</Label>
-                                <Input
-                                  type="number"
-                                  value={productForm.min_stock_alert}
-                                  onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Fornecedor Cadastrado</Label>
-                                <Select
-                                  value={productForm.supplier_id || "none"}
-                                  onValueChange={(v) => {
-                                    const actualValue = v === "none" ? "" : v;
-                                    const supplier = activeSuppliers.find(s => s.id === actualValue);
-                                    setProductForm({ 
-                                      ...productForm, 
-                                      supplier_id: actualValue,
-                                      supplier: supplier?.name || productForm.supplier 
-                                    });
-                                  }}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione um fornecedor" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">Nenhum</SelectItem>
-                                    {activeSuppliers.map(s => (
-                                      <SelectItem key={s.id} value={s.id}>
-                                        <div className="flex items-center gap-2">
-                                          <Truck className="h-3 w-3" />
-                                          {s.name}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div>
-                                <Label>Ou Digite o Fornecedor</Label>
-                                <Input
-                                  value={productForm.supplier}
-                                  onChange={(e) => setProductForm({ ...productForm, supplier: e.target.value })}
-                                  placeholder="Nome do fornecedor"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Data da Compra</Label>
-                                <Input
-                                  type="date"
-                                  value={productForm.purchase_date}
-                                  onChange={(e) => setProductForm({ ...productForm, purchase_date: e.target.value })}
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Data de Validade</Label>
-                                <Input
-                                  type="date"
-                                  value={productForm.expiry_date}
-                                  onChange={(e) => setProductForm({ ...productForm, expiry_date: e.target.value })}
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Começou a Usar em</Label>
-                                <Input
-                                  type="date"
-                                  value={productForm.started_using_at}
-                                  onChange={(e) => setProductForm({ ...productForm, started_using_at: e.target.value })}
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Terminou em</Label>
-                                <Input
-                                  type="date"
-                                  value={productForm.finished_at}
-                                  onChange={(e) => setProductForm({ ...productForm, finished_at: e.target.value })}
-                                />
-                              </div>
-
-                              <div className="flex items-center gap-2 pt-6">
-                                <input
-                                  type="checkbox"
-                                  id="is_active"
-                                  checked={productForm.is_active}
-                                  onChange={(e) => setProductForm({ ...productForm, is_active: e.target.checked })}
-                                  className="h-4 w-4 rounded border-input"
-                                />
-                                <Label htmlFor="is_active" className="cursor-pointer">
-                                  Produto Ativo
-                                </Label>
-                              </div>
-
-                              <div className="flex items-center gap-2 pt-2">
-                                <input
-                                  type="checkbox"
-                                  id="is_for_sale"
-                                  checked={productForm.is_for_sale}
-                                  onChange={(e) => setProductForm({ ...productForm, is_for_sale: e.target.checked })}
-                                  className="h-4 w-4 rounded border-input"
-                                />
-                                <Label htmlFor="is_for_sale" className="cursor-pointer">
-                                  Produto para Venda
-                                </Label>
-                              </div>
-
-                              {productForm.is_for_sale && (
-                                <div>
-                                  <Label>Preço de Venda (R$)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={productForm.sale_price}
-                                    onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <Label>Descrição</Label>
-                              <Textarea
-                                value={productForm.description}
-                                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                                placeholder="Descrição do produto"
-                                rows={2}
-                              />
-                            </div>
-
-                            <div>
-                              <Label>Observações</Label>
-                              <Textarea
-                                value={productForm.notes}
-                                onChange={(e) => setProductForm({ ...productForm, notes: e.target.value })}
-                                placeholder="Observações adicionais"
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4">
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setProductDialogOpen(false);
-                                  resetProductForm();
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                onClick={handleProductSubmit}
-                                disabled={!productForm.name.trim() || createProduct.isPending || updateProduct.isPending}
-                              >
-                                {createProduct.isPending || updateProduct.isPending ? 'Salvando...' : 'Salvar'}
-                              </Button>
-                            </div>
-                          </div>
-                        </ScrollArea>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Products List */}
+            {/* Products List with horizontal scroll */}
             <Card>
               <CardContent className="p-0">
-                <ScrollArea className="h-[500px]">
-                  <Table>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[1000px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Produto</TableHead>
@@ -854,20 +894,21 @@ export default function Produtos() {
                         <TableHead>Preço Custo</TableHead>
                         <TableHead>Para Venda</TableHead>
                         <TableHead>Duração</TableHead>
+                        <TableHead>Terminou em</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredProducts.length === 0 ? (
+                      {products.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                            <p>Nenhum produto encontrado</p>
+                            <p>Nenhum produto cadastrado</p>
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredProducts.map(product => {
+                        products.map(product => {
                           const isLowStock = product.current_stock <= (product.min_stock_alert || 0);
                           const duration = product.started_using_at && product.finished_at
                             ? differenceInDays(parseISO(product.finished_at), parseISO(product.started_using_at))
@@ -923,6 +964,14 @@ export default function Produtos() {
                                 )}
                               </TableCell>
                               <TableCell>
+                                <Input
+                                  type="date"
+                                  value={product.finished_at || ''}
+                                  onChange={(e) => handleUpdateFinishedAt(product.id, e.target.value)}
+                                  className="w-32 h-8 text-xs"
+                                />
+                              </TableCell>
+                              <TableCell>
                                 <Badge variant={product.is_active ? 'default' : 'secondary'}>
                                   {product.is_active ? 'Ativo' : 'Inativo'}
                                 </Badge>
@@ -972,7 +1021,7 @@ export default function Produtos() {
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -980,166 +1029,9 @@ export default function Produtos() {
           {/* Purchases Tab */}
           <TabsContent value="purchases" className="space-y-4">
             <Card>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-medium">Histórico de Compras</h3>
-                  {canEdit && (
-                    <Dialog open={purchaseDialogOpen} onOpenChange={(open) => {
-                      setPurchaseDialogOpen(open);
-                      if (!open) resetPurchaseForm();
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Nova Compra
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg max-h-[90vh]">
-                        <DialogHeader>
-                          <DialogTitle>
-                            {editingPurchase ? 'Editar Compra' : 'Nova Compra'}
-                          </DialogTitle>
-                          <DialogDescription>
-                            {editingPurchase ? 'Atualize os dados da compra' : 'Registre uma nova compra de produto'}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[60vh] pr-4">
-                          <div className="space-y-4">
-                            <div>
-                              <Label>Produto *</Label>
-                              <Select
-                                value={purchaseForm.product_id}
-                                onValueChange={(v) => setPurchaseForm({ ...purchaseForm, product_id: v })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione um produto" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {products.map(product => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.name} {product.brand && `(${product.brand})`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                              <div>
-                                <Label>Quantidade</Label>
-                                <Input
-                                  type="number"
-                                  value={purchaseForm.quantity}
-                                  onChange={(e) => updatePurchaseTotal(parseFloat(e.target.value) || 0, purchaseForm.unit_price)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Preço Unit. (R$)</Label>
-                                <Input
-                                  type="number"
-                                  value={purchaseForm.unit_price}
-                                  onChange={(e) => updatePurchaseTotal(purchaseForm.quantity, parseFloat(e.target.value) || 0)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Total (R$)</Label>
-                                <Input
-                                  type="number"
-                                  value={purchaseForm.total_price}
-                                  readOnly
-                                  className="bg-muted"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Fornecedor</Label>
-                                <Input
-                                  value={purchaseForm.supplier}
-                                  onChange={(e) => setPurchaseForm({ ...purchaseForm, supplier: e.target.value })}
-                                  placeholder="Nome do fornecedor"
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Data da Compra</Label>
-                                <Input
-                                  type="date"
-                                  value={purchaseForm.purchase_date}
-                                  onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })}
-                                />
-                              </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Começou a Usar em</Label>
-                                <Input
-                                  type="date"
-                                  value={purchaseForm.started_using_at}
-                                  onChange={(e) => setPurchaseForm({ ...purchaseForm, started_using_at: e.target.value })}
-                                />
-                              </div>
-
-                              <div>
-                                <Label>Terminou em</Label>
-                                <Input
-                                  type="date"
-                                  value={purchaseForm.finished_at}
-                                  onChange={(e) => setPurchaseForm({ ...purchaseForm, finished_at: e.target.value })}
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <Label>Observações</Label>
-                              <Textarea
-                                value={purchaseForm.notes}
-                                onChange={(e) => setPurchaseForm({ ...purchaseForm, notes: e.target.value })}
-                                placeholder="Observações sobre a compra"
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4">
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setPurchaseDialogOpen(false);
-                                  resetPurchaseForm();
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                onClick={handlePurchaseSubmit}
-                                disabled={!purchaseForm.product_id || createPurchase.isPending || updatePurchase.isPending}
-                              >
-                                {createPurchase.isPending || updatePurchase.isPending ? 'Salvando...' : 'Salvar'}
-                              </Button>
-                            </div>
-                          </div>
-                        </ScrollArea>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
               <CardContent className="p-0">
-                <ScrollArea className="h-[500px]">
-                  <Table>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[900px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Produto</TableHead>
@@ -1248,7 +1140,86 @@ export default function Produtos() {
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Low Stock Alert Tab */}
+          <TabsContent value="low_stock" className="space-y-4">
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[800px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Estoque Atual</TableHead>
+                        <TableHead>Estoque Mínimo</TableHead>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lowStockProducts.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            <AlertTriangle className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                            <p>Nenhum produto com estoque baixo</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        lowStockProducts.map(product => (
+                          <TableRow key={product.id} className="bg-destructive/5">
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{product.name}</p>
+                                {product.brand && (
+                                  <p className="text-xs text-muted-foreground">{product.brand}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="gap-1">
+                                {PRODUCT_TYPES.find(t => t.value === product.product_type)?.icon}
+                                {getTypeLabel(product.product_type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-destructive font-bold">
+                                {product.current_stock} {getUnitLabel(product.unit)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {product.min_stock_alert || 0} {getUnitLabel(product.unit)}
+                            </TableCell>
+                            <TableCell>
+                              {product.supplier || '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                onClick={() => {
+                                  setPurchaseForm(prev => ({
+                                    ...prev,
+                                    product_id: product.id,
+                                  }));
+                                  setPurchaseDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="h-3 w-3" />
+                                Comprar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

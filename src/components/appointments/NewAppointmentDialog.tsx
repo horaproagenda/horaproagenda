@@ -118,7 +118,9 @@ export function NewAppointmentDialog({
     return true;
   };
   const selectedServiceData = services.find(s => s.id === selectedService);
-  const selectedPackageData = packages.find(p => p.id === selectedService);
+  // Look for package in both templates and client packages (paid packages)
+  const selectedPackageData = packages.find(p => p.id === selectedService) 
+    || clientPackages.find(p => p.id === selectedService);
   const currentDuration = serviceType === 'service' 
     ? (selectedServiceData?.duration || manualDuration) 
     : (selectedPackageData?.duration || manualDuration);
@@ -128,9 +130,14 @@ export function NewAppointmentDialog({
   const activeEquipment = equipment.filter(e => e.is_active);
   const activePackages = packages.filter(p => p.is_active && !p.client_id);
 
-  // Check if client already has this package
+  // Check if selected package is already a client package (paid)
+  const isClientPackageSelected = clientPackages.some(p => p.id === selectedService);
+  
+  // Check if client already has this package (by template)
   const existingClientPackage = serviceType === 'package' && selectedService && selectedClient
-    ? findClientPackageByTemplate(selectedService)
+    ? (isClientPackageSelected 
+        ? clientPackages.find(p => p.id === selectedService)
+        : findClientPackageByTemplate(selectedService))
     : null;
 
   const packageRemainingSessions = existingClientPackage
@@ -531,7 +538,9 @@ export function NewAppointmentDialog({
                             key={`client-svc-${paidService.id}`}
                             className="p-2 hover:bg-green-500/10 cursor-pointer border-b bg-green-500/5"
                             onClick={() => {
-                              setSelectedService(paidService.service_id);
+                              // Use the service.id from the joined service data for accuracy
+                              const actualServiceId = paidService.service?.id || paidService.service_id;
+                              setSelectedService(actualServiceId);
                               setServiceSearch(paidService.service?.name || '');
                               setServiceType('service');
                               setUsingPaidServiceId(paidService.id);

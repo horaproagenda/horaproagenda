@@ -17,6 +17,9 @@ export interface ClientPackage {
   preferred_day_of_week: number | null;
   preferred_time: string | null;
   template_id: string | null;
+  total_price: number;
+  equipment: string[];
+  description: string | null;
 }
 
 export interface PackageSession {

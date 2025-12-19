@@ -1,19 +1,58 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Package, Briefcase, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientPackages } from '@/hooks/useClientPackages';
 import { useClientServices } from '@/hooks/useClientServices';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface ClientCreditsTabProps {
   clientId: string;
 }
 
+interface PackageAppointmentDetail {
+  id: string;
+  session_number: number;
+  status: string;
+  scheduled_date: string | null;
+  appointment_id: string | null;
+  appointment?: {
+    start_time: string;
+    end_time: string;
+    status: string;
+  } | null;
+}
+
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const { clientPackages, isLoading: loadingPackages } = useClientPackages(clientId);
   const { clientServices, isLoading: loadingServices } = useClientServices(clientId);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+
+  const { data: packageDetails } = useQuery({
+    queryKey: ['package_details', selectedPackageId],
+    queryFn: async () => {
+      if (!selectedPackageId) return null;
+      
+      const { data, error } = await supabase
+        .from('package_appointments')
+        .select(`
+          *,
+          appointment:appointments(start_time, end_time, status)
+        `)
+        .eq('package_id', selectedPackageId)
+        .order('session_number', { ascending: true });
+
+      if (error) throw error;
+      return data as PackageAppointmentDetail[];
+    },
+    enabled: !!selectedPackageId,
+  });
 
   const isLoading = loadingPackages || loadingServices;
 
@@ -28,6 +67,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
 
   const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + (pkg.total_sessions - pkg.sessions_scheduled), 0);
   const availableServicesCount = clientServices.filter(s => s.status === 'available').length;
+  const selectedPackage = clientPackages.find(p => p.id === selectedPackageId);
+
+  const completedSessions = packageDetails?.filter(s => s.status === 'completed' || s.appointment?.status === 'completed').length || 0;
+  const scheduledSessions = packageDetails?.filter(s => s.status === 'scheduled' && s.appointment?.status !== 'completed').length || 0;
+  const pendingSessions = packageDetails?.filter(s => s.status === 'pending').length || 0;
 
   return (
     <div className="space-y-6">
@@ -92,20 +136,32 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">{pkg.name}</h4>
-                      {isComplete ? (
-                        <Badge variant="secondary" className="gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Completo
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-green-500 text-white gap-1">
-                          <Clock className="h-3 w-3" />
-                          {remaining} sessão(ões) disponível(eis)
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isComplete ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Completo
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-green-500 text-white gap-1">
+                            <Clock className="h-3 w-3" />
+                            {remaining} sessão(ões) disponível(eis)
+                          </Badge>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedPackageId(pkg.id)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Detalhes
+                        </Button>
+                      </div>
                     </div>
                     <div className="text-sm text-muted-foreground">
                       <span>{pkg.sessions_scheduled} de {pkg.total_sessions} sessões utilizadas</span>
+                      <span className="mx-2">•</span>
+                      <span>R$ {Number(pkg.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                     {/* Progress bar */}
                     <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
@@ -186,6 +242,102 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Package Details Dialog */}
+      <Dialog open={!!selectedPackageId} onOpenChange={(open) => !open && setSelectedPackageId(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Detalhes do Pacote: {selectedPackage?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-green-500" />
+                    <div>
+                      <p className="text-2xl font-bold text-green-600">{completedSessions}</p>
+                      <p className="text-xs text-muted-foreground">Realizadas</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <p className="text-2xl font-bold text-blue-600">{scheduledSessions}</p>
+                      <p className="text-xs text-muted-foreground">Agendadas</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-5 w-5 text-orange-500" />
+                    <div>
+                      <p className="text-2xl font-bold text-orange-600">{pendingSessions}</p>
+                      <p className="text-xs text-muted-foreground">Restantes</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sessions List */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Sessões</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {packageDetails?.map((session) => {
+                    const isCompleted = session.status === 'completed' || session.appointment?.status === 'completed';
+                    const isScheduled = session.status === 'scheduled' && session.appointment?.status !== 'completed';
+                    
+                    return (
+                      <div 
+                        key={session.id} 
+                        className={`p-3 rounded-lg border flex items-center justify-between ${
+                          isCompleted 
+                            ? 'bg-green-500/5 border-green-500/20' 
+                            : isScheduled 
+                              ? 'bg-blue-500/5 border-blue-500/20'
+                              : 'bg-muted/50 border-muted'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium text-sm">Sessão {session.session_number}</span>
+                          {session.appointment && (
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          )}
+                        </div>
+                        <Badge 
+                          variant={isCompleted ? "default" : isScheduled ? "secondary" : "outline"}
+                          className={isCompleted ? "bg-green-500" : ""}
+                        >
+                          {isCompleted ? 'Realizada' : isScheduled ? 'Agendada' : 'Pendente'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

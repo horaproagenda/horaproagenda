@@ -7,13 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Filter, Calendar, Clock, DollarSign, CreditCard } from 'lucide-react';
+import { Download, Filter, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
+import { useRooms } from '@/hooks/useRooms';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAppointments } from '@/hooks/useAppointments';
+import { toast } from 'sonner';
 
 interface ClientReportTabProps {
   appointments: Appointment[];
   clientName: string;
+  onEditAppointment?: (appointment: Appointment) => void;
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -23,7 +29,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   cancelled: { label: 'Cancelado', variant: 'destructive' },
 };
 
-export function ClientReportTab({ appointments, clientName }: ClientReportTabProps) {
+export function ClientReportTab({ appointments, clientName, onEditAppointment }: ClientReportTabProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
@@ -216,7 +222,7 @@ export function ClientReportTab({ appointments, clientName }: ClientReportTabPro
                 <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Filtrado</p>
+                <p className="text-sm text-muted-foreground">Total Agendado</p>
                 <p className="text-2xl font-bold">{summary.total}</p>
               </div>
             </div>
@@ -331,27 +337,55 @@ export function ClientReportTab({ appointments, clientName }: ClientReportTabPro
                     <TableHead>Data</TableHead>
                     <TableHead>Serviço</TableHead>
                     <TableHead>Valor</TableHead>
-                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Status Pgto.</TableHead>
+                    <TableHead>Forma Pgto.</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAppointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
+                    const isPaid = appointment.payment_status === 'paid' || 
+                                   (appointment.package_appointment && appointment.package_appointment.package);
+                    const paymentMethods = appointment.payment_methods?.length > 0 
+                      ? appointment.payment_methods.join(', ') 
+                      : appointment.package_appointment?.package 
+                        ? 'Pacote' 
+                        : '-';
+                    
                     return (
                       <TableRow key={appointment.id}>
                         <TableCell className="text-sm">
-                          {format(new Date(appointment.start_time), "dd/MM/yy")}
+                          {format(new Date(appointment.start_time), "dd/MM/yy HH:mm")}
                         </TableCell>
-                        <TableCell className="text-sm">{appointment.service?.name || '-'}</TableCell>
-                        <TableCell className="text-sm">R$ {(appointment.service?.price || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {appointment.service?.name || appointment.package_appointment?.package?.name || '-'}
+                        </TableCell>
                         <TableCell className="text-sm">
-                          {appointment.amount_paid && appointment.amount_paid > 0 ? (
-                            <span className="text-emerald-600">R$ {Number(appointment.amount_paid).toFixed(2)}</span>
-                          ) : '-'}
+                          R$ {(appointment.service?.price || appointment.package_appointment?.package?.total_price || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {isPaid ? (
+                            <Badge className="bg-emerald-500 text-white text-xs">Pago</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Pendente</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {paymentMethods}
                         </TableCell>
                         <TableCell>
                           <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onEditAppointment?.(appointment)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

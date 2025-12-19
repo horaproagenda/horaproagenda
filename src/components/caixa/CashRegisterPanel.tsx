@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -576,34 +577,36 @@ export function CashRegisterPanel() {
           </div>
           
           {receivablesSummary.entries.length > 0 ? (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {receivablesSummary.entries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.description}</TableCell>
-                      <TableCell>{entry.client?.name || '-'}</TableCell>
-                      <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="text-right font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}>
-                          {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
-                        </Badge>
-                      </TableCell>
+            <ScrollArea className="h-[300px]">
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {receivablesSummary.entries.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">{entry.description}</TableCell>
+                        <TableCell>{entry.client?.name || '-'}</TableCell>
+                        <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="text-right font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}>
+                            {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Nenhum valor a receber para o período selecionado
@@ -637,30 +640,32 @@ export function CashRegisterPanel() {
           </div>
           
           {salesSummary.transactions.length > 0 ? (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Forma de Pagamento</TableHead>
-                    <TableHead>Data/Hora</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {salesSummary.transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">{transaction.description || '-'}</TableCell>
-                      <TableCell>{transaction.payment_method || '-'}</TableCell>
-                      <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                      <TableCell className="text-right font-medium text-green-600">
-                        R$ {Number(transaction.amount).toFixed(2)}
-                      </TableCell>
+            <ScrollArea className="h-[300px]">
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Forma de Pagamento</TableHead>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {salesSummary.transactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell className="font-medium">{transaction.description || '-'}</TableCell>
+                        <TableCell>{transaction.payment_method || '-'}</TableCell>
+                        <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          R$ {Number(transaction.amount).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Nenhuma venda para o período selecionado

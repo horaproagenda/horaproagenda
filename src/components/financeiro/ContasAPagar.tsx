@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -288,55 +289,57 @@ export function ContasAPagar() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Forma de Pagamento</TableHead>
-              <TableHead>Parcela</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payables.map((entry) => (
-              <TableRow key={entry.id}>
-                <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                <TableCell>{entry.description}</TableCell>
-                <TableCell>{entry.payment_method?.name || '-'}</TableCell>
-                <TableCell>{entry.installments || 1}x</TableCell>
-                <TableCell className="text-red-600 font-medium">
-                  R$ {Number(entry.amount).toFixed(2)}
-                </TableCell>
-                <TableCell>{getStatusBadge(entry)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    {entry.status === 'pending' && (
-                      <Button variant="ghost" size="icon" onClick={() => handleMarkAsPaid(entry)} title="Marcar como pago">
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(entry.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {payables.length === 0 && (
+        <ScrollArea className="h-[500px]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  Nenhuma conta a pagar cadastrada
-                </TableCell>
+                <TableHead>Data</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Forma de Pagamento</TableHead>
+                <TableHead>Parcela</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {payables.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell>{entry.description}</TableCell>
+                  <TableCell>{entry.payment_method?.name || '-'}</TableCell>
+                  <TableCell>{entry.installments || 1}x</TableCell>
+                  <TableCell className="text-red-600 font-medium">
+                    R$ {Number(entry.amount).toFixed(2)}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(entry)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {entry.status === 'pending' && (
+                        <Button variant="ghost" size="icon" onClick={() => handleMarkAsPaid(entry)} title="Marcar como pago">
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(entry.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {payables.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    Nenhuma conta a pagar cadastrada
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

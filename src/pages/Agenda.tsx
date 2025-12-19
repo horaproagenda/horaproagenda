@@ -30,6 +30,7 @@ import {
   Wrench, 
   UserX,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -62,6 +63,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -76,6 +78,7 @@ import { toast } from 'sonner';
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
 const Agenda = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
@@ -133,9 +136,20 @@ const Agenda = () => {
     return [...prevMonthDays, ...days, ...nextMonthDays];
   }, [monthStart]);
 
-  // Filter appointments by professional and room
+  // Filter appointments by search, professional and room
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
+      // Search filter
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const clientMatch = apt.client?.name?.toLowerCase().includes(search);
+        const serviceMatch = apt.service?.name?.toLowerCase().includes(search);
+        const phoneMatch = apt.client?.phone?.includes(search);
+        if (!clientMatch && !serviceMatch && !phoneMatch) {
+          return false;
+        }
+      }
+      
       if (professionalFilter !== 'all') {
         if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
           return false;
@@ -148,7 +162,7 @@ const Agenda = () => {
       }
       return true;
     });
-  }, [appointments, professionalFilter, roomFilter]);
+  }, [appointments, searchTerm, professionalFilter, roomFilter]);
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -895,8 +909,20 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
-      {/* Compact Header with View Toggle and Filters */}
+      {/* Compact Header with Search, View Toggle and Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar cliente, serviço..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-9 pl-9"
+          />
+        </div>
+
         {/* View Toggle */}
         <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="h-9">
           <ToggleGroupItem value="day" aria-label="Ver dia" className="px-2 text-xs">

@@ -96,7 +96,7 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
-  const { updateAppointment, deleteAppointment } = useAppointments();
+  const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
   const { rooms } = useRooms();
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
@@ -109,6 +109,7 @@ export function AppointmentDetailDialog({
   const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
   
   // Edit mode state
@@ -144,12 +145,26 @@ export function AppointmentDetailDialog({
   if (!appointment) return null;
   
   const handleDelete = () => {
-    deleteAppointment.mutate(appointment.id, {
-      onSuccess: () => {
-        setShowDeleteDialog(false);
-        onOpenChange(false);
-      },
-    });
+    if (deleteMode === 'all' && appointment.package_appointment?.package_id) {
+      deletePackageAppointments.mutate(appointment.package_appointment.package_id, {
+        onSuccess: () => {
+          setShowDeleteDialog(false);
+          onOpenChange(false);
+        },
+      });
+    } else {
+      deleteAppointment.mutate(appointment.id, {
+        onSuccess: () => {
+          setShowDeleteDialog(false);
+          onOpenChange(false);
+        },
+      });
+    }
+  };
+
+  const handleOpenDeleteDialog = (mode: 'single' | 'all') => {
+    setDeleteMode(mode);
+    setShowDeleteDialog(true);
   };
 
   const handleStatusChange = (newStatus: AppointmentStatus) => {
@@ -187,10 +202,19 @@ export function AppointmentDetailDialog({
   const professionalId = appointment.professional_id || appointment.service?.professional_id;
   const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
   const status = statusConfig[appointment.status];
-  const paymentStatus = paymentStatusConfig[appointment.payment_status || 'pending'];
+  
+  // Check if this is a package appointment that's already paid
+  const isPackageAppointment = !!appointment.package_appointment;
+  const packageData = appointment.package_appointment?.package;
+  
+  // For package appointments, consider them as "paid" since the package was already purchased
+  const effectivePaymentStatus = isPackageAppointment ? 'paid' : (appointment.payment_status || 'pending');
+  const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
-  const totalPrice = appointment.service?.price || 0;
-  const amountPaid = appointment.amount_paid || 0;
+  
+  // For package appointments, the price is from the package, not the service
+  const totalPrice = isPackageAppointment ? 0 : (appointment.service?.price || 0);
+  const amountPaid = isPackageAppointment ? 0 : (appointment.amount_paid || 0);
   const remainingAmount = totalPrice - amountPaid;
 
   const addPaymentMethod = () => {
@@ -637,15 +661,28 @@ export function AppointmentDetailDialog({
             {canDelete && (
               <>
                 <Separator />
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir Agendamento
-                </Button>
+                <div className="space-y-2">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => handleOpenDeleteDialog('single')}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir Este Agendamento
+                  </Button>
+                  {isPackageAppointment && packageData && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                      onClick={() => handleOpenDeleteDialog('all')}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Todos do Pacote ({packageData.name})
+                    </Button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -658,10 +695,22 @@ export function AppointmentDetailDialog({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
-              Excluir Agendamento
+              {deleteMode === 'all' ? 'Excluir Todos os Agendamentos do Pacote' : 'Excluir Agendamento'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong> para <strong>{appointment.service?.name}</strong>? Esta ação não pode ser desfeita.
+              {deleteMode === 'all' ? (
+                <>
+                  Tem certeza que deseja excluir <strong>todos os agendamentos</strong> do pacote <strong>{packageData?.name}</strong> de <strong>{appointment.client?.name}</strong>? 
+                  <br /><br />
+                  Esta ação irá remover todos os agendamentos vinculados a este pacote e resetar as sessões. Esta ação não pode ser desfeita.
+                </>
+              ) : (
+                <>
+                  Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong>
+                  {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -669,8 +718,9 @@ export function AppointmentDetailDialog({
             <AlertDialogAction 
               onClick={handleDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAppointment.isPending || deletePackageAppointments.isPending}
             >
-              Excluir
+              {deleteMode === 'all' ? 'Excluir Todos' : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

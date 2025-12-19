@@ -147,6 +147,7 @@ export interface PackageAppointment {
   created_at: string;
   updated_at: string;
   appointment?: Appointment;
+  package?: ServicePackage;
 }
 
 export interface DocumentTemplate {
@@ -170,6 +171,7 @@ export interface Appointment {
   service_id: string | null;
   professional_id: string | null;
   room_id: string | null;
+  package_appointment_id: string | null;
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
@@ -186,6 +188,7 @@ export interface Appointment {
   service?: Service;
   professional?: Professional;
   room?: Room;
+  package_appointment?: PackageAppointment;
   created_by_profile?: { full_name: string } | null;
   updated_by_profile?: { full_name: string } | null;
 }

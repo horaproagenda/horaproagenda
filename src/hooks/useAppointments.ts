@@ -47,7 +47,11 @@ export function useAppointments() {
             room:rooms(*),
             professional:professionals(*)
           ),
-          room:rooms(*)
+          room:rooms(*),
+          package_appointment:package_appointments(
+            *,
+            package:service_packages(*)
+          )
         `)
         .order('start_time', { ascending: true });
 
@@ -230,10 +234,71 @@ export function useAppointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       toast.success('Agendamento excluído com sucesso!');
     },
     onError: (error) => {
       toast.error('Erro ao excluir agendamento: ' + error.message);
+    },
+  });
+
+  const deletePackageAppointments = useMutation({
+    mutationFn: async (packageId: string) => {
+      // Get all appointments linked to this package
+      const { data: packageAppointments, error: fetchError } = await supabase
+        .from('package_appointments')
+        .select('appointment_id')
+        .eq('package_id', packageId)
+        .not('appointment_id', 'is', null);
+
+      if (fetchError) throw fetchError;
+
+      const appointmentIds = packageAppointments
+        ?.map(pa => pa.appointment_id)
+        .filter((id): id is string => id !== null) || [];
+
+      if (appointmentIds.length > 0) {
+        // Delete all appointments
+        const { error: deleteError } = await supabase
+          .from('appointments')
+          .delete()
+          .in('id', appointmentIds);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Reset package sessions to pending
+      const { error: resetError } = await supabase
+        .from('package_appointments')
+        .update({ 
+          appointment_id: null, 
+          status: 'pending',
+          scheduled_date: null 
+        })
+        .eq('package_id', packageId);
+
+      if (resetError) throw resetError;
+
+      // Reset sessions_scheduled counter
+      const { error: packageError } = await supabase
+        .from('service_packages')
+        .update({ sessions_scheduled: 0 })
+        .eq('id', packageId);
+
+      if (packageError) throw packageError;
+
+      return appointmentIds.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      toast.success(`${count} agendamento(s) do pacote excluído(s) com sucesso!`);
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir agendamentos do pacote: ' + error.message);
     },
   });
 
@@ -244,5 +309,6 @@ export function useAppointments() {
     updatePayment,
     updateAppointment,
     deleteAppointment,
+    deletePackageAppointments,
   };
 }

@@ -174,6 +174,17 @@ export function useClientPackages(clientId: string | null) {
 
       if (updateSessionError) throw updateSessionError;
 
+      // Update the appointment to link to the package_appointment
+      const { error: appointmentError } = await supabase
+        .from('appointments')
+        .update({
+          package_appointment_id: pendingSession.id,
+          payment_status: 'paid', // Package appointments are always paid
+        })
+        .eq('id', appointmentId);
+
+      if (appointmentError) throw appointmentError;
+
       // Increment the sessions_scheduled counter
       const { data: pkg } = await supabase
         .from('service_packages')

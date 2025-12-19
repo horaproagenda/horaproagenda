@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -208,254 +209,260 @@ export function CategoriasFinanceiras() {
               Nova Categoria
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>{editingCat ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Nome</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Nome da categoria"
-                />
-              </div>
-              <div>
-                <Label>Descrição</Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Descrição (opcional)"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_recurring}
-                  onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
-                />
-                <Label>Categoria recorrente</Label>
-              </div>
-              {form.is_recurring && (
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <div className="space-y-4">
                 <div>
-                  <Label>Frequência</Label>
-                  <Select 
-                    value={form.recurring_frequency} 
-                    onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="biweekly">Quinzenal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="bimonthly">Bimestral</SelectItem>
-                      <SelectItem value="quarterly">Trimestral</SelectItem>
-                      <SelectItem value="semiannual">Semestral</SelectItem>
-                      <SelectItem value="annual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Nome</Label>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Nome da categoria"
+                  />
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_active}
-                  onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
-                />
-                <Label>Ativo</Label>
+                <div>
+                  <Label>Descrição</Label>
+                  <Input
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Descrição (opcional)"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_recurring}
+                    onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
+                  />
+                  <Label>Categoria recorrente</Label>
+                </div>
+                {form.is_recurring && (
+                  <div>
+                    <Label>Frequência</Label>
+                    <Select 
+                      value={form.recurring_frequency} 
+                      onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="bimonthly">Bimestral</SelectItem>
+                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="semiannual">Semestral</SelectItem>
+                        <SelectItem value="annual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_active}
+                    onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
+                  />
+                  <Label>Ativo</Label>
+                </div>
+                <Button onClick={handleSubmit} className="w-full">
+                  {editingCat ? 'Salvar' : 'Criar Categoria'}
+                </Button>
               </div>
-              <Button onClick={handleSubmit} className="w-full">
-                {editingCat ? 'Salvar' : 'Criar Categoria'}
-              </Button>
-            </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </CardHeader>
       <CardContent>
         {/* Dialog for creating expense in a category */}
         <Dialog open={expenseDialogOpen} onOpenChange={(open) => { setExpenseDialogOpen(open); if (!open) resetExpenseForm(); }}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Nova Despesa</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Descrição</Label>
-                <Input
-                  value={expenseForm.description}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                  placeholder="Descrição da despesa"
-                />
-              </div>
-              <div>
-                <Label>Data de Vencimento</Label>
-                <Input
-                  type="date"
-                  value={expenseForm.due_date}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, due_date: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Forma de Pagamento</Label>
-                <Select 
-                  value={expenseForm.payment_method_id} 
-                  onValueChange={(v) => setExpenseForm({ ...expenseForm, payment_method_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activePaymentMethods.map((pm) => (
-                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Conta Bancária (de onde sai)</Label>
-                <Select 
-                  value={expenseForm.bank_id} 
-                  onValueChange={(v) => setExpenseForm({ ...expenseForm, bank_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeBanks.map((bank) => (
-                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={expenseForm.is_recurring}
-                  onCheckedChange={(checked) => setExpenseForm({ ...expenseForm, is_recurring: checked })}
-                />
-                <Label>Despesa recorrente</Label>
-              </div>
-              {expenseForm.is_recurring && (
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <div className="space-y-4">
                 <div>
-                  <Label>Frequência</Label>
-                  <Select 
-                    value={expenseForm.recurring_frequency} 
-                    onValueChange={(v) => setExpenseForm({ ...expenseForm, recurring_frequency: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="biweekly">Quinzenal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="quarterly">Trimestral</SelectItem>
-                      <SelectItem value="annual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Parcelas</Label>
+                  <Label>Descrição</Label>
                   <Input
-                    type="number"
-                    min="1"
-                    value={expenseForm.installments}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, installments: e.target.value })}
+                    value={expenseForm.description}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                    placeholder="Descrição da despesa"
                   />
                 </div>
                 <div>
-                  <Label>Valor</Label>
+                  <Label>Data de Vencimento</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={expenseForm.amount}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                    placeholder="0,00"
+                    type="date"
+                    value={expenseForm.due_date}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, due_date: e.target.value })}
                   />
                 </div>
-              </div>
-              {parseInt(expenseForm.installments) > 1 && (
                 <div>
-                  <Label>Tipo de Valor</Label>
+                  <Label>Forma de Pagamento</Label>
                   <Select 
-                    value={expenseForm.is_total_value ? 'total' : 'per_installment'} 
-                    onValueChange={(v) => setExpenseForm({ ...expenseForm, is_total_value: v === 'total' })}
+                    value={expenseForm.payment_method_id} 
+                    onValueChange={(v) => setExpenseForm({ ...expenseForm, payment_method_id: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="total">Valor total (dividido pelas parcelas)</SelectItem>
-                      <SelectItem value="per_installment">Valor por parcela</SelectItem>
+                      {activePaymentMethods.map((pm) => (
+                        <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {expenseForm.is_total_value 
-                      ? `Cada parcela: R$ ${(parseFloat(expenseForm.amount || '0') / parseInt(expenseForm.installments || '1')).toFixed(2)}`
-                      : `Total: R$ ${(parseFloat(expenseForm.amount || '0') * parseInt(expenseForm.installments || '1')).toFixed(2)}`
-                    }
-                  </p>
                 </div>
-              )}
-              <Button onClick={handleCreateExpense} className="w-full">
-                Criar Despesa
-              </Button>
-            </div>
+                <div>
+                  <Label>Conta Bancária (de onde sai)</Label>
+                  <Select 
+                    value={expenseForm.bank_id} 
+                    onValueChange={(v) => setExpenseForm({ ...expenseForm, bank_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeBanks.map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={expenseForm.is_recurring}
+                    onCheckedChange={(checked) => setExpenseForm({ ...expenseForm, is_recurring: checked })}
+                  />
+                  <Label>Despesa recorrente</Label>
+                </div>
+                {expenseForm.is_recurring && (
+                  <div>
+                    <Label>Frequência</Label>
+                    <Select 
+                      value={expenseForm.recurring_frequency} 
+                      onValueChange={(v) => setExpenseForm({ ...expenseForm, recurring_frequency: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="annual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Parcelas</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={expenseForm.installments}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, installments: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={expenseForm.amount}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+                {parseInt(expenseForm.installments) > 1 && (
+                  <div>
+                    <Label>Tipo de Valor</Label>
+                    <Select 
+                      value={expenseForm.is_total_value ? 'total' : 'per_installment'} 
+                      onValueChange={(v) => setExpenseForm({ ...expenseForm, is_total_value: v === 'total' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="total">Valor total (dividido pelas parcelas)</SelectItem>
+                        <SelectItem value="per_installment">Valor por parcela</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {expenseForm.is_total_value 
+                        ? `Cada parcela: R$ ${(parseFloat(expenseForm.amount || '0') / parseInt(expenseForm.installments || '1')).toFixed(2)}`
+                        : `Total: R$ ${(parseFloat(expenseForm.amount || '0') * parseInt(expenseForm.installments || '1')).toFixed(2)}`
+                      }
+                    </p>
+                  </div>
+                )}
+                <Button onClick={handleCreateExpense} className="w-full">
+                  Criar Despesa
+                </Button>
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
-        <Accordion type="multiple" className="w-full">
-          {expensesByCategory.map((cat) => (
-            <AccordionItem key={cat.id} value={cat.id}>
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={cat.type === 'income' ? 'default' : 'secondary'}>
-                      {cat.type === 'income' ? 'Receita' : 'Despesa'}
-                    </Badge>
-                    <span className="font-medium">{cat.name}</span>
-                    <span className="text-muted-foreground text-sm">({cat.expenses.length} lançamentos)</span>
+        <ScrollArea className="h-[500px]">
+          <Accordion type="multiple" className="w-full">
+            {expensesByCategory.map((cat) => (
+              <AccordionItem key={cat.id} value={cat.id}>
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={cat.type === 'income' ? 'default' : 'secondary'}>
+                        {cat.type === 'income' ? 'Receita' : 'Despesa'}
+                      </Badge>
+                      <span className="font-medium">{cat.name}</span>
+                      <span className="text-muted-foreground text-sm">({cat.expenses.length} lançamentos)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cat.type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                        R$ {cat.total.toFixed(2)}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => { e.stopPropagation(); openExpenseDialog(cat.id); }}
+                        title="Adicionar despesa"
+                      >
+                        <Plus className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(cat); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteCategory.mutate(cat.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cat.type === 'income' ? 'text-green-600' : 'text-red-600'}>
-                      R$ {cat.total.toFixed(2)}
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => { e.stopPropagation(); openExpenseDialog(cat.id); }}
-                      title="Adicionar despesa"
-                    >
-                      <Plus className="h-4 w-4 text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(cat); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteCategory.mutate(cat.id); }}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {cat.expenses.length > 0 ? (
-                  <div className="space-y-2 pl-4">
-                    {cat.expenses.map((expense) => (
-                      <div key={expense.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                        <span>{expense.description}</span>
-                        <span className="text-red-600">R$ {Number(expense.amount).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm pl-4">Nenhuma despesa nesta categoria</p>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                </AccordionTrigger>
+                <AccordionContent>
+                  {cat.expenses.length > 0 ? (
+                    <div className="space-y-2 pl-4">
+                      {cat.expenses.map((expense) => (
+                        <div key={expense.id} className="flex justify-between items-center py-2 border-b last:border-0">
+                          <span>{expense.description}</span>
+                          <span className="text-red-600">R$ {Number(expense.amount).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm pl-4">Nenhuma despesa nesta categoria</p>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

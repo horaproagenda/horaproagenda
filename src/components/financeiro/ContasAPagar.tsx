@@ -166,125 +166,127 @@ export function ContasAPagar() {
               Nova Conta
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>{editingEntry ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Data de Vencimento</Label>
+                    <Input
+                      type="date"
+                      value={form.due_date}
+                      onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Data de Pagamento</Label>
+                    <Input
+                      type="date"
+                      value={form.paid_date}
+                      onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div>
-                  <Label>Data de Vencimento</Label>
+                  <Label>Nome da Conta</Label>
                   <Input
-                    type="date"
-                    value={form.due_date}
-                    onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Descrição da conta"
                   />
                 </div>
                 <div>
-                  <Label>Data de Pagamento</Label>
-                  <Input
-                    type="date"
-                    value={form.paid_date}
-                    onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Nome da Conta</Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Descrição da conta"
-                />
-              </div>
-              <div>
-                <Label>Categoria</Label>
-                <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {expenseCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Forma de Pagamento</Label>
-                <Select value={form.payment_method_id} onValueChange={(v) => setForm({ ...form, payment_method_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a forma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activePaymentMethods.map((pm) => (
-                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Conta Bancária (de onde sai)</Label>
-                <Select value={form.bank_id} onValueChange={(v) => setForm({ ...form, bank_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a conta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeBanks.map((bank) => (
-                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_recurring}
-                  onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
-                />
-                <Label>Conta recorrente</Label>
-              </div>
-              {form.is_recurring && (
-                <div>
-                  <Label>Frequência</Label>
-                  <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
+                  <Label>Categoria</Label>
+                  <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="biweekly">Quinzenal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="quarterly">Trimestral</SelectItem>
-                      <SelectItem value="annual">Anual</SelectItem>
+                      {expenseCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Parcela</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={form.installments}
-                    onChange={(e) => setForm({ ...form, installments: e.target.value })}
-                  />
+                  <Label>Forma de Pagamento</Label>
+                  <Select value={form.payment_method_id} onValueChange={(v) => setForm({ ...form, payment_method_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a forma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activePaymentMethods.map((pm) => (
+                        <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <Label>Valor</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    placeholder="0,00"
-                  />
+                  <Label>Conta Bancária (de onde sai)</Label>
+                  <Select value={form.bank_id} onValueChange={(v) => setForm({ ...form, bank_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeBanks.map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_recurring}
+                    onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
+                  />
+                  <Label>Conta recorrente</Label>
+                </div>
+                {form.is_recurring && (
+                  <div>
+                    <Label>Frequência</Label>
+                    <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="annual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Parcela</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={form.installments}
+                      onChange={(e) => setForm({ ...form, installments: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleSubmit} className="w-full">
+                  {editingEntry ? 'Salvar' : 'Adicionar'}
+                </Button>
               </div>
-              <Button onClick={handleSubmit} className="w-full">
-                {editingEntry ? 'Salvar' : 'Adicionar'}
-              </Button>
-            </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </CardHeader>

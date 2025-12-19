@@ -1074,12 +1074,14 @@ export type Database = {
           finished_at: string | null
           id: string
           is_active: boolean
+          is_for_sale: boolean
           min_stock_alert: number | null
           name: string
           notes: string | null
           product_type: string
           purchase_date: string | null
           quantity_purchased: number
+          sale_price: number | null
           started_using_at: string | null
           supplier: string | null
           supplier_id: string | null
@@ -1100,12 +1102,14 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_active?: boolean
+          is_for_sale?: boolean
           min_stock_alert?: number | null
           name: string
           notes?: string | null
           product_type?: string
           purchase_date?: string | null
           quantity_purchased?: number
+          sale_price?: number | null
           started_using_at?: string | null
           supplier?: string | null
           supplier_id?: string | null
@@ -1126,12 +1130,14 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_active?: boolean
+          is_for_sale?: boolean
           min_stock_alert?: number | null
           name?: string
           notes?: string | null
           product_type?: string
           purchase_date?: string | null
           quantity_purchased?: number
+          sale_price?: number | null
           started_using_at?: string | null
           supplier?: string | null
           supplier_id?: string | null

@@ -25,6 +25,8 @@ export interface Product {
   min_stock_alert: number | null;
   notes: string | null;
   is_active: boolean;
+  is_for_sale: boolean;
+  sale_price: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -139,6 +141,7 @@ export function useProducts() {
     products,
     activeProducts: products.filter(p => p.is_active),
     inactiveProducts: products.filter(p => !p.is_active),
+    productsForSale: products.filter(p => p.is_active && p.is_for_sale),
     isLoading,
     refetch,
     createProduct,

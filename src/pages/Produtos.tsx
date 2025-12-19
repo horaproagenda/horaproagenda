@@ -130,6 +130,8 @@ export default function Produtos() {
     min_stock_alert: 0,
     notes: '',
     is_active: true,
+    is_for_sale: false,
+    sale_price: 0,
   });
 
   // Purchase Dialog State
@@ -198,6 +200,8 @@ export default function Produtos() {
       min_stock_alert: 0,
       notes: '',
       is_active: true,
+      is_for_sale: false,
+      sale_price: 0,
     });
     setEditingProduct(null);
   };
@@ -241,6 +245,8 @@ export default function Produtos() {
       min_stock_alert: product.min_stock_alert || 0,
       notes: product.notes || '',
       is_active: product.is_active,
+      is_for_sale: product.is_for_sale || false,
+      sale_price: product.sale_price || 0,
     });
     setProductDialogOpen(true);
   };
@@ -760,6 +766,33 @@ export default function Produtos() {
                                   Produto Ativo
                                 </Label>
                               </div>
+
+                              <div className="flex items-center gap-2 pt-2">
+                                <input
+                                  type="checkbox"
+                                  id="is_for_sale"
+                                  checked={productForm.is_for_sale}
+                                  onChange={(e) => setProductForm({ ...productForm, is_for_sale: e.target.checked })}
+                                  className="h-4 w-4 rounded border-input"
+                                />
+                                <Label htmlFor="is_for_sale" className="cursor-pointer">
+                                  Produto para Venda
+                                </Label>
+                              </div>
+
+                              {productForm.is_for_sale && (
+                                <div>
+                                  <Label>Preço de Venda (R$)</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={productForm.sale_price}
+                                    onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              )}
                             </div>
 
                             <div>
@@ -818,7 +851,8 @@ export default function Produtos() {
                         <TableHead>Produto</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Estoque</TableHead>
-                        <TableHead>Preço</TableHead>
+                        <TableHead>Preço Custo</TableHead>
+                        <TableHead>Para Venda</TableHead>
                         <TableHead>Duração</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -827,7 +861,7 @@ export default function Produtos() {
                     <TableBody>
                       {filteredProducts.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
                             <p>Nenhum produto encontrado</p>
                           </TableCell>
@@ -865,6 +899,18 @@ export default function Produtos() {
                               </TableCell>
                               <TableCell>
                                 <span className="font-medium">R$ {product.total_price.toFixed(2)}</span>
+                              </TableCell>
+                              <TableCell>
+                                {product.is_for_sale ? (
+                                  <div>
+                                    <Badge variant="default" className="bg-green-600">Sim</Badge>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      R$ {(product.sale_price || 0).toFixed(2)}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <Badge variant="secondary">Não</Badge>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {duration !== null ? (

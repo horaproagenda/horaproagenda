@@ -150,9 +150,9 @@ export function useSingleSales() {
         });
       }
 
-      // 6. Create a financial entry for tracking (INCOME, not expense)
+      // 6. Create a financial entry for tracking (RECEIVABLE = income)
       await supabase.from('financial_entries').insert({
-        type: 'income',
+        type: 'receivable',
         description: `Venda: ${sale.description || 'Item avulso'}`,
         amount: sale.final_amount,
         due_date: sale.sale_date,

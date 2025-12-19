@@ -1,9 +1,11 @@
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -26,6 +28,7 @@ import {
   ArrowDown,
   CheckCircle,
   AlertTriangle,
+  Search,
 } from 'lucide-react';
 import { CashRegister } from '@/hooks/useCashRegisters';
 
@@ -44,6 +47,18 @@ interface CashRegisterHistoryProps {
 }
 
 export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegisterHistoryProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredRegisters = useMemo(() => {
+    if (!searchTerm) return closedRegisters;
+    const search = searchTerm.toLowerCase();
+    return closedRegisters.filter(register => {
+      const dateMatch = format(parseISO(register.opened_at), 'dd/MM/yyyy').includes(search);
+      const notesMatch = register.notes?.toLowerCase().includes(search);
+      return dateMatch || notesMatch;
+    });
+  }, [closedRegisters, searchTerm]);
+
   if (isLoading) {
     return (
       <Card>
@@ -75,16 +90,27 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
           Visualize os caixas anteriores com todas as informações
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {closedRegisters.length === 0 ? (
+      <CardContent className="space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar por data ou observações..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {filteredRegisters.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum caixa fechado ainda</p>
+            <p>{searchTerm ? 'Nenhum caixa encontrado' : 'Nenhum caixa fechado ainda'}</p>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
             <Accordion type="single" collapsible className="space-y-2">
-              {closedRegisters.map((register, index) => (
+              {filteredRegisters.map((register, index) => (
                 <AccordionItem
                   key={register.id}
                   value={register.id}

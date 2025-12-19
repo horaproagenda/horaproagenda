@@ -7,18 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Filter, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
-import { useRooms } from '@/hooks/useRooms';
-import { useProfessionals } from '@/hooks/useProfessionals';
-import { useAppointments } from '@/hooks/useAppointments';
-import { toast } from 'sonner';
+import { Download, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
+
+interface PaymentHistoryItem {
+  id: string;
+  date: string;
+  description: string;
+  serviceName: string;
+  amount: number;
+  paymentMethod: string;
+  source: 'appointment' | 'sale';
+}
 
 interface ClientReportTabProps {
   appointments: Appointment[];
   clientName: string;
+  paymentHistory?: PaymentHistoryItem[];
   onEditAppointment?: (appointment: Appointment) => void;
 }
 
@@ -29,7 +35,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   cancelled: { label: 'Cancelado', variant: 'destructive' },
 };
 
-export function ClientReportTab({ appointments, clientName, onEditAppointment }: ClientReportTabProps) {
+export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
@@ -73,16 +79,16 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
   // Calculate summary
   const summary = useMemo(() => {
     const completed = filteredAppointments.filter(a => a.status === 'completed');
-    const totalValue = completed.reduce((sum, a) => sum + (a.service?.price || 0), 0);
+    const totalValue = completed.reduce((sum, a) => sum + (a.amount_paid || a.service?.price || 0), 0);
     
     // Group by service
     const serviceMap = new Map<string, { count: number; total: number }>();
     completed.forEach(a => {
-      const serviceName = a.service?.name || 'Desconhecido';
+      const serviceName = a.service?.name || a.package_appointment?.package?.name || 'Desconhecido';
       const current = serviceMap.get(serviceName) || { count: 0, total: 0 };
       serviceMap.set(serviceName, {
         count: current.count + 1,
-        total: current.total + (a.service?.price || 0),
+        total: current.total + (a.amount_paid || a.service?.price || 0),
       });
     });
     
@@ -140,78 +146,67 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filtros
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                Limpar
-              </Button>
-              <Button size="sm" onClick={exportToCSV}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="completed">Realizado</SelectItem>
-                  <SelectItem value="scheduled">Agendado</SelectItem>
-                  <SelectItem value="confirmed">Confirmado</SelectItem>
-                  <SelectItem value="cancelled">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Data Inicial</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Data Final</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filters - simplified without extra card wrapper */}
+      <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-lg">
+        <div className="space-y-1">
+          <Label className="text-xs">Categoria</Label>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-1">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="completed">Realizado</SelectItem>
+              <SelectItem value="scheduled">Agendado</SelectItem>
+              <SelectItem value="confirmed">Confirmado</SelectItem>
+              <SelectItem value="cancelled">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-1">
+          <Label className="text-xs">Data Inicial</Label>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-[140px] h-9"
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <Label className="text-xs">Data Final</Label>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-[140px] h-9"
+          />
+        </div>
+
+        <Button variant="outline" size="sm" onClick={clearFilters}>
+          Limpar
+        </Button>
+        <Button size="sm" onClick={exportToCSV}>
+          <Download className="h-4 w-4 mr-1" />
+          Exportar
+        </Button>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -258,7 +253,7 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
         </Card>
       </div>
 
-      {/* Payment History - Compact */}
+      {/* Payment History - from both agenda and caixa */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -267,31 +262,29 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAppointments.filter(a => a.status === 'completed' && a.amount_paid && a.amount_paid > 0).length === 0 ? (
+          {paymentHistory.length === 0 ? (
             <p className="text-muted-foreground text-sm">Nenhum pagamento registrado</p>
           ) : (
             <div className="space-y-2">
-              {filteredAppointments
-                .filter(a => a.status === 'completed' && a.amount_paid && a.amount_paid > 0)
-                .slice(0, 10)
-                .map(apt => (
-                  <div key={apt.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="text-muted-foreground">{format(new Date(apt.start_time), 'dd/MM/yy')}</span>
-                      <span className="font-medium truncate max-w-[150px]">{apt.service?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {apt.payment_methods && apt.payment_methods.length > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {apt.payment_methods.join(', ')}
-                        </Badge>
-                      )}
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        R$ {Number(apt.amount_paid).toFixed(2)}
-                      </span>
-                    </div>
+              {paymentHistory.slice(0, 15).map(payment => (
+                <div key={payment.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground">{format(new Date(payment.date), 'dd/MM/yy')}</span>
+                    <span className="font-medium truncate max-w-[150px]">{payment.serviceName}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {payment.source === 'sale' ? 'Caixa' : 'Agenda'}
+                    </Badge>
                   </div>
-                ))}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {payment.paymentMethod}
+                    </Badge>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      R$ {Number(payment.amount).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -336,7 +329,7 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Serviço</TableHead>
-                    <TableHead>Valor</TableHead>
+                    <TableHead>Valor Pago</TableHead>
                     <TableHead>Status Pgto.</TableHead>
                     <TableHead>Forma Pgto.</TableHead>
                     <TableHead>Status</TableHead>
@@ -354,16 +347,24 @@ export function ClientReportTab({ appointments, clientName, onEditAppointment }:
                         ? 'Pacote' 
                         : '-';
                     
+                    // Get service name - check service first, then package
+                    const serviceName = appointment.service?.name || 
+                                       appointment.package_appointment?.package?.name || 
+                                       '-';
+                    
+                    // Get actual paid amount
+                    const amountPaid = appointment.amount_paid || 0;
+                    
                     return (
                       <TableRow key={appointment.id}>
                         <TableCell className="text-sm">
                           {format(new Date(appointment.start_time), "dd/MM/yy HH:mm")}
                         </TableCell>
                         <TableCell className="text-sm font-medium">
-                          {appointment.service?.name || appointment.package_appointment?.package?.name || '-'}
+                          {serviceName}
                         </TableCell>
                         <TableCell className="text-sm">
-                          R$ {(appointment.service?.price || appointment.package_appointment?.package?.total_price || 0).toFixed(2)}
+                          R$ {amountPaid.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-sm">
                           {isPaid ? (

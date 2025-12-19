@@ -3,6 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
 
+// Interface for payment history items from multiple sources
+interface PaymentHistoryItem {
+  id: string;
+  date: string;
+  description: string;
+  serviceName: string;
+  amount: number;
+  paymentMethod: string;
+  source: 'appointment' | 'sale';
+}
+
 export function useClientProfile(clientId: string) {
   const queryClient = useQueryClient();
 
@@ -25,7 +36,7 @@ export function useClientProfile(clientId: string) {
     enabled: !!clientId,
   });
 
-  // Fetch client appointments (including cancelled)
+  // Fetch client appointments with full details
   const { data: appointments = [], isLoading: appointmentsLoading } = useQuery({
     queryKey: ['client-appointments', clientId],
     queryFn: async () => {
@@ -33,13 +44,35 @@ export function useClientProfile(clientId: string) {
         .from('appointments')
         .select(`
           *,
-          service:services(*)
+          service:services(*),
+          package_appointment:package_appointments(*, package:service_packages(*))
         `)
         .eq('client_id', clientId)
         .order('start_time', { ascending: false });
 
       if (error) throw error;
       return data as Appointment[];
+    },
+    enabled: !!clientId,
+  });
+
+  // Fetch client sales from single_sales table
+  const { data: clientSales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['client-sales', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('single_sales')
+        .select(`
+          *,
+          service:services(name),
+          package:service_packages(name),
+          payment_method:payment_methods(name)
+        `)
+        .eq('client_id', clientId)
+        .order('sale_date', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!clientId,
   });
@@ -219,18 +252,58 @@ export function useClientProfile(clientId: string) {
     },
   });
 
+  // Calculate total revenue from BOTH appointments AND sales
+  const totalFromAppointments = appointments
+    .filter(a => a.payment_status === 'paid' || (a.amount_paid && a.amount_paid > 0))
+    .reduce((sum, a) => sum + (a.amount_paid || 0), 0);
+
+  const totalFromSales = clientSales.reduce((sum, sale) => sum + (sale.final_amount || 0), 0);
+
+  // Deduplicate - if an appointment has a linked sale, don't count twice
+  const appointmentSaleIds = new Set(
+    appointments
+      .filter(a => a.package_appointment?.package)
+      .map(a => a.package_appointment?.package?.id)
+  );
+  
+  const uniqueSalesTotal = clientSales
+    .filter(sale => !sale.package_id || !appointmentSaleIds.has(sale.package_id))
+    .reduce((sum, sale) => sum + (sale.final_amount || 0), 0);
+
+  const totalRevenue = totalFromAppointments + uniqueSalesTotal;
+
+  // Build payment history from both sources
+  const paymentHistory: PaymentHistoryItem[] = [
+    // From appointments with payments
+    ...appointments
+      .filter(a => a.amount_paid && a.amount_paid > 0)
+      .map(a => ({
+        id: a.id,
+        date: a.start_time,
+        description: a.service?.name || a.package_appointment?.package?.name || 'Serviço',
+        serviceName: a.service?.name || a.package_appointment?.package?.name || '-',
+        amount: a.amount_paid || 0,
+        paymentMethod: a.payment_methods?.join(', ') || '-',
+        source: 'appointment' as const,
+      })),
+    // From sales
+    ...clientSales.map(sale => ({
+      id: sale.id,
+      date: sale.sale_date,
+      description: sale.description || sale.service?.name || sale.package?.name || 'Venda',
+      serviceName: sale.service?.name || sale.package?.name || '-',
+      amount: sale.final_amount || 0,
+      paymentMethod: sale.payment_method?.name || '-',
+      source: 'sale' as const,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   // Calculate detailed stats
   const completedAppointments = appointments.filter(a => a.status === 'completed');
   const cancelledAppointments = appointments.filter(a => a.status === 'cancelled');
-  const scheduledAppointments = appointments.filter(a => a.status === 'scheduled');
-  const confirmedAppointments = appointments.filter(a => a.status === 'confirmed');
+  const missedAppointments = appointments.filter(a => a.status === 'missed');
+  const rescheduledAppointments = appointments.filter(a => a.status === 'rescheduled');
   
-  // For now, we'll consider "missed" as appointments that were cancelled after the scheduled time
-  // and "rescheduled" would require tracking appointment history (not currently available)
-  const missedAppointments = 0; // Would need additional tracking
-  const rescheduledAppointments = 0; // Would need additional tracking
-  
-  const totalRevenue = completedAppointments.reduce((sum, a) => sum + (a.service?.price || 0), 0);
   const proceduresCount = completedAppointments.length;
 
   return {
@@ -239,7 +312,9 @@ export function useClientProfile(clientId: string) {
     documents,
     photos,
     quotes,
-    isLoading: clientLoading || appointmentsLoading || documentsLoading || photosLoading || quotesLoading,
+    clientSales,
+    paymentHistory,
+    isLoading: clientLoading || appointmentsLoading || documentsLoading || photosLoading || quotesLoading || salesLoading,
     updateClient,
     addDocument,
     addPhoto,
@@ -249,8 +324,8 @@ export function useClientProfile(clientId: string) {
       totalAppointments: appointments.length,
       completedAppointments: completedAppointments.length,
       cancelledAppointments: cancelledAppointments.length,
-      missedAppointments,
-      rescheduledAppointments,
+      missedAppointments: missedAppointments.length,
+      rescheduledAppointments: rescheduledAppointments.length,
       totalRevenue,
       proceduresCount,
     },

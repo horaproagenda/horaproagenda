@@ -27,7 +27,7 @@ export type Database = {
           payment_status: string | null
           professional_id: string | null
           room_id: string | null
-          service_id: string
+          service_id: string | null
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -45,7 +45,7 @@ export type Database = {
           payment_status?: string | null
           professional_id?: string | null
           room_id?: string | null
-          service_id: string
+          service_id?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -63,7 +63,7 @@ export type Database = {
           payment_status?: string | null
           professional_id?: string | null
           room_id?: string | null
-          service_id?: string
+          service_id?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -1409,6 +1409,7 @@ export type Database = {
           preferred_time: string | null
           professional_id: string | null
           room_id: string | null
+          service_id: string | null
           sessions_scheduled: number
           template_id: string | null
           total_price: number
@@ -1435,6 +1436,7 @@ export type Database = {
           preferred_time?: string | null
           professional_id?: string | null
           room_id?: string | null
+          service_id?: string | null
           sessions_scheduled?: number
           template_id?: string | null
           total_price: number
@@ -1461,6 +1463,7 @@ export type Database = {
           preferred_time?: string | null
           professional_id?: string | null
           room_id?: string | null
+          service_id?: string | null
           sessions_scheduled?: number
           template_id?: string | null
           total_price?: number
@@ -1489,6 +1492,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_packages_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
           {

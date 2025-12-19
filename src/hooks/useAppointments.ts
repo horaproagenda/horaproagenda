@@ -5,12 +5,13 @@ import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 
 export interface AppointmentInsert {
   client_id: string;
-  service_id: string;
+  service_id?: string | null;
   start_time: string;
   end_time: string;
   notes?: string;
   professional_id?: string | null;
   room_id?: string | null;
+  payment_status?: PaymentStatus;
 }
 
 export interface PaymentUpdate {
@@ -166,7 +167,7 @@ export function useAppointments() {
         const serviceName = currentApt?.service?.name || 'Serviço';
         
         await supabase.from('financial_entries').insert({
-          type: 'income',
+          type: 'receivable',
           description: `Pagamento: ${serviceName} - ${clientName}`,
           amount: newPaymentAmount,
           due_date: new Date().toISOString().split('T')[0],

@@ -107,6 +107,7 @@ export interface ServicePackage {
   category: string | null;
   client_id: string | null;
   template_id: string | null;
+  service_id: string | null;
   total_sessions: number;
   sessions_scheduled: number;
   interval_days: number | null;
@@ -129,6 +130,7 @@ export interface ServicePackage {
   template?: PackageTemplate;
   professional?: Professional;
   room?: Room;
+  service?: Service;
   appointments?: PackageAppointment[];
 }
 
@@ -165,7 +167,7 @@ export type PaymentStatus = 'pending' | 'partial' | 'paid';
 export interface Appointment {
   id: string;
   client_id: string;
-  service_id: string;
+  service_id: string | null;
   professional_id: string | null;
   room_id: string | null;
   start_time: string;

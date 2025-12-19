@@ -14,7 +14,8 @@ export function useServicePackages() {
           *,
           client:clients (*),
           professional:professionals (*),
-          room:rooms (*)
+          room:rooms (*),
+          service:services (*)
         `)
         .order('created_at', { ascending: false });
       

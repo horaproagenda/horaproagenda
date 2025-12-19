@@ -12,6 +12,7 @@ export interface ClientPackage {
   interval_days: number;
   professional_id: string | null;
   room_id: string | null;
+  service_id: string | null;
   is_active: boolean;
   auto_schedule: boolean;
   preferred_day_of_week: number | null;

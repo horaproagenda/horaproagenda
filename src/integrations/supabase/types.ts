@@ -23,6 +23,7 @@ export type Database = {
           end_time: string
           id: string
           notes: string | null
+          package_appointment_id: string | null
           payment_methods: string[] | null
           payment_status: string | null
           professional_id: string | null
@@ -41,6 +42,7 @@ export type Database = {
           end_time: string
           id?: string
           notes?: string | null
+          package_appointment_id?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           end_time?: string
           id?: string
           notes?: string | null
+          package_appointment_id?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
@@ -75,6 +78,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_package_appointment_id_fkey"
+            columns: ["package_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "package_appointments"
             referencedColumns: ["id"]
           },
           {

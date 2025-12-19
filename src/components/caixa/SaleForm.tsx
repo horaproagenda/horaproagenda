@@ -21,10 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { User, Package, ShoppingCart, Plus, Trash2, Tag, Check } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { usePackageTemplates } from '@/hooks/usePackageTemplates';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -53,18 +54,11 @@ interface SaleInfo {
   total: number;
 }
 
-interface PaymentEntry {
-  id: string;
-  date: string;
-  methodId: string;
-  amount: number;
-}
-
 export function SaleForm() {
   const queryClient = useQueryClient();
   const { clients } = useClients();
   const { activeServices } = useServices();
-  const { templates: packageTemplates } = usePackageTemplates();
+  const { activePackages } = useServicePackages();
   const { activeProducts } = useProducts();
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
@@ -86,8 +80,10 @@ export function SaleForm() {
   const [saleInfo, setSaleInfo] = useState<SaleInfo | null>(null);
   const [discount, setDiscount] = useState(0);
   
-  // Payment state
-  const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  // Payment state - simplified
+  const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const selectedClient = useMemo(() => 
@@ -103,6 +99,7 @@ export function SaleForm() {
     ).slice(0, 5);
   }, [clients, clientSearch]);
 
+  // Available items based on type - using ALL packages from service_packages
   const availableItems = useMemo(() => {
     switch (itemType) {
       case 'product':
@@ -120,16 +117,19 @@ export function SaleForm() {
           type: 'service' as const
         }));
       case 'package':
-        return packageTemplates.map(p => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          type: 'package' as const
-        }));
+        // Use ALL active packages from service_packages table (template packages without client)
+        return activePackages
+          .filter(p => !p.client_id) // Only template packages
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.total_price,
+            type: 'package' as const
+          }));
       default:
         return [];
     }
-  }, [itemType, activeProducts, activeServices, packageTemplates]);
+  }, [itemType, activeProducts, activeServices, activePackages]);
 
   const selectedItem = useMemo(() => 
     availableItems.find(i => i.id === selectedItemId),
@@ -140,6 +140,13 @@ export function SaleForm() {
     (selectedItem?.price || 0) * quantity,
     [selectedItem, quantity]
   );
+
+  // Update payment amount when sale total changes
+  useEffect(() => {
+    if (saleInfo) {
+      setPaymentAmount(saleInfo.total);
+    }
+  }, [saleInfo?.total]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -208,7 +215,7 @@ export function SaleForm() {
     const newItems = saleInfo.items.filter(i => i.id !== itemId);
     if (newItems.length === 0) {
       setSaleInfo(null);
-      setPayments([]);
+      setPaymentAmount(0);
     } else {
       const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
       setSaleInfo({
@@ -224,56 +231,34 @@ export function SaleForm() {
     if (!saleInfo) return;
     const newDiscount = Math.min(value, saleInfo.subtotal);
     setDiscount(newDiscount);
+    const newTotal = saleInfo.subtotal - newDiscount;
     setSaleInfo({
       ...saleInfo,
       discount: newDiscount,
-      total: saleInfo.subtotal - newDiscount,
+      total: newTotal,
     });
+    setPaymentAmount(newTotal);
   };
 
-  const addPaymentEntry = () => {
-    const defaultMethod = paymentMethods.find(m => m.is_active);
-    setPayments([
-      ...payments,
-      {
-        id: crypto.randomUUID(),
-        date: format(new Date(), 'yyyy-MM-dd'),
-        methodId: defaultMethod?.id || '',
-        amount: saleInfo ? saleInfo.total - payments.reduce((s, p) => s + p.amount, 0) : 0,
-      }
-    ]);
-  };
-
-  const updatePayment = (id: string, field: keyof PaymentEntry, value: string | number) => {
-    setPayments(payments.map(p => 
-      p.id === id ? { ...p, [field]: value } : p
-    ));
-  };
-
-  const removePayment = (id: string) => {
-    setPayments(payments.filter(p => p.id !== id));
-  };
-
-  const totalPayments = useMemo(() => 
-    payments.reduce((sum, p) => sum + p.amount, 0),
-    [payments]
-  );
-
-  const handleFinalizeSale = async (paymentId: string) => {
+  const handleFinalizeSale = async () => {
     if (!saleInfo || !selectedClientId) {
       toast.error('Selecione um cliente e adicione itens à venda');
       return;
     }
 
-    const payment = payments.find(p => p.id === paymentId);
-    if (!payment || payment.amount <= 0) {
+    if (!paymentMethodId) {
+      toast.error('Selecione uma forma de pagamento');
+      return;
+    }
+
+    if (paymentAmount <= 0) {
       toast.error('Valor de pagamento inválido');
       return;
     }
 
-    const paymentMethod = paymentMethods.find(m => m.id === payment.methodId);
+    const paymentMethod = paymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
-      toast.error('Selecione uma forma de pagamento');
+      toast.error('Forma de pagamento inválida');
       return;
     }
 
@@ -291,8 +276,8 @@ export function SaleForm() {
           original_amount: item.total,
           discount_amount: itemDiscount,
           final_amount: itemFinal,
-          payment_method_id: payment.methodId,
-          sale_date: format(new Date(payment.date), 'yyyy-MM-dd'),
+          payment_method_id: paymentMethodId,
+          sale_date: paymentDate,
           item_type: item.type,
           description: item.name,
           notes: `Venda ${saleInfo.code} - Qtd: ${item.quantity}`,
@@ -329,23 +314,23 @@ export function SaleForm() {
           }
         }
 
-        // Create service_packages for packages
+        // Create service_packages for packages (copy from template)
         if (item.type === 'package') {
-          const template = packageTemplates.find(t => t.id === item.originalId);
-          if (template) {
+          const templatePackage = activePackages.find(t => t.id === item.originalId);
+          if (templatePackage) {
             for (let i = 0; i < item.quantity; i++) {
               await supabase.from('service_packages').insert({
                 client_id: selectedClientId,
-                template_id: template.id,
-                name: template.name,
-                description: template.description,
-                total_price: template.price,
-                total_sessions: template.total_sessions,
-                duration: template.duration,
-                interval_days: template.interval_days,
-                professional_id: item.professionalId || template.professional_id,
-                room_id: template.room_id,
-                equipment: template.equipment,
+                template_id: templatePackage.template_id || templatePackage.id,
+                name: templatePackage.name,
+                description: templatePackage.description,
+                total_price: templatePackage.total_price,
+                total_sessions: templatePackage.total_sessions,
+                duration: templatePackage.duration,
+                interval_days: templatePackage.interval_days,
+                professional_id: item.professionalId || templatePackage.professional_id,
+                room_id: templatePackage.room_id,
+                equipment: templatePackage.equipment,
                 payment_methods: [paymentMethod.name],
                 is_active: true,
               });
@@ -354,15 +339,15 @@ export function SaleForm() {
         }
       }
 
-      // Create financial entry (RECEITA)
+      // Create financial entry (RECEITA - income)
       await supabase.from('financial_entries').insert({
         type: 'income',
         description: `Venda ${saleInfo.code} - ${selectedClient?.name}`,
-        amount: payment.amount,
-        due_date: payment.date,
-        paid_date: payment.date,
+        amount: paymentAmount,
+        due_date: paymentDate,
+        paid_date: paymentDate,
         status: 'paid',
-        payment_method_id: payment.methodId,
+        payment_method_id: paymentMethodId,
         client_id: selectedClientId,
         created_by: user?.id,
       });
@@ -374,28 +359,22 @@ export function SaleForm() {
           type: 'income',
           category: 'sale',
           description: `Venda ${saleInfo.code} - ${selectedClient?.name}`,
-          amount: payment.amount,
+          amount: paymentAmount,
           payment_method: paymentMethod.name,
           created_by: user?.id,
         });
       }
 
-      // Mark payment as processed
-      setPayments(payments.filter(p => p.id !== paymentId));
-
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['client_services'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
 
-      toast.success('Pagamento lançado no financeiro com sucesso!');
-
-      // If no more payments pending, reset sale
-      if (payments.length <= 1) {
-        resetSale();
-      }
+      toast.success('Venda lançada no financeiro com sucesso!');
+      resetSale();
     } catch (error: any) {
       toast.error('Erro ao processar venda: ' + error.message);
     } finally {
@@ -406,345 +385,299 @@ export function SaleForm() {
   const resetSale = () => {
     setSaleInfo(null);
     setDiscount(0);
-    setPayments([]);
     setSelectedClientId(null);
     setClientSearch('');
     setSelectedItemId('');
     setQuantity(1);
     setSelectedProfessionalId('');
+    setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
+    setPaymentMethodId('');
+    setPaymentAmount(0);
   };
 
   return (
-    <div className="space-y-4">
-      {/* Client Selection */}
+    <div className="space-y-6">
+      {/* Main Sales Form */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Cliente
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl flex items-center gap-2">
+            <ShoppingCart className="h-6 w-6" />
+            Nova Venda
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="relative" ref={clientInputRef}>
-            <Input
-              placeholder="Digite o nome do cliente..."
-              value={clientSearch}
-              onChange={(e) => {
-                setClientSearch(e.target.value);
-                setShowClientSuggestions(true);
-                if (!e.target.value) setSelectedClientId(null);
-              }}
-              onFocus={() => setShowClientSuggestions(true)}
-            />
-            {showClientSuggestions && filteredClients.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-auto">
-                {filteredClients.map((client) => (
-                  <button
-                    key={client.id}
-                    className="w-full px-3 py-2 text-left hover:bg-accent flex items-center justify-between"
-                    onClick={() => handleSelectClient(client)}
-                  >
-                    <span>{client.name}</span>
-                    <span className="text-xs text-muted-foreground">{client.phone}</span>
-                  </button>
-                ))}
-              </div>
+        <CardContent className="space-y-6">
+          {/* Cliente */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Cliente
+            </Label>
+            <div className="relative" ref={clientInputRef}>
+              <Input
+                placeholder="Digite o nome do cliente..."
+                value={clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setShowClientSuggestions(true);
+                  if (!e.target.value) setSelectedClientId(null);
+                }}
+                onFocus={() => setShowClientSuggestions(true)}
+                className="text-base"
+              />
+              {showClientSuggestions && filteredClients.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-auto">
+                  {filteredClients.map((client) => (
+                    <button
+                      key={client.id}
+                      className="w-full px-4 py-3 text-left hover:bg-accent flex items-center justify-between"
+                      onClick={() => handleSelectClient(client)}
+                    >
+                      <span className="font-medium">{client.name}</span>
+                      <span className="text-sm text-muted-foreground">{client.phone}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedClient && (
+              <Badge variant="secondary" className="mt-2">
+                <Check className="h-3 w-3 mr-1" />
+                {selectedClient.name} selecionado
+              </Badge>
             )}
           </div>
-          {selectedClient && (
-            <Badge variant="secondary" className="mt-2">
-              <Check className="h-3 w-3 mr-1" />
-              {selectedClient.name} selecionado
-            </Badge>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Item Selection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Produtos / Serviços / Pacotes
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              variant={itemType === 'product' ? 'default' : 'outline'}
-              onClick={() => { setItemType('product'); setSelectedItemId(''); }}
-              className="w-full"
-            >
-              Produtos
-            </Button>
-            <Button
-              variant={itemType === 'service' ? 'default' : 'outline'}
-              onClick={() => { setItemType('service'); setSelectedItemId(''); }}
-              className="w-full"
-            >
-              Serviços
-            </Button>
-            <Button
-              variant={itemType === 'package' ? 'default' : 'outline'}
-              onClick={() => { setItemType('package'); setSelectedItemId(''); }}
-              className="w-full"
-            >
-              Pacotes
-            </Button>
-          </div>
+          <Separator />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Item</Label>
-              <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableItems.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.name} - R$ {item.price.toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Produtos / Serviços / Pacotes */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Produtos / Serviços / Pacotes
+            </Label>
+            
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={itemType === 'product' ? 'default' : 'outline'}
+                onClick={() => { setItemType('product'); setSelectedItemId(''); }}
+                className="w-full"
+              >
+                Produtos
+              </Button>
+              <Button
+                variant={itemType === 'service' ? 'default' : 'outline'}
+                onClick={() => { setItemType('service'); setSelectedItemId(''); }}
+                className="w-full"
+              >
+                Serviços
+              </Button>
+              <Button
+                variant={itemType === 'package' ? 'default' : 'outline'}
+                onClick={() => { setItemType('package'); setSelectedItemId(''); }}
+                className="w-full"
+              >
+                Pacotes
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label>Profissional</Label>
-              <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {professionals.filter(p => p.is_active).map((prof) => (
-                    <SelectItem key={prof.id} value={prof.id}>
-                      {prof.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div className="md:col-span-2 space-y-2">
+                <Label>Item</Label>
+                <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableItems.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        Nenhum {itemType === 'product' ? 'produto' : itemType === 'service' ? 'serviço' : 'pacote'} disponível
+                      </SelectItem>
+                    ) : (
+                      availableItems.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name} - R$ {item.price.toFixed(2)}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Quantidade</Label>
-              <Input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label>Profissional</Label>
+                <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professionals.filter(p => p.is_active).map((prof) => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        {prof.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Valor Total</Label>
-              <div className="flex items-center gap-2">
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
                 <Input
-                  readOnly
-                  value={`R$ ${itemTotal.toFixed(2)}`}
-                  className="bg-muted"
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 />
-                <Button onClick={handleAddItem} disabled={!selectedItemId}>
-                  <Plus className="h-4 w-4" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor: R$ {itemTotal.toFixed(2)}</Label>
+                <Button onClick={handleAddItem} disabled={!selectedItemId} className="w-full">
+                  <Plus className="h-4 w-4 mr-1" />
                   Incluir
                 </Button>
               </div>
             </div>
           </div>
+
+          {/* Sale Items Table */}
+          {saleInfo && (
+            <>
+              <Separator />
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Informações da Venda</Label>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>Código: <strong className="text-foreground">{saleInfo.code}</strong></span>
+                    <span>Data: <strong className="text-foreground">{format(saleInfo.date, "dd/MM/yyyy HH:mm", { locale: ptBR })}</strong></span>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
+                        <TableHead className="text-right">Unitário</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {saleInfo.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {item.type === 'product' ? 'Produto' : 
+                               item.type === 'service' ? 'Serviço' : 'Pacote'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">R$ {item.unitPrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">R$ {item.total.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex justify-between items-center pt-2">
+                  <div className="flex items-center gap-4">
+                    <Label>Desconto:</Label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">R$</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={saleInfo.subtotal}
+                        value={discount}
+                        onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                        className="w-28"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Subtotal: R$ {saleInfo.subtotal.toFixed(2)}</div>
+                    <div className="text-2xl font-bold text-primary">Total: R$ {saleInfo.total.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Payment Form - Simplified */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Formas de Pagamento
+                </Label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Data da Baixa
+                    </Label>
+                    <Input
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Forma de Pagamento</Label>
+                    <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentMethods.filter(m => m.is_active).map((method) => (
+                          <SelectItem key={method.id} value={method.id}>
+                            {method.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Valor</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handleFinalizeSale}
+                    disabled={isProcessing || !paymentMethodId || paymentAmount <= 0}
+                    size="lg"
+                    className="h-10"
+                  >
+                    {isProcessing ? 'Processando...' : 'Lançar no Financeiro'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
-
-      {/* Sale Info */}
-      {saleInfo && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Informações da Venda
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Código:</span>{' '}
-                <span className="font-medium">{saleInfo.code}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Data:</span>{' '}
-                <span className="font-medium">
-                  {format(saleInfo.date, "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                </span>
-              </div>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Qtd</TableHead>
-                  <TableHead className="text-right">Unit.</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {saleInfo.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {item.type === 'product' ? 'Produto' : 
-                         item.type === 'service' ? 'Serviço' : 'Pacote'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">R$ {item.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">R$ {item.total.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleRemoveItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <div className="flex justify-end gap-8 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <Label>Desconto:</Label>
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">R$</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={saleInfo.subtotal}
-                    value={discount}
-                    onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
-                    className="w-24"
-                  />
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Subtotal: R$ {saleInfo.subtotal.toFixed(2)}</div>
-                <div className="text-xl font-bold">Total: R$ {saleInfo.total.toFixed(2)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Payment Methods */}
-      {saleInfo && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Tag className="h-5 w-5" />
-                Formas de Pagamento
-              </CardTitle>
-              <Button size="sm" variant="outline" onClick={addPaymentEntry}>
-                <Plus className="h-4 w-4 mr-1" />
-                Adicionar Pagamento
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {payments.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Clique em "Adicionar Pagamento" para registrar as formas de pagamento
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data da Baixa</TableHead>
-                    <TableHead>Forma de Pagamento</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        <Input
-                          type="date"
-                          value={payment.date}
-                          onChange={(e) => updatePayment(payment.id, 'date', e.target.value)}
-                          className="w-40"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={payment.methodId}
-                          onValueChange={(v) => updatePayment(payment.id, 'methodId', v)}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {paymentMethods.filter(m => m.is_active).map((method) => (
-                              <SelectItem key={method.id} value={method.id}>
-                                {method.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={payment.amount}
-                          onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                          className="w-32 text-right"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleFinalizeSale(payment.id)}
-                            disabled={isProcessing || !payment.methodId || payment.amount <= 0}
-                          >
-                            {isProcessing ? 'Processando...' : 'Lançar no Financeiro'}
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removePayment(payment.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            
-            {payments.length > 0 && (
-              <div className="flex justify-between items-center pt-4 border-t mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Total a pagar: R$ {saleInfo.total.toFixed(2)}
-                </div>
-                <div className="text-sm">
-                  Lançado: R$ {totalPayments.toFixed(2)} | 
-                  Restante: R$ {(saleInfo.total - totalPayments).toFixed(2)}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

@@ -7,7 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -34,15 +41,17 @@ import {
   ArrowDownCircle, 
   ArrowUpCircle,
   Clock,
-  X,
   Plus,
   Minus,
   Trash2,
   Lock,
   Receipt,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react';
-import { useCashRegisters, CashRegister } from '@/hooks/useCashRegisters';
-import { useCashTransactions, CashTransaction } from '@/hooks/useCashTransactions';
+import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useCashTransactions } from '@/hooks/useCashTransactions';
+import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -53,6 +62,7 @@ export function CashRegisterPanel() {
   const queryClient = useQueryClient();
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
+  const { pendingReceivables, entries } = useFinancialEntries();
 
   const [openingBalance, setOpeningBalance] = useState('');
   const [closingBalance, setClosingBalance] = useState('');
@@ -98,6 +108,21 @@ export function CashRegisterPanel() {
     };
   }, [transactions, currentOpenRegister]);
 
+  // Receivables by period (from financial_entries with status pending/overdue and type receivable)
+  const receivablesSummary = useMemo(() => {
+    const { start, end } = getDateRange(receivablesPeriod);
+    const periodReceivables = entries.filter(e => {
+      if (e.type !== 'receivable' || (e.status !== 'pending' && e.status !== 'overdue')) return false;
+      const date = parseISO(e.due_date);
+      return isWithinInterval(date, { start, end });
+    });
+    return {
+      entries: periodReceivables,
+      total: periodReceivables.reduce((sum, e) => sum + Number(e.amount), 0),
+      count: periodReceivables.length,
+    };
+  }, [entries, receivablesPeriod]);
+
   // Sales summary by period
   const salesSummary = useMemo(() => {
     const { start, end } = getDateRange(salesPeriod);
@@ -107,6 +132,7 @@ export function CashRegisterPanel() {
       return isWithinInterval(date, { start, end });
     });
     return {
+      transactions: periodSales,
       total: periodSales.reduce((sum, t) => sum + Number(t.amount), 0),
       count: periodSales.length,
     };
@@ -189,6 +215,7 @@ export function CashRegisterPanel() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       toast.success(`${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} registrado com sucesso!`);
       setTransactionType(null);
       setTransactionAmount('');
@@ -230,7 +257,7 @@ export function CashRegisterPanel() {
           size="sm"
           variant={value === period ? 'default' : 'outline'}
           onClick={() => onChange(period)}
-          className="text-xs px-2 py-1 h-7"
+          className="text-xs px-3 py-1"
         >
           {period === 'today' ? 'Hoje' :
            period === 'yesterday' ? 'Ontem' :
@@ -243,14 +270,14 @@ export function CashRegisterPanel() {
   if (!currentOpenRegister) {
     return (
       <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Caixa Fechado</h3>
-          <p className="text-muted-foreground mb-4">Abra o caixa para começar a registrar vendas</p>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Wallet className="h-20 w-20 text-muted-foreground mb-6" />
+          <h3 className="text-2xl font-semibold mb-2">Caixa Fechado</h3>
+          <p className="text-muted-foreground mb-6">Abra o caixa para começar a registrar vendas</p>
           
           <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="lg">
+              <Button size="lg" className="px-8">
                 <Plus className="h-5 w-5 mr-2" />
                 Abrir Caixa
               </Button>
@@ -291,48 +318,50 @@ export function CashRegisterPanel() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Cash Register Info */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Receipt className="h-6 w-6" />
               Caixa #{currentOpenRegister.id.slice(-6).toUpperCase()}
             </CardTitle>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              <Clock className="h-3 w-3 mr-1" />
+            <Badge variant="secondary" className="bg-green-100 text-green-800 px-3 py-1">
+              <Clock className="h-4 w-4 mr-1" />
               Aberto desde {format(parseISO(currentOpenRegister.opened_at), "HH:mm", { locale: ptBR })}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="text-xs text-muted-foreground">Saldo Inicial</div>
-              <div className="text-lg font-bold">R$ {currentOpenRegister.opening_balance.toFixed(2)}</div>
+        <CardContent className="space-y-4">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-lg bg-muted/50">
+              <div className="text-sm text-muted-foreground">Saldo Inicial</div>
+              <div className="text-xl font-bold">R$ {currentOpenRegister.opening_balance.toFixed(2)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950">
-              <div className="text-xs text-green-600">Entradas</div>
-              <div className="text-lg font-bold text-green-700">R$ {incomeTotal.toFixed(2)}</div>
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950">
+              <div className="text-sm text-green-600">Entradas</div>
+              <div className="text-xl font-bold text-green-700">R$ {incomeTotal.toFixed(2)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950">
-              <div className="text-xs text-red-600">Saídas</div>
-              <div className="text-lg font-bold text-red-700">R$ {expenseTotal.toFixed(2)}</div>
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950">
+              <div className="text-sm text-red-600">Saídas</div>
+              <div className="text-xl font-bold text-red-700">R$ {expenseTotal.toFixed(2)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-primary/10">
-              <div className="text-xs text-primary">Saldo Atual</div>
-              <div className="text-lg font-bold text-primary">R$ {balance.toFixed(2)}</div>
+            <div className="p-4 rounded-lg bg-primary/10">
+              <div className="text-sm text-primary">Saldo Atual</div>
+              <div className="text-xl font-bold text-primary">R$ {balance.toFixed(2)}</div>
             </div>
           </div>
 
-          <Separator className="my-4" />
+          <Separator />
 
-          <div className="flex flex-wrap gap-2">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3">
             <Dialog open={transactionType === 'suprimento'} onOpenChange={(o) => !o && setTransactionType(null)}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => setTransactionType('suprimento')}>
-                  <ArrowDownCircle className="h-4 w-4 mr-1 text-green-600" />
+                <Button variant="outline" onClick={() => setTransactionType('suprimento')}>
+                  <ArrowDownCircle className="h-4 w-4 mr-2 text-green-600" />
                   Suprimento
                 </Button>
               </DialogTrigger>
@@ -370,8 +399,8 @@ export function CashRegisterPanel() {
 
             <Dialog open={transactionType === 'sangria'} onOpenChange={(o) => !o && setTransactionType(null)}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => setTransactionType('sangria')}>
-                  <ArrowUpCircle className="h-4 w-4 mr-1 text-orange-600" />
+                <Button variant="outline" onClick={() => setTransactionType('sangria')}>
+                  <ArrowUpCircle className="h-4 w-4 mr-2 text-orange-600" />
                   Sangria
                 </Button>
               </DialogTrigger>
@@ -409,8 +438,8 @@ export function CashRegisterPanel() {
 
             <Dialog open={transactionType === 'despesa'} onOpenChange={(o) => !o && setTransactionType(null)}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => setTransactionType('despesa')}>
-                  <Minus className="h-4 w-4 mr-1 text-red-600" />
+                <Button variant="outline" onClick={() => setTransactionType('despesa')}>
+                  <Minus className="h-4 w-4 mr-2 text-red-600" />
                   Despesas
                 </Button>
               </DialogTrigger>
@@ -448,8 +477,8 @@ export function CashRegisterPanel() {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-destructive">
-                  <Trash2 className="h-4 w-4 mr-1" />
+                <Button variant="outline" className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Excluir Caixa
                 </Button>
               </AlertDialogTrigger>
@@ -471,8 +500,8 @@ export function CashRegisterPanel() {
 
             <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="default" size="sm">
-                  <Lock className="h-4 w-4 mr-1" />
+                <Button variant="default">
+                  <Lock className="h-4 w-4 mr-2" />
                   Fechar Caixa
                 </Button>
               </DialogTrigger>
@@ -522,46 +551,123 @@ export function CashRegisterPanel() {
         </CardContent>
       </Card>
 
-      {/* Summaries */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Receivables - placeholder for future integration */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Lembrete a Receber</CardTitle>
-              <PeriodTabs value={receivablesPeriod} onChange={setReceivablesPeriod} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-6 text-muted-foreground text-sm">
-              Funcionalidade em desenvolvimento
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sales Received */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Vendas Recebidas</CardTitle>
-              <PeriodTabs value={salesPeriod} onChange={setSalesPeriod} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-green-600">
-                  R$ {salesSummary.total.toFixed(2)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {salesSummary.count} venda(s)
-                </div>
+      {/* Lembrete a Receber - Full Width */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="text-xl flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+              Lembrete a Receber
+            </CardTitle>
+            <PeriodTabs value={receivablesPeriod} onChange={setReceivablesPeriod} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-4 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
+            <div>
+              <div className="text-3xl font-bold text-amber-600">
+                R$ {receivablesSummary.total.toFixed(2)}
               </div>
-              <DollarSign className="h-10 w-10 text-green-200" />
+              <div className="text-sm text-muted-foreground">
+                {receivablesSummary.count} lançamento(s) pendente(s)
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <DollarSign className="h-12 w-12 text-amber-200" />
+          </div>
+          
+          {receivablesSummary.entries.length > 0 ? (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receivablesSummary.entries.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">{entry.description}</TableCell>
+                      <TableCell>{entry.client?.name || '-'}</TableCell>
+                      <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="text-right font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}>
+                          {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum valor a receber para o período selecionado
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Vendas Recebidas - Full Width */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="text-xl flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+              Vendas Recebidas
+            </CardTitle>
+            <PeriodTabs value={salesPeriod} onChange={setSalesPeriod} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-4 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+            <div>
+              <div className="text-3xl font-bold text-green-600">
+                R$ {salesSummary.total.toFixed(2)}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {salesSummary.count} venda(s) recebida(s)
+              </div>
+            </div>
+            <DollarSign className="h-12 w-12 text-green-200" />
+          </div>
+          
+          {salesSummary.transactions.length > 0 ? (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Forma de Pagamento</TableHead>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {salesSummary.transactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="font-medium">{transaction.description || '-'}</TableCell>
+                      <TableCell>{transaction.payment_method || '-'}</TableCell>
+                      <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                      <TableCell className="text-right font-medium text-green-600">
+                        R$ {Number(transaction.amount).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma venda para o período selecionado
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

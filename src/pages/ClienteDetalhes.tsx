@@ -24,7 +24,7 @@ export default function ClienteDetalhes() {
   const [activeTab, setActiveTab] = useState('report');
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
-  const { client, appointments, documents, photos, quotes, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, stats } = useClientProfile(id || '');
+  const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, stats } = useClientProfile(id || '');
 
   if (isLoading) {
     return (
@@ -102,6 +102,7 @@ export default function ClienteDetalhes() {
             <ClientReportTab 
               appointments={appointments} 
               clientName={client.name} 
+              paymentHistory={paymentHistory}
               onEditAppointment={setEditingAppointment}
             />
           </TabsContent>

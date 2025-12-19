@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -18,12 +17,12 @@ export function ExtratoFinanceiro() {
   const { entries } = useFinancialEntries();
   const { banks } = useBanks();
 
-  // Calculate running balance per bank
+  // Calculate running balance per bank - FIXED: receivable is positive (income), payable is negative (expense)
   const entriesWithBalance = useMemo(() => {
     // Group entries by bank
     const bankBalances: Record<string, number> = {};
     
-    // Sort entries by date
+    // Sort entries by date (oldest first for balance calculation)
     const sortedEntries = [...entries].sort((a, b) => 
       new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     );
@@ -35,6 +34,8 @@ export function ExtratoFinanceiro() {
       }
 
       if (entry.status === 'paid') {
+        // FIXED: receivable (type: 'receivable') = income = POSITIVE
+        // payable (type: 'payable') = expense = NEGATIVE
         if (entry.type === 'receivable') {
           bankBalances[bankId] += Number(entry.amount);
         } else {
@@ -46,7 +47,7 @@ export function ExtratoFinanceiro() {
         ...entry,
         runningBalance: bankBalances[bankId],
       };
-    }).reverse(); // Most recent first
+    }).reverse(); // Most recent first for display
   }, [entries]);
 
   const getBankName = (bankId: string | null) => {

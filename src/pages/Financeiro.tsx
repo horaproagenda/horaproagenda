@@ -12,6 +12,7 @@ import {
   Landmark,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
+import { ContasAReceber } from '@/components/financeiro/ContasAReceber';
 import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
 import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
@@ -95,6 +96,10 @@ export default function Financeiro() {
               <ArrowDownCircle className="h-4 w-4" />
               Contas a Pagar
             </TabsTrigger>
+            <TabsTrigger value="a-receber" className="gap-2">
+              <ArrowUpCircle className="h-4 w-4" />
+              A Receber
+            </TabsTrigger>
             <TabsTrigger value="extrato" className="gap-2">
               <FileText className="h-4 w-4" />
               Extrato
@@ -115,6 +120,10 @@ export default function Financeiro() {
 
           <TabsContent value="contas-pagar">
             <ContasAPagar />
+          </TabsContent>
+
+          <TabsContent value="a-receber">
+            <ContasAReceber />
           </TabsContent>
 
           <TabsContent value="extrato">

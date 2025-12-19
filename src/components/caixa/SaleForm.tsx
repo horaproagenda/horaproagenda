@@ -59,7 +59,7 @@ export function SaleForm() {
   const { clients } = useClients();
   const { activeServices } = useServices();
   const { activePackages } = useServicePackages();
-  const { activeProducts } = useProducts();
+  const { productsForSale } = useProducts();
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
   const { currentOpenRegister } = useCashRegisters();
@@ -103,10 +103,10 @@ export function SaleForm() {
   const availableItems = useMemo(() => {
     switch (itemType) {
       case 'product':
-        return activeProducts.map(p => ({
+        return productsForSale.map(p => ({
           id: p.id,
           name: p.name,
-          price: p.unit_price,
+          price: p.sale_price || p.unit_price,
           type: 'product' as const
         }));
       case 'service':
@@ -129,7 +129,7 @@ export function SaleForm() {
       default:
         return [];
     }
-  }, [itemType, activeProducts, activeServices, activePackages]);
+  }, [itemType, productsForSale, activeServices, activePackages]);
 
   const selectedItem = useMemo(() => 
     availableItems.find(i => i.id === selectedItemId),
@@ -337,11 +337,21 @@ export function SaleForm() {
             }
           }
         }
+
+        // Decrement product stock for product sales
+        if (item.type === 'product') {
+          const product = productsForSale.find(p => p.id === item.originalId);
+          if (product) {
+            await supabase.from('products').update({
+              current_stock: Math.max(0, product.current_stock - item.quantity),
+            }).eq('id', item.originalId);
+          }
+        }
       }
 
-      // Create financial entry (RECEITA - income)
+      // Create financial entry (RECEITA - receivable = income)
       await supabase.from('financial_entries').insert({
-        type: 'income',
+        type: 'receivable',
         description: `Venda ${saleInfo.code} - ${selectedClient?.name}`,
         amount: paymentAmount,
         due_date: paymentDate,
@@ -372,6 +382,7 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['client_services'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
 
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();

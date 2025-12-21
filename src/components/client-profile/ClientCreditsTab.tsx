@@ -113,11 +113,21 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
 
   const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + (pkg.total_sessions - pkg.sessions_scheduled), 0);
   const availableServicesCount = clientServices.filter(s => s.status === 'available').length;
+  const awaitingScheduleCount = clientServices.filter(s => s.status === 'available' && !s.appointment_id).length;
   const selectedPackage = clientPackages.find(p => p.id === selectedPackageId);
 
-  const completedSessions = packageDetails?.filter(s => s.status === 'completed' || s.appointment?.status === 'completed').length || 0;
-  const scheduledSessions = packageDetails?.filter(s => s.status === 'scheduled' && s.appointment?.status !== 'completed').length || 0;
-  const pendingSessions = packageDetails?.filter(s => s.status === 'pending').length || 0;
+  // Calculate sessions based on actual appointment status for accuracy
+  const completedSessions = packageDetails?.filter(s => 
+    s.appointment?.status === 'completed'
+  ).length || 0;
+  
+  const scheduledSessions = packageDetails?.filter(s => 
+    s.appointment_id && s.appointment?.status !== 'completed' && s.appointment?.status !== 'cancelled' && s.appointment?.status !== 'missed'
+  ).length || 0;
+  
+  const pendingSessions = packageDetails?.filter(s => 
+    !s.appointment_id || s.status === 'pending'
+  ).length || 0;
 
   return (
     <div className="space-y-6">
@@ -242,6 +252,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
               {clientServices.map(service => {
                 const isAvailable = service.status === 'available';
                 const isUsed = service.status === 'used';
+                const isAwaitingSchedule = service.status === 'available' && !service.appointment_id;
                 
                 return (
                   <div
@@ -249,12 +260,19 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                     className={`p-4 rounded-lg border ${
                       isUsed 
                         ? 'bg-muted/50 border-muted' 
-                        : 'bg-green-500/5 border-green-500/20'
+                        : isAwaitingSchedule
+                          ? 'bg-orange-500/5 border-orange-500/20'
+                          : 'bg-green-500/5 border-green-500/20'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="font-medium">{service.service?.name || 'Serviço'}</h4>
-                      {isAvailable ? (
+                      {isAwaitingSchedule ? (
+                        <Badge className="bg-orange-500 text-white gap-1">
+                          <Clock className="h-3 w-3" />
+                          Aguardando Agendamento
+                        </Badge>
+                      ) : isAvailable ? (
                         <Badge className="bg-green-500 text-white gap-1">
                           <CheckCircle className="h-3 w-3" />
                           Disponível
@@ -347,19 +365,31 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
               <CardContent>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
                   {packageDetails?.map((session) => {
-                    const isCompleted = session.status === 'completed' || session.appointment?.status === 'completed';
-                    const isScheduled = session.status === 'scheduled' && session.appointment?.status !== 'completed';
+                    const isCompleted = session.appointment?.status === 'completed';
+                    const isCancelled = session.appointment?.status === 'cancelled';
+                    const isMissed = session.appointment?.status === 'missed';
+                    const isScheduled = session.appointment_id && !isCompleted && !isCancelled && !isMissed;
+                    const isPending = !session.appointment_id;
+                    
+                    const getStatusLabel = () => {
+                      if (isCompleted) return 'Realizada';
+                      if (isCancelled) return 'Cancelada';
+                      if (isMissed) return 'Faltou';
+                      if (isScheduled) return 'Agendada';
+                      return 'Aguardando Agendamento';
+                    };
+                    
+                    const getStatusColor = () => {
+                      if (isCompleted) return 'bg-green-500/5 border-green-500/20';
+                      if (isCancelled || isMissed) return 'bg-red-500/5 border-red-500/20';
+                      if (isScheduled) return 'bg-blue-500/5 border-blue-500/20';
+                      return 'bg-orange-500/5 border-orange-500/20';
+                    };
                     
                     return (
                       <div 
                         key={session.id} 
-                        className={`p-3 rounded-lg border flex items-center justify-between ${
-                          isCompleted 
-                            ? 'bg-green-500/5 border-green-500/20' 
-                            : isScheduled 
-                              ? 'bg-blue-500/5 border-blue-500/20'
-                              : 'bg-muted/50 border-muted'
-                        }`}
+                        className={`p-3 rounded-lg border flex items-center justify-between ${getStatusColor()}`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="font-medium text-sm">Sessão {session.session_number}</span>
@@ -371,9 +401,13 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                         </div>
                         <Badge 
                           variant={isCompleted ? "default" : isScheduled ? "secondary" : "outline"}
-                          className={isCompleted ? "bg-green-500" : ""}
+                          className={
+                            isCompleted ? "bg-green-500" : 
+                            isCancelled || isMissed ? "bg-red-500 text-white" : 
+                            isPending ? "bg-orange-500 text-white" : ""
+                          }
                         >
-                          {isCompleted ? 'Realizada' : isScheduled ? 'Agendada' : 'Pendente'}
+                          {getStatusLabel()}
                         </Badge>
                       </div>
                     );

@@ -239,16 +239,48 @@ export function useAppointments() {
           updated_by: user?.id,
         })
         .eq('id', id)
-        .select()
+        .select('*, package_appointment_id')
         .single();
 
       if (error) throw error;
+
+      // If status changed to completed and this appointment is linked to a package session,
+      // update the package_appointment status as well
+      if (updates.status === 'completed' && data.package_appointment_id) {
+        const { error: pkgError } = await supabase
+          .from('package_appointments')
+          .update({ status: 'completed' })
+          .eq('id', data.package_appointment_id);
+        
+        if (pkgError) {
+          console.error('Error updating package appointment status:', pkgError);
+        }
+      }
+
+      // If status changed to cancelled/missed and this is a package appointment,
+      // reset the package session so it can be rescheduled
+      if ((updates.status === 'cancelled' || updates.status === 'missed') && data.package_appointment_id) {
+        // Don't reset the session - just update its status to reflect the appointment status
+        const { error: pkgError } = await supabase
+          .from('package_appointments')
+          .update({ status: updates.status })
+          .eq('id', data.package_appointment_id);
+        
+        if (pkgError) {
+          console.error('Error updating package appointment status:', pkgError);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_details'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {

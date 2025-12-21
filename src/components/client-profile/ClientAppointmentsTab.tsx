@@ -15,6 +15,8 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   confirmed: { label: 'Confirmado', variant: 'default' },
   completed: { label: 'Realizado', variant: 'outline' },
   cancelled: { label: 'Cancelado', variant: 'destructive' },
+  missed: { label: 'Faltou', variant: 'destructive' },
+  rescheduled: { label: 'Reagendado', variant: 'secondary' },
 };
 
 export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabProps) {
@@ -48,9 +50,12 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium text-foreground">
-                      {appointment.service?.name || 'Serviço'}
+                      {appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço'}
                     </h4>
                     <Badge variant={status.variant}>{status.label}</Badge>
+                    {appointment.package_appointment && (
+                      <Badge variant="outline" className="text-xs">Pacote</Badge>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -74,10 +79,10 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
 
                 <div className="text-right">
                   <p className="font-semibold text-primary">
-                    R$ {appointment.service?.price?.toFixed(2) || '0.00'}
+                    R$ {(appointment.service?.price || appointment.package_appointment?.package?.total_price || 0).toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {appointment.service?.duration} min
+                    {appointment.service?.duration || appointment.package_appointment?.package?.duration || 0} min
                   </p>
                 </div>
               </div>

@@ -125,12 +125,15 @@ export function useClientProfile(clientId: string) {
         .select(`
           *,
           service:services(*),
-          package_appointment:package_appointments(*, package:service_packages(*))
+          package_appointment:package_appointments!appointments_package_appointment_id_fkey(*, package:service_packages(*))
         `)
         .eq('client_id', clientId)
         .order('start_time', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        throw error;
+      }
       console.log('Appointments fetched:', data?.length);
       return data as Appointment[];
     },

@@ -1,9 +1,10 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Wallet, History } from 'lucide-react';
+import { ShoppingCart, Wallet, History, AlertTriangle } from 'lucide-react';
 import { SaleForm } from '@/components/caixa/SaleForm';
 import { CashRegisterPanel } from '@/components/caixa/CashRegisterPanel';
 import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
+import { PackageConsistencyReport } from '@/components/caixa/PackageConsistencyReport';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 
 export default function Caixa() {
@@ -26,6 +27,10 @@ export default function Caixa() {
               <History className="h-4 w-4" />
               Histórico
             </TabsTrigger>
+            <TabsTrigger value="consistencia" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Consistência
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="vendas">
@@ -41,6 +46,10 @@ export default function Caixa() {
               closedRegisters={closedRegisters} 
               isLoading={isLoading} 
             />
+          </TabsContent>
+
+          <TabsContent value="consistencia">
+            <PackageConsistencyReport />
           </TabsContent>
         </Tabs>
       </div>

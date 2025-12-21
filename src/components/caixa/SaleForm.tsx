@@ -318,6 +318,9 @@ export function SaleForm() {
         if (item.type === 'package') {
           const templatePackage = activePackages.find(t => t.id === item.originalId);
           if (templatePackage) {
+            let packagesCreated = 0;
+            let sessionsCreated = 0;
+            
             for (let i = 0; i < item.quantity; i++) {
               // Create the client package
               const { data: clientPackage, error: pkgError } = await supabase
@@ -343,14 +346,26 @@ export function SaleForm() {
 
               // Create package_appointments (sessions) for this package
               if (!pkgError && clientPackage) {
+                packagesCreated++;
                 const sessions = Array.from({ length: templatePackage.total_sessions }, (_, idx) => ({
                   package_id: clientPackage.id,
                   session_number: idx + 1,
                   status: 'pending',
                 }));
 
-                await supabase.from('package_appointments').insert(sessions);
+                const { error: sessionsError } = await supabase.from('package_appointments').insert(sessions);
+                if (!sessionsError) {
+                  sessionsCreated += templatePackage.total_sessions;
+                }
+              } else if (pkgError) {
+                console.error('Erro ao criar pacote do cliente:', pkgError);
+                toast.error(`Erro ao criar pacote: ${pkgError.message}`);
               }
+            }
+            
+            // Show success feedback for package creation
+            if (packagesCreated > 0) {
+              toast.success(`✓ Pacote "${item.name}" criado para o cliente com ${sessionsCreated} sessões disponíveis`);
             }
           }
         }

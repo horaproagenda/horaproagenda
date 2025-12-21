@@ -319,21 +319,38 @@ export function SaleForm() {
           const templatePackage = activePackages.find(t => t.id === item.originalId);
           if (templatePackage) {
             for (let i = 0; i < item.quantity; i++) {
-              await supabase.from('service_packages').insert({
-                client_id: selectedClientId,
-                template_id: templatePackage.template_id || templatePackage.id,
-                name: templatePackage.name,
-                description: templatePackage.description,
-                total_price: templatePackage.total_price,
-                total_sessions: templatePackage.total_sessions,
-                duration: templatePackage.duration,
-                interval_days: templatePackage.interval_days,
-                professional_id: item.professionalId || templatePackage.professional_id,
-                room_id: templatePackage.room_id,
-                equipment: templatePackage.equipment,
-                payment_methods: [paymentMethod.name],
-                is_active: true,
-              });
+              // Create the client package
+              const { data: clientPackage, error: pkgError } = await supabase
+                .from('service_packages')
+                .insert({
+                  client_id: selectedClientId,
+                  template_id: templatePackage.template_id || templatePackage.id,
+                  name: templatePackage.name,
+                  description: templatePackage.description,
+                  total_price: templatePackage.total_price,
+                  total_sessions: templatePackage.total_sessions,
+                  duration: templatePackage.duration,
+                  interval_days: templatePackage.interval_days,
+                  professional_id: item.professionalId || templatePackage.professional_id,
+                  room_id: templatePackage.room_id,
+                  equipment: templatePackage.equipment,
+                  payment_methods: [paymentMethod.name],
+                  sessions_scheduled: 0,
+                  is_active: true,
+                })
+                .select()
+                .single();
+
+              // Create package_appointments (sessions) for this package
+              if (!pkgError && clientPackage) {
+                const sessions = Array.from({ length: templatePackage.total_sessions }, (_, idx) => ({
+                  package_id: clientPackage.id,
+                  session_number: idx + 1,
+                  status: 'pending',
+                }));
+
+                await supabase.from('package_appointments').insert(sessions);
+              }
             }
           }
         }
@@ -375,7 +392,7 @@ export function SaleForm() {
         });
       }
 
-      // Invalidate queries
+      // Invalidate all relevant queries for full sync
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
@@ -383,6 +400,15 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['client_services'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
 
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();

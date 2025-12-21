@@ -25,7 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -58,7 +58,7 @@ export function SaleForm() {
   const queryClient = useQueryClient();
   const { clients } = useClients();
   const { activeServices } = useServices();
-  const { activePackages } = useServicePackages();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { productsForSale } = useProducts();
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
@@ -117,19 +117,17 @@ export function SaleForm() {
           type: 'service' as const
         }));
       case 'package':
-        // Use ALL active packages from service_packages table (template packages without client)
-        return activePackages
-          .filter(p => !p.client_id) // Only template packages
-          .map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.total_price,
-            type: 'package' as const
-          }));
+        // Use package_templates for creating new packages
+        return packageTemplates.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          type: 'package' as const
+        }));
       default:
         return [];
     }
-  }, [itemType, productsForSale, activeServices, activePackages]);
+  }, [itemType, productsForSale, activeServices, packageTemplates]);
 
   const selectedItem = useMemo(() => 
     availableItems.find(i => i.id === selectedItemId),
@@ -314,23 +312,23 @@ export function SaleForm() {
           }
         }
 
-        // Create service_packages for packages (copy from template)
+        // Create service_packages for packages (copy from package_templates)
         if (item.type === 'package') {
-          const templatePackage = activePackages.find(t => t.id === item.originalId);
+          const templatePackage = packageTemplates.find(t => t.id === item.originalId);
           if (templatePackage) {
             let packagesCreated = 0;
             let sessionsCreated = 0;
             
             for (let i = 0; i < item.quantity; i++) {
-              // Create the client package
+              // Create the client package from template
               const { data: clientPackage, error: pkgError } = await supabase
                 .from('service_packages')
                 .insert({
                   client_id: selectedClientId,
-                  template_id: templatePackage.id, // templatePackage comes from package_templates
+                  template_id: templatePackage.id, // Now correctly references package_templates
                   name: templatePackage.name,
                   description: templatePackage.description,
-                  total_price: templatePackage.total_price,
+                  total_price: templatePackage.price,
                   total_sessions: templatePackage.total_sessions,
                   duration: templatePackage.duration,
                   interval_days: templatePackage.interval_days,

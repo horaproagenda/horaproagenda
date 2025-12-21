@@ -123,28 +123,45 @@ export function useAppointments() {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Get the current appointment data first
-      const { data: currentApt } = await supabase
+      const { data: currentApt, error: fetchError } = await supabase
         .from('appointments')
         .select('*, client:clients(name), service:services(name, price)')
         .eq('id', id)
         .single();
 
+      if (fetchError) throw fetchError;
+
       const previousAmountPaid = currentApt?.amount_paid || 0;
       const newPaymentAmount = payment.amount_paid - previousAmountPaid;
 
-      // Update the appointment payment
+      console.log('Payment update:', {
+        id,
+        previousAmountPaid,
+        newAmountPaid: payment.amount_paid,
+        paymentDiff: newPaymentAmount,
+        paymentStatus: payment.payment_status,
+        paymentMethods: payment.payment_methods
+      });
+
+      // Update the appointment payment - ensure amount_paid is correctly set
       const { data, error } = await supabase
         .from('appointments')
         .update({
           payment_methods: payment.payment_methods,
           amount_paid: payment.amount_paid,
           payment_status: payment.payment_status,
+          updated_by: user?.id,
         })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating appointment payment:', error);
+        throw error;
+      }
+
+      console.log('Appointment updated successfully:', data);
 
       // If there's client credit to add, update the client's credit balance
       if (payment.client_credit && payment.client_credit > 0 && payment.client_id) {
@@ -170,7 +187,7 @@ export function useAppointments() {
         const clientName = currentApt?.client?.name || 'Cliente';
         const serviceName = currentApt?.service?.name || 'Serviço';
         
-        await supabase.from('financial_entries').insert({
+        const { error: entryError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
           description: `Pagamento: ${serviceName} - ${clientName}`,
           amount: newPaymentAmount,
@@ -181,18 +198,25 @@ export function useAppointments() {
           appointment_id: id,
           created_by: user?.id,
         });
+
+        if (entryError) {
+          console.error('Error creating financial entry:', entryError);
+        }
       }
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Payment mutation success, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error) => {
+      console.error('Payment mutation error:', error);
       toast.error('Erro ao registrar pagamento: ' + error.message);
     },
   });

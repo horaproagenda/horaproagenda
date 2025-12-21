@@ -35,6 +35,15 @@ interface ParsedClient {
   notes?: string;
 }
 
+interface ParsedPackageTemplate {
+  name: string;
+  description?: string;
+  total_sessions: number;
+  price: number;
+  duration: number;
+  interval_days: number;
+}
+
 interface ImportResult {
   success: number;
   failed: number;
@@ -42,14 +51,14 @@ interface ImportResult {
 }
 
 interface BulkImportDialogProps {
-  type: 'services' | 'clients';
+  type: 'services' | 'clients' | 'package_templates';
   onImportComplete?: () => void;
 }
 
 export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [parsedData, setParsedData] = useState<ParsedService[] | ParsedClient[]>([]);
+  const [parsedData, setParsedData] = useState<ParsedService[] | ParsedClient[] | ParsedPackageTemplate[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +97,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
     return phone.toString().replace(/\D/g, '');
   };
 
-  const parseCSVContent = (content: string): ParsedService[] | ParsedClient[] => {
+  const parseCSVContent = (content: string): ParsedService[] | ParsedClient[] | ParsedPackageTemplate[] => {
     const lines = content.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) {
       throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
@@ -122,7 +131,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
           description: row.descricao || row.description || undefined,
           return_days: row.retorno || row.return_days ? parseInt(row.retorno || row.return_days) : undefined,
         } as ParsedService);
-      } else {
+      } else if (type === 'clients') {
         const name = row.nome || row.name || '';
         if (!name) continue;
         data.push({
@@ -133,13 +142,24 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
           birthdate: parseBirthdate(row.nascimento || row.birthdate || row['data_nascimento'] || ''),
           notes: row.observacoes || row.obs || row.notes || undefined,
         } as ParsedClient);
+      } else if (type === 'package_templates') {
+        const name = row.nome || row.name || '';
+        if (!name) continue;
+        data.push({
+          name: name,
+          description: row.descricao || row.description || undefined,
+          total_sessions: parseInt(row.sessoes || row.total_sessions || row.sessions || '10') || 10,
+          price: parseFloat((row.preco || row.price || row.valor || '0').replace(',', '.')) || 0,
+          duration: parseInt(row.duracao || row.duration || '60') || 60,
+          interval_days: parseInt(row.intervalo || row.interval_days || row.intervalo_dias || '7') || 7,
+        } as ParsedPackageTemplate);
       }
     }
 
     return data;
   };
 
-  const parseTextContent = (content: string): ParsedService[] | ParsedClient[] => {
+  const parseTextContent = (content: string): ParsedService[] | ParsedClient[] | ParsedPackageTemplate[] => {
     // Try to detect if it's a structured table
     const lines = content.trim().split('\n').filter(l => l.trim());
     const data: any[] = [];
@@ -169,13 +189,23 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
             duration: parseInt(row.duracao || row.duration || '60') || 60,
             description: row.descricao || row.description || undefined,
           } as ParsedService);
-        } else {
+        } else if (type === 'clients') {
           if (!row.nome && !row.name) continue;
           data.push({
             name: row.nome || row.name || '',
             phone: row.telefone || row.phone || '',
             email: row.email || undefined,
           } as ParsedClient);
+        } else if (type === 'package_templates') {
+          if (!row.nome && !row.name) continue;
+          data.push({
+            name: row.nome || row.name || '',
+            description: row.descricao || row.description || undefined,
+            total_sessions: parseInt(row.sessoes || row.total_sessions || '10') || 10,
+            price: parseFloat(row.preco || row.price || '0') || 0,
+            duration: parseInt(row.duracao || row.duration || '60') || 60,
+            interval_days: parseInt(row.intervalo || row.interval_days || '7') || 7,
+          } as ParsedPackageTemplate);
         }
       }
     } else {
@@ -188,11 +218,19 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
             price: 0,
             duration: 60,
           } as ParsedService);
-        } else {
+        } else if (type === 'clients') {
           data.push({
             name: line.trim(),
             phone: '',
           } as ParsedClient);
+        } else if (type === 'package_templates') {
+          data.push({
+            name: line.trim(),
+            total_sessions: 10,
+            price: 0,
+            duration: 60,
+            interval_days: 7,
+          } as ParsedPackageTemplate);
         }
       }
     }
@@ -266,7 +304,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
             failed++;
           }
         }
-      } else {
+      } else if (type === 'clients') {
         for (const client of parsedData as ParsedClient[]) {
           try {
             // Validate phone - at least 10 digits
@@ -299,12 +337,37 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
             failed++;
           }
         }
+      } else if (type === 'package_templates') {
+        for (const template of parsedData as ParsedPackageTemplate[]) {
+          try {
+            const { error } = await supabase.from('package_templates').insert({
+              name: template.name,
+              description: template.description || null,
+              total_sessions: template.total_sessions,
+              price: template.price,
+              duration: template.duration,
+              interval_days: template.interval_days,
+              is_active: true,
+            });
+
+            if (error) {
+              errors.push(`${template.name}: ${error.message}`);
+              failed++;
+            } else {
+              success++;
+            }
+          } catch (err: any) {
+            errors.push(`${template.name}: ${err.message}`);
+            failed++;
+          }
+        }
       }
 
       setResult({ success, failed, errors });
       
       if (success > 0) {
-        toast.success(`${success} ${type === 'services' ? 'serviços' : 'clientes'} importados com sucesso!`);
+        const typeLabel = type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote';
+        toast.success(`${success} ${typeLabel} importados com sucesso!`);
         onImportComplete?.();
       }
     } catch (error: any) {
@@ -330,7 +393,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Importar {type === 'services' ? 'Serviços' : 'Clientes'} em Massa</DialogTitle>
+          <DialogTitle>Importar {type === 'services' ? 'Serviços' : type === 'clients' ? 'Clientes' : 'Modelos de Pacote'} em Massa</DialogTitle>
           <DialogDescription>
             Faça upload de um arquivo CSV ou TXT com os dados para importar.
           </DialogDescription>
@@ -346,8 +409,10 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                 <br />
                 {type === 'services' ? (
                   <code className="text-xs">Nome,Categoria,Preço,Duração,Descrição,Retorno</code>
-                ) : (
+                ) : type === 'clients' ? (
                   <code className="text-xs">Nome,Telefone,Email,CPF,Nascimento,Observações</code>
+                ) : (
+                  <code className="text-xs">Nome,Sessões,Preço,Duração,Intervalo,Descrição</code>
                 )}
                 <br />
                 <span className="text-xs text-muted-foreground mt-1 block">
@@ -405,11 +470,18 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                             <th className="p-2 text-right">Preço</th>
                             <th className="p-2 text-right">Duração</th>
                           </>
-                        ) : (
+                        ) : type === 'clients' ? (
                           <>
                             <th className="p-2 text-left">Nome</th>
                             <th className="p-2 text-left">Telefone</th>
                             <th className="p-2 text-left">Email</th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="p-2 text-left">Nome</th>
+                            <th className="p-2 text-right">Sessões</th>
+                            <th className="p-2 text-right">Preço</th>
+                            <th className="p-2 text-right">Duração</th>
                           </>
                         )}
                       </tr>
@@ -424,11 +496,18 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                               <td className="p-2 text-right">R$ {(item as ParsedService).price.toFixed(2)}</td>
                               <td className="p-2 text-right">{(item as ParsedService).duration} min</td>
                             </>
-                          ) : (
+                          ) : type === 'clients' ? (
                             <>
                               <td className="p-2">{(item as ParsedClient).name}</td>
                               <td className="p-2">{(item as ParsedClient).phone}</td>
                               <td className="p-2">{(item as ParsedClient).email || '-'}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="p-2">{(item as ParsedPackageTemplate).name}</td>
+                              <td className="p-2 text-right">{(item as ParsedPackageTemplate).total_sessions}</td>
+                              <td className="p-2 text-right">R$ {(item as ParsedPackageTemplate).price.toFixed(2)}</td>
+                              <td className="p-2 text-right">{(item as ParsedPackageTemplate).duration} min</td>
                             </>
                           )}
                         </tr>
@@ -451,7 +530,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                   ) : (
                     <>
                       <Upload className="h-4 w-4 mr-2" />
-                      Importar {parsedData.length} {type === 'services' ? 'serviços' : 'clientes'}
+                      Importar {parsedData.length} {type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote'}
                     </>
                   )}
                 </Button>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Package, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { BulkImportDialog } from './BulkImportDialog';
 import {
   Form,
   FormControl,
@@ -166,10 +167,15 @@ export function ManagePackageTemplatesDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modelos de Pacote</DialogTitle>
-          <DialogDescription>
-            Cadastre modelos pré-definidos para facilitar a criação de pacotes.
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>Modelos de Pacote</DialogTitle>
+              <DialogDescription>
+                Cadastre modelos pré-definidos para facilitar a criação de pacotes.
+              </DialogDescription>
+            </div>
+            <BulkImportDialog type="package_templates" onImportComplete={refetch} />
+          </div>
         </DialogHeader>
 
         <div className="grid gap-6 lg:grid-cols-2">

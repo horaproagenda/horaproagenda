@@ -600,22 +600,31 @@ export function NewAppointmentDialog({
                       </div>
                       {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
-                        .map(pkg => {
+                        .map((pkg, index) => {
                           const remaining = pkg.total_sessions - pkg.sessions_scheduled;
+                          // Check if there are other packages with same name to show identifier
+                          const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
+                          const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
+                          
                           return (
                             <div
                               key={`client-pkg-${pkg.id}`}
                               className="p-2 hover:bg-primary/5 cursor-pointer border-b bg-primary/5"
                               onClick={() => {
                                 setSelectedService(pkg.id);
-                                setServiceSearch(pkg.name);
+                                setServiceSearch(`${pkg.name}${sameNameCount > 1 ? ` (${packageDate})` : ''}`);
                                 setServiceType('package');
                                 setUsingPaidServiceId(null);
                                 setShowServiceSuggestions(false);
                               }}
                             >
                               <div className="flex justify-between items-center">
-                                <span className="font-medium text-primary">{pkg.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-primary">{pkg.name}</span>
+                                  {sameNameCount > 1 && (
+                                    <span className="text-xs text-muted-foreground">({packageDate})</span>
+                                  )}
+                                </div>
                                 <Badge className="text-xs bg-green-500 text-white">
                                   <CheckCircle className="h-3 w-3 mr-1" />
                                   PAGO

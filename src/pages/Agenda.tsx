@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Search,
   Gift,
+  CreditCard,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -65,6 +66,9 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -87,6 +91,7 @@ const Agenda = () => {
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
+  const [showOnlyWithCredits, setShowOnlyWithCredits] = useState(false);
   const [viewType, setViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -146,7 +151,7 @@ const Agenda = () => {
     return [...prevMonthDays, ...days, ...nextMonthDays];
   }, [monthStart]);
 
-  // Filter appointments by search, professional and room
+  // Filter appointments by search, professional, room and credits
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
       // Search filter
@@ -170,9 +175,18 @@ const Agenda = () => {
           return false;
         }
       }
+      
+      // Filter by clients with available credits
+      if (showOnlyWithCredits && clientCreditsMap) {
+        const clientCredits = clientCreditsMap.get(apt.client_id);
+        if (!clientCredits || clientCredits.totalCredits <= 0) {
+          return false;
+        }
+      }
+      
       return true;
     });
-  }, [appointments, searchTerm, professionalFilter, roomFilter]);
+  }, [appointments, searchTerm, professionalFilter, roomFilter, showOnlyWithCredits, clientCreditsMap]);
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -282,6 +296,7 @@ const Agenda = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');
     setEquipmentFilter('all');
+    setShowOnlyWithCredits(false);
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -354,7 +369,7 @@ const Agenda = () => {
     });
   };
 
-  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all';
+  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all' || showOnlyWithCredits;
   const activeEquipment = equipment.filter(e => e.is_active);
 
   const activeProfessionals = professionals.filter(p => p.is_active);
@@ -552,7 +567,18 @@ const Agenda = () => {
                             <div className="flex items-center gap-1.5">
                               <p className="font-semibold">{apt.client?.name}</p>
                               {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                                <Gift className="h-3.5 w-3.5 text-green-300" />
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Gift className="h-3.5 w-3.5 text-green-300 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[200px]">
+                                      <p className="font-medium text-sm">Créditos disponíveis:</p>
+                                      <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
+                                      <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               ) : null}
                             </div>
                             <p className="text-sm opacity-90">{apt.service?.name}</p>
@@ -697,7 +723,18 @@ const Agenda = () => {
                         <div className="flex items-center gap-1">
                           <p className="font-medium truncate">{apt.client?.name}</p>
                           {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                            <Gift className="h-3 w-3 text-green-300 flex-shrink-0" />
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Gift className="h-3 w-3 text-green-300 flex-shrink-0 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[200px]">
+                                  <p className="font-medium text-sm">Créditos disponíveis:</p>
+                                  <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
+                                  <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           ) : null}
                         </div>
                         <p className="truncate opacity-80">{apt.service?.name}</p>
@@ -912,7 +949,18 @@ const Agenda = () => {
                           <div className="flex items-center gap-1">
                             <p className="font-medium truncate">{apt.client?.name}</p>
                             {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                              <Gift className="h-3 w-3 text-green-300 flex-shrink-0" />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Gift className="h-3 w-3 text-green-300 flex-shrink-0 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[200px]">
+                                    <p className="font-medium text-sm">Créditos disponíveis:</p>
+                                    <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
+                                    <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             ) : null}
                           </div>
                           <p className="truncate opacity-80">{apt.service?.name}</p>
@@ -1050,6 +1098,19 @@ const Agenda = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Filter: Show only clients with credits */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <Label className="text-xs font-medium flex items-center gap-1.5 cursor-pointer" htmlFor="credits-filter">
+                  <Gift className="h-3.5 w-3.5 text-green-500" />
+                  Clientes com créditos
+                </Label>
+                <Switch
+                  id="credits-filter"
+                  checked={showOnlyWithCredits}
+                  onCheckedChange={setShowOnlyWithCredits}
+                />
               </div>
 
               {hasActiveFilters && (

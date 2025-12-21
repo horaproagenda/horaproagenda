@@ -22,6 +22,7 @@ export interface ClientPackage {
   total_price: number;
   equipment: string[];
   description: string | null;
+  created_at: string;
 }
 
 export interface PackageSession {

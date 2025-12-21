@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target, RefreshCw } from 'lucide-react';
+import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientPackages } from '@/hooks/useClientPackages';
@@ -180,6 +180,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
               {clientPackages.map(pkg => {
                 const remaining = pkg.total_sessions - pkg.sessions_scheduled;
                 const isComplete = remaining === 0;
+                // Check if there are other packages with same name
+                const sameNameCount = clientPackages.filter(p => p.name === pkg.name).length;
+                const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '';
                 
                 return (
                   <div
@@ -191,7 +194,12 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{pkg.name}</h4>
+                      <div>
+                        <h4 className="font-medium">{pkg.name}</h4>
+                        {sameNameCount > 1 && (
+                          <span className="text-xs text-muted-foreground">Adquirido em {packageDate}</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         {isComplete ? (
                           <Badge variant="secondary" className="gap-1">

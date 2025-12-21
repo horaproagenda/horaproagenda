@@ -327,7 +327,7 @@ export function SaleForm() {
                 .from('service_packages')
                 .insert({
                   client_id: selectedClientId,
-                  template_id: templatePackage.template_id || templatePackage.id,
+                  template_id: templatePackage.id, // templatePackage comes from package_templates
                   name: templatePackage.name,
                   description: templatePackage.description,
                   total_price: templatePackage.total_price,

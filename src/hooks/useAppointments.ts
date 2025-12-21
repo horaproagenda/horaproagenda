@@ -260,20 +260,56 @@ export function useAppointments() {
       // If status changed to cancelled/missed and this is a package appointment,
       // reset the package session so it can be rescheduled
       if ((updates.status === 'cancelled' || updates.status === 'missed') && data.package_appointment_id) {
-        // Don't reset the session - just update its status to reflect the appointment status
+        // Get current package info
+        const { data: pkgAppointment } = await supabase
+          .from('package_appointments')
+          .select('package_id')
+          .eq('id', data.package_appointment_id)
+          .single();
+
+        // Reset the session to pending so it can be rescheduled
         const { error: pkgError } = await supabase
           .from('package_appointments')
-          .update({ status: updates.status })
+          .update({ 
+            status: 'pending',
+            appointment_id: null,
+            scheduled_date: null
+          })
           .eq('id', data.package_appointment_id);
         
         if (pkgError) {
-          console.error('Error updating package appointment status:', pkgError);
+          console.error('Error resetting package appointment:', pkgError);
         }
+
+        // Decrement the sessions_scheduled counter on the package
+        if (pkgAppointment?.package_id) {
+          const { data: pkg } = await supabase
+            .from('service_packages')
+            .select('sessions_scheduled')
+            .eq('id', pkgAppointment.package_id)
+            .single();
+
+          if (pkg && pkg.sessions_scheduled > 0) {
+            await supabase
+              .from('service_packages')
+              .update({ sessions_scheduled: pkg.sessions_scheduled - 1 })
+              .eq('id', pkgAppointment.package_id);
+          }
+        }
+
+        // Remove the link from the cancelled appointment
+        await supabase
+          .from('appointments')
+          .update({ package_appointment_id: null })
+          .eq('id', id);
+        
+        // Return with flag indicating session was released
+        return { ...data, sessionReleased: true, status: updates.status };
       }
 
-      return data;
+      return { ...data, sessionReleased: false };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
@@ -281,7 +317,13 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      toast.success('Agendamento atualizado!');
+      
+      if (data.sessionReleased) {
+        const statusLabel = data.status === 'cancelled' ? 'cancelado' : 'marcado como falta';
+        toast.success(`Agendamento ${statusLabel}! A sessão do pacote foi liberada para reagendamento.`);
+      } else {
+        toast.success('Agendamento atualizado!');
+      }
     },
     onError: (error) => {
       toast.error('Erro ao atualizar agendamento: ' + error.message);

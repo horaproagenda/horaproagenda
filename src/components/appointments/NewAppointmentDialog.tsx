@@ -164,7 +164,24 @@ export function NewAppointmentDialog({
     }
   }, [open, prefilledDate, prefilledTime]);
 
-  // Auto-select professional and room from service if available
+  // Reset paid service when client changes
+  useEffect(() => {
+    setUsingPaidServiceId(null);
+    setSelectedService('');
+    setServiceSearch('');
+    setServiceType('service');
+  }, [selectedClient]);
+
+  // Debug log for client packages
+  useEffect(() => {
+    if (selectedClient && clientPackages.length > 0) {
+      console.log('Client packages available for scheduling:', clientPackages.map(p => ({
+        id: p.id,
+        name: p.name,
+        remaining: p.total_sessions - p.sessions_scheduled
+      })));
+    }
+  }, [selectedClient, clientPackages]);
   useEffect(() => {
     if (selectedServiceData?.professional_id) {
       setSelectedProfessional(selectedServiceData.professional_id);

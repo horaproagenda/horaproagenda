@@ -44,12 +44,24 @@ export function useClientPackages(clientId: string | null) {
         .from('service_packages')
         .select('*')
         .eq('client_id', clientId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data as ClientPackage[];
+      if (error) {
+        console.error('Error fetching client packages:', error);
+        throw error;
+      }
+      
+      // Filter to only return packages with available sessions
+      const packagesWithSessions = (data as ClientPackage[]).filter(
+        pkg => pkg.total_sessions > pkg.sessions_scheduled
+      );
+      
+      console.log('Client packages fetched:', packagesWithSessions.length, 'for client:', clientId);
+      return packagesWithSessions;
     },
     enabled: !!clientId,
+    staleTime: 0, // Always refetch
   });
 
   const getPackageRemainingSessions = (packageId: string) => {

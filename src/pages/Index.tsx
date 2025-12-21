@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Users, Filter } from 'lucide-react';
@@ -11,6 +11,7 @@ import { ServicesDistribution } from '@/components/dashboard/ServicesDistributio
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useClientsCredits } from '@/hooks/useClientCredits';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +35,14 @@ const Index = () => {
   const todayAppointments = appointments.filter(
     apt => isSameDay(new Date(apt.start_time), today) && apt.status !== 'cancelled'
   );
+
+  // Get client IDs from today's appointments for credits check
+  const clientIds = useMemo(() => {
+    const ids = todayAppointments.map(apt => apt.client_id).filter(Boolean);
+    return [...new Set(ids)];
+  }, [todayAppointments]);
+
+  const { data: clientCreditsMap } = useClientsCredits(clientIds);
 
   return (
     <AppLayout 
@@ -120,7 +129,10 @@ const Index = () => {
                   style={{ animationDelay: `${index * 100}ms` }}
                   className="animate-slide-up"
                 >
-                  <AppointmentCard appointment={appointment} />
+                  <AppointmentCard 
+                    appointment={appointment} 
+                    clientCredits={clientCreditsMap?.get(appointment.client_id)}
+                  />
                 </div>
               ))}
             </div>

@@ -31,6 +31,7 @@ import {
   UserX,
   ChevronDown,
   Search,
+  Gift,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -71,6 +72,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
+import { useClientsCredits } from '@/hooks/useClientCredits';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -106,6 +108,14 @@ const Agenda = () => {
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
+
+  // Get unique client IDs from appointments and fetch their credits
+  const clientIds = useMemo(() => {
+    const ids = appointments.map(apt => apt.client_id).filter(Boolean);
+    return [...new Set(ids)];
+  }, [appointments]);
+  
+  const { data: clientCreditsMap } = useClientsCredits(clientIds);
 
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
@@ -539,7 +549,12 @@ const Agenda = () => {
                             <GripVertical className="h-4 w-4 opacity-60 flex-shrink-0 mt-0.5" />
                           )}
                           <div>
-                            <p className="font-semibold">{apt.client?.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-semibold">{apt.client?.name}</p>
+                              {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
+                                <Gift className="h-3.5 w-3.5 text-green-300" />
+                              ) : null}
+                            </div>
                             <p className="text-sm opacity-90">{apt.service?.name}</p>
                           </div>
                         </div>
@@ -679,7 +694,12 @@ const Agenda = () => {
                           handleAppointmentClick(apt);
                         }}
                       >
-                        <p className="font-medium truncate">{apt.client?.name}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium truncate">{apt.client?.name}</p>
+                          {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
+                            <Gift className="h-3 w-3 text-green-300 flex-shrink-0" />
+                          ) : null}
+                        </div>
                         <p className="truncate opacity-80">{apt.service?.name}</p>
                       </div>
                     )}
@@ -889,7 +909,12 @@ const Agenda = () => {
                             handleAppointmentClick(apt);
                           }}
                         >
-                          <p className="font-medium truncate">{apt.client?.name}</p>
+                          <div className="flex items-center gap-1">
+                            <p className="font-medium truncate">{apt.client?.name}</p>
+                            {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
+                              <Gift className="h-3 w-3 text-green-300 flex-shrink-0" />
+                            ) : null}
+                          </div>
                           <p className="truncate opacity-80">{apt.service?.name}</p>
                         </div>
                       )}

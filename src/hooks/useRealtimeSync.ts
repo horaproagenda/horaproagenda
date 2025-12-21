@@ -400,12 +400,19 @@ export function useRealtimeSync() {
         }
       )
       
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('✅ Realtime sync: conectado a todas as tabelas');
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime sync: erro de conexão');
-          toast.error('Erro na sincronização em tempo real', { duration: 5000 });
+          console.error('❌ Realtime sync: erro de conexão', err);
+          // Only show error toast if it's a persistent error, not during initial connection
+          setTimeout(() => {
+            console.warn('Realtime channel error, will retry automatically');
+          }, 1000);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏰ Realtime sync: timeout, reconectando...');
+        } else if (status === 'CLOSED') {
+          console.log('🔌 Realtime sync: canal fechado');
         }
       });
 

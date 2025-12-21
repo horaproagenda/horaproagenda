@@ -54,11 +54,30 @@ export function useCashTransactions(cashRegisterId?: string) {
         .single();
 
       if (error) throw error;
+
+      // Sync with financial_entries for tracking
+      const financialType = transaction.type === 'income' ? 'receivable' : 'payable';
+      const { error: entryError } = await supabase.from('financial_entries').insert({
+        type: financialType,
+        description: `Caixa: ${transaction.description || transaction.category}`,
+        amount: transaction.amount,
+        due_date: new Date().toISOString().split('T')[0],
+        paid_date: new Date().toISOString().split('T')[0],
+        status: 'paid',
+        bank_id: transaction.bank_id,
+        created_by: user?.id,
+      });
+
+      if (entryError) {
+        console.error('Error syncing with financial_entries:', entryError);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao registrar transação: ' + error.message);
@@ -77,6 +96,7 @@ export function useCashTransactions(cashRegisterId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao excluir transação: ' + error.message);

@@ -96,7 +96,7 @@ export function NewAppointmentDialog({
   const { clients } = useClients();
   const { services } = useServices();
   const { packages } = useServicePackages();
-  const { clientPackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
+  const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
   const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
@@ -174,14 +174,14 @@ export function NewAppointmentDialog({
 
   // Debug log for client packages
   useEffect(() => {
-    if (selectedClient && clientPackages.length > 0) {
-      console.log('Client packages available for scheduling:', clientPackages.map(p => ({
+    if (selectedClient && availablePackages.length > 0) {
+      console.log('Client packages available for scheduling:', availablePackages.map(p => ({
         id: p.id,
         name: p.name,
         remaining: p.total_sessions - p.sessions_scheduled
       })));
     }
-  }, [selectedClient, clientPackages]);
+  }, [selectedClient, availablePackages]);
   useEffect(() => {
     if (selectedServiceData?.professional_id) {
       setSelectedProfessional(selectedServiceData.professional_id);
@@ -592,13 +592,13 @@ export function NewAppointmentDialog({
                   )}
 
                   {/* Client's paid packages */}
-                  {selectedClient && clientPackages.length > 0 && (
+                  {selectedClient && availablePackages.length > 0 && (
                     <div className="border-b-2 border-primary/20">
                       <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Package className="h-3 w-3" />
                         Pacotes Pagos do Cliente
                       </div>
-                      {clientPackages
+                      {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                         .map(pkg => {
                           const remaining = pkg.total_sessions - pkg.sessions_scheduled;

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
@@ -17,6 +18,71 @@ interface PaymentHistoryItem {
 export function useClientProfile(clientId: string) {
   const queryClient = useQueryClient();
 
+  // Real-time subscription for appointments and sales updates
+  useEffect(() => {
+    if (!clientId) return;
+
+    // Subscribe to appointments changes
+    const appointmentsChannel = supabase
+      .channel(`client-appointments-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          // Invalidate and refetch appointments when changes occur
+          queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to single_sales changes
+    const salesChannel = supabase
+      .channel(`client-sales-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'single_sales',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          // Invalidate and refetch sales when changes occur
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to package_appointments changes for package sessions
+    const packageAppointmentsChannel = supabase
+      .channel(`client-package-appointments-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'package_appointments',
+        },
+        () => {
+          // Refetch appointments to update package session status
+          queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+      supabase.removeChannel(salesChannel);
+      supabase.removeChannel(packageAppointmentsChannel);
+    };
+  }, [clientId, queryClient]);
+
   // Fetch client details with assigned professional
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['client', clientId],
@@ -34,6 +100,7 @@ export function useClientProfile(clientId: string) {
       return data as Client | null;
     },
     enabled: !!clientId,
+    staleTime: 0, // Always refetch for latest data
   });
 
   // Fetch client appointments with full details
@@ -54,9 +121,10 @@ export function useClientProfile(clientId: string) {
       return data as Appointment[];
     },
     enabled: !!clientId,
+    staleTime: 0, // Always refetch for latest data
   });
 
-  // Fetch client sales from single_sales table
+  // Fetch client sales from single_sales table (synced with caixa)
   const { data: clientSales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['client-sales', clientId],
     queryFn: async () => {
@@ -66,7 +134,8 @@ export function useClientProfile(clientId: string) {
           *,
           service:services(name),
           package:service_packages(name),
-          payment_method:payment_methods(name)
+          payment_method:payment_methods(name),
+          bank:banks(name)
         `)
         .eq('client_id', clientId)
         .order('sale_date', { ascending: false });
@@ -75,6 +144,7 @@ export function useClientProfile(clientId: string) {
       return data || [];
     },
     enabled: !!clientId,
+    staleTime: 0, // Always refetch for latest data
   });
 
   // Fetch client documents

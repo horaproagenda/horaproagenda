@@ -29,6 +29,8 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useCardBrands } from '@/hooks/useCardBrands';
+import { useBanks } from '@/hooks/useBanks';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -61,7 +63,9 @@ export function SaleForm() {
   const { templates: packageTemplates } = usePackageTemplates();
   const { productsForSale } = useProducts();
   const { professionals } = useProfessionals();
-  const { paymentMethods } = usePaymentMethods();
+  const { activePaymentMethods } = usePaymentMethods();
+  const { activeCardBrands } = useCardBrands();
+  const { activeBanks } = useBanks();
   const { currentOpenRegister } = useCashRegisters();
 
   // Client selection
@@ -80,11 +84,101 @@ export function SaleForm() {
   const [saleInfo, setSaleInfo] = useState<SaleInfo | null>(null);
   const [discount, setDiscount] = useState(0);
   
-  // Payment state - simplified
+  // Payment state - with card brand support
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [cardBrandId, setCardBrandId] = useState<string>('');
+  const [installments, setInstallments] = useState<number>(1);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [cardFeeAmount, setCardFeeAmount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Get selected payment method details
+  const selectedPaymentMethod = useMemo(
+    () => activePaymentMethods.find(m => m.id === paymentMethodId),
+    [activePaymentMethods, paymentMethodId]
+  );
+
+  // Determine if it's a card payment
+  const isCardPayment = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
+  }, [selectedPaymentMethod]);
+
+  const isCreditCard = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('crédito');
+  }, [selectedPaymentMethod]);
+
+  const isDebitCard = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('débito');
+  }, [selectedPaymentMethod]);
+
+  // Get applicable card brands
+  const applicableCardBrands = useMemo(() => {
+    if (isCreditCard) {
+      return activeCardBrands.filter(b => b.type === 'credit' || b.type === 'both');
+    }
+    if (isDebitCard) {
+      return activeCardBrands.filter(b => b.type === 'debit' || b.type === 'both');
+    }
+    return activeCardBrands;
+  }, [activeCardBrands, isCreditCard, isDebitCard]);
+
+  // Get selected card brand
+  const selectedCardBrand = useMemo(
+    () => activeCardBrands.find(b => b.id === cardBrandId),
+    [activeCardBrands, cardBrandId]
+  );
+
+  // Calculate fee based on card brand and installments
+  const feeInfo = useMemo(() => {
+    if (!selectedCardBrand || !paymentAmount) {
+      return { feePercentage: 0, feeAmount: 0, netAmount: paymentAmount };
+    }
+
+    const fees = selectedCardBrand.fees || [];
+    let feePercentage = 0;
+
+    const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
+    const matchingFee = sortedFees.find(f => f.installment_number <= installments);
+    
+    if (matchingFee) {
+      feePercentage = matchingFee.fee_percentage;
+    }
+
+    const feeAmount = (paymentAmount * feePercentage) / 100;
+    const netAmount = selectedCardBrand.fee_behavior === 'deduct_from_provider'
+      ? paymentAmount - feeAmount
+      : paymentAmount;
+
+    return { feePercentage, feeAmount, netAmount };
+  }, [selectedCardBrand, paymentAmount, installments]);
+
+  // Update card fee when fee info changes
+  useEffect(() => {
+    setCardFeeAmount(feeInfo.feeAmount);
+  }, [feeInfo]);
+
+  // Reset card options when payment method changes
+  useEffect(() => {
+    if (!isCardPayment) {
+      setCardBrandId('');
+      setInstallments(1);
+    }
+    if (isDebitCard) {
+      setInstallments(1);
+    }
+  }, [isCardPayment, isDebitCard]);
+
+  // Max installments
+  const maxInstallments = useMemo(() => {
+    if (!isCardPayment) return 1;
+    if (isDebitCard) return 1;
+    return selectedPaymentMethod?.max_installments || 12;
+  }, [selectedPaymentMethod, isCardPayment, isDebitCard]);
 
   const selectedClient = useMemo(() => 
     clients.find(c => c.id === selectedClientId),
@@ -254,7 +348,7 @@ export function SaleForm() {
       return;
     }
 
-    const paymentMethod = paymentMethods.find(m => m.id === paymentMethodId);
+    const paymentMethod = activePaymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
       toast.error('Forma de pagamento inválida');
       return;
@@ -667,14 +761,14 @@ export function SaleForm() {
 
               <Separator />
 
-              {/* Payment Form - Simplified */}
+              {/* Payment Form - With Card Brand Support */}
               <div className="space-y-4">
                 <Label className="text-base font-semibold flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
                   Formas de Pagamento
                 </Label>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
@@ -694,7 +788,7 @@ export function SaleForm() {
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {paymentMethods.filter(m => m.is_active).map((method) => (
+                        {activePaymentMethods.map((method) => (
                           <SelectItem key={method.id} value={method.id}>
                             {method.name}
                           </SelectItem>
@@ -702,7 +796,67 @@ export function SaleForm() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
+                  {/* Card Brand Selector - Only show for card payments */}
+                  {isCardPayment && (
+                    <div className="space-y-2">
+                      <Label>Bandeira do Cartão</Label>
+                      <Select value={cardBrandId} onValueChange={setCardBrandId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a bandeira..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {applicableCardBrands.map((brand) => (
+                            <SelectItem key={brand.id} value={brand.id}>
+                              {brand.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Installments - Only for credit card */}
+                  {isCreditCard && maxInstallments > 1 && (
+                    <div className="space-y-2">
+                      <Label>Parcelas</Label>
+                      <Select 
+                        value={installments.toString()} 
+                        onValueChange={(v) => setInstallments(parseInt(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
+                            <SelectItem key={n} value={n.toString()}>
+                              {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Card Fee Information */}
+                {selectedCardBrand && feeInfo.feePercentage > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-muted/50 border">
+                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                      Taxa {selectedCardBrand.name}: {feeInfo.feePercentage.toFixed(2)}%
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Valor da taxa: R$ {feeInfo.feeAmount.toFixed(2)}
+                    </span>
+                    {selectedCardBrand.fee_behavior === 'deduct_from_provider' && (
+                      <span className="text-muted-foreground">
+                        • Valor líquido: <strong className="text-foreground">R$ {feeInfo.netAmount.toFixed(2)}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Valor</Label>
                     <Input

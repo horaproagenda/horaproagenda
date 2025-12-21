@@ -54,6 +54,8 @@ export function ContasAPagar() {
     is_recurring: false,
     recurring_frequency: 'monthly',
     installments: '1',
+    recurring_count: '1', // Quantidade de recorrências
+    split_value: false, // Se true, divide o valor pela quantidade de recorrências
   });
 
   const resetForm = () => {
@@ -68,6 +70,8 @@ export function ContasAPagar() {
       is_recurring: false,
       recurring_frequency: 'monthly',
       installments: '1',
+      recurring_count: '1',
+      split_value: false,
     });
     setEditingEntry(null);
   };
@@ -85,17 +89,46 @@ export function ContasAPagar() {
       is_recurring: entry.is_recurring || false,
       recurring_frequency: entry.recurring_frequency || 'monthly',
       installments: entry.installments?.toString() || '1',
+      recurring_count: entry.recurring_count?.toString() || '1',
+      split_value: false,
     });
     setDialogOpen(true);
   };
 
+  // Helper function to calculate next due date based on frequency
+  const getNextDueDate = (baseDate: string, frequency: string, index: number): string => {
+    const date = parseISO(baseDate);
+    switch (frequency) {
+      case 'weekly':
+        return format(new Date(date.setDate(date.getDate() + (7 * index))), 'yyyy-MM-dd');
+      case 'biweekly':
+        return format(new Date(date.setDate(date.getDate() + (14 * index))), 'yyyy-MM-dd');
+      case 'monthly':
+        return format(new Date(date.setMonth(date.getMonth() + index)), 'yyyy-MM-dd');
+      case 'quarterly':
+        return format(new Date(date.setMonth(date.getMonth() + (3 * index))), 'yyyy-MM-dd');
+      case 'annual':
+        return format(new Date(date.setFullYear(date.getFullYear() + index)), 'yyyy-MM-dd');
+      default:
+        return format(new Date(date.setMonth(date.getMonth() + index)), 'yyyy-MM-dd');
+    }
+  };
+
   const handleSubmit = async () => {
+    const totalAmount = parseFloat(form.amount) || 0;
+    const recurringCount = parseInt(form.recurring_count) || 1;
+    
+    // Calculate amount per entry (divided or integral)
+    const amountPerEntry = form.is_recurring && form.split_value 
+      ? totalAmount / recurringCount 
+      : totalAmount;
+
     if (editingEntry) {
       await updateEntry.mutateAsync({ 
         id: editingEntry.id, 
         type: 'payable',
         description: form.description,
-        amount: parseFloat(form.amount) || 0,
+        amount: amountPerEntry,
         due_date: form.due_date,
         paid_date: form.paid_date || null,
         category_id: form.category_id || null,
@@ -103,31 +136,60 @@ export function ContasAPagar() {
         bank_id: form.bank_id || null,
         is_recurring: form.is_recurring,
         recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
+        recurring_count: form.is_recurring ? recurringCount : null,
         installments: parseInt(form.installments) || 1,
         status: form.paid_date ? 'paid' as const : 'pending' as const,
       });
     } else {
-      await createEntry.mutateAsync({
-        type: 'payable',
-        description: form.description,
-        amount: parseFloat(form.amount) || 0,
-        due_date: form.due_date,
-        paid_date: form.paid_date || null,
-        category_id: form.category_id || null,
-        payment_method_id: form.payment_method_id || null,
-        bank_id: form.bank_id || null,
-        client_id: null,
-        professional_id: null,
-        notes: null,
-        is_recurring: form.is_recurring,
-        recurring_day: null,
-        recurring_count: null,
-        recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
-        appointment_id: null,
-        installments: parseInt(form.installments) || 1,
-        paid_by: null,
-        status: form.paid_date ? 'paid' : 'pending',
-      });
+      // Create recurring entries if enabled
+      if (form.is_recurring && recurringCount > 1) {
+        for (let i = 0; i < recurringCount; i++) {
+          const dueDate = getNextDueDate(form.due_date, form.recurring_frequency, i);
+          await createEntry.mutateAsync({
+            type: 'payable',
+            description: `${form.description} (${i + 1}/${recurringCount})`,
+            amount: amountPerEntry,
+            due_date: dueDate,
+            paid_date: null,
+            category_id: form.category_id || null,
+            payment_method_id: form.payment_method_id || null,
+            bank_id: form.bank_id || null,
+            client_id: null,
+            professional_id: null,
+            notes: null,
+            is_recurring: true,
+            recurring_day: null,
+            recurring_count: recurringCount,
+            recurring_frequency: form.recurring_frequency,
+            appointment_id: null,
+            installments: parseInt(form.installments) || 1,
+            paid_by: null,
+            status: 'pending',
+          });
+        }
+      } else {
+        await createEntry.mutateAsync({
+          type: 'payable',
+          description: form.description,
+          amount: amountPerEntry,
+          due_date: form.due_date,
+          paid_date: form.paid_date || null,
+          category_id: form.category_id || null,
+          payment_method_id: form.payment_method_id || null,
+          bank_id: form.bank_id || null,
+          client_id: null,
+          professional_id: null,
+          notes: null,
+          is_recurring: form.is_recurring,
+          recurring_day: null,
+          recurring_count: form.is_recurring ? recurringCount : null,
+          recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
+          appointment_id: null,
+          installments: parseInt(form.installments) || 1,
+          paid_by: null,
+          status: form.paid_date ? 'paid' : 'pending',
+        });
+      }
     }
     setDialogOpen(false);
     resetForm();
@@ -245,20 +307,58 @@ export function ContasAPagar() {
                   <Label>Conta recorrente</Label>
                 </div>
                 {form.is_recurring && (
-                  <div>
-                    <Label>Frequência</Label>
-                    <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="biweekly">Quinzenal</SelectItem>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="quarterly">Trimestral</SelectItem>
-                        <SelectItem value="annual">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-4 p-3 border rounded-lg bg-muted/30">
+                    <div>
+                      <Label>Frequência</Label>
+                      <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="biweekly">Quinzenal</SelectItem>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                          <SelectItem value="quarterly">Trimestral</SelectItem>
+                          <SelectItem value="annual">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Quantidade de Recorrências</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={form.recurring_count}
+                        onChange={(e) => setForm({ ...form, recurring_count: e.target.value })}
+                        placeholder="Quantas vezes esse pagamento será feito"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={form.split_value}
+                        onCheckedChange={(checked) => setForm({ ...form, split_value: checked })}
+                      />
+                      <Label className="text-sm">
+                        Dividir valor total pelas {form.recurring_count || 1} recorrências
+                      </Label>
+                    </div>
+                    {parseInt(form.recurring_count) > 1 && parseFloat(form.amount) > 0 && (
+                      <div className="text-sm text-muted-foreground p-2 bg-background rounded border">
+                        {form.split_value ? (
+                          <span>
+                            Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
+                            <br />
+                            Total: R$ {parseFloat(form.amount).toFixed(2)} em {form.recurring_count}x
+                          </span>
+                        ) : (
+                          <span>
+                            Valor por parcela: <strong>R$ {parseFloat(form.amount).toFixed(2)}</strong> (integral)
+                            <br />
+                            Total: R$ {(parseFloat(form.amount) * parseInt(form.recurring_count)).toFixed(2)} em {form.recurring_count}x
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">

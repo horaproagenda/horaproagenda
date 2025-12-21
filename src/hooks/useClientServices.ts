@@ -90,6 +90,16 @@ export function useClientServices(clientId: string | null) {
 
   const markServiceAsUsed = useMutation({
     mutationFn: async ({ serviceId, appointmentId }: { serviceId: string; appointmentId: string }) => {
+      // Get the client service details first
+      const { data: clientService, error: fetchError } = await supabase
+        .from('client_services')
+        .select('*, service:services(id, name, price)')
+        .eq('id', serviceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the client service to mark as used
       const { data, error } = await supabase
         .from('client_services')
         .update({
@@ -102,11 +112,27 @@ export function useClientServices(clientId: string | null) {
         .single();
 
       if (error) throw error;
+
+      // Update the appointment to reflect the paid status and amount
+      const amountPaid = clientService.amount_paid || clientService.service?.price || 0;
+      const { error: aptError } = await supabase
+        .from('appointments')
+        .update({
+          amount_paid: amountPaid,
+          payment_status: 'paid',
+        })
+        .eq('id', appointmentId);
+
+      if (aptError) {
+        console.error('Error updating appointment payment status:', aptError);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client_services'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
   });
 

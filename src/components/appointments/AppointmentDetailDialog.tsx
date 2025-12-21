@@ -207,14 +207,22 @@ export function AppointmentDetailDialog({
   const isPackageAppointment = !!appointment.package_appointment;
   const packageData = appointment.package_appointment?.package;
   
+  // Check if this appointment used a pre-paid service (from caixa sale)
+  const isPrepaidService = appointment.payment_status === 'paid' && !isPackageAppointment;
+  
   // For package appointments, consider them as "paid" since the package was already purchased
-  const effectivePaymentStatus = isPackageAppointment ? 'paid' : (appointment.payment_status || 'pending');
+  const effectivePaymentStatus = isPackageAppointment || isPrepaidService ? 'paid' : (appointment.payment_status || 'pending');
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
   
   // For package appointments, the price is from the package, not the service
   const totalPrice = isPackageAppointment ? 0 : (appointment.service?.price || 0);
-  const amountPaid = isPackageAppointment ? 0 : (appointment.amount_paid || 0);
+  // For prepaid services, if amount_paid is 0 but status is paid, use the service price
+  const amountPaid = isPackageAppointment ? 0 : (
+    isPrepaidService && appointment.amount_paid === 0 
+      ? totalPrice 
+      : (appointment.amount_paid || 0)
+  );
   const remainingAmount = totalPrice - amountPaid;
 
   const addPaymentMethod = () => {
@@ -472,8 +480,18 @@ export function AppointmentDetailDialog({
                 </div>
               </div>
 
+              {/* Prepaid Service Indicator */}
+              {isPrepaidService && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+                  <Gift className="h-4 w-4 text-success flex-shrink-0" />
+                  <p className="text-sm text-success">
+                    Serviço pré-pago via caixa
+                  </p>
+                </div>
+              )}
+
               {/* Outstanding Balance Warning */}
-              {remainingAmount > 0 && !showPaymentForm && (
+              {remainingAmount > 0 && !showPaymentForm && !isPrepaidService && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
                   <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
                   <p className="text-sm text-warning">

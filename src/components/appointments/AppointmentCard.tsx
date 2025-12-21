@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2, Gift } from 'lucide-react';
 import { format } from 'date-fns';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
@@ -25,11 +25,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { ClientCredits } from '@/hooks/useClientCredits';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   compact?: boolean;
   professionals?: Professional[];
+  clientCredits?: ClientCredits | null;
   onEdit?: (appointment: Appointment) => void;
   onDelete?: () => void;
 }
@@ -59,7 +62,7 @@ const paymentStatusConfig = {
   paid: { label: 'Pago', icon: CheckCircle, className: 'text-success' },
 };
 
-export function AppointmentCard({ appointment, compact = false, professionals = [], onEdit, onDelete }: AppointmentCardProps) {
+export function AppointmentCard({ appointment, compact = false, professionals = [], clientCredits, onEdit, onDelete }: AppointmentCardProps) {
   const status = statusConfig[appointment.status as keyof typeof statusConfig] || statusConfig.scheduled;
   const paymentStatus = paymentStatusConfig[appointment.payment_status as keyof typeof paymentStatusConfig || 'pending'];
   const PaymentIcon = paymentStatus.icon;
@@ -94,6 +97,8 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
     setShowDeleteDialog(false);
   };
 
+  const hasCredits = clientCredits && clientCredits.totalCredits > 0;
+
   if (compact) {
     return (
       <div 
@@ -101,7 +106,25 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         style={{ borderLeftColor: hexColor, borderLeftWidth: '3px' }}
       >
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{appointment.client?.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-medium text-sm truncate">{appointment.client?.name}</p>
+            {hasCredits && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Gift className="h-3.5 w-3.5 text-success flex-shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">
+                      {clientCredits.availableServices > 0 && `${clientCredits.availableServices} serviço(s) pago(s)`}
+                      {clientCredits.availableServices > 0 && clientCredits.availablePackageSessions > 0 && ' • '}
+                      {clientCredits.availablePackageSessions > 0 && `${clientCredits.availablePackageSessions} sessão(ões) de pacote`}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground truncate">{appointment.service?.name}</p>
         </div>
         <div className="text-right">
@@ -152,6 +175,25 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
               <h4 className="font-semibold text-foreground truncate">
                 {appointment.client?.name}
               </h4>
+              {hasCredits && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs gap-1">
+                        <Gift className="h-3 w-3" />
+                        Créditos
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">
+                        {clientCredits.availableServices > 0 && `${clientCredits.availableServices} serviço(s) pago(s)`}
+                        {clientCredits.availableServices > 0 && clientCredits.availablePackageSessions > 0 && ' • '}
+                        {clientCredits.availablePackageSessions > 0 && `${clientCredits.availablePackageSessions} sessão(ões) de pacote`}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <Badge variant="outline" className={cn('text-xs', status.className)}>
                 {status.label}
               </Badge>

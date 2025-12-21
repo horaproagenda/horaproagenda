@@ -22,9 +22,11 @@ export function useClientProfile(clientId: string) {
   useEffect(() => {
     if (!clientId) return;
 
+    console.log('Setting up realtime subscriptions for client:', clientId);
+
     // Subscribe to appointments changes
     const appointmentsChannel = supabase
-      .channel(`client-appointments-${clientId}`)
+      .channel(`client-appointments-realtime-${clientId}`)
       .on(
         'postgres_changes',
         {
@@ -33,16 +35,20 @@ export function useClientProfile(clientId: string) {
           table: 'appointments',
           filter: `client_id=eq.${clientId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Realtime appointment update received:', payload);
           // Invalidate and refetch appointments when changes occur
           queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Appointments subscription status:', status);
+      });
 
     // Subscribe to single_sales changes
     const salesChannel = supabase
-      .channel(`client-sales-${clientId}`)
+      .channel(`client-sales-realtime-${clientId}`)
       .on(
         'postgres_changes',
         {
@@ -51,35 +57,41 @@ export function useClientProfile(clientId: string) {
           table: 'single_sales',
           filter: `client_id=eq.${clientId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Realtime sales update received:', payload);
           // Invalidate and refetch sales when changes occur
           queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Sales subscription status:', status);
+      });
 
-    // Subscribe to package_appointments changes for package sessions
-    const packageAppointmentsChannel = supabase
-      .channel(`client-package-appointments-${clientId}`)
+    // Subscribe to ALL appointments for this project (to catch new ones)
+    const allAppointmentsChannel = supabase
+      .channel(`all-appointments-realtime`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'package_appointments',
+          table: 'appointments',
         },
-        () => {
-          // Refetch appointments to update package session status
-          queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
-          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        (payload) => {
+          // Check if this appointment belongs to our client
+          if (payload.new && (payload.new as { client_id?: string }).client_id === clientId) {
+            console.log('New appointment for this client:', payload);
+            queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+          }
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(salesChannel);
-      supabase.removeChannel(packageAppointmentsChannel);
+      supabase.removeChannel(allAppointmentsChannel);
     };
   }, [clientId, queryClient]);
 
@@ -107,6 +119,7 @@ export function useClientProfile(clientId: string) {
   const { data: appointments = [], isLoading: appointmentsLoading } = useQuery({
     queryKey: ['client-appointments', clientId],
     queryFn: async () => {
+      console.log('Fetching appointments for client:', clientId);
       const { data, error } = await supabase
         .from('appointments')
         .select(`
@@ -118,16 +131,20 @@ export function useClientProfile(clientId: string) {
         .order('start_time', { ascending: false });
 
       if (error) throw error;
+      console.log('Appointments fetched:', data?.length);
       return data as Appointment[];
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch for latest data
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Refetch every 30 seconds as fallback
   });
 
   // Fetch client sales from single_sales table (synced with caixa)
   const { data: clientSales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['client-sales', clientId],
     queryFn: async () => {
+      console.log('Fetching sales for client:', clientId);
       const { data, error } = await supabase
         .from('single_sales')
         .select(`
@@ -141,10 +158,13 @@ export function useClientProfile(clientId: string) {
         .order('sale_date', { ascending: false });
 
       if (error) throw error;
+      console.log('Sales fetched:', data?.length);
       return data || [];
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch for latest data
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Refetch every 30 seconds as fallback
   });
 
   // Fetch client documents
@@ -376,6 +396,16 @@ export function useClientProfile(clientId: string) {
   
   const proceduresCount = completedAppointments.length;
 
+  // Manual refetch function
+  const refetchAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client-documents', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client-quotes', clientId] });
+  };
+
   return {
     client,
     appointments,
@@ -390,6 +420,7 @@ export function useClientProfile(clientId: string) {
     addPhoto,
     addQuote,
     updateQuote,
+    refetchAll,
     stats: {
       totalAppointments: appointments.length,
       completedAppointments: completedAppointments.length,

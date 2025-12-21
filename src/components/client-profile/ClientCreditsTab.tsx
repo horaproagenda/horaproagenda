@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target } from 'lucide-react';
+import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientPackages } from '@/hooks/useClientPackages';
 import { useClientServices } from '@/hooks/useClientServices';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -30,11 +30,51 @@ interface PackageAppointmentDetail {
 }
 
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
+  const queryClient = useQueryClient();
   const { clientPackages, isLoading: loadingPackages } = useClientPackages(clientId);
   const { clientServices, isLoading: loadingServices } = useClientServices(clientId);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
 
-  const { data: packageDetails } = useQuery({
+  // Subscribe to realtime changes for package_appointments
+  useEffect(() => {
+    if (!clientId) return;
+
+    const channel = supabase
+      .channel(`package-appointments-credits-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'package_appointments',
+        },
+        () => {
+          // Refresh package details and packages
+          queryClient.invalidateQueries({ queryKey: ['package_details'] });
+          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+        },
+        () => {
+          // Refresh when appointment status changes
+          queryClient.invalidateQueries({ queryKey: ['package_details'] });
+          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, queryClient]);
+
+  const { data: packageDetails, refetch: refetchPackageDetails } = useQuery({
     queryKey: ['package_details', selectedPackageId],
     queryFn: async () => {
       if (!selectedPackageId) return null;
@@ -43,15 +83,21 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         .from('package_appointments')
         .select(`
           *,
-          appointment:appointments(start_time, end_time, status)
+          appointment:appointments!package_appointments_appointment_id_fkey(start_time, end_time, status)
         `)
         .eq('package_id', selectedPackageId)
         .order('session_number', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching package details:', error);
+        throw error;
+      }
+      console.log('Package details fetched:', data?.length, 'sessions');
       return data as PackageAppointmentDetail[];
     },
     enabled: !!selectedPackageId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const isLoading = loadingPackages || loadingServices;

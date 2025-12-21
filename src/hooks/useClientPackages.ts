@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -35,7 +36,46 @@ export interface PackageSession {
 export function useClientPackages(clientId: string | null) {
   const queryClient = useQueryClient();
 
-  const { data: clientPackages = [], isLoading } = useQuery({
+  // Subscribe to realtime changes for packages and appointments
+  useEffect(() => {
+    if (!clientId) return;
+
+    const channel = supabase
+      .channel(`client-packages-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'service_packages',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          console.log('Package update detected, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'package_appointments',
+        },
+        () => {
+          console.log('Package appointments update detected, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['package_details'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, queryClient]);
+
+  const { data: clientPackages = [], isLoading, refetch } = useQuery({
     queryKey: ['client_packages', clientId],
     queryFn: async () => {
       if (!clientId) return [];
@@ -52,17 +92,18 @@ export function useClientPackages(clientId: string | null) {
         throw error;
       }
       
-      // Filter to only return packages with available sessions
-      const packagesWithSessions = (data as ClientPackage[]).filter(
-        pkg => pkg.total_sessions > pkg.sessions_scheduled
-      );
-      
-      console.log('Client packages fetched:', packagesWithSessions.length, 'for client:', clientId);
-      return packagesWithSessions;
+      console.log('Client packages fetched:', data?.length, 'for client:', clientId);
+      return data as ClientPackage[];
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
+
+  // Filter packages with available sessions (for scheduling purposes)
+  const availablePackages = clientPackages.filter(
+    pkg => pkg.total_sessions > pkg.sessions_scheduled
+  );
 
   const getPackageRemainingSessions = (packageId: string) => {
     const pkg = clientPackages.find(p => p.id === packageId);
@@ -230,7 +271,9 @@ export function useClientPackages(clientId: string | null) {
 
   return {
     clientPackages,
+    availablePackages,
     isLoading,
+    refetch,
     getPackageRemainingSessions,
     findClientPackageByTemplate,
     createClientPackage,

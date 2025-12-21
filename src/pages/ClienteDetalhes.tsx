@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw } from 'lucide-react';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
 import { ClientStatsSection } from '@/components/client-profile/ClientStatsSection';
 import { ClientAppointmentsTab } from '@/components/client-profile/ClientAppointmentsTab';
@@ -17,14 +17,25 @@ import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
 import { EditAppointmentDialog } from '@/components/client-profile/EditAppointmentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment } from '@/types';
+import { toast } from 'sonner';
 
 export default function ClienteDetalhes() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('report');
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, stats } = useClientProfile(id || '');
+  const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, refetchAll, stats } = useClientProfile(id || '');
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    refetchAll();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success('Dados atualizados!');
+    }, 1000);
+  };
 
   if (isLoading) {
     return (
@@ -51,12 +62,23 @@ export default function ClienteDetalhes() {
   return (
     <AppLayout title={client.name}>
       <div className="space-y-6">
-        {/* Back button */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
-            <ArrowLeft className="h-5 w-5" />
+        {/* Back button and refresh */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">Perfil do Cliente</h1>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Atualizar
           </Button>
-          <h1 className="text-2xl font-bold">Perfil do Cliente</h1>
         </div>
 
         {/* Client Header with full info */}

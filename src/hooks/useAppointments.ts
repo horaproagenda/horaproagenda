@@ -34,9 +34,11 @@ export interface AppointmentUpdate {
 export function useAppointments() {
   const queryClient = useQueryClient();
 
-  const { data: appointments = [], isLoading } = useQuery({
+  const { data: appointments = [], isLoading, error: queryError } = useQuery({
     queryKey: ['appointments'],
     queryFn: async () => {
+      console.log('Fetching appointments...');
+      
       const { data, error } = await supabase
         .from('appointments')
         .select(`
@@ -55,30 +57,44 @@ export function useAppointments() {
         `)
         .order('start_time', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} appointments`);
       
       // Fetch profile info for created_by and updated_by separately
+      // Use try-catch to avoid failures due to RLS
       const appointmentsWithProfiles = await Promise.all(
         (data || []).map(async (apt) => {
           let created_by_profile = null;
           let updated_by_profile = null;
           
-          if (apt.created_by) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', apt.created_by)
-              .single();
-            created_by_profile = profile;
+          try {
+            if (apt.created_by) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', apt.created_by)
+                .single();
+              created_by_profile = profile;
+            }
+          } catch (e) {
+            // Ignore profile fetch errors
           }
           
-          if (apt.updated_by) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', apt.updated_by)
-              .single();
-            updated_by_profile = profile;
+          try {
+            if (apt.updated_by) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', apt.updated_by)
+                .single();
+              updated_by_profile = profile;
+            }
+          } catch (e) {
+            // Ignore profile fetch errors
           }
           
           return {
@@ -91,11 +107,20 @@ export function useAppointments() {
       
       return appointmentsWithProfiles as Appointment[];
     },
+    staleTime: 0, // Always refetch
+    refetchOnWindowFocus: true,
   });
+
+  // Log query errors
+  if (queryError) {
+    console.error('Appointments query error:', queryError);
+  }
 
   const createAppointment = useMutation({
     mutationFn: async (appointment: AppointmentInsert) => {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      console.log('Creating appointment:', appointment);
       
       const { data, error } = await supabase
         .from('appointments')
@@ -106,14 +131,23 @@ export function useAppointments() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating appointment:', error);
+        throw error;
+      }
+      
+      console.log('Appointment created successfully:', data);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    onSuccess: async (data) => {
+      console.log('Appointment mutation success, refetching queries...');
+      // Refetch immediately instead of just invalidating
+      await queryClient.refetchQueries({ queryKey: ['appointments'] });
+      console.log('Queries refetched');
       toast.success('Agendamento criado com sucesso!');
     },
     onError: (error) => {
+      console.error('Appointment creation error:', error);
       toast.error('Erro ao criar agendamento: ' + error.message);
     },
   });

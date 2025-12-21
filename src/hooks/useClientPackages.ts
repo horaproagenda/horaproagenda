@@ -141,6 +141,10 @@ export function useClientPackages(clientId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
     },
     onError: (error) => {
       toast.error('Erro ao criar pacote do cliente: ' + error.message);
@@ -205,6 +209,10 @@ export function useClientPackages(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
     },
   });
 

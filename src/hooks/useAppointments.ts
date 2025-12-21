@@ -111,6 +111,9 @@ export function useAppointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success('Agendamento criado com sucesso!');
     },
     onError: (error) => {
@@ -209,10 +212,14 @@ export function useAppointments() {
     onSuccess: (data) => {
       console.log('Payment mutation success, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error) => {
@@ -240,6 +247,8 @@ export function useAppointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client'] });
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
@@ -258,8 +267,12 @@ export function useAppointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success('Agendamento excluído com sucesso!');
     },
     onError: (error) => {
@@ -316,9 +329,12 @@ export function useAppointments() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success(`${count} agendamento(s) do pacote excluído(s) com sucesso!`);
     },
     onError: (error) => {

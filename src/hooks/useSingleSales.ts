@@ -176,6 +176,11 @@ export function useSingleSales() {
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['client'] });
       toast.success('Venda registrada com sucesso!');
     },
     onError: (error: any) => {

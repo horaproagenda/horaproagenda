@@ -48,7 +48,7 @@ export function useAppointments() {
             professional:professionals(*)
           ),
           room:rooms(*),
-          package_appointment:package_appointments(
+          package_appointment:package_appointments!appointments_package_appointment_id_fkey(
             *,
             package:service_packages(*)
           )

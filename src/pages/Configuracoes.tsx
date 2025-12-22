@@ -10,6 +10,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
+import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -298,6 +299,9 @@ const Configuracoes = () => {
           </CardContent>
         </Card>
         </div>
+
+        {/* Bulk Delete - Danger Zone */}
+        <BulkDeleteDialog />
       </div>
     </AppLayout>
   );

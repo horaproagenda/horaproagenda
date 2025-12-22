@@ -167,19 +167,21 @@ export function BulkDeleteDialog() {
               <AlertTriangle className="h-5 w-5" />
               Confirmar Exclusão
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>
-                Você está prestes a excluir <strong>TODOS</strong> os {selectedOption?.label.toLowerCase()}.
-                Esta ação é <strong>permanente e irreversível</strong>.
-              </p>
-              <div className="space-y-2">
-                <Label>Para confirmar, digite: <strong className="text-destructive">{selectedOption?.confirmText}</strong></Label>
-                <Input
-                  value={confirmInput}
-                  onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
-                  placeholder="Digite o texto de confirmação"
-                  className="font-mono"
-                />
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Você está prestes a excluir <strong>TODOS</strong> os {selectedOption?.label.toLowerCase()}.
+                  Esta ação é <strong>permanente e irreversível</strong>.
+                </p>
+                <div className="space-y-2">
+                  <Label>Para confirmar, digite: <strong className="text-destructive">{selectedOption?.confirmText}</strong></Label>
+                  <Input
+                    value={confirmInput}
+                    onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
+                    placeholder="Digite o texto de confirmação"
+                    className="font-mono"
+                  />
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

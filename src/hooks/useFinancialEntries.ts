@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FinancialCategory } from './useFinancialCategories';
@@ -36,6 +37,20 @@ export interface FinancialEntry {
 
 export function useFinancialEntries() {
   const queryClient = useQueryClient();
+
+  // Realtime sync for financial_entries
+  useEffect(() => {
+    const channel = supabase
+      .channel('financial_entries_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: entries = [], isLoading, refetch } = useQuery({
     queryKey: ['financial_entries'],

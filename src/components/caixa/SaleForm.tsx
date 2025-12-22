@@ -380,9 +380,8 @@ export function SaleForm() {
 
         if (item.type === 'service') {
           saleData.service_id = item.originalId;
-        } else if (item.type === 'package') {
-          saleData.package_id = item.originalId;
         }
+        // Note: package_id will be set after creating the service_package
 
         const { data: saleRecord, error: saleError } = await supabase
           .from('single_sales')
@@ -412,6 +411,7 @@ export function SaleForm() {
           if (templatePackage) {
             let packagesCreated = 0;
             let sessionsCreated = 0;
+            let firstClientPackageId: string | null = null;
             
             for (let i = 0; i < item.quantity; i++) {
               // Create the client package from template
@@ -419,7 +419,7 @@ export function SaleForm() {
                 .from('service_packages')
                 .insert({
                   client_id: selectedClientId,
-                  template_id: templatePackage.id, // Now correctly references package_templates
+                  template_id: templatePackage.id,
                   name: templatePackage.name,
                   description: templatePackage.description,
                   total_price: templatePackage.price,
@@ -439,6 +439,9 @@ export function SaleForm() {
               // Create package_appointments (sessions) for this package
               if (!pkgError && clientPackage) {
                 packagesCreated++;
+                if (i === 0) {
+                  firstClientPackageId = clientPackage.id;
+                }
                 const sessions = Array.from({ length: templatePackage.total_sessions }, (_, idx) => ({
                   package_id: clientPackage.id,
                   session_number: idx + 1,
@@ -453,6 +456,14 @@ export function SaleForm() {
                 console.error('Erro ao criar pacote do cliente:', pkgError);
                 toast.error(`Erro ao criar pacote: ${pkgError.message}`);
               }
+            }
+            
+            // Update the single_sales record with the first created package_id
+            if (firstClientPackageId) {
+              await supabase
+                .from('single_sales')
+                .update({ package_id: firstClientPackageId })
+                .eq('id', saleRecord.id);
             }
             
             // Show success feedback for package creation

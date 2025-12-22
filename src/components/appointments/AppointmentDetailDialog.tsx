@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -56,6 +56,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRooms } from '@/hooks/useRooms';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useCardBrands } from '@/hooks/useCardBrands';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -64,14 +66,6 @@ interface AppointmentDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => void;
 }
-
-const PAYMENT_METHODS = [
-  { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'bank_transfer', label: 'Transferência' },
-];
 
 const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
   scheduled: { label: 'Agendado', className: 'bg-info/10 text-info border-info/20' },
@@ -98,13 +92,15 @@ export function AppointmentDetailDialog({
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
   const { rooms } = useRooms();
+  const { activePaymentMethods } = usePaymentMethods();
+  const { activeCardBrands } = useCardBrands();
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
   const canEdit = hasRole('admin') || hasRole('receptionist');
   
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [payments, setPayments] = useState<{ method: string; amount: string }[]>([
-    { method: 'pix', amount: '' },
+  const [payments, setPayments] = useState<{ method: string; methodId?: string; cardBrandId?: string; installments?: number; amount: string }[]>([
+    { method: '', amount: '' },
   ]);
   const [clientCreditAmount, setClientCreditAmount] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -120,6 +116,64 @@ export function AppointmentDetailDialog({
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
+
+  // Helper function to check if payment method is card
+  const isMethodCard = (methodName: string) => {
+    const lower = methodName.toLowerCase();
+    return lower.includes('crédito') || lower.includes('débito') || lower.includes('cartão');
+  };
+
+  const isMethodCredit = (methodName: string) => {
+    return methodName.toLowerCase().includes('crédito');
+  };
+
+  const isMethodDebit = (methodName: string) => {
+    return methodName.toLowerCase().includes('débito');
+  };
+
+  // Get applicable card brands for a payment method
+  const getApplicableCardBrands = (methodId: string) => {
+    const method = activePaymentMethods.find(m => m.id === methodId);
+    if (!method) return [];
+    
+    if (isMethodCredit(method.name)) {
+      return activeCardBrands.filter(b => b.type === 'credit' || b.type === 'both');
+    }
+    if (isMethodDebit(method.name)) {
+      return activeCardBrands.filter(b => b.type === 'debit' || b.type === 'both');
+    }
+    return activeCardBrands;
+  };
+
+  // Get max installments for a payment method
+  const getMaxInstallments = (methodId: string) => {
+    const method = activePaymentMethods.find(m => m.id === methodId);
+    if (!method) return 1;
+    if (isMethodDebit(method.name)) return 1;
+    return method.max_installments || 12;
+  };
+
+  // Calculate fee for a payment
+  const calculateFee = (payment: typeof payments[0], amount: number) => {
+    if (!payment.cardBrandId) return { feePercentage: 0, feeAmount: 0, netAmount: amount };
+    
+    const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
+    if (!cardBrand) return { feePercentage: 0, feeAmount: 0, netAmount: amount };
+
+    const fees = cardBrand.fees || [];
+    const installments = payment.installments || 1;
+    
+    const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
+    const matchingFee = sortedFees.find(f => f.installment_number <= installments);
+    
+    const feePercentage = matchingFee?.fee_percentage || 0;
+    const feeAmount = (amount * feePercentage) / 100;
+    const netAmount = cardBrand.fee_behavior === 'deduct_from_provider'
+      ? amount - feeAmount
+      : amount;
+
+    return { feePercentage, feeAmount, netAmount };
+  };
 
   // Initialize edit form when appointment changes or edit mode is activated
   useEffect(() => {
@@ -226,7 +280,7 @@ export function AppointmentDetailDialog({
   const remainingAmount = totalPrice - amountPaid;
 
   const addPaymentMethod = () => {
-    setPayments([...payments, { method: 'pix', amount: '' }]);
+    setPayments([...payments, { method: '', amount: '' }]);
   };
 
   const removePaymentMethod = (index: number) => {
@@ -235,7 +289,18 @@ export function AppointmentDetailDialog({
 
   const updatePayment = (index: number, field: 'method' | 'amount', value: string) => {
     const newPayments = [...payments];
-    newPayments[index][field] = value;
+    if (field === 'method') {
+      // Reset card-related fields when method changes
+      newPayments[index] = { 
+        ...newPayments[index], 
+        method: value,
+        methodId: undefined,
+        cardBrandId: undefined,
+        installments: 1
+      };
+    } else {
+      newPayments[index][field] = value;
+    }
     setPayments(newPayments);
   };
 
@@ -256,12 +321,17 @@ export function AppointmentDetailDialog({
   const submitPayment = () => {
     const validPayments = payments
       .filter(p => p.amount && parseFloat(p.amount) > 0)
-      .map(p => ({ method: p.method, amount: parseFloat(p.amount) }));
+      .map(p => ({ 
+        method: p.methodId || p.method, 
+        amount: parseFloat(p.amount),
+        cardBrandId: p.cardBrandId,
+        installments: p.installments
+      }));
 
     if (validPayments.length > 0 || clientCredit > 0) {
       onPayment(appointment.id, validPayments, clientCredit > 0 ? clientCredit : undefined);
       setShowPaymentForm(false);
-      setPayments([{ method: 'pix', amount: '' }]);
+      setPayments([{ method: '', amount: '' }]);
       setClientCreditAmount('');
       setShowConfirmDialog(false);
     }
@@ -506,7 +576,7 @@ export function AppointmentDetailDialog({
                   {appointment.payment_methods.map((method, i) => (
                     <Badge key={i} variant="secondary">
                       <CreditCard className="h-3 w-3 mr-1" />
-                      {PAYMENT_METHODS.find(p => p.value === method)?.label || method}
+                      {activePaymentMethods.find(p => p.id === method)?.name || method}
                     </Badge>
                   ))}
                 </div>
@@ -523,42 +593,137 @@ export function AppointmentDetailDialog({
                   
                   <p className="text-sm font-medium">Registrar Pagamento</p>
                   
-                  {payments.map((payment, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <Label className="text-xs">Forma de Pagamento</Label>
-                        <select
-                          className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                          value={payment.method}
-                          onChange={(e) => updatePayment(index, 'method', e.target.value)}
-                        >
-                          {PAYMENT_METHODS.map(m => (
-                            <option key={m.value} value={m.value}>{m.label}</option>
-                          ))}
-                        </select>
+                  {payments.map((payment, index) => {
+                    const selectedMethod = activePaymentMethods.find(m => m.id === payment.methodId);
+                    const isCard = selectedMethod ? isMethodCard(selectedMethod.name) : false;
+                    const isCredit = selectedMethod ? isMethodCredit(selectedMethod.name) : false;
+                    const applicableBrands = payment.methodId ? getApplicableCardBrands(payment.methodId) : [];
+                    const maxInstallments = payment.methodId ? getMaxInstallments(payment.methodId) : 1;
+                    const paymentAmount = parseFloat(payment.amount) || 0;
+                    const feeInfo = calculateFee(payment, paymentAmount);
+                    const selectedBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
+
+                    return (
+                      <div key={index} className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <Label className="text-xs">Forma de Pagamento</Label>
+                            <Select
+                              value={payment.methodId || ''}
+                              onValueChange={(value) => {
+                                const newPayments = [...payments];
+                                newPayments[index] = { 
+                                  ...newPayments[index], 
+                                  methodId: value, 
+                                  method: activePaymentMethods.find(m => m.id === value)?.name || value,
+                                  cardBrandId: undefined,
+                                  installments: 1
+                                };
+                                setPayments(newPayments);
+                              }}
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {activePaymentMethods.map(m => (
+                                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs">Valor (R$)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0,00"
+                              value={payment.amount}
+                              onChange={(e) => updatePayment(index, 'amount', e.target.value)}
+                            />
+                          </div>
+                          {payments.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => removePaymentMethod(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Card Brand and Installments - Only for card payments */}
+                        {isCard && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Bandeira</Label>
+                              <Select
+                                value={payment.cardBrandId || ''}
+                                onValueChange={(value) => {
+                                  const newPayments = [...payments];
+                                  newPayments[index] = { ...newPayments[index], cardBrandId: value };
+                                  setPayments(newPayments);
+                                }}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Selecione..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {applicableBrands.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {isCredit && maxInstallments > 1 && (
+                              <div>
+                                <Label className="text-xs">Parcelas</Label>
+                                <Select
+                                  value={(payment.installments || 1).toString()}
+                                  onValueChange={(value) => {
+                                    const newPayments = [...payments];
+                                    newPayments[index] = { ...newPayments[index], installments: parseInt(value) };
+                                    setPayments(newPayments);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Array.from({ length: maxInstallments }, (_, i) => i + 1).map(n => (
+                                      <SelectItem key={n} value={n.toString()}>
+                                        {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Fee Info */}
+                        {selectedBrand && feeInfo.feePercentage > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs p-2 rounded bg-muted/50">
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                              Taxa: {feeInfo.feePercentage.toFixed(2)}%
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              R$ {feeInfo.feeAmount.toFixed(2)}
+                            </span>
+                            {selectedBrand.fee_behavior === 'deduct_from_provider' && (
+                              <span className="text-muted-foreground">
+                                • Líquido: <strong>R$ {feeInfo.netAmount.toFixed(2)}</strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Valor (R$)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0,00"
-                          value={payment.amount}
-                          onChange={(e) => updatePayment(index, 'amount', e.target.value)}
-                        />
-                      </div>
-                      {payments.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => removePaymentMethod(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   <Button variant="outline" size="sm" onClick={addPaymentMethod} className="w-full">
                     <Plus className="h-4 w-4 mr-1" />

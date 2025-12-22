@@ -25,7 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { usePackageTemplates } from '@/hooks/usePackageTemplates';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -60,7 +60,7 @@ export function SaleForm() {
   const queryClient = useQueryClient();
   const { clients } = useClients();
   const { activeServices } = useServices();
-  const { templates: packageTemplates } = usePackageTemplates();
+  const { packages: packageTemplates } = useServicePackages();
   const { productsForSale } = useProducts();
   const { professionals } = useProfessionals();
   const { activePaymentMethods } = usePaymentMethods();
@@ -211,13 +211,15 @@ export function SaleForm() {
           type: 'service' as const
         }));
       case 'package':
-        // Use package_templates for creating new packages
-        return packageTemplates.map(p => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          type: 'package' as const
-        }));
+        // Use service_packages without client_id (templates) for creating new packages
+        return packageTemplates
+          .filter(p => !p.client_id && p.is_active)
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.total_price,
+            type: 'package' as const
+          }));
       default:
         return [];
     }
@@ -422,7 +424,7 @@ export function SaleForm() {
                   template_id: templatePackage.id,
                   name: templatePackage.name,
                   description: templatePackage.description,
-                  total_price: templatePackage.price,
+                  total_price: templatePackage.total_price,
                   total_sessions: templatePackage.total_sessions,
                   duration: templatePackage.duration,
                   interval_days: templatePackage.interval_days,

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Package, TrendingUp } from 'lucide-react';
 import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,6 +13,8 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Relatorios = () => {
   const [activeTab, setActiveTab] = useState('aniversariantes');
@@ -20,6 +22,27 @@ const Relatorios = () => {
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { packages, isLoading: packagesLoading } = useServicePackages();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Realtime sync for reports
+  useEffect(() => {
+    const channel = supabase
+      .channel('reports_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_packages' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const today = new Date();
 

@@ -78,7 +78,7 @@ export function useSingleSales() {
 
       // 3. If it's a package sale with a client, create a client package with paid sessions
       if (sale.item_type === 'package' && sale.package_id && sale.client_id) {
-        // Get the package template data
+        // Get the package template data (from service_packages acting as template)
         const { data: packageTemplate } = await supabase
           .from('service_packages')
           .select('*')
@@ -87,13 +87,15 @@ export function useSingleSales() {
 
         if (packageTemplate) {
           // Create a new client-specific package (copy of the template)
+          // Note: template_id should reference package_templates table, not service_packages
+          // If the source package has a template_id, use it; otherwise set to null
           const { data: clientPackage, error: pkgError } = await supabase
             .from('service_packages')
             .insert({
               name: packageTemplate.name,
               description: packageTemplate.description,
               client_id: sale.client_id,
-              template_id: packageTemplate.id, // Store the original package id as template_id
+              template_id: packageTemplate.template_id || null, // Use the original template_id if exists
               total_sessions: packageTemplate.total_sessions,
               duration: packageTemplate.duration || 60,
               interval_days: packageTemplate.interval_days || 7,

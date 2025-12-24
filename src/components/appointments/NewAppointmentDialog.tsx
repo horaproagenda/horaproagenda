@@ -398,10 +398,14 @@ export function NewAppointmentDialog({
           });
         }
 
-        // If auto-schedule is enabled and it's the first appointment, create future appointments
-        if (autoScheduleEnabled && !existingClientPackage && selectedPackageData.total_sessions > 1) {
-          const intervalDays = selectedPackageData.interval_days || 7;
-          const sessionsToCreate = selectedPackageData.total_sessions - 1;
+        // If auto-schedule is enabled and it's the first appointment (either new package or existing with 0 sessions scheduled)
+        const isFirstAppointment = !existingClientPackage || existingClientPackage.sessions_scheduled === 0;
+        const packageData = existingClientPackage || selectedPackageData;
+        const totalSessions = packageData?.total_sessions || 1;
+        
+        if (autoScheduleEnabled && isFirstAppointment && totalSessions > 1) {
+          const intervalDays = packageData?.interval_days || 7;
+          const sessionsToCreate = totalSessions - 1;
 
           for (let i = 1; i <= sessionsToCreate; i++) {
             const futureDate = addDays(startTime, intervalDays * i);
@@ -421,9 +425,9 @@ export function NewAppointmentDialog({
               service_id: packageServiceId,
               start_time: futureDate.toISOString(),
               end_time: futureEnd.toISOString(),
-              notes: `${selectedPackageData.name} - Sessão ${i + 1} de ${selectedPackageData.total_sessions}`,
-              professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
-              room_id: selectedRoom || selectedPackageData.room_id || undefined,
+              notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
+              professional_id: selectedProfessional || packageData?.professional_id || undefined,
+              room_id: selectedRoom || packageData?.room_id || undefined,
               payment_status: 'paid',
             });
 
@@ -723,14 +727,15 @@ export function NewAppointmentDialog({
                     </Alert>
                   )}
 
-                  {/* Show auto-schedule options for new package */}
-                  {!existingClientPackage && selectedClient && (
+                  {/* Show auto-schedule options for new package OR first appointment of existing package */}
+                  {((!existingClientPackage && selectedClient) || 
+                    (existingClientPackage && selectedClient && existingClientPackage.sessions_scheduled === 0)) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="text-sm font-medium">Agendamento Automático</Label>
                           <p className="text-xs text-muted-foreground">
-                            Agendar todas as {selectedPackageData.total_sessions} sessões automaticamente
+                            Agendar todas as {existingClientPackage?.total_sessions || selectedPackageData?.total_sessions} sessões automaticamente
                           </p>
                         </div>
                         <Switch
@@ -780,7 +785,7 @@ export function NewAppointmentDialog({
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Intervalo: a cada {selectedPackageData.interval_days || 7} dias
+                            Intervalo: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias
                           </p>
                         </div>
                       )}

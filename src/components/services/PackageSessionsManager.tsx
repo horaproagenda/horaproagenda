@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import { format, parseISO, addDays } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { format, parseISO, addDays, addMinutes, isWithinInterval, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus, CalendarRange, MessageCircle, Pencil } from 'lucide-react';
+import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus, CalendarRange, MessageCircle, Pencil, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,12 @@ interface PackageSessionsManagerProps {
   onSessionRescheduled?: () => void;
 }
 
+interface ConflictInfo {
+  hasConflict: boolean;
+  reason?: string;
+  suggestedDate?: Date;
+}
+
 export function PackageSessionsManager({ 
   packageId, 
   packageName,
@@ -72,11 +79,18 @@ export function PackageSessionsManager({
   const [massReschedulePreview, setMassReschedulePreview] = useState<{sessionNumber: number, date: Date}[]>([]);
   const [editingPreviewIndex, setEditingPreviewIndex] = useState<number | null>(null);
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
+  
+  // Conflict checking state
+  const [packageInfo, setPackageInfo] = useState<{ professional_id: string | null; room_id: string | null; duration: number } | null>(null);
+  const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
+  const [professionalAbsences, setProfessionalAbsences] = useState<any[]>([]);
+  const [previewConflicts, setPreviewConflicts] = useState<Map<number, ConflictInfo>>(new Map());
 
   const { sendMessage: sendWhatsappMessage } = useWhatsapp();
 
   useEffect(() => {
     fetchSessions();
+    fetchPackageInfo();
   }, [packageId]);
 
   const fetchSessions = async () => {
@@ -103,6 +117,196 @@ export function PackageSessionsManager({
       setIsLoading(false);
     }
   };
+
+  const fetchPackageInfo = async () => {
+    try {
+      const { data: pkg, error } = await supabase
+        .from('service_packages')
+        .select('professional_id, room_id, duration')
+        .eq('id', packageId)
+        .single();
+
+      if (error) throw error;
+      setPackageInfo(pkg);
+
+      // Fetch existing appointments and absences if we have professional/room
+      if (pkg?.professional_id || pkg?.room_id) {
+        const [appointmentsRes, absencesRes] = await Promise.all([
+          supabase
+            .from('appointments')
+            .select('id, start_time, end_time, professional_id, room_id, status')
+            .not('status', 'eq', 'cancelled')
+            .gte('start_time', new Date().toISOString()),
+          pkg?.professional_id
+            ? supabase
+                .from('professional_absences')
+                .select('*')
+                .eq('professional_id', pkg.professional_id)
+                .gte('end_time', new Date().toISOString())
+            : Promise.resolve({ data: [], error: null })
+        ]);
+
+        if (appointmentsRes.data) setExistingAppointments(appointmentsRes.data);
+        if (absencesRes.data) setProfessionalAbsences(absencesRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching package info:', error);
+    }
+  };
+
+  // Check for conflicts for a given date/time
+  const checkConflict = (dateTime: Date): ConflictInfo => {
+    if (!packageInfo) return { hasConflict: false };
+
+    const duration = packageInfo.duration || 60;
+    const endTime = addMinutes(dateTime, duration);
+
+    // Check professional absences
+    if (packageInfo.professional_id && professionalAbsences.length > 0) {
+      for (const absence of professionalAbsences) {
+        const absenceStart = parseISO(absence.start_time);
+        const absenceEnd = parseISO(absence.end_time);
+        
+        if (
+          (dateTime >= absenceStart && dateTime < absenceEnd) ||
+          (endTime > absenceStart && endTime <= absenceEnd) ||
+          (dateTime <= absenceStart && endTime >= absenceEnd)
+        ) {
+          return {
+            hasConflict: true,
+            reason: 'Profissional ausente',
+            suggestedDate: findNextAvailableSlot(dateTime, duration)
+          };
+        }
+      }
+    }
+
+    // Check existing appointments (professional conflict)
+    if (packageInfo.professional_id) {
+      for (const apt of existingAppointments) {
+        if (apt.professional_id !== packageInfo.professional_id) continue;
+        
+        const aptStart = parseISO(apt.start_time);
+        const aptEnd = parseISO(apt.end_time);
+        
+        if (
+          (dateTime >= aptStart && dateTime < aptEnd) ||
+          (endTime > aptStart && endTime <= aptEnd) ||
+          (dateTime <= aptStart && endTime >= aptEnd)
+        ) {
+          return {
+            hasConflict: true,
+            reason: 'Profissional ocupado',
+            suggestedDate: findNextAvailableSlot(dateTime, duration)
+          };
+        }
+      }
+    }
+
+    // Check room conflicts
+    if (packageInfo.room_id) {
+      for (const apt of existingAppointments) {
+        if (apt.room_id !== packageInfo.room_id) continue;
+        
+        const aptStart = parseISO(apt.start_time);
+        const aptEnd = parseISO(apt.end_time);
+        
+        if (
+          (dateTime >= aptStart && dateTime < aptEnd) ||
+          (endTime > aptStart && endTime <= aptEnd) ||
+          (dateTime <= aptStart && endTime >= aptEnd)
+        ) {
+          return {
+            hasConflict: true,
+            reason: 'Sala ocupada',
+            suggestedDate: findNextAvailableSlot(dateTime, duration)
+          };
+        }
+      }
+    }
+
+    return { hasConflict: false };
+  };
+
+  // Find next available slot
+  const findNextAvailableSlot = (fromDate: Date, duration: number): Date => {
+    let candidateDate = new Date(fromDate);
+    const maxAttempts = 48; // Check up to 48 slots (full day)
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      candidateDate = addMinutes(candidateDate, 30);
+      const candidateEnd = addMinutes(candidateDate, duration);
+      
+      let hasConflict = false;
+      
+      // Check absences
+      for (const absence of professionalAbsences) {
+        const absenceStart = parseISO(absence.start_time);
+        const absenceEnd = parseISO(absence.end_time);
+        if (
+          (candidateDate >= absenceStart && candidateDate < absenceEnd) ||
+          (candidateEnd > absenceStart && candidateEnd <= absenceEnd)
+        ) {
+          hasConflict = true;
+          break;
+        }
+      }
+      
+      if (hasConflict) continue;
+      
+      // Check appointments
+      for (const apt of existingAppointments) {
+        if (packageInfo?.professional_id && apt.professional_id === packageInfo.professional_id) {
+          const aptStart = parseISO(apt.start_time);
+          const aptEnd = parseISO(apt.end_time);
+          if (
+            (candidateDate >= aptStart && candidateDate < aptEnd) ||
+            (candidateEnd > aptStart && candidateEnd <= aptEnd)
+          ) {
+            hasConflict = true;
+            break;
+          }
+        }
+        if (packageInfo?.room_id && apt.room_id === packageInfo.room_id) {
+          const aptStart = parseISO(apt.start_time);
+          const aptEnd = parseISO(apt.end_time);
+          if (
+            (candidateDate >= aptStart && candidateDate < aptEnd) ||
+            (candidateEnd > aptStart && candidateEnd <= aptEnd)
+          ) {
+            hasConflict = true;
+            break;
+          }
+        }
+      }
+      
+      if (!hasConflict) {
+        return candidateDate;
+      }
+    }
+    
+    // If no slot found same day, try next day at same time
+    return addDays(fromDate, 1);
+  };
+
+  // Check conflicts for all preview dates
+  useEffect(() => {
+    if (!massRescheduleEnabled || massReschedulePreview.length === 0) {
+      setPreviewConflicts(new Map());
+      return;
+    }
+
+    const conflicts = new Map<number, ConflictInfo>();
+    for (const preview of massReschedulePreview) {
+      const conflict = checkConflict(preview.date);
+      conflicts.set(preview.sessionNumber, conflict);
+    }
+    setPreviewConflicts(conflicts);
+  }, [massReschedulePreview, existingAppointments, professionalAbsences, packageInfo]);
+
+  const hasAnyConflict = useMemo(() => {
+    return Array.from(previewConflicts.values()).some(c => c.hasConflict);
+  }, [previewConflicts]);
 
   const openRescheduleDialog = (session: PackageSession) => {
     setSelectedSession(session);
@@ -456,9 +660,19 @@ Até breve! ✨`;
                       </Select>
                     </div>
 
+                    {/* Conflict Alert */}
+                    {hasAnyConflict && (
+                      <Alert variant="destructive" className="py-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          Algumas sessões têm conflitos de horário. Corrija antes de confirmar.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {/* Preview of mass reschedule with edit capability */}
                     {massReschedulePreview.length > 0 && (
-                      <div className="p-2 bg-background rounded border max-h-[150px] overflow-y-auto">
+                      <div className="p-2 bg-background rounded border max-h-[200px] overflow-y-auto">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-xs font-medium flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
@@ -467,42 +681,71 @@ Até breve! ✨`;
                           <span className="text-[9px] text-muted-foreground">Clique para editar</span>
                         </div>
                         <div className="space-y-1">
-                          {massReschedulePreview.map((preview, index) => (
-                            <div key={preview.sessionNumber} className="flex items-center gap-2 text-xs">
-                              <Badge 
-                                variant={index === 0 ? "default" : "outline"} 
-                                className="w-5 h-5 p-0 flex items-center justify-center text-[10px] shrink-0"
+                          {massReschedulePreview.map((preview, index) => {
+                            const conflict = previewConflicts.get(preview.sessionNumber);
+                            return (
+                              <div 
+                                key={preview.sessionNumber} 
+                                className={`flex items-center gap-2 text-xs p-1 rounded ${
+                                  conflict?.hasConflict ? 'bg-destructive/10 border border-destructive/30' : ''
+                                }`}
                               >
-                                {preview.sessionNumber}
-                              </Badge>
-                              {editingPreviewIndex === index ? (
-                                <Input
-                                  type="datetime-local"
-                                  className="h-6 text-xs flex-1"
-                                  value={format(preview.date, "yyyy-MM-dd'T'HH:mm")}
-                                  onChange={(e) => {
-                                    const newDate = new Date(e.target.value);
-                                    if (!isNaN(newDate.getTime())) {
-                                      updatePreviewDate(index, newDate);
-                                    }
-                                  }}
-                                  onBlur={() => setEditingPreviewIndex(null)}
-                                  autoFocus
-                                />
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 flex items-center gap-1"
-                                  onClick={() => setEditingPreviewIndex(index)}
+                                <Badge 
+                                  variant={conflict?.hasConflict ? "destructive" : index === 0 ? "default" : "outline"} 
+                                  className="w-5 h-5 p-0 flex items-center justify-center text-[10px] shrink-0"
                                 >
-                                  <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
-                                    {format(preview.date, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                                  {preview.sessionNumber}
+                                </Badge>
+                                {editingPreviewIndex === index ? (
+                                  <Input
+                                    type="datetime-local"
+                                    className="h-6 text-xs flex-1"
+                                    value={format(preview.date, "yyyy-MM-dd'T'HH:mm")}
+                                    onChange={(e) => {
+                                      const newDate = new Date(e.target.value);
+                                      if (!isNaN(newDate.getTime())) {
+                                        updatePreviewDate(index, newDate);
+                                      }
+                                    }}
+                                    onBlur={() => setEditingPreviewIndex(null)}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <div className="flex-1 flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      className="flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 flex items-center gap-1"
+                                      onClick={() => setEditingPreviewIndex(index)}
+                                    >
+                                      <span className={`${index === 0 ? "font-medium" : "text-muted-foreground"} ${conflict?.hasConflict ? 'text-destructive' : ''}`}>
+                                        {format(preview.date, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                                      </span>
+                                      {conflict?.hasConflict && (
+                                        <AlertTriangle className="h-3 w-3 text-destructive" />
+                                      )}
+                                      <Pencil className="h-2.5 w-2.5 opacity-50" />
+                                    </button>
+                                    {conflict?.hasConflict && conflict.suggestedDate && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 px-1 text-[10px] text-primary"
+                                        onClick={() => updatePreviewDate(index, conflict.suggestedDate!)}
+                                      >
+                                        Usar {format(conflict.suggestedDate, "HH:mm")}
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                                {conflict?.hasConflict && (
+                                  <span className="text-[9px] text-destructive shrink-0">
+                                    {conflict.reason}
                                   </span>
-                                  <Pencil className="h-2.5 w-2.5 opacity-50" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -535,10 +778,16 @@ Até breve! ✨`;
               </Button>
               <Button
                 onClick={handleReschedule}
-                disabled={isSaving || !newDate || !newTime}
+                disabled={isSaving || !newDate || !newTime || (massRescheduleEnabled && hasAnyConflict)}
                 className="flex-1"
               >
-                {isSaving ? 'Salvando...' : massRescheduleEnabled ? `Reagendar ${massReschedulePreview.length} sessões` : 'Confirmar'}
+                {isSaving 
+                  ? 'Salvando...' 
+                  : massRescheduleEnabled && hasAnyConflict
+                    ? 'Resolva os conflitos'
+                    : massRescheduleEnabled 
+                      ? `Reagendar ${massReschedulePreview.length} sessões` 
+                      : 'Confirmar'}
               </Button>
             </div>
           </div>

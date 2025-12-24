@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus } from 'lucide-react';
+import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,6 +42,7 @@ interface PackageSessionsManagerProps {
   packageId: string;
   packageName: string;
   totalSessions: number;
+  intervalDays?: number;
   onSessionRescheduled?: () => void;
 }
 
@@ -39,6 +50,7 @@ export function PackageSessionsManager({
   packageId, 
   packageName,
   totalSessions,
+  intervalDays = 7,
   onSessionRescheduled 
 }: PackageSessionsManagerProps) {
   const [sessions, setSessions] = useState<PackageSession[]>([]);
@@ -48,6 +60,11 @@ export function PackageSessionsManager({
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Mass reschedule state
+  const [massRescheduleEnabled, setMassRescheduleEnabled] = useState(false);
+  const [massRescheduleInterval, setMassRescheduleInterval] = useState(intervalDays);
+  const [massReschedulePreview, setMassReschedulePreview] = useState<{sessionNumber: number, date: Date}[]>([]);
 
   useEffect(() => {
     fetchSessions();
@@ -80,6 +97,10 @@ export function PackageSessionsManager({
 
   const openRescheduleDialog = (session: PackageSession) => {
     setSelectedSession(session);
+    setMassRescheduleEnabled(false);
+    setMassReschedulePreview([]);
+    setMassRescheduleInterval(intervalDays);
+    
     if (session.appointment?.start_time) {
       const date = parseISO(session.appointment.start_time);
       setNewDate(format(date, 'yyyy-MM-dd'));
@@ -95,6 +116,28 @@ export function PackageSessionsManager({
     setRescheduleDialogOpen(true);
   };
 
+  // Calculate mass reschedule preview
+  useEffect(() => {
+    if (!massRescheduleEnabled || !selectedSession || !newDate || !newTime) {
+      setMassReschedulePreview([]);
+      return;
+    }
+
+    const baseDate = new Date(`${newDate}T${newTime}:00`);
+    const pendingSessions = sessions.filter(s => 
+      s.session_number >= selectedSession.session_number && 
+      s.status !== 'completed' && 
+      s.appointment?.status !== 'completed'
+    );
+
+    const preview = pendingSessions.map((session, index) => ({
+      sessionNumber: session.session_number,
+      date: addDays(baseDate, massRescheduleInterval * index)
+    }));
+
+    setMassReschedulePreview(preview);
+  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions]);
+
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;
 
@@ -102,33 +145,70 @@ export function PackageSessionsManager({
     try {
       const newDateTime = new Date(`${newDate}T${newTime}:00`);
 
-      // If there's an existing appointment, update it
-      if (selectedSession.appointment_id) {
-        const { error: aptError } = await supabase
-          .from('appointments')
-          .update({
-            start_time: newDateTime.toISOString(),
-            end_time: addDays(newDateTime, 0).toISOString(), // Will be adjusted by duration
-            status: 'rescheduled',
-          })
-          .eq('id', selectedSession.appointment_id);
+      if (massRescheduleEnabled && massReschedulePreview.length > 0) {
+        // Mass reschedule all pending sessions
+        for (const preview of massReschedulePreview) {
+          const session = sessions.find(s => s.session_number === preview.sessionNumber);
+          if (!session) continue;
 
-        if (aptError) throw aptError;
+          // If there's an existing appointment, update it
+          if (session.appointment_id) {
+            const { error: aptError } = await supabase
+              .from('appointments')
+              .update({
+                start_time: preview.date.toISOString(),
+                end_time: addDays(preview.date, 0).toISOString(),
+                status: 'rescheduled',
+              })
+              .eq('id', session.appointment_id);
+
+            if (aptError) throw aptError;
+          }
+
+          // Update the package_appointment
+          const { error: sessionError } = await supabase
+            .from('package_appointments')
+            .update({
+              scheduled_date: preview.date.toISOString(),
+              status: 'scheduled',
+            })
+            .eq('id', session.id);
+
+          if (sessionError) throw sessionError;
+        }
+
+        toast.success(`${massReschedulePreview.length} sessões reagendadas com sucesso!`);
+      } else {
+        // Single session reschedule
+        if (selectedSession.appointment_id) {
+          const { error: aptError } = await supabase
+            .from('appointments')
+            .update({
+              start_time: newDateTime.toISOString(),
+              end_time: addDays(newDateTime, 0).toISOString(),
+              status: 'rescheduled',
+            })
+            .eq('id', selectedSession.appointment_id);
+
+          if (aptError) throw aptError;
+        }
+
+        const { error: sessionError } = await supabase
+          .from('package_appointments')
+          .update({
+            scheduled_date: newDateTime.toISOString(),
+            status: selectedSession.status === 'completed' ? 'completed' : 'scheduled',
+          })
+          .eq('id', selectedSession.id);
+
+        if (sessionError) throw sessionError;
+
+        toast.success(`Sessão ${selectedSession.session_number} reagendada com sucesso!`);
       }
 
-      // Update the package_appointment
-      const { error: sessionError } = await supabase
-        .from('package_appointments')
-        .update({
-          scheduled_date: newDateTime.toISOString(),
-          status: selectedSession.status === 'completed' ? 'completed' : 'scheduled',
-        })
-        .eq('id', selectedSession.id);
-
-      if (sessionError) throw sessionError;
-
-      toast.success(`Sessão ${selectedSession.session_number} reagendada com sucesso!`);
       setRescheduleDialogOpen(false);
+      setMassRescheduleEnabled(false);
+      setMassReschedulePreview([]);
       fetchSessions();
       onSessionRescheduled?.();
     } catch (error: any) {
@@ -231,13 +311,22 @@ export function PackageSessionsManager({
       </div>
 
       {/* Reschedule Dialog */}
-      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
-        <DialogContent>
+      <Dialog open={rescheduleDialogOpen} onOpenChange={(open) => {
+        setRescheduleDialogOpen(open);
+        if (!open) {
+          setMassRescheduleEnabled(false);
+          setMassReschedulePreview([]);
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarPlus className="h-5 w-5" />
               Reagendar Sessão {selectedSession?.session_number}
             </DialogTitle>
+            <DialogDescription>
+              Altere a data e horário desta sessão
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -256,6 +345,80 @@ export function PackageSessionsManager({
                 onChange={(e) => setNewTime(e.target.value)}
               />
             </div>
+
+            {/* Mass Reschedule Option */}
+            {selectedSession && sessions.filter(s => 
+              s.session_number > selectedSession.session_number && 
+              s.status !== 'completed' && 
+              s.appointment?.status !== 'completed'
+            ).length > 0 && (
+              <div className="p-3 rounded-lg bg-muted/50 border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <CalendarRange className="h-4 w-4" />
+                      Reagendar em Massa
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Reagendar também as sessões pendentes seguintes
+                    </p>
+                  </div>
+                  <Switch
+                    checked={massRescheduleEnabled}
+                    onCheckedChange={setMassRescheduleEnabled}
+                  />
+                </div>
+
+                {massRescheduleEnabled && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div>
+                      <Label className="text-xs">Intervalo entre sessões (dias)</Label>
+                      <Select
+                        value={massRescheduleInterval.toString()}
+                        onValueChange={(v) => setMassRescheduleInterval(parseInt(v))}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[3, 5, 7, 10, 14, 21, 28, 30].map(days => (
+                            <SelectItem key={days} value={days.toString()}>
+                              {days} dias
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Preview of mass reschedule */}
+                    {massReschedulePreview.length > 0 && (
+                      <div className="p-2 bg-background rounded border max-h-[120px] overflow-y-auto">
+                        <p className="text-xs font-medium mb-2 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Visualização ({massReschedulePreview.length} sessões)
+                        </p>
+                        <div className="space-y-1">
+                          {massReschedulePreview.map((preview, index) => (
+                            <div key={preview.sessionNumber} className="flex items-center gap-2 text-xs">
+                              <Badge 
+                                variant={index === 0 ? "default" : "outline"} 
+                                className="w-5 h-5 p-0 flex items-center justify-center text-[10px]"
+                              >
+                                {preview.sessionNumber}
+                              </Badge>
+                              <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
+                                {format(preview.date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -269,7 +432,7 @@ export function PackageSessionsManager({
                 disabled={isSaving || !newDate || !newTime}
                 className="flex-1"
               >
-                {isSaving ? 'Salvando...' : 'Confirmar'}
+                {isSaving ? 'Salvando...' : massRescheduleEnabled ? `Reagendar ${massReschedulePreview.length} sessões` : 'Confirmar'}
               </Button>
             </div>
           </div>

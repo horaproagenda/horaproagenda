@@ -92,6 +92,8 @@ export function NewAppointmentDialog({
   const [autoScheduleEnabled, setAutoScheduleEnabled] = useState(false);
   const [preferredDayOfWeek, setPreferredDayOfWeek] = useState<number | null>(null);
   const [preferredTime, setPreferredTime] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewDates, setPreviewDates] = useState<Date[]>([]);
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -158,6 +160,8 @@ export function NewAppointmentDialog({
       setAutoScheduleEnabled(false);
       setPreferredDayOfWeek(null);
       setPreferredTime('');
+      setShowPreview(false);
+      setPreviewDates([]);
       setServiceType('service');
       setServiceSearch('');
       setClientSearch('');
@@ -208,6 +212,47 @@ export function NewAppointmentDialog({
 
     return { startTime, endTime };
   }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
+
+  // Calculate preview dates for auto-scheduling
+  const calculatePreviewDates = useMemo(() => {
+    if (!appointmentTimes || !autoScheduleEnabled) return [];
+    
+    const packageData = existingClientPackage || selectedPackageData;
+    const totalSessions = packageData?.total_sessions || 1;
+    if (totalSessions <= 1) return [];
+
+    const intervalDays = packageData?.interval_days || 7;
+    const dates: Date[] = [appointmentTimes.startTime];
+
+    for (let i = 1; i < totalSessions; i++) {
+      const futureDate = addDays(appointmentTimes.startTime, intervalDays * i);
+      
+      // Adjust to preferred day of week if set
+      if (preferredDayOfWeek !== null) {
+        while (futureDate.getDay() !== preferredDayOfWeek) {
+          futureDate.setDate(futureDate.getDate() + 1);
+        }
+      }
+
+      // Apply preferred time if set
+      if (preferredTime) {
+        const [hours, minutes] = preferredTime.split(':').map(Number);
+        futureDate.setHours(hours, minutes, 0, 0);
+      }
+
+      dates.push(new Date(futureDate));
+    }
+
+    return dates;
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, preferredDayOfWeek, preferredTime]);
+
+  // Update preview dates when calculation changes
+  useEffect(() => {
+    setPreviewDates(calculatePreviewDates);
+    if (calculatePreviewDates.length > 0) {
+      setShowPreview(true);
+    }
+  }, [calculatePreviewDates]);
 
   // Check for conflicts
   const conflicts = useMemo<ConflictInfo[]>(() => {
@@ -482,6 +527,8 @@ export function NewAppointmentDialog({
     setAutoScheduleEnabled(false);
     setPreferredDayOfWeek(null);
     setPreferredTime('');
+    setShowPreview(false);
+    setPreviewDates([]);
     setServiceType('service');
     setServiceSearch('');
     setClientSearch('');
@@ -787,6 +834,29 @@ export function NewAppointmentDialog({
                           <p className="text-xs text-muted-foreground">
                             Intervalo: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias
                           </p>
+
+                          {/* Preview of scheduled dates */}
+                          {previewDates.length > 0 && date && time && (
+                            <div className="mt-3 p-3 bg-background rounded-md border max-h-[150px] overflow-y-auto">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CalendarIcon className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-medium">Visualização das Sessões</span>
+                              </div>
+                              <div className="space-y-1">
+                                {previewDates.map((previewDate, index) => (
+                                  <div key={index} className="flex items-center gap-2 text-xs">
+                                    <Badge variant={index === 0 ? "default" : "outline"} className="w-6 h-6 p-0 flex items-center justify-center text-[10px]">
+                                      {index + 1}
+                                    </Badge>
+                                    <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
+                                      {format(previewDate, "EEEE, dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                                    </span>
+                                    {index === 0 && <Badge variant="secondary" className="text-[10px]">Primeira</Badge>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

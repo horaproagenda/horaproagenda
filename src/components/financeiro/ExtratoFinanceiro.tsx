@@ -133,8 +133,8 @@ export function ExtratoFinanceiro() {
       description: editDescription,
       amount: Number(editAmount),
       due_date: editDueDate,
-      category_id: editCategoryId || null,
-      payment_method_id: editPaymentMethodId || null,
+      category_id: editCategoryId && editCategoryId !== '_none' ? editCategoryId : null,
+      payment_method_id: editPaymentMethodId && editPaymentMethodId !== '_none' ? editPaymentMethodId : null,
     });
     
     setEditingEntry(null);
@@ -318,7 +318,7 @@ export function ExtratoFinanceiro() {
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem categoria</SelectItem>
+                  <SelectItem value="_none">Sem categoria</SelectItem>
                   {editingEntry?.type === 'payable' ? (
                     expenseCategories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
@@ -338,7 +338,7 @@ export function ExtratoFinanceiro() {
                   <SelectValue placeholder="Selecione uma forma de pagamento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem forma de pagamento</SelectItem>
+                  <SelectItem value="_none">Sem forma de pagamento</SelectItem>
                   {activePaymentMethods.map(pm => (
                     <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
                   ))}

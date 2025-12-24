@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,8 @@ export function RelatorioConsolidado() {
   const { entries } = useFinancialEntries();
   const { transactions } = useCashTransactions();
   const { cashRegisters } = useCashRegisters();
-  const [dateFilter, setDateFilter] = useState<string>('');
+  // Default to today's date
+  const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [sourceFilter, setSourceFilter] = useState<string>('all');
 
   // Combine and normalize data from both sources

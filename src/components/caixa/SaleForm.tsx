@@ -503,7 +503,11 @@ export function SaleForm() {
       });
 
       // Create cash transaction if register is open
-      if (currentOpenRegister) {
+      // Skip cash transaction for "Crédito ao Cliente" as it's a courtesy
+      const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
+                             paymentMethod.name.toLowerCase().includes('credito ao cliente');
+      
+      if (currentOpenRegister && !isClientCredit) {
         await supabase.from('cash_transactions').insert({
           cash_register_id: currentOpenRegister.id,
           type: 'income',

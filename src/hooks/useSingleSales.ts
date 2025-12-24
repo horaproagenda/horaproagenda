@@ -165,7 +165,11 @@ export function useSingleSales() {
 
       return saleData;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Invalidate all related queries immediately
+      const clientId = variables.client_id;
+      
+      // Force immediate refetch of all related data
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
@@ -181,6 +185,13 @@ export function useSingleSales() {
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
+      
+      // Also invalidate client-specific package query if we have client_id
+      if (clientId) {
+        queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+      }
+      
       toast.success('Venda registrada com sucesso!');
     },
     onError: (error: any) => {

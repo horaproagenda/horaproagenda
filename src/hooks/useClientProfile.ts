@@ -87,11 +87,37 @@ export function useClientProfile(clientId: string) {
       )
       .subscribe();
 
+    // Subscribe to ALL service_packages for this project (to catch new package sales)
+    const allPackagesChannel = supabase
+      .channel(`all-packages-realtime-for-profile-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'service_packages',
+        },
+        (payload) => {
+          // Check if this package belongs to our client
+          if (payload.new && (payload.new as { client_id?: string }).client_id === clientId) {
+            console.log('New package for this client:', payload);
+            queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+            queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+            queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+            queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Packages subscription for profile status:', status);
+      });
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(salesChannel);
       supabase.removeChannel(allAppointmentsChannel);
+      supabase.removeChannel(allPackagesChannel);
     };
   }, [clientId, queryClient]);
 

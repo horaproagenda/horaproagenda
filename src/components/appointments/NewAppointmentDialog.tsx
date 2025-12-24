@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
+import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,6 +95,9 @@ export function NewAppointmentDialog({
   const [preferredTime, setPreferredTime] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [previewDates, setPreviewDates] = useState<Date[]>([]);
+  const [editablePreviewDates, setEditablePreviewDates] = useState<Date[]>([]);
+  const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
+  const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -106,6 +110,7 @@ export function NewAppointmentDialog({
   const { appointments, createAppointment } = useAppointments();
   const { settings, generateTimeSlots } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
+  const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
 
   const timeSlots = generateTimeSlots();
 
@@ -249,10 +254,21 @@ export function NewAppointmentDialog({
   // Update preview dates when calculation changes
   useEffect(() => {
     setPreviewDates(calculatePreviewDates);
+    setEditablePreviewDates(calculatePreviewDates);
+    setEditingDateIndex(null);
     if (calculatePreviewDates.length > 0) {
       setShowPreview(true);
     }
   }, [calculatePreviewDates]);
+
+  // Update a specific date in the editable preview
+  const updateEditableDate = (index: number, newDate: Date) => {
+    setEditablePreviewDates(prev => {
+      const updated = [...prev];
+      updated[index] = newDate;
+      return updated;
+    });
+  };
 
   // Check for conflicts
   const conflicts = useMemo<ConflictInfo[]>(() => {
@@ -448,20 +464,16 @@ export function NewAppointmentDialog({
         const packageData = existingClientPackage || selectedPackageData;
         const totalSessions = packageData?.total_sessions || 1;
         
-        if (autoScheduleEnabled && isFirstAppointment && totalSessions > 1) {
-          const intervalDays = packageData?.interval_days || 7;
-          const sessionsToCreate = totalSessions - 1;
+        // Get client info for WhatsApp
+        const clientData = clients.find(c => c.id === selectedClient);
+        
+        if (autoScheduleEnabled && isFirstAppointment && totalSessions > 1 && editablePreviewDates.length > 1) {
+          const sessionsToCreate = editablePreviewDates.length - 1;
 
           for (let i = 1; i <= sessionsToCreate; i++) {
-            const futureDate = addDays(startTime, intervalDays * i);
+            // Use editable dates instead of calculated dates
+            const futureDate = editablePreviewDates[i];
             
-            // Adjust to preferred day of week if set
-            if (preferredDayOfWeek !== null) {
-              while (futureDate.getDay() !== preferredDayOfWeek) {
-                futureDate.setDate(futureDate.getDate() + 1);
-              }
-            }
-
             const futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + duration);
 
@@ -485,6 +497,33 @@ export function NewAppointmentDialog({
           }
 
           toast.success(`${sessionsToCreate + 1} agendamentos criados automaticamente!`);
+
+          // Send WhatsApp notification for all scheduled sessions
+          if (sendWhatsappNotification && clientData?.phone) {
+            try {
+              const sessionsList = editablePreviewDates.map((d, i) => 
+                `📅 Sessão ${i + 1}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+              ).join('\n');
+
+              const message = `Olá ${clientData.name}! 👋
+
+Seu pacote *${packageData?.name}* foi agendado com sucesso! 🎉
+
+Confira as datas das suas ${totalSessions} sessões:
+
+${sessionsList}
+
+Se precisar reagendar alguma sessão, entre em contato conosco.
+
+Até breve! ✨`;
+
+              await sendWhatsappMessage(clientData.phone, message);
+              toast.success('Notificação WhatsApp enviada!');
+            } catch (error) {
+              console.error('Error sending WhatsApp notification:', error);
+              // Don't fail the whole operation if WhatsApp fails
+            }
+          }
         }
       } else {
         // Regular service appointment
@@ -835,26 +874,72 @@ export function NewAppointmentDialog({
                             Intervalo: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias
                           </p>
 
-                          {/* Preview of scheduled dates */}
-                          {previewDates.length > 0 && date && time && (
-                            <div className="mt-3 p-3 bg-background rounded-md border max-h-[150px] overflow-y-auto">
-                              <div className="flex items-center gap-2 mb-2">
-                                <CalendarIcon className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium">Visualização das Sessões</span>
+                          {/* Preview of scheduled dates with edit capability */}
+                          {editablePreviewDates.length > 0 && date && time && (
+                            <div className="mt-3 p-3 bg-background rounded-md border max-h-[200px] overflow-y-auto">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <CalendarIcon className="h-4 w-4 text-primary" />
+                                  <span className="text-sm font-medium">Visualização das Sessões</span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">Clique para editar</span>
                               </div>
-                              <div className="space-y-1">
-                                {previewDates.map((previewDate, index) => (
+                              <div className="space-y-2">
+                                {editablePreviewDates.map((previewDate, index) => (
                                   <div key={index} className="flex items-center gap-2 text-xs">
-                                    <Badge variant={index === 0 ? "default" : "outline"} className="w-6 h-6 p-0 flex items-center justify-center text-[10px]">
+                                    <Badge variant={index === 0 ? "default" : "outline"} className="w-6 h-6 p-0 flex items-center justify-center text-[10px] shrink-0">
                                       {index + 1}
                                     </Badge>
-                                    <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
-                                      {format(previewDate, "EEEE, dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                                    </span>
-                                    {index === 0 && <Badge variant="secondary" className="text-[10px]">Primeira</Badge>}
+                                    {editingDateIndex === index ? (
+                                      <div className="flex items-center gap-1 flex-1">
+                                        <Input
+                                          type="datetime-local"
+                                          className="h-7 text-xs flex-1"
+                                          value={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
+                                          onChange={(e) => {
+                                            const newDate = new Date(e.target.value);
+                                            if (!isNaN(newDate.getTime())) {
+                                              updateEditableDate(index, newDate);
+                                            }
+                                          }}
+                                          onBlur={() => setEditingDateIndex(null)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') setEditingDateIndex(null);
+                                          }}
+                                          autoFocus
+                                        />
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center gap-1",
+                                          index === 0 ? "font-medium" : "text-muted-foreground"
+                                        )}
+                                        onClick={() => setEditingDateIndex(index)}
+                                      >
+                                        {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                        <Pencil className="h-3 w-3 opacity-50" />
+                                      </button>
+                                    )}
+                                    {index === 0 && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
                                   </div>
                                 ))}
                               </div>
+                            </div>
+                          )}
+
+                          {/* WhatsApp notification toggle */}
+                          {editablePreviewDates.length > 0 && (
+                            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                              <div className="flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4 text-green-600" />
+                                <span className="text-xs font-medium">Notificar por WhatsApp</span>
+                              </div>
+                              <Switch
+                                checked={sendWhatsappNotification}
+                                onCheckedChange={setSendWhatsappNotification}
+                              />
                             </div>
                           )}
                         </div>

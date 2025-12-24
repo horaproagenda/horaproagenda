@@ -1364,6 +1364,66 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          category: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_completed: boolean
+          is_recurring: boolean
+          priority: string | null
+          recurring_days: number[] | null
+          recurring_frequency: string | null
+          reminder_date: string | null
+          reminder_time: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_completed?: boolean
+          is_recurring?: boolean
+          priority?: string | null
+          recurring_days?: number[] | null
+          recurring_frequency?: string | null
+          reminder_date?: string | null
+          reminder_time?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_completed?: boolean
+          is_recurring?: boolean
+          priority?: string | null
+          recurring_days?: number[] | null
+          recurring_frequency?: string | null
+          reminder_date?: string | null
+          reminder_time?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       rooms: {
         Row: {
           capacity: number | null

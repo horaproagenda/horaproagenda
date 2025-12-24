@@ -1,14 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
-import { format, isSameDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -22,16 +23,37 @@ interface ConsolidatedEntry {
   status: string;
 }
 
+type PeriodFilter = 'today' | 'week' | 'month' | 'quarter' | 'custom';
+
 export function RelatorioConsolidado() {
   const { entries } = useFinancialEntries();
   const { transactions } = useCashTransactions();
   const { cashRegisters } = useCashRegisters();
-  // Default to today's date
-  const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
+  const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [sourceFilter, setSourceFilter] = useState<string>('all');
 
+  // Calculate date range based on period filter
+  const dateRange = useMemo(() => {
+    const today = new Date();
+    switch (periodFilter) {
+      case 'week':
+        return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+      case 'month':
+        return { start: startOfMonth(today), end: endOfMonth(today) };
+      case 'quarter':
+        return { start: startOfQuarter(today), end: endOfQuarter(today) };
+      case 'custom':
+        const customParsed = parseISO(customDate);
+        return { start: customParsed, end: customParsed };
+      default: // today
+        return { start: today, end: today };
+    }
+  }, [periodFilter, customDate]);
+
   // Combine and normalize data from both sources
-  const consolidatedData: ConsolidatedEntry[] = [
+  const consolidatedData: ConsolidatedEntry[] = useMemo(() => [
     // From financial entries
     ...entries.map((entry) => ({
       id: `fin-${entry.id}`,
@@ -52,14 +74,16 @@ export function RelatorioConsolidado() {
       source: 'caixa' as const,
       status: 'paid',
     })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions]);
 
   // Apply filters
-  const filteredData = consolidatedData.filter((entry) => {
-    if (dateFilter && !entry.date.includes(dateFilter)) return false;
+  const filteredData = useMemo(() => consolidatedData.filter((entry) => {
+    const entryDate = parseISO(entry.date);
+    const inRange = isWithinInterval(entryDate, { start: dateRange.start, end: dateRange.end });
+    if (!inRange) return false;
     if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
     return true;
-  });
+  }), [consolidatedData, dateRange, sourceFilter]);
 
   // Calculate totals
   const totalIncome = filteredData
@@ -76,6 +100,16 @@ export function RelatorioConsolidado() {
     (sum, cr) => sum + Number(cr.opening_balance || 0) + Number(cr.total_received || 0),
     0
   );
+
+  const getPeriodLabel = () => {
+    switch (periodFilter) {
+      case 'week': return 'Esta Semana';
+      case 'month': return 'Este Mês';
+      case 'quarter': return 'Este Trimestre';
+      case 'custom': return format(parseISO(customDate), "dd/MM/yyyy", { locale: ptBR });
+      default: return 'Hoje';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -157,20 +191,62 @@ export function RelatorioConsolidado() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Filtros
+            Filtros - {getPeriodLabel()}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Data</label>
-              <Input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="max-w-xs"
-              />
+              <label className="text-sm text-muted-foreground mb-1 block">Período</label>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant={periodFilter === 'today' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriodFilter('today')}
+                >
+                  Hoje
+                </Button>
+                <Button
+                  variant={periodFilter === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriodFilter('week')}
+                >
+                  Semana
+                </Button>
+                <Button
+                  variant={periodFilter === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriodFilter('month')}
+                >
+                  Mês
+                </Button>
+                <Button
+                  variant={periodFilter === 'quarter' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriodFilter('quarter')}
+                >
+                  Trimestre
+                </Button>
+                <Button
+                  variant={periodFilter === 'custom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriodFilter('custom')}
+                >
+                  Data Específica
+                </Button>
+              </div>
             </div>
+            {periodFilter === 'custom' && (
+              <div className="min-w-[200px]">
+                <label className="text-sm text-muted-foreground mb-1 block">Data</label>
+                <Input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+            )}
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm text-muted-foreground mb-1 block">Origem</label>
               <Select value={sourceFilter} onValueChange={setSourceFilter}>

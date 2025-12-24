@@ -219,7 +219,7 @@ export function RelatorioConsolidado() {
                   filteredData.slice(0, 50).map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>
-                        {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
                       <TableCell className="max-w-[250px] truncate">
                         {entry.description}

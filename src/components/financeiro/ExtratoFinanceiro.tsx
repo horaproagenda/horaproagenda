@@ -1,8 +1,15 @@
-import { useMemo } from 'react';
-import { format, parseISO } from 'date-fns';
+import { useMemo, useState } from 'react';
+import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -11,21 +18,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowUpCircle, ArrowDownCircle, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Trash2, Filter } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 
 export function ExtratoFinanceiro() {
   const { entries, deleteEntry } = useFinancialEntries();
   const { banks } = useBanks();
+  const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('month');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'receivable' | 'payable'>('payable');
 
-  // Calculate running balance per bank - FIXED: receivable is positive (income), payable is negative (expense)
+  // Filter entries
+  const filteredEntries = useMemo(() => {
+    const today = new Date();
+    
+    return entries.filter((entry) => {
+      // Type filter
+      if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
+      
+      // Date filter
+      if (dateFilterType === 'today') {
+        const dueDate = parseISO(entry.due_date);
+        return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
+      } else if (dateFilterType === 'month') {
+        const dueDate = parseISO(entry.due_date);
+        return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
+      }
+      return true;
+    });
+  }, [entries, dateFilterType, typeFilter]);
+
+  // Calculate running balance per bank
   const entriesWithBalance = useMemo(() => {
-    // Group entries by bank
     const bankBalances: Record<string, number> = {};
     
-    // Sort entries by date (oldest first for balance calculation)
-    const sortedEntries = [...entries].sort((a, b) => 
+    const sortedEntries = [...filteredEntries].sort((a, b) => 
       new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     );
 
@@ -36,8 +63,6 @@ export function ExtratoFinanceiro() {
       }
 
       if (entry.status === 'paid') {
-        // FIXED: receivable (type: 'receivable') = income = POSITIVE
-        // payable (type: 'payable') = expense = NEGATIVE
         if (entry.type === 'receivable') {
           bankBalances[bankId] += Number(entry.amount);
         } else {
@@ -49,8 +74,8 @@ export function ExtratoFinanceiro() {
         ...entry,
         runningBalance: bankBalances[bankId],
       };
-    }).reverse(); // Most recent first for display
-  }, [entries]);
+    }).reverse();
+  }, [filteredEntries]);
 
   const getBankName = (bankId: string | null) => {
     if (!bankId) return 'Sem banco';
@@ -60,8 +85,31 @@ export function ExtratoFinanceiro() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle>Extrato</CardTitle>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as datas</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={(v: 'all' | 'receivable' | 'payable') => setTypeFilter(v)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="receivable">A Receber</SelectItem>
+              <SelectItem value="payable">A Pagar</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px]">
@@ -107,7 +155,7 @@ export function ExtratoFinanceiro() {
               {entriesWithBalance.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Nenhum lançamento encontrado
+                    Nenhum lançamento encontrado para o período selecionado
                   </TableCell>
                 </TableRow>
               )}

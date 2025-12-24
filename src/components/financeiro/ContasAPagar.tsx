@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { format, parseISO, isAfter } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { format, parseISO, isAfter, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -29,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, Calendar, Filter } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -43,6 +53,12 @@ export function ContasAPagar() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('month');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('pending');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<any>(null);
+  const [deleteRecurring, setDeleteRecurring] = useState(false);
+  
   const [form, setForm] = useState({
     description: '',
     amount: '',
@@ -54,9 +70,32 @@ export function ContasAPagar() {
     is_recurring: false,
     recurring_frequency: 'monthly',
     installments: '1',
-    recurring_count: '1', // Quantidade de recorrências
-    split_value: false, // Se true, divide o valor pela quantidade de recorrências
+    recurring_count: '1',
+    split_value: false,
   });
+
+  // Filter payables based on date and status
+  const filteredPayables = useMemo(() => {
+    const today = new Date();
+    
+    return payables.filter((entry) => {
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'pending' && entry.status === 'paid') return false;
+        if (statusFilter === 'paid' && entry.status !== 'paid') return false;
+      }
+      
+      // Date filter
+      if (dateFilterType === 'today') {
+        const dueDate = parseISO(entry.due_date);
+        return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
+      } else if (dateFilterType === 'month') {
+        const dueDate = parseISO(entry.due_date);
+        return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
+      }
+      return true;
+    });
+  }, [payables, dateFilterType, statusFilter]);
 
   const resetForm = () => {
     setForm({
@@ -95,7 +134,6 @@ export function ContasAPagar() {
     setDialogOpen(true);
   };
 
-  // Helper function to calculate next due date based on frequency
   const getNextDueDate = (baseDate: string, frequency: string, index: number): string => {
     const date = parseISO(baseDate);
     switch (frequency) {
@@ -118,7 +156,6 @@ export function ContasAPagar() {
     const totalAmount = parseFloat(form.amount) || 0;
     const recurringCount = parseInt(form.recurring_count) || 1;
     
-    // Calculate amount per entry (divided or integral)
     const amountPerEntry = form.is_recurring && form.split_value 
       ? totalAmount / recurringCount 
       : totalAmount;
@@ -141,7 +178,6 @@ export function ContasAPagar() {
         status: form.paid_date ? 'paid' as const : 'pending' as const,
       });
     } else {
-      // Create recurring entries if enabled
       if (form.is_recurring && recurringCount > 1) {
         for (let i = 0; i < recurringCount; i++) {
           const dueDate = getNextDueDate(form.due_date, form.recurring_frequency, i);
@@ -203,6 +239,42 @@ export function ContasAPagar() {
     });
   };
 
+  const handleChangeStatus = async (entry: any, newStatus: 'pending' | 'paid') => {
+    await updateEntry.mutateAsync({
+      id: entry.id,
+      status: newStatus,
+      paid_date: newStatus === 'paid' ? format(new Date(), 'yyyy-MM-dd') : null,
+    });
+  };
+
+  const openDeleteDialog = (entry: any) => {
+    setEntryToDelete(entry);
+    setDeleteRecurring(false);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!entryToDelete) return;
+
+    if (deleteRecurring && entryToDelete.is_recurring) {
+      // Delete all recurring entries with similar description
+      const baseDescription = entryToDelete.description.replace(/\s*\(\d+\/\d+\)$/, '');
+      const relatedEntries = payables.filter(e => 
+        e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
+        parseISO(e.due_date) >= parseISO(entryToDelete.due_date)
+      );
+      
+      for (const entry of relatedEntries) {
+        await deleteEntry.mutateAsync(entry.id);
+      }
+    } else {
+      await deleteEntry.mutateAsync(entryToDelete.id);
+    }
+    
+    setDeleteDialogOpen(false);
+    setEntryToDelete(null);
+  };
+
   const getStatusBadge = (entry: any) => {
     if (entry.status === 'paid') {
       return <Badge className="bg-green-500 hover:bg-green-600">Pago</Badge>;
@@ -219,176 +291,203 @@ export function ContasAPagar() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle>Contas a Pagar</CardTitle>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>{editingEntry ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-4">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Data de Vencimento</Label>
-                    <Input
-                      type="date"
-                      value={form.due_date}
-                      onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Data de Pagamento</Label>
-                    <Input
-                      type="date"
-                      value={form.paid_date}
-                      onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Nome da Conta</Label>
-                  <Input
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Descrição da conta"
-                  />
-                </div>
-                <div>
-                  <Label>Categoria</Label>
-                  <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {expenseCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Forma de Pagamento</Label>
-                  <Select value={form.payment_method_id} onValueChange={(v) => setForm({ ...form, payment_method_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a forma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activePaymentMethods.map((pm) => (
-                        <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Conta Bancária (de onde sai)</Label>
-                  <Select value={form.bank_id} onValueChange={(v) => setForm({ ...form, bank_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a conta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeBanks.map((bank) => (
-                        <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={form.is_recurring}
-                    onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
-                  />
-                  <Label>Conta recorrente</Label>
-                </div>
-                {form.is_recurring && (
-                  <div className="space-y-4 p-3 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Filters */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as datas</SelectItem>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="month">Este mês</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v: 'all' | 'pending' | 'paid') => setStatusFilter(v)}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="paid">Pagas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Conta
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle>{editingEntry ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] pr-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Frequência</Label>
-                      <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="weekly">Semanal</SelectItem>
-                          <SelectItem value="biweekly">Quinzenal</SelectItem>
-                          <SelectItem value="monthly">Mensal</SelectItem>
-                          <SelectItem value="quarterly">Trimestral</SelectItem>
-                          <SelectItem value="annual">Anual</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label>Data de Vencimento</Label>
+                      <Input
+                        type="date"
+                        value={form.due_date}
+                        onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                      />
                     </div>
                     <div>
-                      <Label>Quantidade de Recorrências</Label>
+                      <Label>Data de Pagamento</Label>
+                      <Input
+                        type="date"
+                        value={form.paid_date}
+                        onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Nome da Conta</Label>
+                    <Input
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Descrição da conta"
+                    />
+                  </div>
+                  <div>
+                    <Label>Categoria</Label>
+                    <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Forma de Pagamento</Label>
+                    <Select value={form.payment_method_id} onValueChange={(v) => setForm({ ...form, payment_method_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a forma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activePaymentMethods.map((pm) => (
+                          <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Conta Bancária (de onde sai)</Label>
+                    <Select value={form.bank_id} onValueChange={(v) => setForm({ ...form, bank_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a conta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeBanks.map((bank) => (
+                          <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={form.is_recurring}
+                      onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked })}
+                    />
+                    <Label>Conta recorrente</Label>
+                  </div>
+                  {form.is_recurring && (
+                    <div className="space-y-4 p-3 border rounded-lg bg-muted/30">
+                      <div>
+                        <Label>Frequência</Label>
+                        <Select value={form.recurring_frequency} onValueChange={(v) => setForm({ ...form, recurring_frequency: v })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="weekly">Semanal</SelectItem>
+                            <SelectItem value="biweekly">Quinzenal</SelectItem>
+                            <SelectItem value="monthly">Mensal</SelectItem>
+                            <SelectItem value="quarterly">Trimestral</SelectItem>
+                            <SelectItem value="annual">Anual</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Quantidade de Recorrências</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={form.recurring_count}
+                          onChange={(e) => setForm({ ...form, recurring_count: e.target.value })}
+                          placeholder="Quantas vezes esse pagamento será feito"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={form.split_value}
+                          onCheckedChange={(checked) => setForm({ ...form, split_value: checked })}
+                        />
+                        <Label className="text-sm">
+                          Dividir valor total pelas {form.recurring_count || 1} recorrências
+                        </Label>
+                      </div>
+                      {parseInt(form.recurring_count) > 1 && parseFloat(form.amount) > 0 && (
+                        <div className="text-sm text-muted-foreground p-2 bg-background rounded border">
+                          {form.split_value ? (
+                            <span>
+                              Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
+                              <br />
+                              Total: R$ {parseFloat(form.amount).toFixed(2)} em {form.recurring_count}x
+                            </span>
+                          ) : (
+                            <span>
+                              Valor por parcela: <strong>R$ {parseFloat(form.amount).toFixed(2)}</strong> (integral)
+                              <br />
+                              Total: R$ {(parseFloat(form.amount) * parseInt(form.recurring_count)).toFixed(2)} em {form.recurring_count}x
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Parcela</Label>
                       <Input
                         type="number"
                         min="1"
-                        value={form.recurring_count}
-                        onChange={(e) => setForm({ ...form, recurring_count: e.target.value })}
-                        placeholder="Quantas vezes esse pagamento será feito"
+                        value={form.installments}
+                        onChange={(e) => setForm({ ...form, installments: e.target.value })}
                       />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={form.split_value}
-                        onCheckedChange={(checked) => setForm({ ...form, split_value: checked })}
+                    <div>
+                      <Label>Valor</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={form.amount}
+                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                        placeholder="0,00"
                       />
-                      <Label className="text-sm">
-                        Dividir valor total pelas {form.recurring_count || 1} recorrências
-                      </Label>
                     </div>
-                    {parseInt(form.recurring_count) > 1 && parseFloat(form.amount) > 0 && (
-                      <div className="text-sm text-muted-foreground p-2 bg-background rounded border">
-                        {form.split_value ? (
-                          <span>
-                            Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
-                            <br />
-                            Total: R$ {parseFloat(form.amount).toFixed(2)} em {form.recurring_count}x
-                          </span>
-                        ) : (
-                          <span>
-                            Valor por parcela: <strong>R$ {parseFloat(form.amount).toFixed(2)}</strong> (integral)
-                            <br />
-                            Total: R$ {(parseFloat(form.amount) * parseInt(form.recurring_count)).toFixed(2)} em {form.recurring_count}x
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Parcela</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={form.installments}
-                      onChange={(e) => setForm({ ...form, installments: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Valor</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.amount}
-                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                      placeholder="0,00"
-                    />
-                  </div>
+                  <Button onClick={handleSubmit} className="w-full">
+                    {editingEntry ? 'Salvar' : 'Adicionar'}
+                  </Button>
                 </div>
-                <Button onClick={handleSubmit} className="w-full">
-                  {editingEntry ? 'Salvar' : 'Adicionar'}
-                </Button>
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px]">
@@ -405,44 +504,87 @@ export function ContasAPagar() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payables.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{entry.description}</TableCell>
-                  <TableCell>{entry.payment_method?.name || '-'}</TableCell>
-                  <TableCell>{entry.installments || 1}x</TableCell>
-                  <TableCell className="text-red-600 font-medium">
-                    R$ {Number(entry.amount).toFixed(2)}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(entry)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {entry.status === 'pending' && (
-                        <Button variant="ghost" size="icon" onClick={() => handleMarkAsPaid(entry)} title="Marcar como pago">
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(entry.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {payables.length === 0 && (
+              {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Nenhuma conta a pagar cadastrada
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredPayables.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{entry.description}</TableCell>
+                    <TableCell>{entry.payment_method?.name || '-'}</TableCell>
+                    <TableCell>{entry.installments || 1}x</TableCell>
+                    <TableCell className="text-red-600 font-medium">
+                      R$ {Number(entry.amount).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Select 
+                        value={entry.status} 
+                        onValueChange={(v: 'pending' | 'paid') => handleChangeStatus(entry, v)}
+                      >
+                        <SelectTrigger className="w-[110px] h-7 text-xs">
+                          {getStatusBadge(entry)}
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pendente</SelectItem>
+                          <SelectItem value="paid">Pago</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {entry.status === 'pending' && (
+                          <Button variant="ghost" size="icon" onClick={() => handleMarkAsPaid(entry)} title="Marcar como pago">
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(entry)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
         </ScrollArea>
       </CardContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja excluir a conta "{entryToDelete?.description}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {entryToDelete?.is_recurring && (
+            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+              <Switch
+                checked={deleteRecurring}
+                onCheckedChange={setDeleteRecurring}
+              />
+              <Label className="text-sm">
+                Excluir esta e todas as recorrências futuras
+              </Label>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -113,6 +113,7 @@ export function ExtratoFinanceiro() {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px]">
+          <div className="min-w-[900px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -161,6 +162,8 @@ export function ExtratoFinanceiro() {
               )}
             </TableBody>
           </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </CardContent>
     </Card>

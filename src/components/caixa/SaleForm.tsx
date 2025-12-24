@@ -417,11 +417,14 @@ export function SaleForm() {
             
             for (let i = 0; i < item.quantity; i++) {
               // Create the client package from template
+              // Note: template_id references package_templates table, not service_packages
+              // Since we're using service_packages as templates, set template_id to null
+              // or use the template_id from the source package if it exists
               const { data: clientPackage, error: pkgError } = await supabase
                 .from('service_packages')
                 .insert({
                   client_id: selectedClientId,
-                  template_id: templatePackage.id,
+                  template_id: templatePackage.template_id || null, // Use existing template_id or null
                   name: templatePackage.name,
                   description: templatePackage.description,
                   total_price: templatePackage.total_price,

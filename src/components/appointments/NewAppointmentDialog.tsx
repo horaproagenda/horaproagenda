@@ -270,11 +270,8 @@ export function NewAppointmentDialog({
     });
   };
 
-  // Check for conflicts
-  const conflicts = useMemo<ConflictInfo[]>(() => {
-    if (!appointmentTimes) return [];
-    
-    const { startTime, endTime } = appointmentTimes;
+  // Helper function to check conflicts for a specific date/time
+  const checkConflictsForDateTime = (checkStart: Date, checkEnd: Date): ConflictInfo[] => {
     const foundConflicts: ConflictInfo[] = [];
 
     // Check for professional absence
@@ -283,7 +280,7 @@ export function NewAppointmentDialog({
         const absenceStart = new Date(absence.start_time);
         const absenceEnd = new Date(absence.end_time);
         
-        const overlaps = startTime < absenceEnd && endTime > absenceStart;
+        const overlaps = checkStart < absenceEnd && checkEnd > absenceStart;
         if (overlaps && absence.professional_id === selectedProfessional) {
           const prof = professionals.find(p => p.id === selectedProfessional);
           foundConflicts.push({
@@ -299,7 +296,7 @@ export function NewAppointmentDialog({
       const aptEnd = new Date(apt.end_time);
 
       // Check if times overlap
-      const overlaps = startTime < aptEnd && endTime > aptStart;
+      const overlaps = checkStart < aptEnd && checkEnd > aptStart;
       if (!overlaps) return;
 
       // Check professional conflict
@@ -326,7 +323,73 @@ export function NewAppointmentDialog({
     });
 
     return foundConflicts;
+  };
+
+  // Check for conflicts for the main appointment
+  const conflicts = useMemo<ConflictInfo[]>(() => {
+    if (!appointmentTimes) return [];
+    return checkConflictsForDateTime(appointmentTimes.startTime, appointmentTimes.endTime);
   }, [appointmentTimes, appointments, absences, selectedProfessional, selectedRoom, professionals, rooms]);
+
+  // Check conflicts for auto-scheduled dates and suggest alternatives
+  const previewDateConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
+    if (!autoScheduleEnabled || editablePreviewDates.length === 0) return [];
+    
+    const duration = serviceType === 'service' 
+      ? (selectedServiceData?.duration || 60) 
+      : (selectedPackageData?.duration || 60);
+    
+    return editablePreviewDates.map((previewDate, index) => {
+      const endTime = new Date(previewDate);
+      endTime.setMinutes(endTime.getMinutes() + duration);
+      
+      const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
+      
+      // Find alternative if there are conflicts
+      let suggestedDate: Date | null = null;
+      if (dateConflicts.length > 0) {
+        // Try to find an available slot on the same day first
+        const [hours, minutes] = format(previewDate, 'HH:mm').split(':').map(Number);
+        const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
+        
+        // Try next slots on the same day
+        for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
+          const [slotHours, slotMinutes] = timeSlots[i].split(':').map(Number);
+          const testDate = new Date(previewDate);
+          testDate.setHours(slotHours, slotMinutes, 0, 0);
+          const testEnd = new Date(testDate);
+          testEnd.setMinutes(testEnd.getMinutes() + duration);
+          
+          if (checkConflictsForDateTime(testDate, testEnd).length === 0) {
+            suggestedDate = testDate;
+            break;
+          }
+        }
+        
+        // If no slot available on the same day, try next day at the same time
+        if (!suggestedDate) {
+          let tryDate = addDays(previewDate, 1);
+          for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+            if (isWorkDay(tryDate)) {
+              const testEnd = new Date(tryDate);
+              testEnd.setMinutes(testEnd.getMinutes() + duration);
+              
+              if (checkConflictsForDateTime(tryDate, testEnd).length === 0) {
+                suggestedDate = tryDate;
+                break;
+              }
+            }
+            tryDate = addDays(tryDate, 1);
+          }
+        }
+      }
+      
+      return { index, conflicts: dateConflicts, suggestedDate };
+    });
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots]);
+
+  // Check if any preview date has conflicts
+  const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
 
   // Get available time slots for the selected date
   const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
@@ -876,7 +939,7 @@ Até breve! ✨`;
 
                           {/* Preview of scheduled dates with edit capability */}
                           {editablePreviewDates.length > 0 && date && time && (
-                            <div className="mt-3 p-3 bg-background rounded-md border max-h-[200px] overflow-y-auto">
+                            <div className="mt-3 p-3 bg-background rounded-md border max-h-[280px] overflow-y-auto">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <CalendarIcon className="h-4 w-4 text-primary" />
@@ -884,47 +947,90 @@ Até breve! ✨`;
                                 </div>
                                 <span className="text-[10px] text-muted-foreground">Clique para editar</span>
                               </div>
+                              {hasPreviewConflicts && (
+                                <Alert variant="destructive" className="mb-2 py-2">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <AlertDescription className="text-xs">
+                                    Algumas datas têm conflitos. Altere ou aceite as sugestões.
+                                  </AlertDescription>
+                                </Alert>
+                              )}
                               <div className="space-y-2">
-                                {editablePreviewDates.map((previewDate, index) => (
-                                  <div key={index} className="flex items-center gap-2 text-xs">
-                                    <Badge variant={index === 0 ? "default" : "outline"} className="w-6 h-6 p-0 flex items-center justify-center text-[10px] shrink-0">
-                                      {index + 1}
-                                    </Badge>
-                                    {editingDateIndex === index ? (
-                                      <div className="flex items-center gap-1 flex-1">
-                                        <Input
-                                          type="datetime-local"
-                                          className="h-7 text-xs flex-1"
-                                          value={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
-                                          onChange={(e) => {
-                                            const newDate = new Date(e.target.value);
-                                            if (!isNaN(newDate.getTime())) {
-                                              updateEditableDate(index, newDate);
-                                            }
-                                          }}
-                                          onBlur={() => setEditingDateIndex(null)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') setEditingDateIndex(null);
-                                          }}
-                                          autoFocus
-                                        />
-                                      </div>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        className={cn(
-                                          "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center gap-1",
-                                          index === 0 ? "font-medium" : "text-muted-foreground"
+                                {editablePreviewDates.map((previewDate, index) => {
+                                  const conflictInfo = previewDateConflicts.find(pc => pc.index === index);
+                                  const hasConflict = conflictInfo && conflictInfo.conflicts.length > 0;
+                                  
+                                  return (
+                                    <div key={index} className="space-y-1">
+                                      <div className={cn(
+                                        "flex items-center gap-2 text-xs p-1 rounded",
+                                        hasConflict && "bg-destructive/10 border border-destructive/30"
+                                      )}>
+                                        <Badge 
+                                          variant={hasConflict ? "destructive" : index === 0 ? "default" : "outline"} 
+                                          className="w-6 h-6 p-0 flex items-center justify-center text-[10px] shrink-0"
+                                        >
+                                          {hasConflict ? <AlertTriangle className="h-3 w-3" /> : index + 1}
+                                        </Badge>
+                                        {editingDateIndex === index ? (
+                                          <div className="flex items-center gap-1 flex-1">
+                                            <Input
+                                              type="datetime-local"
+                                              className="h-7 text-xs flex-1"
+                                              value={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
+                                              onChange={(e) => {
+                                                const newDate = new Date(e.target.value);
+                                                if (!isNaN(newDate.getTime())) {
+                                                  updateEditableDate(index, newDate);
+                                                }
+                                              }}
+                                              onBlur={() => setEditingDateIndex(null)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') setEditingDateIndex(null);
+                                              }}
+                                              autoFocus
+                                            />
+                                          </div>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center gap-1",
+                                              index === 0 ? "font-medium" : "text-muted-foreground",
+                                              hasConflict && "text-destructive"
+                                            )}
+                                            onClick={() => setEditingDateIndex(index)}
+                                          >
+                                            {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                            <Pencil className="h-3 w-3 opacity-50" />
+                                          </button>
                                         )}
-                                        onClick={() => setEditingDateIndex(index)}
-                                      >
-                                        {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                                        <Pencil className="h-3 w-3 opacity-50" />
-                                      </button>
-                                    )}
-                                    {index === 0 && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
-                                  </div>
-                                ))}
+                                        {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
+                                      </div>
+                                      
+                                      {/* Show conflict details and suggestion */}
+                                      {hasConflict && conflictInfo && (
+                                        <div className="ml-8 space-y-1">
+                                          <p className="text-[10px] text-destructive">
+                                            {conflictInfo.conflicts[0].message}
+                                          </p>
+                                          {conflictInfo.suggestedDate && (
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-6 text-[10px] px-2 bg-green-500/10 border-green-500/30 hover:bg-green-500/20"
+                                              onClick={() => updateEditableDate(index, conflictInfo.suggestedDate!)}
+                                            >
+                                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                                              Usar: {format(conflictInfo.suggestedDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -1137,9 +1243,9 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || createAppointment.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || hasPreviewConflicts || createAppointment.isPending}
               >
-                {createAppointment.isPending ? 'Salvando...' : 'Criar Agendamento'}
+                {createAppointment.isPending ? 'Salvando...' : hasPreviewConflicts ? 'Resolva os conflitos' : 'Criar Agendamento'}
               </Button>
             </div>
           </form>

@@ -37,16 +37,35 @@ export interface PackageSession {
 export function useClientPackages(clientId: string | null) {
   const queryClient = useQueryClient();
 
-  // Subscribe to realtime changes for packages and appointments
+  // Subscribe to realtime changes for packages and appointments - both global and client-specific
   useEffect(() => {
     if (!clientId) return;
 
     const channel = supabase
       .channel(`client-packages-realtime-${clientId}`)
+      // Listen to ALL service_packages changes (not just filtered) for faster detection
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'service_packages',
+        },
+        (payload) => {
+          console.log('New package created, checking if for this client...', payload);
+          // Check if it's for our client
+          if (payload.new && (payload.new as any).client_id === clientId) {
+            console.log('Package is for this client, refreshing immediately!');
+            queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+            queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+            queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'service_packages',
           filter: `client_id=eq.${clientId}`,
@@ -69,7 +88,9 @@ export function useClientPackages(clientId: string | null) {
           queryClient.invalidateQueries({ queryKey: ['package_details'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Client packages realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

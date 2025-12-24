@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus, CalendarRange } from 'lucide-react';
+import { Calendar, Clock, Check, X, RefreshCw, CalendarPlus, CalendarRange, MessageCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useWhatsapp } from '@/hooks/useWhatsapp';
 
 interface PackageSession {
   id: string;
@@ -43,6 +44,8 @@ interface PackageSessionsManagerProps {
   packageName: string;
   totalSessions: number;
   intervalDays?: number;
+  clientPhone?: string;
+  clientName?: string;
   onSessionRescheduled?: () => void;
 }
 
@@ -51,6 +54,8 @@ export function PackageSessionsManager({
   packageName,
   totalSessions,
   intervalDays = 7,
+  clientPhone,
+  clientName,
   onSessionRescheduled 
 }: PackageSessionsManagerProps) {
   const [sessions, setSessions] = useState<PackageSession[]>([]);
@@ -65,6 +70,10 @@ export function PackageSessionsManager({
   const [massRescheduleEnabled, setMassRescheduleEnabled] = useState(false);
   const [massRescheduleInterval, setMassRescheduleInterval] = useState(intervalDays);
   const [massReschedulePreview, setMassReschedulePreview] = useState<{sessionNumber: number, date: Date}[]>([]);
+  const [editingPreviewIndex, setEditingPreviewIndex] = useState<number | null>(null);
+  const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
+
+  const { sendMessage: sendWhatsappMessage } = useWhatsapp();
 
   useEffect(() => {
     fetchSessions();
@@ -178,6 +187,30 @@ export function PackageSessionsManager({
         }
 
         toast.success(`${massReschedulePreview.length} sessões reagendadas com sucesso!`);
+
+        // Send WhatsApp notification
+        if (sendWhatsappNotification && clientPhone && clientName) {
+          try {
+            const sessionsList = massReschedulePreview.map((preview) => 
+              `📅 Sessão ${preview.sessionNumber}: ${format(preview.date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+            ).join('\n');
+
+            const message = `Olá ${clientName}! 👋
+
+Suas sessões do pacote *${packageName}* foram reagendadas:
+
+${sessionsList}
+
+Se precisar de qualquer ajuste, entre em contato conosco.
+
+Até breve! ✨`;
+
+            await sendWhatsappMessage(clientPhone, message);
+            toast.success('Notificação WhatsApp enviada!');
+          } catch (error) {
+            console.error('Error sending WhatsApp notification:', error);
+          }
+        }
       } else {
         // Single session reschedule
         if (selectedSession.appointment_id) {
@@ -209,6 +242,7 @@ export function PackageSessionsManager({
       setRescheduleDialogOpen(false);
       setMassRescheduleEnabled(false);
       setMassReschedulePreview([]);
+      setEditingPreviewIndex(null);
       fetchSessions();
       onSessionRescheduled?.();
     } catch (error: any) {
@@ -216,6 +250,15 @@ export function PackageSessionsManager({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Update a specific preview date
+  const updatePreviewDate = (index: number, newDate: Date) => {
+    setMassReschedulePreview(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], date: newDate };
+      return updated;
+    });
   };
 
   const getStatusBadge = (session: PackageSession) => {
@@ -390,28 +433,68 @@ export function PackageSessionsManager({
                       </Select>
                     </div>
 
-                    {/* Preview of mass reschedule */}
+                    {/* Preview of mass reschedule with edit capability */}
                     {massReschedulePreview.length > 0 && (
-                      <div className="p-2 bg-background rounded border max-h-[120px] overflow-y-auto">
-                        <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Visualização ({massReschedulePreview.length} sessões)
-                        </p>
+                      <div className="p-2 bg-background rounded border max-h-[150px] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-medium flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Visualização ({massReschedulePreview.length} sessões)
+                          </p>
+                          <span className="text-[9px] text-muted-foreground">Clique para editar</span>
+                        </div>
                         <div className="space-y-1">
                           {massReschedulePreview.map((preview, index) => (
                             <div key={preview.sessionNumber} className="flex items-center gap-2 text-xs">
                               <Badge 
                                 variant={index === 0 ? "default" : "outline"} 
-                                className="w-5 h-5 p-0 flex items-center justify-center text-[10px]"
+                                className="w-5 h-5 p-0 flex items-center justify-center text-[10px] shrink-0"
                               >
                                 {preview.sessionNumber}
                               </Badge>
-                              <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
-                                {format(preview.date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                              </span>
+                              {editingPreviewIndex === index ? (
+                                <Input
+                                  type="datetime-local"
+                                  className="h-6 text-xs flex-1"
+                                  value={format(preview.date, "yyyy-MM-dd'T'HH:mm")}
+                                  onChange={(e) => {
+                                    const newDate = new Date(e.target.value);
+                                    if (!isNaN(newDate.getTime())) {
+                                      updatePreviewDate(index, newDate);
+                                    }
+                                  }}
+                                  onBlur={() => setEditingPreviewIndex(null)}
+                                  autoFocus
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 flex items-center gap-1"
+                                  onClick={() => setEditingPreviewIndex(index)}
+                                >
+                                  <span className={index === 0 ? "font-medium" : "text-muted-foreground"}>
+                                    {format(preview.date, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                                  </span>
+                                  <Pencil className="h-2.5 w-2.5 opacity-50" />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* WhatsApp notification toggle */}
+                    {massReschedulePreview.length > 0 && clientPhone && (
+                      <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                        <div className="flex items-center gap-2">
+                          <MessageCircle className="h-3 w-3 text-green-600" />
+                          <span className="text-xs font-medium">Notificar WhatsApp</span>
+                        </div>
+                        <Switch
+                          checked={sendWhatsappNotification}
+                          onCheckedChange={setSendWhatsappNotification}
+                        />
                       </div>
                     )}
                   </div>

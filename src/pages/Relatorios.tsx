@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Package, TrendingUp } from 'lucide-react';
-import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays } from 'date-fns';
+import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Package, TrendingUp, Bell, Percent } from 'lucide-react';
+import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,18 +11,28 @@ import { Progress } from '@/components/ui/progress';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { useProfessionals } from '@/hooks/useProfessionals';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { CommissionsReport } from '@/components/caixa/CommissionsReport';
+import { RemindersPanel } from '@/components/lembretes/RemindersPanel';
 
 const Relatorios = () => {
   const [activeTab, setActiveTab] = useState('aniversariantes');
   const { clients, isLoading: clientsLoading } = useClients();
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { packages, isLoading: packagesLoading } = useServicePackages();
+  const { professionals } = useProfessionals();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Commission report date range (current month)
+  const commissionDateRange = useMemo(() => ({
+    start: startOfMonth(new Date()),
+    end: endOfMonth(new Date())
+  }), []);
 
   // Realtime sync for reports
   useEffect(() => {
@@ -205,7 +215,7 @@ const Relatorios = () => {
       subtitle="Acompanhe aniversariantes, retornos e clientes sumidos"
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="aniversariantes" className="gap-2">
             <Cake className="h-4 w-4" />
             <span className="hidden sm:inline">Aniversariantes</span>
@@ -225,6 +235,14 @@ const Relatorios = () => {
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Pacotes</span>
             <Badge variant="secondary" className="ml-1">{packageProgress.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="comissoes" className="gap-2">
+            <Percent className="h-4 w-4" />
+            <span className="hidden sm:inline">Comissões</span>
+          </TabsTrigger>
+          <TabsTrigger value="lembretes" className="gap-2">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Lembretes</span>
           </TabsTrigger>
         </TabsList>
 

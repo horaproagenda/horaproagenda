@@ -1,0 +1,144 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE');
+
+    console.log('Starting overdue bills notification check...');
+
+    // Check if WhatsApp is configured
+    if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstance) {
+      console.log('WhatsApp not configured, skipping notifications');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'WhatsApp not configured',
+          sent: 0 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get today's date
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find overdue receivable entries with client info
+    const { data: overdueEntries, error: entriesError } = await supabase
+      .from('financial_entries')
+      .select(`
+        *,
+        client:clients(id, name, phone)
+      `)
+      .eq('type', 'receivable')
+      .eq('status', 'pending')
+      .lt('due_date', today)
+      .not('client_id', 'is', null);
+
+    if (entriesError) {
+      console.error('Error fetching overdue entries:', entriesError);
+      throw entriesError;
+    }
+
+    console.log(`Found ${overdueEntries?.length || 0} overdue entries`);
+
+    let sentCount = 0;
+    const errors: string[] = [];
+
+    for (const entry of overdueEntries || []) {
+      if (!entry.client?.phone) {
+        console.log(`Skipping entry ${entry.id}: no phone number`);
+        continue;
+      }
+
+      // Clean phone number
+      let phone = entry.client.phone.replace(/\D/g, '');
+      if (!phone.startsWith('55') && phone.length <= 11) {
+        phone = '55' + phone;
+      }
+
+      // Format due date
+      const dueDate = new Date(entry.due_date + 'T12:00:00');
+      const formattedDate = dueDate.toLocaleDateString('pt-BR');
+      
+      // Calculate days overdue
+      const diffTime = new Date().getTime() - dueDate.getTime();
+      const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Build message
+      const message = `Olá ${entry.client.name}! 👋\n\nIdentificamos que você possui um pagamento pendente:\n\n📋 *${entry.description}*\n💰 Valor: R$ ${Number(entry.amount).toFixed(2)}\n📅 Vencimento: ${formattedDate}\n⏰ Atraso: ${daysOverdue} dia${daysOverdue > 1 ? 's' : ''}\n\nPor favor, entre em contato conosco para regularizar sua situação.\n\nAgradecemos a compreensão! 🙏`;
+
+      try {
+        console.log(`Sending notification to ${entry.client.name} (${phone})`);
+        
+        const response = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evolutionApiKey,
+          },
+          body: JSON.stringify({
+            number: phone,
+            text: message,
+          }),
+        });
+
+        if (response.ok) {
+          sentCount++;
+          console.log(`Successfully sent notification for entry ${entry.id}`);
+        } else {
+          const errorText = await response.text();
+          console.error(`Failed to send notification for entry ${entry.id}:`, errorText);
+          errors.push(`Entry ${entry.id}: ${errorText}`);
+        }
+      } catch (sendError: unknown) {
+        const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+        console.error(`Error sending notification for entry ${entry.id}:`, sendError);
+        errors.push(`Entry ${entry.id}: ${errorMessage}`);
+      }
+    }
+
+    console.log(`Notification process completed. Sent: ${sentCount}, Errors: ${errors.length}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Sent ${sentCount} notifications`,
+        sent: sentCount,
+        total: overdueEntries?.length || 0,
+        errors: errors.length > 0 ? errors : undefined
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error in notify-overdue-bills:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage 
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+});

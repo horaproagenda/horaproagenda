@@ -1,1 +1,10 @@
 project_id = "nsgcllrbswodjoadybsj"
+
+[functions.whatsapp-check-connection]
+verify_jwt = false
+
+[functions.whatsapp-send]
+verify_jwt = false
+
+[functions.notify-overdue-bills]
+verify_jwt = false

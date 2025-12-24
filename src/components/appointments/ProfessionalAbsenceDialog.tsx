@@ -164,15 +164,15 @@ export function ProfessionalAbsenceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? <Edit className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
               {isEditing ? 'Editar Ausência' : 'Registrar Ausência de Profissional'}
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
+          <ScrollArea className="flex-1 min-h-0 pr-4">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Profissional *</Label>

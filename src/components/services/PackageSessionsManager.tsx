@@ -660,12 +660,31 @@ Até breve! ✨`;
                       </Select>
                     </div>
 
-                    {/* Conflict Alert */}
+                    {/* Conflict Alert with Auto-resolve */}
                     {hasAnyConflict && (
                       <Alert variant="destructive" className="py-2">
                         <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-xs">
-                          Algumas sessões têm conflitos de horário. Corrija antes de confirmar.
+                        <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                          <span>Algumas sessões têm conflitos de horário.</span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="h-6 text-xs shrink-0"
+                            onClick={() => {
+                              // Auto-resolve all conflicts
+                              const updated = massReschedulePreview.map((preview, index) => {
+                                const conflict = previewConflicts.get(preview.sessionNumber);
+                                if (conflict?.hasConflict && conflict.suggestedDate) {
+                                  return { ...preview, date: conflict.suggestedDate };
+                                }
+                                return preview;
+                              });
+                              setMassReschedulePreview(updated);
+                            }}
+                          >
+                            Auto-resolver todos
+                          </Button>
                         </AlertDescription>
                       </Alert>
                     )}

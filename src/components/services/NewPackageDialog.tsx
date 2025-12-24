@@ -19,7 +19,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,15 +37,6 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 
-const DAYS_OF_WEEK = [
-  { value: '0', label: 'Domingo' },
-  { value: '1', label: 'Segunda-feira' },
-  { value: '2', label: 'Terça-feira' },
-  { value: '3', label: 'Quarta-feira' },
-  { value: '4', label: 'Quinta-feira' },
-  { value: '5', label: 'Sexta-feira' },
-  { value: '6', label: 'Sábado' },
-];
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -55,9 +45,6 @@ const packageSchema = z.object({
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
-  auto_schedule: z.boolean(),
-  preferred_day_of_week: z.string().optional(),
-  preferred_time: z.string().optional(),
   total_price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
   whatsapp_reminder: z.boolean(),
   professional_id: z.string().optional(),
@@ -89,9 +76,6 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
       total_sessions: 10,
       interval_days: 7,
       duration: 60,
-      auto_schedule: false,
-      preferred_day_of_week: '',
-      preferred_time: '',
       total_price: 0,
       whatsapp_reminder: true,
       professional_id: '_none',
@@ -99,8 +83,6 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
       equipment: [],
     },
   });
-
-  const autoSchedule = form.watch('auto_schedule');
 
   const onSubmit = async (data: PackageFormData) => {
     setIsLoading(true);
@@ -116,9 +98,9 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
           sessions_scheduled: 0,
           interval_days: data.interval_days,
           duration: data.duration,
-          auto_schedule: data.auto_schedule,
-          preferred_day_of_week: data.preferred_day_of_week ? parseInt(data.preferred_day_of_week) : null,
-          preferred_time: data.preferred_time || null,
+          auto_schedule: false,
+          preferred_day_of_week: null,
+          preferred_time: null,
           total_price: data.total_price,
           whatsapp_reminder: data.whatsapp_reminder,
           professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
@@ -377,78 +359,14 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
 
             <FormField
               control={form.control}
-              name="auto_schedule"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Agendamento Automático</FormLabel>
-                    <FormDescription>
-                      O sistema agenda as sessões automaticamente baseado nas preferências
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {autoSchedule && (
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50">
-                <FormField
-                  control={form.control}
-                  name="preferred_day_of_week"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dia da Semana Preferido</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {DAYS_OF_WEEK.map(day => (
-                            <SelectItem key={day.value} value={day.value}>
-                              {day.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="preferred_time"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Horário Preferido</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
               name="whatsapp_reminder"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Lembrete via WhatsApp</FormLabel>
-                    <FormDescription>
+                    <p className="text-sm text-muted-foreground">
                       Enviar lembrete de sessões agendadas via WhatsApp
-                    </FormDescription>
+                    </p>
                   </div>
                   <FormControl>
                     <Switch

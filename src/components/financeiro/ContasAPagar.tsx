@@ -58,6 +58,8 @@ export function ContasAPagar() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<any>(null);
   const [deleteRecurring, setDeleteRecurring] = useState(false);
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [showEditRecurringOption, setShowEditRecurringOption] = useState(false);
   
   const [form, setForm] = useState({
     description: '',
@@ -118,7 +120,7 @@ export function ContasAPagar() {
   const openEdit = (entry: any) => {
     setEditingEntry(entry);
     setForm({
-      description: entry.description,
+      description: entry.description.replace(/\s*\(\d+\/\d+\)$/, ''), // Remove number suffix for editing
       amount: entry.amount.toString(),
       due_date: entry.due_date,
       paid_date: entry.paid_date || '',
@@ -131,6 +133,9 @@ export function ContasAPagar() {
       recurring_count: entry.recurring_count?.toString() || '1',
       split_value: false,
     });
+    // Show recurring option if entry is part of a recurring series
+    setShowEditRecurringOption(entry.is_recurring);
+    setEditRecurring(false);
     setDialogOpen(true);
   };
 
@@ -161,6 +166,7 @@ export function ContasAPagar() {
       : totalAmount;
 
     if (editingEntry) {
+      // Update this entry
       await updateEntry.mutateAsync({ 
         id: editingEntry.id, 
         type: 'payable',
@@ -177,6 +183,27 @@ export function ContasAPagar() {
         installments: parseInt(form.installments) || 1,
         status: form.paid_date ? 'paid' as const : 'pending' as const,
       });
+
+      // If editRecurring is true, also update all future related entries
+      if (editRecurring && editingEntry.is_recurring) {
+        const baseDescription = editingEntry.description.replace(/\s*\(\d+\/\d+\)$/, '');
+        const relatedEntries = payables.filter(e => 
+          e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
+          e.id !== editingEntry.id &&
+          parseISO(e.due_date) > parseISO(editingEntry.due_date)
+        );
+        
+        for (const entry of relatedEntries) {
+          await updateEntry.mutateAsync({
+            id: entry.id,
+            description: form.description,
+            amount: amountPerEntry,
+            category_id: form.category_id || null,
+            payment_method_id: form.payment_method_id || null,
+            bank_id: form.bank_id || null,
+          });
+        }
+      }
     } else {
       if (form.is_recurring && recurringCount > 1) {
         for (let i = 0; i < recurringCount; i++) {
@@ -479,7 +506,19 @@ export function ContasAPagar() {
                         placeholder="0,00"
                       />
                     </div>
-                  </div>
+                    </div>
+                  {/* Option to edit all following entries for recurring entries */}
+                  {editingEntry && showEditRecurringOption && (
+                    <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                      <Switch
+                        checked={editRecurring}
+                        onCheckedChange={setEditRecurring}
+                      />
+                      <Label className="text-sm">
+                        Editar também as parcelas seguintes
+                      </Label>
+                    </div>
+                  )}
                   <Button onClick={handleSubmit} className="w-full">
                     {editingEntry ? 'Salvar' : 'Adicionar'}
                   </Button>

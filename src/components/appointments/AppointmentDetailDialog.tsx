@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -106,6 +107,9 @@ export function AppointmentDetailDialog({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
+  const [showRescheduleOption, setShowRescheduleOption] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
   
   // Edit mode state
@@ -197,8 +201,21 @@ export function AppointmentDetailDialog({
   }, [open]);
 
   if (!appointment) return null;
+
+  // Get package session info
+  const getPackageSessionInfo = () => {
+    if (!appointment.package_appointment?.package) return null;
+    const pkg = appointment.package_appointment.package;
+    const totalSessions = pkg.total_sessions || 0;
+    const scheduledSessions = pkg.sessions_scheduled || 0;
+    // After deleting, one more session will be available
+    const remainingSessions = totalSessions - scheduledSessions + 1;
+    return { totalSessions, scheduledSessions, remainingSessions, packageName: pkg.name };
+  };
+
+  const packageSessionInfo = getPackageSessionInfo();
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteMode === 'all' && appointment.package_appointment?.package_id) {
       deletePackageAppointments.mutate(appointment.package_appointment.package_id, {
         onSuccess: () => {
@@ -210,14 +227,45 @@ export function AppointmentDetailDialog({
       deleteAppointment.mutate(appointment.id, {
         onSuccess: () => {
           setShowDeleteDialog(false);
+          setShowRescheduleOption(false);
           onOpenChange(false);
         },
       });
     }
   };
 
+  const handleRescheduleAndDelete = async () => {
+    if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
+    
+    const newStartTime = new Date(`${rescheduleDate}T${rescheduleTime}:00`);
+    const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
+    const newEndTime = new Date(newStartTime.getTime() + duration);
+    
+    // First update the appointment with the new time
+    updateAppointment.mutate({
+      id: appointment.id,
+      updates: {
+        start_time: newStartTime.toISOString(),
+        end_time: newEndTime.toISOString(),
+        status: 'scheduled',
+      },
+    }, {
+      onSuccess: () => {
+        setShowDeleteDialog(false);
+        setShowRescheduleOption(false);
+        setRescheduleDate('');
+        setRescheduleTime('');
+        onOpenChange(false);
+        toast.success('Agendamento reagendado com sucesso!');
+      },
+    });
+  };
+
   const handleOpenDeleteDialog = (mode: 'single' | 'all') => {
     setDeleteMode(mode);
+    setShowRescheduleOption(false);
+    setRescheduleDate('');
+    setRescheduleTime('');
     setShowDeleteDialog(true);
   };
 
@@ -874,37 +922,124 @@ export function AppointmentDetailDialog({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
               {deleteMode === 'all' ? 'Excluir Todos os Agendamentos do Pacote' : 'Excluir Agendamento'}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteMode === 'all' ? (
-                <>
-                  Tem certeza que deseja excluir <strong>todos os agendamentos</strong> do pacote <strong>{packageData?.name}</strong> de <strong>{appointment.client?.name}</strong>? 
-                  <br /><br />
-                  Esta ação irá remover todos os agendamentos vinculados a este pacote e resetar as sessões. Esta ação não pode ser desfeita.
-                </>
-              ) : (
-                <>
-                  Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong>
-                  {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
-                  Esta ação não pode ser desfeita.
-                </>
-              )}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                {deleteMode === 'all' ? (
+                  <p>
+                    Tem certeza que deseja excluir <strong>todos os agendamentos</strong> do pacote <strong>{packageData?.name}</strong> de <strong>{appointment.client?.name}</strong>? 
+                    <br /><br />
+                    Esta ação irá remover todos os agendamentos vinculados a este pacote e resetar as sessões. Esta ação não pode ser desfeita.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong>
+                      {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
+                    </p>
+                    
+                    {/* Package session info */}
+                    {isPackageAppointment && packageSessionInfo && (
+                      <div className="p-3 rounded-lg bg-info/10 border border-info/20">
+                        <div className="flex items-center gap-2 text-info font-medium mb-2">
+                          <Gift className="h-4 w-4" />
+                          <span>Sessão de Pacote</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Após excluir, a sessão será liberada para reagendamento.
+                        </p>
+                        <div className="mt-2 flex items-center gap-4 text-sm">
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium text-foreground">{packageSessionInfo.remainingSessions}</span>
+                            <span className="text-muted-foreground">sessões disponíveis</span>
+                          </span>
+                          <span className="text-muted-foreground">de {packageSessionInfo.totalSessions} total</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reschedule option for package appointments */}
+                    {isPackageAppointment && !showRescheduleOption && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-primary text-primary hover:bg-primary/10"
+                        onClick={() => setShowRescheduleOption(true)}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Reagendar em vez de excluir
+                      </Button>
+                    )}
+
+                    {showRescheduleOption && (
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+                        <div className="flex items-center gap-2 text-primary font-medium">
+                          <Calendar className="h-4 w-4" />
+                          <span>Reagendar para:</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Data</Label>
+                            <Input
+                              type="date"
+                              value={rescheduleDate}
+                              onChange={(e) => setRescheduleDate(e.target.value)}
+                              min={format(new Date(), 'yyyy-MM-dd')}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Horário</Label>
+                            <Input
+                              type="time"
+                              value={rescheduleTime}
+                              onChange={(e) => setRescheduleTime(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              setShowRescheduleOption(false);
+                              setRescheduleDate('');
+                              setRescheduleTime('');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            disabled={!rescheduleDate || !rescheduleTime || updateAppointment.isPending}
+                            onClick={handleRescheduleAndDelete}
+                          >
+                            Confirmar Reagendamento
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteAppointment.isPending || deletePackageAppointments.isPending}
-            >
-              {deleteMode === 'all' ? 'Excluir Todos' : 'Excluir'}
-            </AlertDialogAction>
+            {!showRescheduleOption && (
+              <AlertDialogAction 
+                onClick={handleDelete} 
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteAppointment.isPending || deletePackageAppointments.isPending}
+              >
+                {deleteMode === 'all' ? 'Excluir Todos' : 'Excluir'}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -16,6 +16,7 @@ import Caixa from "./pages/Caixa";
 import Financeiro from "./pages/Financeiro";
 import Produtos from "./pages/Produtos";
 import Relatorios from "./pages/Relatorios";
+import Lembretes from "./pages/Lembretes";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
 import Ajuda from "./pages/Ajuda";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
               <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
               <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+              <Route path="/lembretes" element={<ProtectedRoute><Lembretes /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
               <Route path="/auditoria" element={<ProtectedRoute><Auditoria /></ProtectedRoute>} />
               <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />

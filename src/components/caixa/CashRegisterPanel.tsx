@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +53,7 @@ import {
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
+import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +65,7 @@ export function CashRegisterPanel() {
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { pendingReceivables, entries } = useFinancialEntries();
+  const { appointments } = useAppointments();
 
   const [openingBalance, setOpeningBalance] = useState('');
   const [closingBalance, setClosingBalance] = useState('');
@@ -109,20 +111,43 @@ export function CashRegisterPanel() {
     };
   }, [transactions, currentOpenRegister]);
 
-  // Receivables by period (from financial_entries with status pending/overdue and type receivable)
+  // Receivables by period - combining financial_entries AND pending appointments
   const receivablesSummary = useMemo(() => {
     const { start, end } = getDateRange(receivablesPeriod);
+    
+    // Financial entries with pending status
     const periodReceivables = entries.filter(e => {
       if (e.type !== 'receivable' || (e.status !== 'pending' && e.status !== 'overdue')) return false;
       const date = parseISO(e.due_date);
       return isWithinInterval(date, { start, end });
     });
+    
+    // Appointments with pending payment status
+    const pendingAppointments = appointments.filter(apt => {
+      if (apt.payment_status !== 'pending') return false;
+      const aptDate = parseISO(apt.start_time);
+      return isWithinInterval(aptDate, { start, end });
+    });
+    
+    // Convert pending appointments to receivable format
+    const appointmentReceivables = pendingAppointments.map(apt => ({
+      id: apt.id,
+      type: 'appointment' as const,
+      description: `Agendamento: ${apt.service?.name || apt.package_appointment?.package?.name || 'Serviço'}`,
+      client: apt.client,
+      due_date: apt.start_time.split('T')[0],
+      amount: apt.service?.price || apt.package_appointment?.package?.total_price || 0,
+      status: 'pending' as const,
+    }));
+    
+    const allReceivables = [...periodReceivables, ...appointmentReceivables];
+    
     return {
-      entries: periodReceivables,
-      total: periodReceivables.reduce((sum, e) => sum + Number(e.amount), 0),
-      count: periodReceivables.length,
+      entries: allReceivables,
+      total: allReceivables.reduce((sum, e) => sum + Number(e.amount), 0),
+      count: allReceivables.length,
     };
-  }, [entries, receivablesPeriod]);
+  }, [entries, appointments, receivablesPeriod]);
 
   // Sales summary by period
   const salesSummary = useMemo(() => {

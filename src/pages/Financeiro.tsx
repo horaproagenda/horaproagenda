@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +13,7 @@ import {
   TrendingUp,
   Landmark,
   BarChart3,
+  Percent,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ContasAReceber } from '@/components/financeiro/ContasAReceber';
@@ -19,15 +22,26 @@ import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
+import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useProfessionals } from '@/hooks/useProfessionals';
 import { cn } from '@/lib/utils';
 
 export default function Financeiro() {
   const { totalReceivables, totalPayables } = useFinancialEntries();
   const { banks } = useBanks();
+  const { appointments } = useAppointments();
+  const { professionals } = useProfessionals();
 
   const balance = totalReceivables - totalPayables;
+
+  // Commission report date range (current month)
+  const commissionDateRange = useMemo(() => ({
+    start: startOfMonth(new Date()),
+    end: endOfMonth(new Date())
+  }), []);
 
   return (
     <AppLayout title="Financeiro" subtitle="Gestão financeira completa">
@@ -122,6 +136,10 @@ export default function Financeiro() {
               <CreditCard className="h-4 w-4" />
               Formas de Pagamento
             </TabsTrigger>
+            <TabsTrigger value="comissoes" className="gap-2">
+              <Percent className="h-4 w-4" />
+              Comissões
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="consolidado">
@@ -150,6 +168,15 @@ export default function Financeiro() {
 
           <TabsContent value="formas-pagamento">
             <FormasPagamento />
+          </TabsContent>
+
+          <TabsContent value="comissoes">
+            <CommissionsReport 
+              appointments={appointments}
+              professionals={professionals}
+              dateRange={commissionDateRange}
+              dateRangeLabel="Mês Atual"
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -511,7 +511,7 @@ export function NewAppointmentDialog({
           notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`,
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,
-          payment_status: existingClientPackage ? 'paid' : 'pending',
+          payment_status: isClientPackageSelected ? 'paid' : 'pending',
         });
 
         // Link the appointment to the package session
@@ -548,7 +548,7 @@ export function NewAppointmentDialog({
               notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
               professional_id: selectedProfessional || packageData?.professional_id || undefined,
               room_id: selectedRoom || packageData?.room_id || undefined,
-              payment_status: 'paid',
+              payment_status: isClientPackageSelected ? 'paid' : 'pending',
             });
 
             if (clientPackageId) {

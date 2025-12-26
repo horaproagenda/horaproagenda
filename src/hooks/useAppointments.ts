@@ -332,22 +332,74 @@ export function useAppointments() {
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
+      // First, check if this appointment is linked to a package session
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('package_appointment_id')
+        .eq('id', id)
+        .single();
+
+      // If linked to a package, release the session first
+      if (appointment?.package_appointment_id) {
+        // Get the package_id from the package_appointment
+        const { data: pkgAppointment } = await supabase
+          .from('package_appointments')
+          .select('package_id')
+          .eq('id', appointment.package_appointment_id)
+          .single();
+
+        // Reset the session to pending
+        await supabase
+          .from('package_appointments')
+          .update({ 
+            status: 'pending',
+            appointment_id: null,
+            scheduled_date: null
+          })
+          .eq('id', appointment.package_appointment_id);
+
+        // Decrement sessions_scheduled on the package
+        if (pkgAppointment?.package_id) {
+          const { data: pkg } = await supabase
+            .from('service_packages')
+            .select('sessions_scheduled')
+            .eq('id', pkgAppointment.package_id)
+            .single();
+
+          if (pkg && pkg.sessions_scheduled > 0) {
+            await supabase
+              .from('service_packages')
+              .update({ sessions_scheduled: pkg.sessions_scheduled - 1 })
+              .eq('id', pkgAppointment.package_id);
+          }
+        }
+      }
+
+      // Now delete the appointment
       const { error } = await supabase
         .from('appointments')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      return { hadPackageSession: !!appointment?.package_appointment_id };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
-      toast.success('Agendamento excluído com sucesso!');
+      
+      if (result.hadPackageSession) {
+        toast.success('Agendamento excluído! A sessão do pacote foi liberada para reagendamento.');
+      } else {
+        toast.success('Agendamento excluído com sucesso!');
+      }
     },
     onError: (error) => {
       toast.error('Erro ao excluir agendamento: ' + error.message);

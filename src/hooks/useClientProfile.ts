@@ -265,6 +265,7 @@ export function useClientProfile(clientId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] }); // Sync with client list
       toast.success('Cliente atualizado com sucesso!');
     },
     onError: (error) => {

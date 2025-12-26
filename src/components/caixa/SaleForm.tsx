@@ -135,10 +135,11 @@ export function SaleForm() {
 
   // Calculate fee based on card brand and installments
   const feeInfo = useMemo(() => {
-    if (!selectedCardBrand || !paymentAmount) {
-      return { feePercentage: 0, feeAmount: 0, netAmount: paymentAmount };
+    if (!selectedCardBrand || !saleInfo?.total) {
+      return { feePercentage: 0, feeAmount: 0, netAmount: saleInfo?.total || 0, totalWithFee: saleInfo?.total || 0 };
     }
 
+    const baseAmount = saleInfo.total;
     const fees = selectedCardBrand.fees || [];
     let feePercentage = 0;
 
@@ -149,18 +150,29 @@ export function SaleForm() {
       feePercentage = matchingFee.fee_percentage;
     }
 
-    const feeAmount = (paymentAmount * feePercentage) / 100;
+    const feeAmount = (baseAmount * feePercentage) / 100;
+    
+    // If add_to_client, the client pays the fee (total + fee)
+    // If deduct_from_provider, the client pays the base amount (total)
+    const totalWithFee = selectedCardBrand.fee_behavior === 'add_to_client'
+      ? baseAmount + feeAmount
+      : baseAmount;
+    
     const netAmount = selectedCardBrand.fee_behavior === 'deduct_from_provider'
-      ? paymentAmount - feeAmount
-      : paymentAmount;
+      ? baseAmount - feeAmount
+      : baseAmount;
 
-    return { feePercentage, feeAmount, netAmount };
-  }, [selectedCardBrand, paymentAmount, installments]);
+    return { feePercentage, feeAmount, netAmount, totalWithFee };
+  }, [selectedCardBrand, saleInfo?.total, installments]);
 
-  // Update card fee when fee info changes
+  // Update payment amount when fee info changes
   useEffect(() => {
+    if (selectedCardBrand && feeInfo.totalWithFee > 0) {
+      // Update the payment amount to include the fee when it's added to client
+      setPaymentAmount(feeInfo.totalWithFee);
+    }
     setCardFeeAmount(feeInfo.feeAmount);
-  }, [feeInfo]);
+  }, [feeInfo, selectedCardBrand]);
 
   // Reset card options when payment method changes
   useEffect(() => {
@@ -868,6 +880,11 @@ export function SaleForm() {
                     <span className="text-muted-foreground">
                       Valor da taxa: R$ {feeInfo.feeAmount.toFixed(2)}
                     </span>
+                    {selectedCardBrand.fee_behavior === 'add_to_client' && (
+                      <span className="text-foreground font-medium">
+                        • Cliente paga: <strong className="text-primary">R$ {feeInfo.totalWithFee.toFixed(2)}</strong>
+                      </span>
+                    )}
                     {selectedCardBrand.fee_behavior === 'deduct_from_provider' && (
                       <span className="text-muted-foreground">
                         • Valor líquido: <strong className="text-foreground">R$ {feeInfo.netAmount.toFixed(2)}</strong>

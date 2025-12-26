@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Caixa', href: '/caixa', icon: ShoppingCart },
   { name: 'Financeiro', href: '/financeiro', icon: Landmark },
   { name: 'Produtos', href: '/produtos', icon: Package },
+  { name: 'Lembretes', href: '/lembretes', icon: Bell },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },

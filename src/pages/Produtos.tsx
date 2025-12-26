@@ -58,6 +58,7 @@ import {
   Clock,
   AlertTriangle,
   Truck,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
@@ -95,6 +96,9 @@ export default function Produtos() {
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
+
+  // Search State
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Product Dialog State
   const [productDialogOpen, setProductDialogOpen] = useState(false);
@@ -139,10 +143,35 @@ export default function Produtos() {
     notes: '',
   });
 
+  // Filtered products based on search
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return products;
+    const search = searchTerm.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(search) ||
+      p.brand?.toLowerCase().includes(search) ||
+      p.category?.toLowerCase().includes(search)
+    );
+  }, [products, searchTerm]);
+
+  // Filtered purchases based on search
+  const filteredPurchases = useMemo(() => {
+    if (!searchTerm) return purchases;
+    const search = searchTerm.toLowerCase();
+    return purchases.filter(p => {
+      const product = products.find(prod => prod.id === p.product_id);
+      return product?.name.toLowerCase().includes(search) ||
+        p.supplier?.toLowerCase().includes(search);
+    });
+  }, [purchases, products, searchTerm]);
+
   // Low stock products
   const lowStockProducts = useMemo(() => {
-    return products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active);
-  }, [products]);
+    const filtered = searchTerm 
+      ? filteredProducts.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active)
+      : products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active);
+    return filtered;
+  }, [products, filteredProducts, searchTerm]);
 
   const resetProductForm = () => {
     setProductForm({
@@ -364,6 +393,18 @@ export default function Produtos() {
   return (
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e compras">
       <div className="space-y-6">
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar por nome, marca ou categoria..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         <Tabs defaultValue="products" className="space-y-4">
           <TabsList>
             <TabsTrigger value="products" className="gap-2">
@@ -908,7 +949,7 @@ export default function Produtos() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        products.map(product => {
+                        filteredProducts.map(product => {
                           const isLowStock = product.current_stock <= (product.min_stock_alert || 0);
                           const duration = product.started_using_at && product.finished_at
                             ? differenceInDays(parseISO(product.finished_at), parseISO(product.started_using_at))
@@ -1052,7 +1093,7 @@ export default function Produtos() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        purchases.map(purchase => (
+                        filteredPurchases.map(purchase => (
                           <TableRow key={purchase.id}>
                             <TableCell>
                               <div>

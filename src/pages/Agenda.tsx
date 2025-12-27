@@ -79,6 +79,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useAutoCompleteAppointments } from '@/hooks/useAutoCompleteAppointments';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -117,6 +118,9 @@ const Agenda = () => {
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { currentOpenRegister } = useCashRegisters();
+  
+  // Auto-complete appointments when setting is enabled
+  useAutoCompleteAppointments();
 
   // Get unique client IDs from appointments and fetch their credits
   const clientIds = useMemo(() => {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar } from 'lucide-react';
+import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar, AlertTriangle, Wallet } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -573,12 +574,29 @@ export function SaleForm() {
 
   return (
     <div className="space-y-6">
+      {/* Alert when cash register is closed */}
+      {!currentOpenRegister && (
+        <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertTitle className="text-amber-700 dark:text-amber-400">Caixa Fechado</AlertTitle>
+          <AlertDescription className="text-amber-600 dark:text-amber-300">
+            Para realizar vendas, é necessário abrir o caixa primeiro. Vá até a aba "Controle do Caixa" para abrir.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Sales Form */}
-      <Card>
+      <Card className={!currentOpenRegister ? 'opacity-50 pointer-events-none' : ''}>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl flex items-center gap-2">
             <ShoppingCart className="h-6 w-6" />
             Nova Venda
+            {!currentOpenRegister && (
+              <Badge variant="secondary" className="ml-2 bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                <Wallet className="h-3 w-3 mr-1" />
+                Caixa fechado
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">

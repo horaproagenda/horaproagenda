@@ -136,9 +136,13 @@ const Servicos: React.FC = () => {
     return result;
   }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, serviceSearch, serviceSort, appointments]);
 
-  // Filter and sort packages
+  // Filter and sort packages - by default only show templates (no client_id)
+  // Only show client packages when a specific client is selected
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
+      // Only show templates (no client_id) unless filtering by a specific client
+      if (!packageClient && pkg.client_id) return false;
+      
       if (packageCategory && pkg.category !== packageCategory) return false;
       if (packageProfessional && pkg.professional_id !== packageProfessional) return false;
       if (packageRoom && pkg.room_id !== packageRoom) return false;

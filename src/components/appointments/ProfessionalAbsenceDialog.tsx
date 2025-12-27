@@ -164,7 +164,7 @@ export function ProfessionalAbsenceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? <Edit className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
@@ -172,7 +172,7 @@ export function ProfessionalAbsenceDialog({
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 min-h-0 pr-4">
+          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] pr-4">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Profissional *</Label>
@@ -273,13 +273,14 @@ export function ProfessionalAbsenceDialog({
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Detalhes (opcional)
+                  Observação (opcional)
                 </Label>
                 <Textarea
                   value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Informações adicionais sobre a ausência..."
-                  rows={3}
+                  placeholder="Detalhes adicionais sobre a ausência, como justificativas, observações ou informações importantes..."
+                  rows={4}
+                  className="resize-none"
                 />
               </div>
             </div>

@@ -33,6 +33,7 @@ import {
   Search,
   Gift,
   CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -77,9 +78,11 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useClientsCredits } from '@/hooks/useClientCredits';
+import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -113,6 +116,7 @@ const Agenda = () => {
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
+  const { currentOpenRegister } = useCashRegisters();
 
   // Get unique client IDs from appointments and fetch their credits
   const clientIds = useMemo(() => {
@@ -596,7 +600,7 @@ const Agenda = () => {
                   )}
                   {isAbsenceStart && absence && !apt && (
                     <div 
-                      className="h-full rounded-lg p-3 bg-destructive/20 border-2 border-destructive/40 text-destructive-foreground cursor-pointer hover:bg-destructive/30 transition-colors"
+                      className="h-full rounded-lg p-3 bg-amber-500/20 border-2 border-amber-500/60 cursor-pointer hover:bg-amber-500/30 transition-colors"
                       style={{ minHeight: `${absenceSlotsSpan * 50 - 8}px` }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -604,14 +608,14 @@ const Agenda = () => {
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <UserX className="h-4 w-4 text-destructive" />
+                        <UserX className="h-4 w-4 text-amber-600" />
                         <div>
-                          <p className="font-semibold text-destructive">Ausência</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-semibold text-amber-700 dark:text-amber-400">Ausência</p>
+                          <p className="text-sm text-amber-600/80 dark:text-amber-300/80">
                             {absenceProf?.name || absence.professional?.name}
                           </p>
                           {absence.reason && (
-                            <p className="text-xs text-muted-foreground mt-1">{absence.reason}</p>
+                            <p className="text-xs text-amber-600/70 dark:text-amber-300/70 mt-1">{absence.reason}</p>
                           )}
                         </div>
                       </div>
@@ -742,15 +746,15 @@ const Agenda = () => {
                     )}
                     {isAbsenceStart && absence && !apt && (
                       <div 
-                        className="h-full rounded p-1 bg-destructive/20 border border-destructive/30 text-xs cursor-pointer hover:bg-destructive/30"
+                        className="h-full rounded p-1 bg-amber-500/20 border border-amber-500/50 text-xs cursor-pointer hover:bg-amber-500/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAbsenceClick(absence);
                         }}
                       >
                         <div className="flex items-center gap-1">
-                          <UserX className="h-3 w-3 text-destructive" />
-                          <span className="text-destructive font-medium truncate">Ausência</span>
+                          <UserX className="h-3 w-3 text-amber-600" />
+                          <span className="text-amber-700 dark:text-amber-400 font-medium truncate">Ausência</span>
                         </div>
                       </div>
                     )}
@@ -982,6 +986,16 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
+      {/* Cash Register Status Alert */}
+      {currentOpenRegister && (
+        <Alert className="mb-4 border-green-500/50 bg-green-500/10">
+          <Wallet className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700 dark:text-green-300">
+            <span className="font-medium">Caixa aberto</span> desde {format(new Date(currentOpenRegister.opened_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Compact Header with Search, View Toggle and Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Search Input */}

@@ -191,24 +191,14 @@ export function NewAppointmentDialog({
       })));
     }
   }, [selectedClient, availablePackages]);
-  // Auto-fill professional and room from service or package data
   useEffect(() => {
-    if (serviceType === 'service' && selectedServiceData) {
-      if (selectedServiceData.professional_id) {
-        setSelectedProfessional(selectedServiceData.professional_id);
-      }
-      if (selectedServiceData.room_id) {
-        setSelectedRoom(selectedServiceData.room_id);
-      }
-    } else if (serviceType === 'package' && selectedPackageData) {
-      if (selectedPackageData.professional_id) {
-        setSelectedProfessional(selectedPackageData.professional_id);
-      }
-      if (selectedPackageData.room_id) {
-        setSelectedRoom(selectedPackageData.room_id);
-      }
+    if (selectedServiceData?.professional_id) {
+      setSelectedProfessional(selectedServiceData.professional_id);
     }
-  }, [selectedServiceData, selectedPackageData, serviceType]);
+    if (selectedServiceData?.room_id) {
+      setSelectedRoom(selectedServiceData.room_id);
+    }
+  }, [selectedServiceData]);
 
   // Calculate appointment start and end times
   const appointmentTimes = useMemo(() => {
@@ -513,12 +503,6 @@ export function NewAppointmentDialog({
         // Create the first/next appointment
         // For packages, use the package's service_id if available, otherwise null
         const packageServiceId = selectedPackageData?.service_id || null;
-        
-        // Package is only "paid" if it's an existing client package that was purchased
-        // A client package is created when sold through the sales flow
-        // isClientPackageSelected means the user picked an existing client package from the list
-        const isPackagePaid = isClientPackageSelected && existingClientPackage;
-        
         const appointmentResult = await createAppointment.mutateAsync({
           client_id: selectedClient,
           service_id: packageServiceId,
@@ -527,7 +511,7 @@ export function NewAppointmentDialog({
           notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`,
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,
-          payment_status: isPackagePaid ? 'paid' : 'pending',
+          payment_status: existingClientPackage ? 'paid' : 'pending',
         });
 
         // Link the appointment to the package session
@@ -564,7 +548,7 @@ export function NewAppointmentDialog({
               notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
               professional_id: selectedProfessional || packageData?.professional_id || undefined,
               room_id: selectedRoom || packageData?.room_id || undefined,
-              payment_status: isPackagePaid ? 'paid' : 'pending',
+              payment_status: existingClientPackage ? 'paid' : 'pending',
             });
 
             if (clientPackageId) {

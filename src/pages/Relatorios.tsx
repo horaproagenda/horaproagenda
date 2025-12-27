@@ -48,9 +48,11 @@ const Relatorios = () => {
 
   const today = new Date();
 
-  // Aniversariantes do mês
+  // Aniversariantes do mês - only active clients
   const aniversariantes = useMemo(() => {
-    return clients
+    const activeClients = clients.filter(c => c.is_active);
+    
+    return activeClients
       .filter(client => {
         if (!client.birthdate) return false;
         const birthDate = parseISO(client.birthdate);

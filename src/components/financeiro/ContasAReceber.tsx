@@ -37,33 +37,49 @@ export function ContasAReceber() {
         originalEntry: e,
       }));
 
-    // Get appointments with pending payment
+    // Get appointments with pending or partial payment
     const pendingAppointments = appointments
-      .filter(apt => apt.payment_status === 'pending' && apt.status !== 'cancelled')
-      .map(apt => ({
-        id: apt.id,
-        type: 'appointment' as const,
-        date: apt.start_time.split('T')[0],
-        description: apt.service?.name || apt.package_appointment?.package?.name || 'Agendamento',
-        clientName: apt.client?.name || '-',
-        amount: apt.service?.price || apt.package_appointment?.package?.total_price || 0,
-        installments: 1,
-        status: isAfter(new Date(), parseISO(apt.start_time)) ? 'overdue' : 'pending',
-        originalAppointment: apt,
-      }));
+      .filter(apt => (apt.payment_status === 'pending' || apt.payment_status === 'partial') && apt.status !== 'cancelled')
+      .map(apt => {
+        const servicePrice = apt.service?.price || 0;
+        const packageSessionPrice = apt.package_appointment?.package 
+          ? (apt.package_appointment.package.total_price / apt.package_appointment.package.total_sessions)
+          : 0;
+        const totalAmount = servicePrice || packageSessionPrice || 0;
+        const amountPaid = apt.amount_paid || 0;
+        const remainingAmount = totalAmount - amountPaid;
+        
+        return {
+          id: apt.id,
+          type: 'appointment' as const,
+          date: apt.start_time.split('T')[0],
+          description: apt.service?.name || apt.package_appointment?.package?.name || 'Agendamento',
+          clientName: apt.client?.name || '-',
+          amount: remainingAmount > 0 ? remainingAmount : totalAmount,
+          installments: 1,
+          status: isAfter(new Date(), parseISO(apt.start_time)) ? 'overdue' : 'pending',
+          isPartial: apt.payment_status === 'partial',
+          originalAppointment: apt,
+        };
+      })
+      .filter(apt => apt.amount > 0); // Only show if there's actually remaining amount
 
     return [...pendingFinancialEntries, ...pendingAppointments].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
   }, [receivables, appointments]);
 
-  const getStatusBadge = (item: typeof allReceivables[0]) => {
+  const getStatusBadge = (item: typeof allReceivables[0] & { isPartial?: boolean }) => {
     if (item.status === 'paid') {
       return <Badge className="bg-green-500 hover:bg-green-600">Recebido</Badge>;
     }
     const dueDate = parseISO(item.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    if ('isPartial' in item && item.isPartial) {
+      return <Badge className="bg-blue-500 hover:bg-blue-600">Parcial</Badge>;
+    }
     
     if (isAfter(today, dueDate)) {
       return <Badge variant="destructive">Vencido</Badge>;

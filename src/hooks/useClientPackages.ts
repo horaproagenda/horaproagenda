@@ -253,12 +253,22 @@ export function useClientPackages(clientId: string | null) {
 
       if (updateSessionError) throw updateSessionError;
 
+      // Get the package to check if it was paid (has payment_methods)
+      const { data: pkgData } = await supabase
+        .from('service_packages')
+        .select('payment_methods')
+        .eq('id', packageId)
+        .single();
+
+      // Package is paid only if payment_methods has values (set during sale)
+      const isPackagePaid = pkgData?.payment_methods && pkgData.payment_methods.length > 0;
+
       // Update the appointment to link to the package_appointment
       const { error: appointmentError } = await supabase
         .from('appointments')
         .update({
           package_appointment_id: pendingSession.id,
-          payment_status: 'paid', // Package appointments are always paid
+          payment_status: isPackagePaid ? 'paid' : 'pending',
         })
         .eq('id', appointmentId);
 

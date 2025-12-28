@@ -232,14 +232,24 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {appointments.slice(0, 20).map(appointment => {
+                {appointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
-                    const isPaid = appointment.payment_status === 'paid' || 
-                                   (appointment.package_appointment && appointment.package_appointment.package);
+                    
+                    // Check if package appointment and if package was actually paid
+                    const isPackageAppointment = !!appointment.package_appointment?.package;
+                    const packagePaymentMethods = appointment.package_appointment?.package?.payment_methods;
+                    const isPackagePaid = isPackageAppointment && 
+                      packagePaymentMethods && packagePaymentMethods.length > 0;
+                    
+                    // Payment is considered complete only if:
+                    // 1. payment_status is 'paid', OR
+                    // 2. It's a package appointment AND the package has payment methods set
+                    const isPaid = appointment.payment_status === 'paid' || isPackagePaid;
+                    
                     const paymentMethods = appointment.payment_methods?.length > 0 
                       ? appointment.payment_methods.join(', ') 
-                      : appointment.package_appointment?.package 
-                        ? 'Pacote' 
+                      : isPackagePaid
+                        ? (packagePaymentMethods?.join(', ') || 'Pacote')
                         : '-';
                     
                     // Get service name - check service first, then package

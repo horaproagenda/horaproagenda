@@ -392,11 +392,17 @@ export function useClientProfile(clientId: string) {
 
   const totalRevenue = totalFromAppointments + uniqueSalesTotal;
 
-  // Build payment history from both sources
+  // Build payment history from both sources - only actual payments with real amounts
   const paymentHistory: PaymentHistoryItem[] = [
-    // From appointments with payments
+    // From appointments with actual payments (not package appointments without direct payment)
     ...appointments
-      .filter(a => a.amount_paid && a.amount_paid > 0)
+      .filter(a => {
+        // Must have a real payment amount
+        if (!a.amount_paid || a.amount_paid <= 0) return false;
+        // Must have payment methods defined (indicates actual payment was made)
+        if (!a.payment_methods || a.payment_methods.length === 0) return false;
+        return true;
+      })
       .map(a => ({
         id: a.id,
         date: a.start_time,
@@ -406,16 +412,18 @@ export function useClientProfile(clientId: string) {
         paymentMethod: a.payment_methods?.join(', ') || '-',
         source: 'appointment' as const,
       })),
-    // From sales
-    ...clientSales.map(sale => ({
-      id: sale.id,
-      date: sale.sale_date,
-      description: sale.description || sale.service?.name || sale.package?.name || 'Venda',
-      serviceName: sale.service?.name || sale.package?.name || '-',
-      amount: sale.final_amount || 0,
-      paymentMethod: sale.payment_method?.name || '-',
-      source: 'sale' as const,
-    })),
+    // From sales (actual purchases through caixa)
+    ...clientSales
+      .filter(sale => sale.paid_at) // Only include if actually paid
+      .map(sale => ({
+        id: sale.id,
+        date: sale.paid_at || sale.sale_date,
+        description: sale.description || sale.service?.name || sale.package?.name || 'Venda',
+        serviceName: sale.service?.name || sale.package?.name || '-',
+        amount: sale.final_amount || 0,
+        paymentMethod: sale.payment_method?.name || '-',
+        source: 'sale' as const,
+      })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate detailed stats

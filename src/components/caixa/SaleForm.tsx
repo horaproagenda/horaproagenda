@@ -435,75 +435,13 @@ export function SaleForm() {
           }
         }
 
-        // Create service_packages for packages (copy from package_templates)
+        // For packages: Just record the sale. Do NOT create new service_packages here.
+        // The package is only created when scheduled in the agenda (NewAppointmentDialog)
+        // This prevents duplicate packages being created in Serviços > Pacotes
         if (item.type === 'package') {
-          const templatePackage = packageTemplates.find(t => t.id === item.originalId);
-          if (templatePackage) {
-            let packagesCreated = 0;
-            let sessionsCreated = 0;
-            let firstClientPackageId: string | null = null;
-            
-            for (let i = 0; i < item.quantity; i++) {
-              // Create the client package from template
-              // Note: template_id references package_templates table, not service_packages
-              // Since we're using service_packages as templates, set template_id to null
-              // or use the template_id from the source package if it exists
-              const { data: clientPackage, error: pkgError } = await supabase
-                .from('service_packages')
-                .insert({
-                  client_id: selectedClientId,
-                  template_id: templatePackage.template_id || null, // Use existing template_id or null
-                  name: templatePackage.name,
-                  description: templatePackage.description,
-                  total_price: templatePackage.total_price,
-                  total_sessions: templatePackage.total_sessions,
-                  duration: templatePackage.duration,
-                  interval_days: templatePackage.interval_days,
-                  professional_id: item.professionalId || templatePackage.professional_id,
-                  room_id: templatePackage.room_id,
-                  equipment: templatePackage.equipment,
-                  payment_methods: [paymentMethod.name],
-                  sessions_scheduled: 0,
-                  is_active: true,
-                })
-                .select()
-                .single();
-
-              // Create package_appointments (sessions) for this package
-              if (!pkgError && clientPackage) {
-                packagesCreated++;
-                if (i === 0) {
-                  firstClientPackageId = clientPackage.id;
-                }
-                const sessions = Array.from({ length: templatePackage.total_sessions }, (_, idx) => ({
-                  package_id: clientPackage.id,
-                  session_number: idx + 1,
-                  status: 'pending',
-                }));
-
-                const { error: sessionsError } = await supabase.from('package_appointments').insert(sessions);
-                if (!sessionsError) {
-                  sessionsCreated += templatePackage.total_sessions;
-                }
-              } else if (pkgError) {
-                console.error('Erro ao criar pacote do cliente:', pkgError);
-                toast.error(`Erro ao criar pacote: ${pkgError.message}`);
-              }
-            }
-            
-            // Update the single_sales record with the first created package_id
-            if (firstClientPackageId) {
-              await supabase
-                .from('single_sales')
-                .update({ package_id: firstClientPackageId })
-                .eq('id', saleRecord.id);
-            }
-            
-            // Show success feedback for package creation
-            if (packagesCreated > 0) {
-              toast.success(`✓ Pacote "${item.name}" criado para o cliente com ${sessionsCreated} sessões disponíveis`);
-            }
-          }
+          // Note: We don't create service_packages here anymore
+          // The sale is just recorded in single_sales with the template package_id reference
+          console.log(`Package sale recorded: ${item.name} for client ${selectedClientId}`);
         }
 
         // Decrement product stock for product sales

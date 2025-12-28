@@ -312,19 +312,30 @@ export function AppointmentDetailDialog({
   // Check if this appointment used a pre-paid service (from caixa sale)
   const isPrepaidService = appointment.payment_status === 'paid' && !isPackageAppointment;
   
-  // For package appointments, consider them as "paid" since the package was already purchased
-  const effectivePaymentStatus = isPackageAppointment || isPrepaidService ? 'paid' : (appointment.payment_status || 'pending');
+  // For package appointments, check if the package was actually paid
+  // A package is paid when payment_methods are set and total_price > 0 implies it was sold
+  const isPackagePaid = isPackageAppointment && packageData?.payment_methods && packageData.payment_methods.length > 0;
+  
+  // Use the actual payment_status from the appointment, not assume paid for packages
+  const effectivePaymentStatus = isPrepaidService ? 'paid' : 
+    isPackagePaid ? 'paid' : 
+    (appointment.payment_status || 'pending');
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
   
-  // For package appointments, the price is from the package, not the service
-  const totalPrice = isPackageAppointment ? 0 : (appointment.service?.price || 0);
-  // For prepaid services, if amount_paid is 0 but status is paid, use the service price
-  const amountPaid = isPackageAppointment ? 0 : (
-    isPrepaidService && appointment.amount_paid === 0 
+  // For package appointments that are paid, the price is 0 (already covered by package)
+  // For unpaid package appointments, show the package session value
+  const packageSessionPrice = isPackageAppointment && packageData ? 
+    (packageData.total_price / packageData.total_sessions) : 0;
+  const totalPrice = isPackageAppointment 
+    ? (isPackagePaid ? 0 : packageSessionPrice)
+    : (appointment.service?.price || 0);
+  
+  const amountPaid = isPackageAppointment ? 
+    (isPackagePaid ? 0 : 0) : 
+    (isPrepaidService && appointment.amount_paid === 0 
       ? totalPrice 
-      : (appointment.amount_paid || 0)
-  );
+      : (appointment.amount_paid || 0));
   const remainingAmount = totalPrice - amountPaid;
 
   const addPaymentMethod = () => {

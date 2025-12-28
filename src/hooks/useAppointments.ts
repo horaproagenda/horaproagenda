@@ -136,12 +136,16 @@ export function useAppointments() {
 
       const previousAmountPaid = currentApt?.amount_paid || 0;
       const newPaymentAmount = payment.amount_paid - previousAmountPaid;
+      const servicePrice = currentApt?.service?.price || 0;
+      const remainingAfterPayment = servicePrice - payment.amount_paid;
 
       console.log('Payment update:', {
         id,
         previousAmountPaid,
         newAmountPaid: payment.amount_paid,
         paymentDiff: newPaymentAmount,
+        servicePrice,
+        remainingAfterPayment,
         paymentStatus: payment.payment_status,
         paymentMethods: payment.payment_methods
       });
@@ -185,17 +189,19 @@ export function useAppointments() {
         if (clientError) throw clientError;
       }
 
-      // Create a financial entry to sync with Financeiro
+      // Create financial entries to sync with Financeiro
       if (newPaymentAmount > 0) {
         const clientName = currentApt?.client?.name || 'Cliente';
         const serviceName = currentApt?.service?.name || 'Serviço';
+        const today = new Date().toISOString().split('T')[0];
         
+        // Create entry for the payment received
         const { error: entryError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
           description: `Pagamento: ${serviceName} - ${clientName}`,
           amount: newPaymentAmount,
-          due_date: new Date().toISOString().split('T')[0],
-          paid_date: new Date().toISOString().split('T')[0],
+          due_date: today,
+          paid_date: today,
           status: 'paid',
           client_id: payment.client_id,
           appointment_id: id,
@@ -204,6 +210,38 @@ export function useAppointments() {
 
         if (entryError) {
           console.error('Error creating financial entry:', entryError);
+        }
+
+        // If there's remaining amount (partial payment), create a pending receivable
+        if (remainingAfterPayment > 0 && payment.payment_status === 'partial') {
+          const { error: pendingError } = await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: `Saldo pendente: ${serviceName} - ${clientName}`,
+            amount: remainingAfterPayment,
+            due_date: today,
+            paid_date: null,
+            status: 'pending',
+            client_id: payment.client_id,
+            appointment_id: id,
+            created_by: user?.id,
+          });
+
+          if (pendingError) {
+            console.error('Error creating pending receivable:', pendingError);
+          }
+        }
+
+        // If it's now fully paid, check if there was a pending entry for this appointment and mark it paid
+        if (payment.payment_status === 'paid') {
+          const { error: updatePendingError } = await supabase
+            .from('financial_entries')
+            .update({ status: 'paid', paid_date: today })
+            .eq('appointment_id', id)
+            .eq('status', 'pending');
+
+          if (updatePendingError) {
+            console.error('Error updating pending entries:', updatePendingError);
+          }
         }
       }
 
@@ -217,6 +255,7 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['client'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });

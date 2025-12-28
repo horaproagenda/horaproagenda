@@ -374,20 +374,35 @@ export function SaleForm() {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Create single_sales record for each item
+      // Calculate the fee proportion for each item if there's a card fee
+      const totalItems = saleInfo.items.length;
+      const feePerItem = feeInfo.feeAmount / totalItems;
+      const totalWithFeeToUse = selectedCardBrand?.fee_behavior === 'add_to_client' 
+        ? feeInfo.totalWithFee 
+        : saleInfo.total;
+      
       for (const item of saleInfo.items) {
         const itemDiscount = saleInfo.discount * (item.total / saleInfo.subtotal);
-        const itemFinal = item.total - itemDiscount;
+        let itemFinal = item.total - itemDiscount;
+        
+        // If fee should be added to client, include the proportional fee in the item
+        if (selectedCardBrand?.fee_behavior === 'add_to_client' && feeInfo.feeAmount > 0) {
+          const itemFeeShare = (item.total / saleInfo.subtotal) * feeInfo.feeAmount;
+          itemFinal = itemFinal + itemFeeShare;
+        }
 
         const saleData: any = {
           client_id: selectedClientId,
           original_amount: item.total,
           discount_amount: itemDiscount,
           final_amount: itemFinal,
+          card_fee_amount: selectedCardBrand ? (item.total / saleInfo.subtotal) * feeInfo.feeAmount : 0,
+          installments: installments,
           payment_method_id: paymentMethodId,
           sale_date: paymentDate,
           item_type: item.type,
           description: item.name,
-          notes: `Venda ${saleInfo.code} - Qtd: ${item.quantity}`,
+          notes: `Venda ${saleInfo.code} - Qtd: ${item.quantity}${selectedCardBrand ? ` - ${selectedCardBrand.name} ${installments}x` : ''}`,
           paid_at: new Date().toISOString(),
           paid_by: user?.id,
           created_by: user?.id,

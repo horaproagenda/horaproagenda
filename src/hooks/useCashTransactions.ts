@@ -10,7 +10,9 @@ export interface CashTransaction {
   description: string | null;
   amount: number;
   payment_method: string | null;
+  payment_method_name?: string; // Added for display
   bank_id: string | null;
+  bank?: { name: string } | null;
   reference_id: string | null;
   reference_type: string | null;
   created_at: string;
@@ -26,7 +28,10 @@ export function useCashTransactions(cashRegisterId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('cash_transactions')
-        .select('*')
+        .select(`
+          *,
+          bank:banks(name)
+        `)
         .order('created_at', { ascending: false });
 
       if (cashRegisterId) {
@@ -36,7 +41,21 @@ export function useCashTransactions(cashRegisterId?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as CashTransaction[];
+      
+      // Fetch payment methods to map IDs to names
+      const { data: paymentMethods } = await supabase
+        .from('payment_methods')
+        .select('id, name');
+      
+      const paymentMethodMap = new Map(
+        paymentMethods?.map(pm => [pm.id, pm.name]) || []
+      );
+      
+      // Map payment_method IDs to names
+      return (data || []).map(t => ({
+        ...t,
+        payment_method_name: t.payment_method ? paymentMethodMap.get(t.payment_method) || t.payment_method : null,
+      })) as CashTransaction[];
     },
   });
 

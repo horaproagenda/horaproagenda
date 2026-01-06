@@ -680,7 +680,7 @@ export function CashRegisterPanel() {
                     {salesSummary.transactions.map((transaction) => (
                       <TableRow key={transaction.id}>
                         <TableCell className="font-medium">{transaction.description || '-'}</TableCell>
-                        <TableCell>{transaction.payment_method || '-'}</TableCell>
+                        <TableCell>{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
                         <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
                           R$ {Number(transaction.amount).toFixed(2)}

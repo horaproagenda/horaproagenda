@@ -348,6 +348,12 @@ const Agenda = () => {
   };
 
   const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => {
+    // Verificar se existe caixa aberto
+    if (!currentOpenRegister) {
+      toast.error('É necessário abrir o caixa antes de registrar pagamentos. Vá em Caixa > Controle do Caixa.');
+      return;
+    }
+
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
 
@@ -373,6 +379,7 @@ const Agenda = () => {
         payment_status: paymentStatus,
         client_credit: creditAmount > 0 ? creditAmount : undefined,
         client_id: appointment.client_id,
+        cash_register_id: currentOpenRegister.id,
       },
     });
   };

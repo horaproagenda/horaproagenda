@@ -20,6 +20,7 @@ export interface PaymentUpdate {
   payment_status: PaymentStatus;
   client_credit?: number;
   client_id?: string;
+  cash_register_id?: string;
 }
 
 export interface AppointmentUpdate {
@@ -189,13 +190,14 @@ export function useAppointments() {
         if (clientError) throw clientError;
       }
 
-      // Create financial entries to sync with Financeiro
+      // Create financial entries and cash transactions to sync with Financeiro and Caixa
       if (newPaymentAmount > 0) {
         const clientName = currentApt?.client?.name || 'Cliente';
         const serviceName = currentApt?.service?.name || 'Serviço';
         const today = new Date().toISOString().split('T')[0];
+        const paymentMethodNames = payment.payment_methods.join(', ');
         
-        // Create entry for the payment received
+        // Create entry for the payment received in financial_entries
         const { error: entryError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
           description: `Pagamento: ${serviceName} - ${clientName}`,
@@ -210,6 +212,25 @@ export function useAppointments() {
 
         if (entryError) {
           console.error('Error creating financial entry:', entryError);
+        }
+
+        // Create cash transaction if cash register is open - THIS IS THE KEY TO SYNC WITH CAIXA
+        if (payment.cash_register_id) {
+          const { error: cashError } = await supabase.from('cash_transactions').insert({
+            cash_register_id: payment.cash_register_id,
+            type: 'income',
+            category: 'sale',
+            description: `${serviceName} - ${clientName}`,
+            amount: newPaymentAmount,
+            payment_method: paymentMethodNames,
+            reference_id: id,
+            reference_type: 'appointment',
+            created_by: user?.id,
+          });
+
+          if (cashError) {
+            console.error('Error creating cash transaction:', cashError);
+          }
         }
 
         // If there's remaining amount (partial payment), create a pending receivable
@@ -371,12 +392,35 @@ export function useAppointments() {
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
-      // First, check if this appointment is linked to a package session
+      // First, check if this appointment is linked to a package session and has payments
       const { data: appointment } = await supabase
         .from('appointments')
-        .select('package_appointment_id')
+        .select('package_appointment_id, amount_paid, payment_status, client:clients(name), service:services(name)')
         .eq('id', id)
         .single();
+
+      const hadPayment = (appointment?.amount_paid || 0) > 0;
+
+      // Delete related financial entries for this appointment
+      const { error: finEntryDeleteError } = await supabase
+        .from('financial_entries')
+        .delete()
+        .eq('appointment_id', id);
+
+      if (finEntryDeleteError) {
+        console.error('Error deleting financial entries:', finEntryDeleteError);
+      }
+
+      // Delete related cash transactions for this appointment
+      const { error: cashDeleteError } = await supabase
+        .from('cash_transactions')
+        .delete()
+        .eq('reference_id', id)
+        .eq('reference_type', 'appointment');
+
+      if (cashDeleteError) {
+        console.error('Error deleting cash transactions:', cashDeleteError);
+      }
 
       // If linked to a package, release the session first
       if (appointment?.package_appointment_id) {
@@ -422,7 +466,11 @@ export function useAppointments() {
 
       if (error) throw error;
 
-      return { hadPackageSession: !!appointment?.package_appointment_id };
+      return { 
+        hadPackageSession: !!appointment?.package_appointment_id,
+        hadPayment,
+        amountDeleted: appointment?.amount_paid || 0
+      };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
@@ -433,8 +481,13 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       
-      if (result.hadPackageSession) {
+      if (result.hadPayment) {
+        toast.success(`Agendamento excluído! O valor de R$ ${result.amountDeleted.toFixed(2)} foi removido do caixa e financeiro.`);
+      } else if (result.hadPackageSession) {
         toast.success('Agendamento excluído! A sessão do pacote foi liberada para reagendamento.');
       } else {
         toast.success('Agendamento excluído com sucesso!');

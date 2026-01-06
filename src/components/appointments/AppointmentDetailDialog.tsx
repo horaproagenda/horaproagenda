@@ -954,6 +954,19 @@ export function AppointmentDetailDialog({
                       {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
                     </p>
                     
+                    {/* Payment warning - show when appointment has payments */}
+                    {amountPaid > 0 && (
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <div className="flex items-center gap-2 text-destructive font-medium mb-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span>Atenção: Este agendamento possui pagamento registrado!</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Ao excluir este agendamento, o valor de <strong className="text-destructive">R$ {amountPaid.toFixed(2)}</strong> será removido do caixa e do financeiro.
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Package session info */}
                     {isPackageAppointment && packageSessionInfo && (
                       <div className="p-3 rounded-lg bg-info/10 border border-info/20">

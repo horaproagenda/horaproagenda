@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
@@ -178,9 +178,9 @@ export function useClientProfile(clientId: string) {
         .from('single_sales')
         .select(`
           *,
-          service:services(name),
-          package:service_packages(name),
-          payment_method:payment_methods(name),
+          service:services(name, price),
+          package:service_packages(name, total_price),
+          payment_method:payment_methods(id, name),
           bank:banks(name)
         `)
         .eq('client_id', clientId)
@@ -195,6 +195,24 @@ export function useClientProfile(clientId: string) {
     refetchOnWindowFocus: true,
     refetchInterval: 30000, // Refetch every 30 seconds as fallback
   });
+  
+  // Fetch payment methods for mapping IDs to names
+  const { data: paymentMethodsData = [] } = useQuery({
+    queryKey: ['payment_methods_for_client'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, name');
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60000,
+  });
+  
+  const paymentMethodMap = useMemo(() => 
+    new Map(paymentMethodsData.map(pm => [pm.id, pm.name])),
+    [paymentMethodsData]
+  );
 
   // Fetch client documents
   const { data: documents = [], isLoading: documentsLoading } = useQuery({
@@ -392,6 +410,15 @@ export function useClientProfile(clientId: string) {
 
   const totalRevenue = totalFromAppointments + uniqueSalesTotal;
 
+  // Helper to get payment method name from ID
+  const getPaymentMethodName = (methodIdOrName: string): string => {
+    // Check if it's a UUID (payment method ID)
+    if (methodIdOrName && methodIdOrName.includes('-') && methodIdOrName.length > 30) {
+      return paymentMethodMap.get(methodIdOrName) || methodIdOrName;
+    }
+    return methodIdOrName;
+  };
+
   // Build payment history from both sources - only actual payments with real amounts
   const paymentHistory: PaymentHistoryItem[] = [
     // From appointments with actual payments (not package appointments without direct payment)
@@ -409,7 +436,8 @@ export function useClientProfile(clientId: string) {
         description: a.service?.name || a.package_appointment?.package?.name || 'Serviço',
         serviceName: a.service?.name || a.package_appointment?.package?.name || '-',
         amount: a.amount_paid || 0,
-        paymentMethod: a.payment_methods?.join(', ') || '-',
+        // Convert payment method IDs to names
+        paymentMethod: a.payment_methods?.map(pm => getPaymentMethodName(pm)).join(', ') || '-',
         source: 'appointment' as const,
       })),
     // From sales (actual purchases through caixa)

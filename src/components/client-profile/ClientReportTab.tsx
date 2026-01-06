@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Appointment } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { Download, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PaymentHistoryItem {
   id: string;
@@ -32,6 +34,34 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
+  // Fetch payment methods for mapping IDs to names
+  const { data: paymentMethodsData = [] } = useQuery({
+    queryKey: ['payment_methods_for_report'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, name');
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60000,
+  });
+  
+  const paymentMethodMap = useMemo(() => 
+    new Map(paymentMethodsData.map(pm => [pm.id, pm.name])),
+    [paymentMethodsData]
+  );
+  
+  // Helper to get payment method name from ID or return as-is if already a name
+  const getPaymentMethodName = (methodIdOrName: string): string => {
+    if (!methodIdOrName || methodIdOrName === '-') return methodIdOrName;
+    // Check if it's a UUID (payment method ID)
+    if (methodIdOrName.includes('-') && methodIdOrName.length > 30) {
+      return paymentMethodMap.get(methodIdOrName) || methodIdOrName;
+    }
+    return methodIdOrName;
+  };
+
   // Calculate summary
   const summary = useMemo(() => {
     const completed = appointments.filter(a => a.status === 'completed');
@@ -246,10 +276,11 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     // 2. It's a package appointment AND the package has payment methods set
                     const isPaid = appointment.payment_status === 'paid' || isPackagePaid;
                     
+                    // Map payment method IDs to names
                     const paymentMethods = appointment.payment_methods?.length > 0 
-                      ? appointment.payment_methods.join(', ') 
+                      ? appointment.payment_methods.map(pm => getPaymentMethodName(pm)).join(', ') 
                       : isPackagePaid
-                        ? (packagePaymentMethods?.join(', ') || 'Pacote')
+                        ? (packagePaymentMethods?.map(pm => getPaymentMethodName(pm)).join(', ') || 'Pacote')
                         : '-';
                     
                     // Get service name - check service first, then package

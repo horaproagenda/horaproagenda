@@ -195,7 +195,8 @@ export function useAppointments() {
         const clientName = currentApt?.client?.name || 'Cliente';
         const serviceName = currentApt?.service?.name || 'Serviço';
         const today = new Date().toISOString().split('T')[0];
-        const paymentMethodNames = payment.payment_methods.join(', ');
+        // Use the first payment method ID for cash transaction
+        const primaryPaymentMethodId = payment.payment_methods[0] || null;
         
         // Create entry for the payment received in financial_entries
         const { error: entryError } = await supabase.from('financial_entries').insert({
@@ -207,6 +208,7 @@ export function useAppointments() {
           status: 'paid',
           client_id: payment.client_id,
           appointment_id: id,
+          payment_method_id: primaryPaymentMethodId,
           created_by: user?.id,
         });
 
@@ -222,7 +224,7 @@ export function useAppointments() {
             category: 'sale',
             description: `${serviceName} - ${clientName}`,
             amount: newPaymentAmount,
-            payment_method: paymentMethodNames,
+            payment_method: primaryPaymentMethodId, // Store the ID, not the names
             reference_id: id,
             reference_type: 'appointment',
             created_by: user?.id,

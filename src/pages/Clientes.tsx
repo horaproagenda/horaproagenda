@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Users, Loader2, UserCheck, UserX, Filter, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
@@ -60,30 +61,48 @@ const Clientes = () => {
     >
       {/* Header Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 gap-3 max-w-2xl">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap flex-1 gap-2 items-center">
+          {/* Search - Larger */}
+          <div className="relative flex-1 min-w-[250px] max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar por nome, email, telefone ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          {/* Combined Filters */}
+          <div className="flex items-center gap-1 border rounded-md px-2 py-1 bg-background">
+            <Badge
+              variant="outline"
+              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : ''}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              Todos
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'active' ? 'bg-green-500 text-white border-green-500' : ''}`}
+              onClick={() => setStatusFilter('active')}
+            >
+              Ativos
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'inactive' ? 'bg-muted-foreground text-white border-muted-foreground' : ''}`}
+              onClick={() => setStatusFilter('inactive')}
+            >
+              Inativos
+            </Badge>
+          </div>
+          
+          {/* Professional Filter */}
           {(isAdmin || isReceptionist) && (
             <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] h-10">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Profissional" />
               </SelectTrigger>

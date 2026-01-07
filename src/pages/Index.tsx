@@ -130,8 +130,7 @@ const Index = () => {
                   className="animate-slide-up"
                 >
                   <AppointmentCard 
-                    appointment={appointment} 
-                    clientCredits={clientCreditsMap?.get(appointment.client_id)}
+                    appointment={appointment}
                   />
                 </div>
               ))}

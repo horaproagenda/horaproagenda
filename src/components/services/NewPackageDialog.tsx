@@ -46,6 +46,7 @@ const packageSchema = z.object({
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
   total_price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
+  payment_type: z.enum(['full', 'per_session']),
   whatsapp_reminder: z.boolean(),
   professional_id: z.string().optional(),
   room_id: z.string().optional(),
@@ -77,12 +78,18 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
       interval_days: 7,
       duration: 60,
       total_price: 0,
+      payment_type: 'full',
       whatsapp_reminder: true,
       professional_id: '_none',
       room_id: '_none',
       equipment: [],
     },
   });
+
+  const watchPaymentType = form.watch('payment_type');
+  const watchTotalPrice = form.watch('total_price');
+  const watchTotalSessions = form.watch('total_sessions');
+  const pricePerSession = watchTotalSessions > 0 ? watchTotalPrice / watchTotalSessions : 0;
 
   const onSubmit = async (data: PackageFormData) => {
     setIsLoading(true);
@@ -102,6 +109,7 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
           preferred_day_of_week: null,
           preferred_time: null,
           total_price: data.total_price,
+          payment_type: data.payment_type,
           whatsapp_reminder: data.whatsapp_reminder,
           professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
           room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
@@ -352,6 +360,38 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
                   <FormControl>
                     <Input type="number" min={0} step="0.01" {...field} />
                   </FormControl>
+                  {watchPaymentType === 'per_session' && watchTotalSessions > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Valor por sessão: R$ {pricePerSession.toFixed(2)}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="payment_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forma de Pagamento *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="full">Valor integral (pago na venda)</SelectItem>
+                      <SelectItem value="per_session">Por sessão (pago a cada agendamento)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {field.value === 'full' 
+                      ? 'Cliente paga o valor total na compra do pacote'
+                      : 'Cliente paga valor dividido a cada sessão agendada'}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

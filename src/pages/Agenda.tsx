@@ -349,10 +349,7 @@ const Agenda = () => {
 
   const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => {
     // Verificar se existe caixa aberto
-    if (!currentOpenRegister) {
-      toast.error('É necessário abrir o caixa antes de registrar pagamentos. Vá em Caixa > Controle do Caixa.');
-      return;
-    }
+    // Verificação de caixa aberto movida para o AppointmentDetailDialog
 
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;

@@ -40,7 +40,8 @@ import {
   CreditCard,
   CheckCircle,
   AlertCircle,
-  Scissors,
+  Sparkles,
+  Package,
   MapPin,
   Phone,
   Plus,
@@ -402,8 +403,14 @@ export function AppointmentDetailDialog({
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              <Scissors className="h-5 w-5" />
-              Detalhes do Agendamento
+              {isPackageAppointment ? (
+                <Package className="h-5 w-5 text-primary" />
+              ) : (
+                <Sparkles className="h-5 w-5 text-primary" />
+              )}
+              {isPackageAppointment 
+                ? packageData?.name || 'Sessão de Pacote'
+                : appointment.service?.name || 'Serviço'}
             </DialogTitle>
           </DialogHeader>
 
@@ -533,7 +540,7 @@ export function AppointmentDetailDialog({
               /* Service Info - View Mode */
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Scissors className="h-4 w-4 text-muted-foreground" />
+                  <Sparkles className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="font-medium">{appointment.service?.name}</p>
                     <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>

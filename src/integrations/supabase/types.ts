@@ -909,6 +909,7 @@ export type Database = {
           interval_days: number | null
           is_active: boolean
           name: string
+          payment_type: string | null
           price: number
           professional_id: string | null
           room_id: string | null
@@ -924,6 +925,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name: string
+          payment_type?: string | null
           price: number
           professional_id?: string | null
           room_id?: string | null
@@ -939,6 +941,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name?: string
+          payment_type?: string | null
           price?: number
           professional_id?: string | null
           room_id?: string | null
@@ -1475,6 +1478,7 @@ export type Database = {
           name: string
           payment_method: string | null
           payment_methods: string[] | null
+          payment_type: string | null
           preferred_day_of_week: number | null
           preferred_time: string | null
           professional_id: string | null
@@ -1502,6 +1506,7 @@ export type Database = {
           name: string
           payment_method?: string | null
           payment_methods?: string[] | null
+          payment_type?: string | null
           preferred_day_of_week?: number | null
           preferred_time?: string | null
           professional_id?: string | null
@@ -1529,6 +1534,7 @@ export type Database = {
           name?: string
           payment_method?: string | null
           payment_methods?: string[] | null
+          payment_type?: string | null
           preferred_day_of_week?: number | null
           preferred_time?: string | null
           professional_id?: string | null

@@ -117,6 +117,7 @@ export interface ServicePackage {
   total_price: number;
   payment_method: string | null;
   payment_methods: string[];
+  payment_type: 'full' | 'per_session' | null;
   whatsapp_reminder: boolean;
   professional_id: string | null;
   room_id: string | null;

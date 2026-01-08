@@ -146,11 +146,34 @@ export function useSingleSales() {
 
       // 5. Create a cash transaction to update the cash register immediately
       if (openCashRegister) {
+        // Get the actual name of the service or package
+        let itemName = sale.description || 'Item avulso';
+        
+        if (sale.service_id) {
+          const { data: serviceData } = await supabase
+            .from('services')
+            .select('name')
+            .eq('id', sale.service_id)
+            .single();
+          if (serviceData?.name) {
+            itemName = serviceData.name;
+          }
+        } else if (sale.package_id) {
+          const { data: packageData } = await supabase
+            .from('service_packages')
+            .select('name')
+            .eq('id', sale.package_id)
+            .single();
+          if (packageData?.name) {
+            itemName = packageData.name;
+          }
+        }
+        
         await supabase.from('cash_transactions').insert({
           cash_register_id: openCashRegister.id,
           type: 'income',
           category: sale.item_type === 'package' ? 'Venda de Pacote' : 'Venda de Serviço',
-          description: `Venda: ${sale.description || 'Item avulso'}`,
+          description: `Venda: ${itemName}`,
           amount: sale.final_amount,
           payment_method: sale.payment_method_id,
           reference_id: saleData.id,
@@ -160,9 +183,32 @@ export function useSingleSales() {
       }
 
       // 6. Create a financial entry for tracking (RECEIVABLE = income)
+      // Get the actual name of the service or package for financial entry
+      let financialItemName = sale.description || 'Item avulso';
+      
+      if (sale.service_id) {
+        const { data: serviceData } = await supabase
+          .from('services')
+          .select('name')
+          .eq('id', sale.service_id)
+          .single();
+        if (serviceData?.name) {
+          financialItemName = serviceData.name;
+        }
+      } else if (sale.package_id) {
+        const { data: packageData } = await supabase
+          .from('service_packages')
+          .select('name')
+          .eq('id', sale.package_id)
+          .single();
+        if (packageData?.name) {
+          financialItemName = packageData.name;
+        }
+      }
+      
       await supabase.from('financial_entries').insert({
         type: 'receivable',
-        description: `Venda: ${sale.description || 'Item avulso'}`,
+        description: `Venda: ${financialItemName}`,
         amount: sale.final_amount,
         due_date: sale.sale_date,
         paid_date: sale.sale_date,

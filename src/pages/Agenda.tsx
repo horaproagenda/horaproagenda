@@ -30,6 +30,9 @@ import {
   Clock,
   AlertCircle,
   X,
+  TrendingUp,
+  DollarSign,
+  Flame,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -227,6 +230,77 @@ const Agenda = () => {
       cancelled: dayApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
     };
   }, [filteredByFilters, selectedDate, viewType]);
+
+  // Week statistics
+  const weekStats = useMemo(() => {
+    const weekApts = filteredByFilters.filter(apt => {
+      const aptDate = new Date(apt.start_time);
+      return weekDays.some(day => isSameDay(aptDate, day));
+    });
+    
+    return {
+      total: weekApts.length,
+      confirmed: weekApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
+      pending: weekApts.filter(a => a.status === 'scheduled').length,
+      cancelled: weekApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
+      revenue: weekApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + (a.service?.price || 0), 0),
+    };
+  }, [filteredByFilters, weekDays]);
+
+  // Month statistics
+  const monthStats = useMemo(() => {
+    const monthApts = filteredByFilters.filter(apt => {
+      const aptDate = new Date(apt.start_time);
+      return isSameMonth(aptDate, monthStart);
+    });
+    
+    return {
+      total: monthApts.length,
+      confirmed: monthApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
+      pending: monthApts.filter(a => a.status === 'scheduled').length,
+      cancelled: monthApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
+      revenue: monthApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + (a.service?.price || 0), 0),
+    };
+  }, [filteredByFilters, monthStart]);
+
+  // Peak hours analysis - based on historical data
+  const peakHoursMap = useMemo(() => {
+    const hourCounts: Record<string, number> = {};
+    
+    // Count appointments per hour across all history
+    appointments.forEach(apt => {
+      const hour = format(new Date(apt.start_time), 'HH:00');
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    
+    // Find max count to calculate intensity
+    const maxCount = Math.max(...Object.values(hourCounts), 1);
+    
+    // Calculate intensity (0-3) for each hour
+    const intensityMap: Record<string, number> = {};
+    Object.entries(hourCounts).forEach(([hour, count]) => {
+      const ratio = count / maxCount;
+      if (ratio >= 0.75) intensityMap[hour] = 3; // High peak
+      else if (ratio >= 0.5) intensityMap[hour] = 2; // Medium peak
+      else if (ratio >= 0.25) intensityMap[hour] = 1; // Low peak
+      else intensityMap[hour] = 0;
+    });
+    
+    return intensityMap;
+  }, [appointments]);
+
+  // Get peak indicator style for a time slot
+  const getPeakIndicator = (time: string) => {
+    const hour = time.split(':')[0] + ':00';
+    const intensity = peakHoursMap[hour] || 0;
+    
+    switch (intensity) {
+      case 3: return { bg: 'bg-primary/20', border: 'border-primary/40', label: 'Alto' };
+      case 2: return { bg: 'bg-warning/15', border: 'border-warning/30', label: 'Médio' };
+      case 1: return { bg: 'bg-info/10', border: 'border-info/20', label: 'Baixo' };
+      default: return null;
+    }
+  };
 
   // Get appointments for a specific day and time slot
   const getAppointmentsForSlot = (day: Date, time: string) => {
@@ -561,6 +635,9 @@ const Agenda = () => {
               (new Date(absence.end_time).getTime() - new Date(absence.start_time).getTime()) / 60000 : 0;
             const absenceSlotsSpan = Math.ceil(absenceDuration / slotDuration);
 
+            // Peak hour indicator
+            const peakIndicator = getPeakIndicator(time);
+
             return (
               <div
                 key={time}
@@ -573,11 +650,15 @@ const Agenda = () => {
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, selectedDate, time)}
               >
-                <div className="w-12 flex-shrink-0 flex items-center justify-center text-xs font-medium text-muted-foreground">
-                  {time}
+                <div className="w-12 flex-shrink-0 flex flex-col items-center justify-center">
+                  <span className="text-xs font-medium text-muted-foreground">{time}</span>
+                  {peakIndicator && (
+                    <div className={cn('h-1 w-6 rounded-full mt-0.5', peakIndicator.bg)} title={`Horário ${peakIndicator.label}`} />
+                  )}
                 </div>
                 <div className={cn(
-                  'flex-1 rounded-lg border border-dashed border-border/40 p-1.5 min-h-[42px]',
+                  'flex-1 rounded-lg border border-dashed p-1.5 min-h-[42px]',
+                  peakIndicator ? cn(peakIndicator.bg, peakIndicator.border) : 'border-border/40',
                   (apt && !isStart) && 'opacity-0 pointer-events-none',
                   (absence && !isAbsenceStart) && 'opacity-0 pointer-events-none'
                 )}>
@@ -1212,58 +1293,195 @@ const Agenda = () => {
           </AnimatePresence>
         )}
 
-        {/* Day Summary - Compact at bottom */}
-        {!isLoading && (viewType === 'day' || viewType === 'professional') && (
+        {/* Summary Stats - All Views */}
+        {!isLoading && (
           <motion.div 
+            key={`summary-${viewType}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-3 pt-3 border-t border-border/50"
           >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
-                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-semibold text-foreground">{dayStats.total}</span>
-                    <span className="text-muted-foreground ml-1">total</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center">
-                    <CheckCircle2 className="h-3 w-3 text-success" />
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-semibold text-success">{dayStats.confirmed}</span>
-                    <span className="text-muted-foreground ml-1">confirm.</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-5 w-5 rounded-full bg-warning/10 flex items-center justify-center">
-                    <Clock className="h-3 w-3 text-warning" />
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-semibold text-warning">{dayStats.pending}</span>
-                    <span className="text-muted-foreground ml-1">pend.</span>
-                  </div>
-                </div>
-                {dayStats.cancelled > 0 && (
+            {/* Day/Professional View Summary */}
+            {(viewType === 'day' || viewType === 'professional') && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-1.5">
-                    <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
-                      <AlertCircle className="h-3 w-3 text-destructive" />
+                    <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-muted-foreground" />
                     </div>
                     <div className="text-xs">
-                      <span className="font-semibold text-destructive">{dayStats.cancelled}</span>
-                      <span className="text-muted-foreground ml-1">canc.</span>
+                      <span className="font-semibold text-foreground">{dayStats.total}</span>
+                      <span className="text-muted-foreground ml-1">total</span>
                     </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-3 w-3 text-success" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-success">{dayStats.confirmed}</span>
+                      <span className="text-muted-foreground ml-1">confirm.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-warning/10 flex items-center justify-center">
+                      <Clock className="h-3 w-3 text-warning" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-warning">{dayStats.pending}</span>
+                      <span className="text-muted-foreground ml-1">pend.</span>
+                    </div>
+                  </div>
+                  {dayStats.cancelled > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <AlertCircle className="h-3 w-3 text-destructive" />
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-semibold text-destructive">{dayStats.cancelled}</span>
+                        <span className="text-muted-foreground ml-1">canc.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {Object.values(peakHoursMap).some(v => v >= 2) && (
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Flame className="h-3 w-3 text-primary" />
+                      <span>Pico</span>
+                    </div>
+                  )}
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
               </div>
-              <span className="text-[10px] text-muted-foreground">
-                {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
-              </span>
-            </div>
+            )}
+
+            {/* Week View Summary */}
+            {viewType === 'week' && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-foreground">{weekStats.total}</span>
+                      <span className="text-muted-foreground ml-1">total</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-3 w-3 text-success" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-success">{weekStats.confirmed}</span>
+                      <span className="text-muted-foreground ml-1">confirm.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-warning/10 flex items-center justify-center">
+                      <Clock className="h-3 w-3 text-warning" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-warning">{weekStats.pending}</span>
+                      <span className="text-muted-foreground ml-1">pend.</span>
+                    </div>
+                  </div>
+                  {weekStats.cancelled > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <AlertCircle className="h-3 w-3 text-destructive" />
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-semibold text-destructive">{weekStats.cancelled}</span>
+                        <span className="text-muted-foreground ml-1">canc.</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-3 w-3 text-primary" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-primary">R$ {weekStats.revenue.toFixed(0)}</span>
+                      <span className="text-muted-foreground ml-1">recebido</span>
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  Semana de {format(weekStart, "dd/MM", { locale: ptBR })}
+                </span>
+              </div>
+            )}
+
+            {/* Month View Summary */}
+            {viewType === 'month' && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-foreground">{monthStats.total}</span>
+                      <span className="text-muted-foreground ml-1">total</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-3 w-3 text-success" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-success">{monthStats.confirmed}</span>
+                      <span className="text-muted-foreground ml-1">confirm.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-warning/10 flex items-center justify-center">
+                      <Clock className="h-3 w-3 text-warning" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-warning">{monthStats.pending}</span>
+                      <span className="text-muted-foreground ml-1">pend.</span>
+                    </div>
+                  </div>
+                  {monthStats.cancelled > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <AlertCircle className="h-3 w-3 text-destructive" />
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-semibold text-destructive">{monthStats.cancelled}</span>
+                        <span className="text-muted-foreground ml-1">canc.</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-3 w-3 text-primary" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-primary">R$ {monthStats.revenue.toFixed(0)}</span>
+                      <span className="text-muted-foreground ml-1">recebido</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-info/10 flex items-center justify-center">
+                      <TrendingUp className="h-3 w-3 text-info" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-info">{monthStats.total > 0 ? (monthStats.confirmed / monthStats.total * 100).toFixed(0) : 0}%</span>
+                      <span className="text-muted-foreground ml-1">taxa</span>
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground capitalize">
+                  {format(monthStart, "MMMM yyyy", { locale: ptBR })}
+                </span>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

@@ -10,7 +10,7 @@ export interface CashTransaction {
   description: string | null;
   amount: number;
   payment_method: string | null;
-  payment_method_name?: string; // Added for display
+  payment_method_name?: string;
   bank_id: string | null;
   bank?: { name: string } | null;
   reference_id: string | null;
@@ -58,22 +58,51 @@ export function useCashTransactions(cashRegisterId?: string) {
       const { data: packages } = await supabase
         .from('service_packages')
         .select('id, name');
+      // Fetch single_sales to get proper description with service/package names
+      const { data: sales } = await supabase
+        .from('single_sales')
+        .select('id, description, service_id, package_id');
       
       const serviceMap = new Map(services?.map(s => [s.id, s.name]) || []);
       const packageMap = new Map(packages?.map(p => [p.id, p.name]) || []);
+      const salesMap = new Map(sales?.map(s => [s.id, {
+        description: s.description,
+        service_id: s.service_id,
+        package_id: s.package_id
+      }]) || []);
       
       // Map payment_method IDs to names and resolve service/package names in descriptions
       return (data || []).map(t => {
         let description = t.description || t.category;
         
+        // If this is a sale reference, get proper name from the sale
+        if (t.reference_type === 'single_sale' && t.reference_id) {
+          const saleInfo = salesMap.get(t.reference_id);
+          if (saleInfo) {
+            if (saleInfo.service_id) {
+              const serviceName = serviceMap.get(saleInfo.service_id);
+              if (serviceName) {
+                description = `Venda: ${serviceName}`;
+              }
+            } else if (saleInfo.package_id) {
+              const packageName = packageMap.get(saleInfo.package_id);
+              if (packageName) {
+                description = `Venda: ${packageName}`;
+              }
+            } else if (saleInfo.description) {
+              description = `Venda: ${saleInfo.description}`;
+            }
+          }
+        }
+        
         // Check if description contains a UUID (service or package ID) and replace with name
-        if (t.reference_id) {
+        if (t.reference_id && t.reference_type !== 'single_sale') {
           const serviceName = serviceMap.get(t.reference_id);
           const packageName = packageMap.get(t.reference_id);
           if (serviceName) {
-            description = `Venda: ${serviceName}`;
+            description = `Pagamento: ${serviceName}`;
           } else if (packageName) {
-            description = `Venda: ${packageName}`;
+            description = `Pagamento: ${packageName}`;
           }
         }
         

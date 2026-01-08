@@ -260,13 +260,17 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
               {clientServices.map(service => {
                 const isAvailable = service.status === 'available';
                 const isUsed = service.status === 'used';
+                const isExpired = service.status === 'expired';
                 const isAwaitingSchedule = service.status === 'available' && !service.appointment_id;
+                const isCancelled = isExpired && service.notes?.includes('CANCELADO');
                 
                 return (
                   <div
                     key={service.id}
                     className={`p-4 rounded-lg border ${
-                      isUsed 
+                      isCancelled
+                        ? 'bg-destructive/5 border-destructive/20'
+                        : isUsed || isExpired
                         ? 'bg-muted/50 border-muted' 
                         : isAwaitingSchedule
                           ? 'bg-orange-500/5 border-orange-500/20'
@@ -275,7 +279,12 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="font-medium">{service.service?.name || 'Serviço'}</h4>
-                      {isAwaitingSchedule ? (
+                      {isCancelled ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <XCircle className="h-3 w-3" />
+                          Cancelado
+                        </Badge>
+                      ) : isAwaitingSchedule ? (
                         <Badge className="bg-orange-500 text-white gap-1">
                           <Clock className="h-3 w-3" />
                           Aguardando Agendamento
@@ -307,6 +316,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                         </>
                       )}
                     </div>
+                    {isCancelled && service.notes && (
+                      <p className="text-xs text-destructive mt-1">{service.notes}</p>
+                    )}
                   </div>
                 );
               })}

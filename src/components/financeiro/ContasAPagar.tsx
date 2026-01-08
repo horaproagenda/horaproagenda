@@ -39,17 +39,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Check, Calendar, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, Calendar, Filter, AlertCircle } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
+import { useReminders } from '@/hooks/useReminders';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
+  const { createReminder } = useReminders();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
@@ -60,6 +63,11 @@ export function ContasAPagar() {
   const [deleteRecurring, setDeleteRecurring] = useState(false);
   const [editRecurring, setEditRecurring] = useState(false);
   const [showEditRecurringOption, setShowEditRecurringOption] = useState(false);
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [entryToPay, setEntryToPay] = useState<any>(null);
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [paymentBankId, setPaymentBankId] = useState<string>('');
+  const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   
   const [form, setForm] = useState({
     description: '',
@@ -258,12 +266,65 @@ export function ContasAPagar() {
     resetForm();
   };
 
+  const openPayDialog = (entry: any) => {
+    setEntryToPay(entry);
+    setPaymentMethodId(entry.payment_method_id || '');
+    setPaymentBankId(entry.bank_id || '');
+    setCreateBoletoReminder(false);
+    setPayDialogOpen(true);
+  };
+
+  // Check if selected payment method is "Boleto"
+  const selectedPaymentMethod = activePaymentMethods.find(pm => pm.id === paymentMethodId);
+  const isBoleto = selectedPaymentMethod?.name?.toLowerCase().includes('boleto');
+
+  const handleConfirmPayment = async () => {
+    if (!entryToPay) return;
+    
+    // If boleto and user wants a reminder, create it
+    if (isBoleto && createBoletoReminder && entryToPay.due_date) {
+      await createReminder.mutateAsync({
+        title: `Verificar pagamento de boleto: ${entryToPay.description}`,
+        description: `Verificar se o boleto "${entryToPay.description}" no valor de R$ ${Number(entryToPay.amount).toFixed(2)} foi pago. Caso positivo, dar baixa no sistema.`,
+        reminder_date: entryToPay.due_date,
+        reminder_time: '09:00',
+        is_recurring: false,
+        recurring_frequency: null,
+        recurring_days: null,
+        is_active: true,
+        is_completed: false,
+        category: 'financeiro',
+        priority: 'high',
+      });
+    }
+    
+    // Only mark as paid if not boleto OR if it's boleto and user is confirming payment
+    if (!isBoleto || !createBoletoReminder) {
+      await updateEntry.mutateAsync({
+        id: entryToPay.id,
+        status: 'paid' as const,
+        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        payment_method_id: paymentMethodId || null,
+        bank_id: paymentBankId || null,
+      });
+    } else {
+      // For boleto with reminder, only update payment method but keep pending
+      await updateEntry.mutateAsync({
+        id: entryToPay.id,
+        payment_method_id: paymentMethodId || null,
+        bank_id: paymentBankId || null,
+      });
+    }
+    
+    setPayDialogOpen(false);
+    setEntryToPay(null);
+    setPaymentMethodId('');
+    setPaymentBankId('');
+    setCreateBoletoReminder(false);
+  };
+
   const handleMarkAsPaid = async (entry: any) => {
-    await updateEntry.mutateAsync({
-      id: entry.id,
-      status: 'paid' as const,
-      paid_date: format(new Date(), 'yyyy-MM-dd'),
-    });
+    openPayDialog(entry);
   };
 
   const handleChangeStatus = async (entry: any, newStatus: 'pending' | 'paid') => {
@@ -624,6 +685,87 @@ export function ContasAPagar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Confirmation Dialog */}
+      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Pagamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Conta: <span className="font-medium text-foreground">{entryToPay?.description}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Valor: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
+              </p>
+            </div>
+            
+            <div>
+              <Label>Forma de Pagamento</Label>
+              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a forma de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activePaymentMethods.map((pm) => (
+                    <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>Conta Bancária (origem do pagamento)</Label>
+              <Select value={paymentBankId} onValueChange={setPaymentBankId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeBanks.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Boleto reminder option */}
+            {isBoleto && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-400">
+                  <div className="flex items-center gap-2 mt-1">
+                    <Switch
+                      checked={createBoletoReminder}
+                      onCheckedChange={setCreateBoletoReminder}
+                    />
+                    <Label className="text-sm cursor-pointer">
+                      Criar lembrete para verificar pagamento na data de vencimento
+                    </Label>
+                  </div>
+                  {createBoletoReminder && (
+                    <p className="text-xs mt-2">
+                      Um lembrete será criado para o dia {entryToPay?.due_date ? format(parseISO(entryToPay.due_date), 'dd/MM/yyyy') : '-'} 
+                      para verificar se o boleto foi pago. A conta permanecerá pendente até a baixa manual.
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setPayDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
+                <Check className="h-4 w-4 mr-2" />
+                {isBoleto && createBoletoReminder ? 'Salvar e Criar Lembrete' : 'Confirmar Pagamento'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

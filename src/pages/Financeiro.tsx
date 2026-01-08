@@ -12,7 +12,6 @@ import {
   ArrowUpCircle,
   TrendingUp,
   Landmark,
-  BarChart3,
   Percent,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
@@ -21,7 +20,6 @@ import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
 import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
-import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
@@ -106,12 +104,8 @@ export default function Financeiro() {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="consolidado" className="space-y-4">
+        <Tabs defaultValue="contas-pagar" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="consolidado" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Consolidado
-            </TabsTrigger>
             <TabsTrigger value="contas-pagar" className="gap-2">
               <ArrowDownCircle className="h-4 w-4" />
               Contas a Pagar
@@ -141,10 +135,6 @@ export default function Financeiro() {
               Comissões
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="consolidado">
-            <RelatorioConsolidado />
-          </TabsContent>
 
           <TabsContent value="contas-pagar">
             <ContasAPagar />

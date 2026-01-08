@@ -37,7 +37,7 @@ interface PaymentHistoryItem {
   pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
-  status: 'paid' | 'partial' | 'pending';
+  status: 'paid' | 'partial' | 'pending' | 'cancelled';
   saleId?: string;
   packageId?: string;
   serviceId?: string;
@@ -64,6 +64,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
   const [usedSessionsValue, setUsedSessionsValue] = useState('0');
   const [penaltyAmount, setPenaltyAmount] = useState('0');
+  const [refundMethod, setRefundMethod] = useState('Dinheiro');
 
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({
@@ -111,10 +112,17 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
 
   // Cancel sale mutation
   const cancelSaleMutation = useMutation({
-    mutationFn: async ({ saleId, packageId, refundAmount }: { saleId?: string; packageId?: string; refundAmount: number }) => {
+    mutationFn: async ({ saleId, packageId, serviceId, refundAmount, refundMethod }: { 
+      saleId?: string; 
+      packageId?: string; 
+      serviceId?: string;
+      refundAmount: number;
+      refundMethod?: string;
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
+      const today = format(new Date(), 'yyyy-MM-dd');
 
-      // Create refund transaction in cash
+      // 1. Create refund transaction in cash register
       const { data: openRegister } = await supabase
         .from('cash_registers')
         .select('id')
@@ -128,38 +136,62 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
           category: 'refund',
           description: `Devolução: ${selectedSale?.serviceName}`,
           amount: refundAmount,
+          reference_id: saleId,
+          reference_type: 'refund',
           created_by: user?.id,
         });
       }
 
-      // Create expense entry in financial
+      // 2. Create expense entry in financial
       await supabase.from('financial_entries').insert({
         type: 'payable',
         description: `Devolução: ${selectedSale?.serviceName}`,
         amount: refundAmount,
-        due_date: format(new Date(), 'yyyy-MM-dd'),
-        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        due_date: today,
+        paid_date: today,
         status: 'paid',
+        notes: `Cancelamento de venda - Método: ${refundMethod || 'Não especificado'}`,
         created_by: user?.id,
       });
 
-      // If it's a sale, mark as cancelled
+      // 3. If it's a service sale, cancel the client_service record
+      if (saleId && serviceId) {
+        await supabase
+          .from('client_services')
+          .update({ 
+            status: 'expired',
+            notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)} em ${today}`
+          })
+          .eq('sale_id', saleId);
+      }
+
+      // 4. If it's a sale, mark as cancelled
       if (saleId) {
         await supabase
           .from('single_sales')
           .update({ 
-            notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)}`,
+            notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)} - ${refundMethod || 'Não especificado'}`,
             final_amount: 0,
           })
           .eq('id', saleId);
       }
 
-      // If it's a package, deactivate it
+      // 5. If it's a package, deactivate it and cancel pending sessions
       if (packageId) {
         await supabase
           .from('service_packages')
-          .update({ is_active: false })
+          .update({ 
+            is_active: false,
+            description: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)}`
+          })
           .eq('id', packageId);
+
+        // Cancel all pending package appointments
+        await supabase
+          .from('package_appointments')
+          .update({ status: 'cancelled' })
+          .eq('package_id', packageId)
+          .eq('status', 'pending');
       }
 
       return { refundAmount };
@@ -169,7 +201,11 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_services'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
       toast.success(`Venda cancelada! Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
       setCancelDialogOpen(false);
       setSelectedSale(null);
@@ -195,7 +231,9 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     cancelSaleMutation.mutate({
       saleId: selectedSale.saleId,
       packageId: selectedSale.packageId,
+      serviceId: selectedSale.serviceId,
       refundAmount,
+      refundMethod,
     });
   };
 
@@ -204,6 +242,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     setRefundType('full');
     setUsedSessionsValue('0');
     setPenaltyAmount('0');
+    setRefundMethod('Dinheiro');
     setCancelDialogOpen(true);
   };
 
@@ -343,14 +382,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                       )}
                     </div>
                     <Badge 
-                      variant={payment.status === 'paid' ? 'default' : payment.status === 'partial' ? 'secondary' : 'outline'}
-                      className={payment.status === 'paid' ? 'bg-emerald-500' : payment.status === 'partial' ? 'bg-amber-500' : ''}
+                      variant={payment.status === 'paid' ? 'default' : payment.status === 'cancelled' ? 'destructive' : payment.status === 'partial' ? 'secondary' : 'outline'}
+                      className={payment.status === 'paid' ? 'bg-emerald-500' : payment.status === 'cancelled' ? '' : payment.status === 'partial' ? 'bg-amber-500' : ''}
                     >
-                      {payment.status === 'paid' ? 'Pago' : payment.status === 'partial' ? 'Parcial' : 'Pendente'}
+                      {payment.status === 'paid' ? 'Pago' : payment.status === 'cancelled' ? 'Cancelado' : payment.status === 'partial' ? 'Parcial' : 'Pendente'}
                     </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      {payment.paymentMethod}
-                    </Badge>
+                    {payment.status !== 'cancelled' && (
+                      <Badge variant="secondary" className="text-xs">
+                        {payment.paymentMethod}
+                      </Badge>
+                    )}
                     {payment.saleId && (
                       <Button 
                         variant="ghost" 
@@ -548,6 +589,29 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>Forma de devolução</Label>
+                <Select value={refundMethod} onValueChange={setRefundMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="PIX">PIX</SelectItem>
+                    <SelectItem value="Transferência">Transferência Bancária</SelectItem>
+                    <SelectItem value="Crédito">Crédito para uso futuro</SelectItem>
+                    <SelectItem value="Estorno Cartão">Estorno no Cartão</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <p className="text-sm text-destructive">
+                  <strong>Atenção:</strong> Ao confirmar, o valor será registrado como saída no caixa e no financeiro, 
+                  e o serviço/pacote será marcado como cancelado.
+                </p>
+              </div>
             </div>
           )}
 

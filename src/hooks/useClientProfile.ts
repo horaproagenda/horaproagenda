@@ -15,7 +15,7 @@ interface PaymentHistoryItem {
   pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
-  status: 'paid' | 'partial' | 'pending';
+  status: 'paid' | 'partial' | 'pending' | 'cancelled';
   saleId?: string;
   packageId?: string;
   serviceId?: string;
@@ -455,16 +455,18 @@ export function useClientProfile(clientId: string) {
       }),
     // From sales (purchases through caixa)
     ...clientSales.map(sale => {
+      const isCancelled = sale.notes?.includes('CANCELADO') || sale.final_amount === 0;
       const totalPrice = sale.original_amount || sale.final_amount || 0;
       const amountPaid = sale.paid_at ? (sale.final_amount || 0) : 0;
       const pendingAmount = sale.paid_at ? 0 : totalPrice;
-      const status: 'paid' | 'partial' | 'pending' = 
+      const status: 'paid' | 'partial' | 'pending' | 'cancelled' = 
+        isCancelled ? 'cancelled' :
         sale.paid_at ? 'paid' : 'pending';
       
       return {
         id: sale.id,
         date: sale.paid_at || sale.sale_date,
-        description: sale.description || sale.service?.name || sale.package?.name || 'Venda',
+        description: isCancelled ? `${sale.description || sale.service?.name || sale.package?.name || 'Venda'} (CANCELADO)` : sale.description || sale.service?.name || sale.package?.name || 'Venda',
         serviceName: sale.service?.name || sale.package?.name || '-',
         amount: amountPaid,
         totalPrice,
@@ -472,7 +474,7 @@ export function useClientProfile(clientId: string) {
         paymentMethod: sale.payment_method?.name || '-',
         source: 'sale' as const,
         status,
-        saleId: sale.id,
+        saleId: isCancelled ? undefined : sale.id, // Don't allow cancelling already cancelled sales
         serviceId: sale.service_id || undefined,
         packageId: sale.package_id || undefined,
       };

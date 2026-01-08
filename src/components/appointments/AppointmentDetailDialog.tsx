@@ -366,8 +366,24 @@ export function AppointmentDetailDialog({
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const clientCredit = parseFloat(clientCreditAmount) || 0;
+  
+  // Calculate total fees that should be added to client payment
+  const totalFeesToAddToClient = useMemo(() => {
+    return payments.reduce((sum, payment) => {
+      const paymentAmount = parseFloat(payment.amount) || 0;
+      if (!payment.cardBrandId || paymentAmount <= 0) return sum;
+      
+      const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
+      if (!cardBrand || cardBrand.fee_behavior !== 'add_to_client') return sum;
+      
+      const feeInfo = calculateFee(payment, paymentAmount);
+      return sum + feeInfo.feeAmount;
+    }, 0);
+  }, [payments, activeCardBrands]);
+  
   const totalWithCredit = totalPaymentAmount + clientCredit;
-  const newRemainingAmount = remainingAmount - totalWithCredit;
+  const totalWithFees = totalWithCredit + totalFeesToAddToClient;
+  const newRemainingAmount = remainingAmount - totalPaymentAmount - clientCredit;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
 
   const handleConfirmPayment = () => {
@@ -823,8 +839,14 @@ export function AppointmentDetailDialog({
                     <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                       {totalPaymentAmount > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span>Valor recebido:</span>
-                          <span className="font-semibold text-success">R$ {totalPaymentAmount.toFixed(2)}</span>
+                          <span>Valor do serviço:</span>
+                          <span className="font-semibold">R$ {totalPaymentAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {totalFeesToAddToClient > 0 && (
+                        <div className="flex justify-between text-sm text-amber-600">
+                          <span>Taxa de cartão:</span>
+                          <span className="font-semibold">+ R$ {totalFeesToAddToClient.toFixed(2)}</span>
                         </div>
                       )}
                       {clientCredit > 0 && (
@@ -835,11 +857,15 @@ export function AppointmentDetailDialog({
                       )}
                       <Separator className="my-1" />
                       <div className="flex justify-between text-sm">
-                        <span>Total a quitar:</span>
-                        <span className="font-semibold">R$ {totalWithCredit.toFixed(2)}</span>
+                        <span className="font-medium">Total a cobrar do cliente:</span>
+                        <span className="font-bold text-primary">R$ {totalWithFees.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Restante após pagamento:</span>
+                        <span>Valor quitado do serviço:</span>
+                        <span className="font-semibold text-success">R$ {totalWithCredit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Restante do serviço:</span>
                         <span className={cn('font-semibold', newRemainingAmount > 0 ? 'text-warning' : 'text-success')}>
                           R$ {newRemainingAmount.toFixed(2)}
                         </span>

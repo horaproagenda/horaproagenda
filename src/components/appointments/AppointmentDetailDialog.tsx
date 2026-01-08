@@ -201,6 +201,21 @@ export function AppointmentDetailDialog({
     }
   }, [open]);
 
+  // Calculate total fees that should be added to client payment
+  const totalFeesToAddToClient = useMemo(() => {
+    if (!appointment) return 0;
+    return payments.reduce((sum, payment) => {
+      const paymentAmount = parseFloat(payment.amount) || 0;
+      if (!payment.cardBrandId || paymentAmount <= 0) return sum;
+      
+      const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
+      if (!cardBrand || cardBrand.fee_behavior !== 'add_to_client') return sum;
+      
+      const feeInfo = calculateFee(payment, paymentAmount);
+      return sum + feeInfo.feeAmount;
+    }, 0);
+  }, [payments, activeCardBrands, appointment]);
+
   if (!appointment) return null;
 
   // Get package session info
@@ -366,20 +381,6 @@ export function AppointmentDetailDialog({
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const clientCredit = parseFloat(clientCreditAmount) || 0;
-  
-  // Calculate total fees that should be added to client payment
-  const totalFeesToAddToClient = useMemo(() => {
-    return payments.reduce((sum, payment) => {
-      const paymentAmount = parseFloat(payment.amount) || 0;
-      if (!payment.cardBrandId || paymentAmount <= 0) return sum;
-      
-      const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
-      if (!cardBrand || cardBrand.fee_behavior !== 'add_to_client') return sum;
-      
-      const feeInfo = calculateFee(payment, paymentAmount);
-      return sum + feeInfo.feeAmount;
-    }, 0);
-  }, [payments, activeCardBrands]);
   
   const totalWithCredit = totalPaymentAmount + clientCredit;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;

@@ -149,7 +149,7 @@ export function CashRegisterPanel() {
     };
   }, [entries, appointments, receivablesPeriod]);
 
-  // Sales summary by period
+  // Sales summary by period - fetch service/package names
   const salesSummary = useMemo(() => {
     const { start, end } = getDateRange(salesPeriod);
     const periodSales = transactions.filter(t => {

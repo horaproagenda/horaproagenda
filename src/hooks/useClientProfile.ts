@@ -11,8 +11,14 @@ interface PaymentHistoryItem {
   description: string;
   serviceName: string;
   amount: number;
+  totalPrice: number;
+  pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
+  status: 'paid' | 'partial' | 'pending';
+  saleId?: string;
+  packageId?: string;
+  serviceId?: string;
 }
 
 export function useClientProfile(clientId: string) {
@@ -419,39 +425,58 @@ export function useClientProfile(clientId: string) {
     return methodIdOrName;
   };
 
-  // Build payment history from both sources - only actual payments with real amounts
+  // Build payment history from both sources - show all with proper status
   const paymentHistory: PaymentHistoryItem[] = [
-    // From appointments with actual payments (not package appointments without direct payment)
+    // From appointments - show all that have service or package
     ...appointments
-      .filter(a => {
-        // Must have a real payment amount
-        if (!a.amount_paid || a.amount_paid <= 0) return false;
-        // Must have payment methods defined (indicates actual payment was made)
-        if (!a.payment_methods || a.payment_methods.length === 0) return false;
-        return true;
-      })
-      .map(a => ({
-        id: a.id,
-        date: a.start_time,
-        description: a.service?.name || a.package_appointment?.package?.name || 'Serviço',
-        serviceName: a.service?.name || a.package_appointment?.package?.name || '-',
-        amount: a.amount_paid || 0,
-        // Convert payment method IDs to names
-        paymentMethod: a.payment_methods?.map(pm => getPaymentMethodName(pm)).join(', ') || '-',
-        source: 'appointment' as const,
-      })),
-    // From sales (actual purchases through caixa)
-    ...clientSales
-      .filter(sale => sale.paid_at) // Only include if actually paid
-      .map(sale => ({
+      .filter(a => a.service || a.package_appointment?.package)
+      .map(a => {
+        const totalPrice = a.service?.price || a.package_appointment?.package?.total_price || 0;
+        const amountPaid = a.amount_paid || 0;
+        const pendingAmount = Math.max(0, totalPrice - amountPaid);
+        const status: 'paid' | 'partial' | 'pending' = 
+          a.payment_status === 'paid' ? 'paid' : 
+          a.payment_status === 'partial' || amountPaid > 0 ? 'partial' : 'pending';
+        
+        return {
+          id: a.id,
+          date: a.start_time,
+          description: a.service?.name || a.package_appointment?.package?.name || 'Serviço',
+          serviceName: a.service?.name || a.package_appointment?.package?.name || '-',
+          amount: amountPaid,
+          totalPrice,
+          pendingAmount,
+          paymentMethod: a.payment_methods?.map(pm => getPaymentMethodName(pm)).join(', ') || '-',
+          source: 'appointment' as const,
+          status,
+          serviceId: a.service_id || undefined,
+          packageId: a.package_appointment?.package?.id || undefined,
+        };
+      }),
+    // From sales (purchases through caixa)
+    ...clientSales.map(sale => {
+      const totalPrice = sale.original_amount || sale.final_amount || 0;
+      const amountPaid = sale.paid_at ? (sale.final_amount || 0) : 0;
+      const pendingAmount = sale.paid_at ? 0 : totalPrice;
+      const status: 'paid' | 'partial' | 'pending' = 
+        sale.paid_at ? 'paid' : 'pending';
+      
+      return {
         id: sale.id,
         date: sale.paid_at || sale.sale_date,
         description: sale.description || sale.service?.name || sale.package?.name || 'Venda',
         serviceName: sale.service?.name || sale.package?.name || '-',
-        amount: sale.final_amount || 0,
+        amount: amountPaid,
+        totalPrice,
+        pendingAmount,
         paymentMethod: sale.payment_method?.name || '-',
         source: 'sale' as const,
-      })),
+        status,
+        saleId: sale.id,
+        serviceId: sale.service_id || undefined,
+        packageId: sale.package_id || undefined,
+      };
+    }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate detailed stats

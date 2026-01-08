@@ -32,8 +32,6 @@ import {
   ChevronDown,
   Search,
   Gift,
-  CreditCard,
-  Wallet,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -78,7 +76,6 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useClientsCredits } from '@/hooks/useClientCredits';
-import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAutoCompleteAppointments } from '@/hooks/useAutoCompleteAppointments';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
@@ -95,7 +92,6 @@ const Agenda = () => {
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
-  const [showOnlyWithCredits, setShowOnlyWithCredits] = useState(false);
   const [viewType, setViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -117,7 +113,6 @@ const Agenda = () => {
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
-  const { currentOpenRegister } = useCashRegisters();
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
@@ -184,17 +179,9 @@ const Agenda = () => {
         }
       }
       
-      // Filter by clients with available credits
-      if (showOnlyWithCredits && clientCreditsMap) {
-        const clientCredits = clientCreditsMap.get(apt.client_id);
-        if (!clientCredits || clientCredits.totalCredits <= 0) {
-          return false;
-        }
-      }
-      
       return true;
     });
-  }, [appointments, searchTerm, professionalFilter, roomFilter, showOnlyWithCredits, clientCreditsMap]);
+  }, [appointments, searchTerm, professionalFilter, roomFilter, clientCreditsMap]);
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -304,7 +291,6 @@ const Agenda = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');
     setEquipmentFilter('all');
-    setShowOnlyWithCredits(false);
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -376,12 +362,11 @@ const Agenda = () => {
         payment_status: paymentStatus,
         client_credit: creditAmount > 0 ? creditAmount : undefined,
         client_id: appointment.client_id,
-        cash_register_id: currentOpenRegister.id,
       },
     });
   };
 
-  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all' || showOnlyWithCredits;
+  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all';
   const activeEquipment = equipment.filter(e => e.is_active);
 
   const activeProfessionals = professionals.filter(p => p.is_active);
@@ -994,16 +979,6 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
-      {/* Cash Register Status Alert */}
-      {currentOpenRegister && (
-        <Alert className="mb-4 border-green-500/50 bg-green-500/10">
-          <Wallet className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-700 dark:text-green-300">
-            <span className="font-medium">Caixa aberto</span> desde {format(new Date(currentOpenRegister.opened_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Compact Header with Search, View Toggle and Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Search Input */}
@@ -1120,19 +1095,6 @@ const Agenda = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Filter: Show only clients with credits */}
-              <div className="flex items-center justify-between pt-2 border-t">
-                <Label className="text-xs font-medium flex items-center gap-1.5 cursor-pointer" htmlFor="credits-filter">
-                  <Gift className="h-3.5 w-3.5 text-green-500" />
-                  Clientes com créditos
-                </Label>
-                <Switch
-                  id="credits-filter"
-                  checked={showOnlyWithCredits}
-                  onCheckedChange={setShowOnlyWithCredits}
-                />
               </div>
 
               {hasActiveFilters && (

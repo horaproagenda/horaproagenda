@@ -50,12 +50,54 @@ export function useCashTransactions(cashRegisterId?: string) {
       const paymentMethodMap = new Map(
         paymentMethods?.map(pm => [pm.id, pm.name]) || []
       );
+
+      // Fetch services and packages to resolve names from IDs in description
+      const { data: services } = await supabase
+        .from('services')
+        .select('id, name');
+      const { data: packages } = await supabase
+        .from('service_packages')
+        .select('id, name');
       
-      // Map payment_method IDs to names
-      return (data || []).map(t => ({
-        ...t,
-        payment_method_name: t.payment_method ? paymentMethodMap.get(t.payment_method) || t.payment_method : null,
-      })) as CashTransaction[];
+      const serviceMap = new Map(services?.map(s => [s.id, s.name]) || []);
+      const packageMap = new Map(packages?.map(p => [p.id, p.name]) || []);
+      
+      // Map payment_method IDs to names and resolve service/package names in descriptions
+      return (data || []).map(t => {
+        let description = t.description || t.category;
+        
+        // Check if description contains a UUID (service or package ID) and replace with name
+        if (t.reference_id) {
+          const serviceName = serviceMap.get(t.reference_id);
+          const packageName = packageMap.get(t.reference_id);
+          if (serviceName) {
+            description = `Venda: ${serviceName}`;
+          } else if (packageName) {
+            description = `Venda: ${packageName}`;
+          }
+        }
+        
+        // Also try to extract UUID from description if reference_id is not set
+        const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+        const uuidMatch = description?.match(uuidRegex);
+        if (uuidMatch) {
+          for (const uuid of uuidMatch) {
+            const serviceName = serviceMap.get(uuid);
+            const packageName = packageMap.get(uuid);
+            if (serviceName) {
+              description = description.replace(uuid, serviceName);
+            } else if (packageName) {
+              description = description.replace(uuid, packageName);
+            }
+          }
+        }
+        
+        return {
+          ...t,
+          description,
+          payment_method_name: t.payment_method ? paymentMethodMap.get(t.payment_method) || t.payment_method : null,
+        };
+      }) as CashTransaction[];
     },
   });
 

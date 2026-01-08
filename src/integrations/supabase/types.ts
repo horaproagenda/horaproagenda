@@ -374,12 +374,14 @@ export type Database = {
         Row: {
           amount: number
           bank_id: string | null
+          card_fee_amount: number | null
           cash_register_id: string | null
           category: string
           created_at: string
           created_by: string | null
           description: string | null
           id: string
+          installments: number | null
           payment_method: string | null
           reference_id: string | null
           reference_type: string | null
@@ -389,12 +391,14 @@ export type Database = {
         Insert: {
           amount?: number
           bank_id?: string | null
+          card_fee_amount?: number | null
           cash_register_id?: string | null
           category: string
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          installments?: number | null
           payment_method?: string | null
           reference_id?: string | null
           reference_type?: string | null
@@ -404,12 +408,14 @@ export type Database = {
         Update: {
           amount?: number
           bank_id?: string | null
+          card_fee_amount?: number | null
           cash_register_id?: string | null
           category?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          installments?: number | null
           payment_method?: string | null
           reference_id?: string | null
           reference_type?: string | null

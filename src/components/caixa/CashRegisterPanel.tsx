@@ -157,9 +157,16 @@ export function CashRegisterPanel() {
       const date = parseISO(t.created_at);
       return isWithinInterval(date, { start, end });
     });
+    
+    const total = periodSales.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalFees = periodSales.reduce((sum, t) => sum + (t.card_fee_amount || 0), 0);
+    const netTotal = total - totalFees;
+    
     return {
       transactions: periodSales,
-      total: periodSales.reduce((sum, t) => sum + Number(t.amount), 0),
+      total,
+      totalFees,
+      netTotal,
       count: periodSales.length,
     };
   }, [transactions, salesPeriod]);
@@ -652,16 +659,34 @@ export function CashRegisterPanel() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between mb-4 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-            <div>
-              <div className="text-3xl font-bold text-green-600">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+              <div className="text-sm text-muted-foreground">Valor Bruto</div>
+              <div className="text-2xl font-bold text-green-600">
                 R$ {salesSummary.total.toFixed(2)}
               </div>
-              <div className="text-sm text-muted-foreground">
-                {salesSummary.count} venda(s) recebida(s)
+              <div className="text-xs text-muted-foreground">
+                {salesSummary.count} venda(s)
               </div>
             </div>
-            <DollarSign className="h-12 w-12 text-green-200" />
+            <div className="p-4 bg-destructive/10 rounded-lg">
+              <div className="text-sm text-muted-foreground">Taxas de Cartão</div>
+              <div className="text-2xl font-bold text-destructive">
+                -R$ {salesSummary.totalFees.toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Descontado pelas operadoras
+              </div>
+            </div>
+            <div className="p-4 bg-primary/10 rounded-lg">
+              <div className="text-sm text-muted-foreground">Valor Líquido</div>
+              <div className="text-2xl font-bold text-primary">
+                R$ {salesSummary.netTotal.toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Valor efetivo recebido
+              </div>
+            </div>
           </div>
           
           {salesSummary.transactions.length > 0 ? (
@@ -673,20 +698,48 @@ export function CashRegisterPanel() {
                       <TableHead>Descrição</TableHead>
                       <TableHead>Forma de Pagamento</TableHead>
                       <TableHead>Data/Hora</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">Bruto</TableHead>
+                      <TableHead className="text-right">Taxa</TableHead>
+                      <TableHead className="text-right">Líquido</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salesSummary.transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell className="font-medium">{transaction.description || '-'}</TableCell>
-                        <TableCell>{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
-                        <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                        <TableCell className="text-right font-medium text-green-600">
-                          R$ {Number(transaction.amount).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {salesSummary.transactions.map((transaction) => {
+                      const hasFee = transaction.card_fee_amount && transaction.card_fee_amount > 0;
+                      const netAmount = hasFee 
+                        ? Number(transaction.amount) - transaction.card_fee_amount!
+                        : Number(transaction.amount);
+                      
+                      return (
+                        <TableRow key={transaction.id}>
+                          <TableCell className="font-medium">
+                            {transaction.description || '-'}
+                            {transaction.installments && transaction.installments > 1 && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {transaction.installments}x
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
+                          <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                          <TableCell className="text-right font-medium text-green-600">
+                            R$ {Number(transaction.amount).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {hasFee ? (
+                              <span className="text-destructive font-medium">
+                                -R$ {transaction.card_fee_amount!.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-primary">
+                            R$ {netAmount.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

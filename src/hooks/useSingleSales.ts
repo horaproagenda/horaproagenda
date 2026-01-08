@@ -76,7 +76,7 @@ export function useSingleSales() {
 
       if (saleError) throw saleError;
 
-      // 3. If it's a package sale with a client, create a client package with paid sessions
+      // 3. If it's a package sale with a client, create a client package marked as PAID
       if (sale.item_type === 'package' && sale.package_id && sale.client_id) {
         // Get the package template data (from service_packages acting as template)
         const { data: packageTemplate } = await supabase
@@ -87,15 +87,14 @@ export function useSingleSales() {
 
         if (packageTemplate) {
           // Create a new client-specific package (copy of the template)
-          // Note: template_id should reference package_templates table, not service_packages
-          // If the source package has a template_id, use it; otherwise set to null
+          // Mark as PAID since payment was made at the cash register
           const { data: clientPackage, error: pkgError } = await supabase
             .from('service_packages')
             .insert({
               name: packageTemplate.name,
               description: packageTemplate.description,
               client_id: sale.client_id,
-              template_id: packageTemplate.template_id || null, // Use the original template_id if exists
+              template_id: packageTemplate.template_id || null,
               total_sessions: packageTemplate.total_sessions,
               duration: packageTemplate.duration || 60,
               interval_days: packageTemplate.interval_days || 7,
@@ -104,22 +103,30 @@ export function useSingleSales() {
               room_id: packageTemplate.room_id,
               equipment: packageTemplate.equipment || [],
               payment_methods: sale.payment_method_id ? [sale.payment_method_id] : [],
+              payment_type: 'full', // Always full payment when sold via cash register
               sessions_scheduled: 0,
               is_active: true,
-              category: 'Pago via Caixa',
+              category: packageTemplate.category || 'Pago via Caixa',
             })
             .select()
             .single();
 
           if (!pkgError && clientPackage) {
-            // Create pending sessions for the package
+            // Create pending sessions for the package - all marked as PAID since package was paid in full
             const sessions = Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
               package_id: clientPackage.id,
               session_number: i + 1,
               status: 'pending',
+              notes: 'Pacote pago integralmente via Caixa',
             }));
 
             await supabase.from('package_appointments').insert(sessions);
+
+            // Update the single_sale to reference the new client package (not the template)
+            await supabase
+              .from('single_sales')
+              .update({ package_id: clientPackage.id })
+              .eq('id', saleData.id);
           }
         }
       }

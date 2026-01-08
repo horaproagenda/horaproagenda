@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { Search, Users, Loader2, UserCheck, UserX, Filter, Upload } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useState, useMemo } from 'react';
+import { Search, Users, Loader2, UserCheck, UserX, Upload } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
@@ -10,20 +9,14 @@ import { Input } from '@/components/ui/input';
 import { useClients } from '@/hooks/useClients';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-type StatusFilter = 'all' | 'active' | 'inactive';
+import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    status: ['all'],
+    professional: ['all'],
+  });
   const { clients, isLoading, refetch } = useClients();
   const { professionals } = useProfessionals();
   const { hasRole } = useAuth();
@@ -34,25 +27,80 @@ const Clientes = () => {
   const activeClients = clients.filter(c => c.is_active);
   const inactiveClients = clients.filter(c => !c.is_active);
 
-  const filteredClients = clients.filter(client => {
-    const matchesSearch = 
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      client.phone.includes(searchTerm) ||
-      (client.cpf && client.cpf.includes(searchTerm));
-    
-    const matchesStatus = 
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && client.is_active) ||
-      (statusFilter === 'inactive' && !client.is_active);
+  // Build filter groups
+  const filterGroups: FilterGroup[] = useMemo(() => {
+    const groups: FilterGroup[] = [
+      {
+        id: 'status',
+        label: 'Status',
+        options: [
+          { value: 'active', label: 'Ativos' },
+          { value: 'inactive', label: 'Inativos' },
+        ],
+        multiSelect: false,
+      },
+    ];
 
-    const matchesProfessional = 
-      professionalFilter === 'all' ||
-      client.assigned_professional_id === professionalFilter ||
-      (professionalFilter === 'unassigned' && !client.assigned_professional_id);
+    if (isAdmin || isReceptionist) {
+      groups.push({
+        id: 'professional',
+        label: 'Profissional',
+        options: [
+          { value: 'unassigned', label: 'Sem profissional' },
+          ...professionals.filter(p => p.is_active).map(pro => ({
+            value: pro.id,
+            label: pro.name,
+          })),
+        ],
+        multiSelect: true,
+      });
+    }
 
-    return matchesSearch && matchesStatus && matchesProfessional;
-  });
+    return groups;
+  }, [professionals, isAdmin, isReceptionist]);
+
+  const handleFilterChange = (groupId: string, values: string[]) => {
+    setSelectedFilters(prev => ({ ...prev, [groupId]: values }));
+  };
+
+  const handleClearFilters = () => {
+    setSelectedFilters({
+      status: ['all'],
+      professional: ['all'],
+    });
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return Object.values(selectedFilters).some(values => 
+      values.length > 0 && !values.includes('all')
+    );
+  }, [selectedFilters]);
+
+  const filteredClients = useMemo(() => {
+    return clients.filter(client => {
+      const matchesSearch = 
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        client.phone.includes(searchTerm) ||
+        (client.cpf && client.cpf.includes(searchTerm));
+      
+      // Status filter
+      const statusFilter = selectedFilters.status || ['all'];
+      const matchesStatus = 
+        statusFilter.includes('all') ||
+        (statusFilter.includes('active') && client.is_active) ||
+        (statusFilter.includes('inactive') && !client.is_active);
+
+      // Professional filter
+      const professionalFilter = selectedFilters.professional || ['all'];
+      const matchesProfessional = 
+        professionalFilter.includes('all') ||
+        professionalFilter.includes(client.assigned_professional_id || '') ||
+        (professionalFilter.includes('unassigned') && !client.assigned_professional_id);
+
+      return matchesSearch && matchesStatus && matchesProfessional;
+    });
+  }, [clients, searchTerm, selectedFilters]);
 
   return (
     <AppLayout 
@@ -62,7 +110,7 @@ const Clientes = () => {
       {/* Header Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap flex-1 gap-2 items-center">
-          {/* Search - Larger */}
+          {/* Search */}
           <div className="relative flex-1 min-w-[250px] max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -74,47 +122,13 @@ const Clientes = () => {
             />
           </div>
           
-          {/* Combined Filters */}
-          <div className="flex items-center gap-1 border rounded-md px-2 py-1 bg-background">
-            <Badge
-              variant="outline"
-              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : ''}`}
-              onClick={() => setStatusFilter('all')}
-            >
-              Todos
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'active' ? 'bg-green-500 text-white border-green-500' : ''}`}
-              onClick={() => setStatusFilter('active')}
-            >
-              Ativos
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`cursor-pointer transition-colors text-xs px-2 py-0.5 ${statusFilter === 'inactive' ? 'bg-muted-foreground text-white border-muted-foreground' : ''}`}
-              onClick={() => setStatusFilter('inactive')}
-            >
-              Inativos
-            </Badge>
-          </div>
-          
-          {/* Professional Filter */}
-          {(isAdmin || isReceptionist) && (
-            <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-              <SelectTrigger className="w-[180px] h-10">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Profissional" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Profissionais</SelectItem>
-                <SelectItem value="unassigned">Sem profissional</SelectItem>
-                {professionals.filter(p => p.is_active).map(pro => (
-                  <SelectItem key={pro.id} value={pro.id}>{pro.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            groups={filterGroups}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+            onClearAll={handleClearFilters}
+          />
         </div>
         <div className="flex gap-2">
           <BulkImportClientsDialog onImported={refetch}>
@@ -180,7 +194,7 @@ const Clientes = () => {
           <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
             <Users className="mx-auto h-10 w-10 text-muted-foreground/50" />
             <p className="mt-3 text-muted-foreground">
-              {searchTerm || statusFilter !== 'all'
+              {searchTerm || hasActiveFilters
                 ? 'Nenhum cliente encontrado para sua busca' 
                 : 'Nenhum cliente cadastrado'}
             </p>

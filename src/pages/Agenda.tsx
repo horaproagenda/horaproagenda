@@ -18,20 +18,14 @@ import {
   ChevronRight, 
   Filter, 
   User, 
-  DoorOpen,
   Calendar as CalendarIcon,
   LayoutGrid,
   List,
-  CheckCircle,
-  AlertCircle,
-  Clock,
   Plus,
   GripVertical,
-  Wrench, 
+  Wrench,
   UserX,
-  ChevronDown,
   Search,
-  Gift,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -564,23 +558,7 @@ const Agenda = () => {
                             <GripVertical className="h-4 w-4 opacity-60 flex-shrink-0 mt-0.5" />
                           )}
                           <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-semibold">{apt.client?.name}</p>
-                              {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Gift className="h-3.5 w-3.5 text-green-300 cursor-help" />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-[200px]">
-                                      <p className="font-medium text-sm">Créditos disponíveis:</p>
-                                      <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
-                                      <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : null}
-                            </div>
+                            <p className="font-semibold">{apt.client?.name}</p>
                             <p className="text-sm opacity-90">{apt.service?.name}</p>
                           </div>
                         </div>
@@ -720,23 +698,7 @@ const Agenda = () => {
                           handleAppointmentClick(apt);
                         }}
                       >
-                        <div className="flex items-center gap-1">
-                          <p className="font-medium truncate">{apt.client?.name}</p>
-                          {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Gift className="h-3 w-3 text-green-300 flex-shrink-0 cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[200px]">
-                                  <p className="font-medium text-sm">Créditos disponíveis:</p>
-                                  <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
-                                  <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : null}
-                        </div>
+                        <p className="font-medium truncate">{apt.client?.name}</p>
                         <p className="truncate opacity-80">{apt.service?.name}</p>
                       </div>
                     )}
@@ -946,23 +908,7 @@ const Agenda = () => {
                             handleAppointmentClick(apt);
                           }}
                         >
-                          <div className="flex items-center gap-1">
-                            <p className="font-medium truncate">{apt.client?.name}</p>
-                            {clientCreditsMap?.get(apt.client_id)?.totalCredits ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Gift className="h-3 w-3 text-green-300 flex-shrink-0 cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-[200px]">
-                                    <p className="font-medium text-sm">Créditos disponíveis:</p>
-                                    <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availablePackageSessions || 0} sessões de pacote</p>
-                                    <p className="text-xs">{clientCreditsMap.get(apt.client_id)?.availableServices || 0} serviços pagos</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : null}
-                          </div>
+                          <p className="font-medium truncate">{apt.client?.name}</p>
                           <p className="truncate opacity-80">{apt.service?.name}</p>
                         </div>
                       )}
@@ -982,143 +928,137 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
-      {/* Compact Header with Search, View Toggle and Filters */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Search Input */}
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar cliente, serviço..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-9 pl-9"
-          />
+      {/* Clean Header Layout */}
+      <div className="space-y-3 mb-4">
+        {/* Row 1: Search + Filter + Absence */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+          
+          <div className="flex-1" />
+
+          {/* Filter Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1.5">
+                <Filter className="h-3.5 w-3.5" />
+                <span className="text-xs">Filtros</span>
+                {hasActiveFilters && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                    {[professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all'].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" align="end">
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Profissional</label>
+                  <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {activeProfessionals.map((prof) => (
+                        <SelectItem key={prof.id} value={prof.id}>
+                          <div className="flex items-center gap-2">
+                            {prof.agenda_color && (
+                              <div 
+                                className="h-2 w-2 rounded-full" 
+                                style={{ backgroundColor: prof.agenda_color }}
+                              />
+                            )}
+                            <span className="truncate">{prof.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sala</label>
+                  <Select value={roomFilter} onValueChange={setRoomFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {activeRooms.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          {room.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Equipamento</label>
+                  <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {activeEquipment.map((eq) => (
+                        <SelectItem key={eq.id} value={eq.id}>
+                          {eq.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full h-7 text-xs">
+                    Limpar filtros
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Absence Button */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleOpenNewAbsence}
+            className="h-8 px-2.5 gap-1.5"
+          >
+            <UserX className="h-3.5 w-3.5" />
+            <span className="text-xs">Ausência</span>
+          </Button>
         </div>
 
-        {/* View Toggle */}
-        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="h-9">
-          <ToggleGroupItem value="day" aria-label="Ver dia" className="px-2 text-xs">
-            <List className="h-3.5 w-3.5 mr-1" />
-            Dia
+        {/* Row 2: View Toggle */}
+        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start">
+          <ToggleGroupItem value="day" aria-label="Ver dia" className="h-7 px-3 text-xs gap-1">
+            <List className="h-3 w-3" />
+            <span>Dia</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="week" aria-label="Ver semana" className="px-2 text-xs">
-            <LayoutGrid className="h-3.5 w-3.5 mr-1" />
-            Semana
+          <ToggleGroupItem value="week" aria-label="Ver semana" className="h-7 px-3 text-xs gap-1">
+            <LayoutGrid className="h-3 w-3" />
+            <span>Semana</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="month" aria-label="Ver mês" className="px-2 text-xs">
-            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-            Mês
+          <ToggleGroupItem value="month" aria-label="Ver mês" className="h-7 px-3 text-xs gap-1">
+            <CalendarIcon className="h-3 w-3" />
+            <span>Mês</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="px-2 text-xs">
-            <User className="h-3.5 w-3.5 mr-1" />
-            Profissional
+          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="h-7 px-3 text-xs gap-1">
+            <User className="h-3 w-3" />
+            <span>Prof.</span>
           </ToggleGroupItem>
         </ToggleGroup>
-
-        {/* Compact Filters Popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-1">
-              <Filter className="h-3.5 w-3.5" />
-              Filtros
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                  {[professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all'].filter(Boolean).length}
-                </Badge>
-              )}
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-3" align="start">
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  Profissional
-                </label>
-                <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {activeProfessionals.map((prof) => (
-                      <SelectItem key={prof.id} value={prof.id}>
-                        <div className="flex items-center gap-2">
-                          {prof.agenda_color && (
-                            <div 
-                              className="h-2.5 w-2.5 rounded-full" 
-                              style={{ backgroundColor: prof.agenda_color }}
-                            />
-                          )}
-                          {prof.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium flex items-center gap-1.5">
-                  <DoorOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                  Sala
-                </label>
-                <Select value={roomFilter} onValueChange={setRoomFilter}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {activeRooms.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
-                        {room.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-                  Equipamento
-                </label>
-                <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {activeEquipment.map((eq) => (
-                      <SelectItem key={eq.id} value={eq.id}>
-                        {eq.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full h-8 text-xs">
-                  Limpar filtros
-                </Button>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Absence Button */}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleOpenNewAbsence}
-          className="h-9 gap-1"
-        >
-          <UserX className="h-3.5 w-3.5" />
-          Ausência
-        </Button>
       </div>
 
       {/* Navigation */}

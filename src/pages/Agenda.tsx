@@ -333,10 +333,12 @@ const Agenda = () => {
     setNewAppointmentDialogOpen(true);
   };
 
-  const handlePayment = (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => {
-    // Verificar se existe caixa aberto
-    // Verificação de caixa aberto movida para o AppointmentDetailDialog
-
+  const handlePayment = (
+    appointmentId: string, 
+    paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
+    clientCredit?: number,
+    cashRegisterId?: string
+  ) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
 
@@ -362,6 +364,7 @@ const Agenda = () => {
         payment_status: paymentStatus,
         client_credit: creditAmount > 0 ? creditAmount : undefined,
         client_id: appointment.client_id,
+        cash_register_id: cashRegisterId,
       },
     });
   };

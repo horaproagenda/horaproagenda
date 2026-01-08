@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   format, 
   addDays, 
@@ -12,6 +12,7 @@ import {
   isSameMonth,
   getDay,
 } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ptBR } from 'date-fns/locale';
 import { 
   ChevronLeft, 
@@ -23,9 +24,12 @@ import {
   List,
   Plus,
   GripVertical,
-  Wrench,
   UserX,
   Search,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -78,6 +82,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
+// Animation variants for view transitions
+const viewVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20 }
+};
+
 const Agenda = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -86,7 +97,10 @@ const Agenda = () => {
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [viewType, setViewType] = useState<ViewType>('week');
+  const [prevViewType, setPrevViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [newAppointmentDialogOpen, setNewAppointmentDialogOpen] = useState(false);
@@ -100,6 +114,13 @@ const Agenda = () => {
   } | null>(null);
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<typeof absences[0] | null>(null);
+
+  // Track view changes for animation direction
+  useEffect(() => {
+    if (viewType !== prevViewType) {
+      setPrevViewType(viewType);
+    }
+  }, [viewType, prevViewType]);
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
@@ -148,7 +169,7 @@ const Agenda = () => {
     return [...prevMonthDays, ...days, ...nextMonthDays];
   }, [monthStart]);
 
-  // Filter appointments by search, professional, room and credits
+  // Filter appointments by search, professional, room, status and payment
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
       // Search filter
@@ -172,10 +193,20 @@ const Agenda = () => {
           return false;
         }
       }
+      if (statusFilter !== 'all') {
+        if (apt.status !== statusFilter) {
+          return false;
+        }
+      }
+      if (paymentFilter !== 'all') {
+        if (apt.payment_status !== paymentFilter) {
+          return false;
+        }
+      }
       
       return true;
     });
-  }, [appointments, searchTerm, professionalFilter, roomFilter, clientCreditsMap]);
+  }, [appointments, searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -183,6 +214,19 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  // Day statistics for summary
+  const dayStats = useMemo(() => {
+    const currentView = viewType === 'day' || viewType === 'professional' ? selectedDate : new Date();
+    const dayApts = filteredByFilters.filter(apt => isSameDay(new Date(apt.start_time), currentView));
+    
+    return {
+      total: dayApts.length,
+      confirmed: dayApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
+      pending: dayApts.filter(a => a.status === 'scheduled').length,
+      cancelled: dayApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
+    };
+  }, [filteredByFilters, selectedDate, viewType]);
 
   // Get appointments for a specific day and time slot
   const getAppointmentsForSlot = (day: Date, time: string) => {
@@ -285,7 +329,12 @@ const Agenda = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');
     setEquipmentFilter('all');
+    setStatusFilter('all');
+    setPaymentFilter('all');
   };
+
+  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all' || statusFilter !== 'all' || paymentFilter !== 'all';
+  const activeFiltersCount = [professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all', statusFilter !== 'all', paymentFilter !== 'all'].filter(Boolean).length;
 
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
@@ -363,7 +412,6 @@ const Agenda = () => {
     });
   };
 
-  const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all';
   const activeEquipment = equipment.filter(e => e.is_active);
 
   const activeProfessionals = professionals.filter(p => p.is_active);
@@ -477,21 +525,21 @@ const Agenda = () => {
     setDraggedAppointment(null);
   }, []);
 
-  // Render time slot grid for day view
+  // Render time slot grid for day view - Clean and compact
   const renderTimeSlotDayView = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-semibold text-foreground">
+        <h2 className="font-display text-lg font-semibold text-foreground">
           {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
         </h2>
-        <Button onClick={handleNewAppointment} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Novo Agendamento
+        <Button onClick={handleNewAppointment} size="sm" className="h-7 text-xs">
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Novo
         </Button>
       </div>
       
-      <ScrollArea className="h-[600px]">
-        <div className="space-y-1">
+      <ScrollArea className="h-[520px]">
+        <div className="space-y-0.5">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
             const absence = getAbsenceAtSlot(selectedDate, time);
@@ -517,32 +565,33 @@ const Agenda = () => {
               <div
                 key={time}
                 className={cn(
-                  'flex items-stretch gap-3 min-h-[50px] rounded-lg transition-all',
-                  apt ? '' : absence ? '' : 'hover:bg-muted/50 cursor-pointer',
-                  draggedAppointment && !apt && !absence && 'bg-primary/5 border-2 border-dashed border-primary/30'
+                  'flex items-stretch gap-2 min-h-[42px] rounded-lg transition-all',
+                  apt ? '' : absence ? '' : 'hover:bg-muted/30 cursor-pointer',
+                  draggedAppointment && !apt && !absence && 'bg-primary/5 border border-dashed border-primary/20'
                 )}
                 onClick={() => !draggedAppointment && !absence && handleSlotClick(selectedDate, time)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, selectedDate, time)}
               >
-                <div className="w-16 flex-shrink-0 flex items-center justify-center text-sm font-medium text-muted-foreground">
+                <div className="w-12 flex-shrink-0 flex items-center justify-center text-xs font-medium text-muted-foreground">
                   {time}
                 </div>
                 <div className={cn(
-                  'flex-1 rounded-lg border border-dashed border-border p-2 min-h-[50px]',
+                  'flex-1 rounded-lg border border-dashed border-border/40 p-1.5 min-h-[42px]',
                   (apt && !isStart) && 'opacity-0 pointer-events-none',
                   (absence && !isAbsenceStart) && 'opacity-0 pointer-events-none'
                 )}>
                   {isStart && apt && (
                     <div 
                       className={cn(
-                        'h-full rounded-lg p-3 text-white transition-all',
+                        'h-full rounded-lg p-2.5 transition-all shadow-sm',
                         dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
                       style={{ 
-                        backgroundColor: color,
-                        minHeight: `${slotsSpan * 50 - 8}px`
+                        backgroundColor: `${color}15`,
+                        borderLeft: `3px solid ${color}`,
+                        minHeight: `${slotsSpan * 42 - 6}px`
                       }}
                       draggable={dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
@@ -552,44 +601,49 @@ const Agenda = () => {
                         handleAppointmentClick(apt);
                       }}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-1.5 min-w-0 flex-1">
                           {dragAndDropEnabled && (
-                            <GripVertical className="h-4 w-4 opacity-60 flex-shrink-0 mt-0.5" />
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                           )}
-                          <div>
-                            <p className="font-semibold">{apt.client?.name}</p>
-                            <p className="text-sm opacity-90">{apt.service?.name}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{apt.client?.name}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{apt.service?.name}</p>
                           </div>
                         </div>
-                        <div className="text-right text-sm">
-                          <p>R$ {apt.service?.price.toFixed(2)}</p>
-                          <p className="opacity-80">{apt.payment_status === 'paid' ? '✓ Pago' : apt.payment_status === 'partial' ? 'Parcial' : 'Pendente'}</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[11px] font-medium text-foreground">R$ {apt.service?.price.toFixed(2)}</p>
+                          <Badge 
+                            variant={apt.payment_status === 'paid' ? 'default' : apt.payment_status === 'partial' ? 'secondary' : 'outline'} 
+                            className="text-[9px] h-4 px-1"
+                          >
+                            {apt.payment_status === 'paid' ? 'Pago' : apt.payment_status === 'partial' ? 'Parcial' : 'Pend.'}
+                          </Badge>
                         </div>
                       </div>
                       {prof && (
-                        <p className="text-xs mt-2 opacity-80">{prof.name}</p>
+                        <p className="text-[10px] mt-1 text-muted-foreground truncate">{prof.name}</p>
                       )}
                     </div>
                   )}
                   {isAbsenceStart && absence && !apt && (
                     <div 
-                      className="h-full rounded-lg p-3 bg-amber-500/20 border-2 border-amber-500/60 cursor-pointer hover:bg-amber-500/30 transition-colors"
-                      style={{ minHeight: `${absenceSlotsSpan * 50 - 8}px` }}
+                      className="h-full rounded-lg p-2.5 bg-amber-50 dark:bg-amber-900/20 border-l-3 border-amber-500 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                      style={{ minHeight: `${absenceSlotsSpan * 42 - 6}px`, borderLeftWidth: '3px' }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAbsenceClick(absence);
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <UserX className="h-4 w-4 text-amber-600" />
-                        <div>
-                          <p className="font-semibold text-amber-700 dark:text-amber-400">Ausência</p>
-                          <p className="text-sm text-amber-600/80 dark:text-amber-300/80">
+                      <div className="flex items-center gap-1.5">
+                        <UserX className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Ausência</p>
+                          <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80 truncate">
                             {absenceProf?.name || absence.professional?.name}
                           </p>
                           {absence.reason && (
-                            <p className="text-xs text-amber-600/70 dark:text-amber-300/70 mt-1">{absence.reason}</p>
+                            <p className="text-[10px] text-amber-600/70 dark:text-amber-300/70 mt-0.5 truncate">{absence.reason}</p>
                           )}
                         </div>
                       </div>
@@ -597,7 +651,7 @@ const Agenda = () => {
                   )}
                   {!apt && !absence && (
                     <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <Plus className="h-5 w-5 text-muted-foreground" />
+                      <Plus className="h-4 w-4 text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -929,55 +983,64 @@ const Agenda = () => {
       subtitle="Gerencie seus agendamentos"
     >
       {/* Clean Header Layout */}
-      <div className="space-y-3 mb-4">
+      <div className="space-y-2 mb-3">
         {/* Row 1: Search + Filter + Absence */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar..."
+              placeholder="Buscar cliente, serviço..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 pl-8 text-sm"
+              className="h-7 pl-7 text-xs"
             />
           </div>
           
           <div className="flex-1" />
 
-          {/* Filter Popover */}
+          {/* Unified Filter Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1.5">
-                <Filter className="h-3.5 w-3.5" />
-                <span className="text-xs">Filtros</span>
+              <Button variant="outline" size="sm" className="h-7 px-2 gap-1">
+                <Filter className="h-3 w-3" />
+                <span className="text-[11px]">Filtros</span>
                 {hasActiveFilters && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                    {[professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all'].filter(Boolean).length}
+                  <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">
+                    {activeFiltersCount}
                   </Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-3" align="end">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Profissional</label>
+            <PopoverContent className="w-72 p-3" align="end">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-[10px] gap-1">
+                    <X className="h-3 w-3" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Profissional</label>
                   <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-7 text-[11px]">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       {activeProfessionals.map((prof) => (
                         <SelectItem key={prof.id} value={prof.id}>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             {prof.agenda_color && (
                               <div 
-                                className="h-2 w-2 rounded-full" 
+                                className="h-2 w-2 rounded-full flex-shrink-0" 
                                 style={{ backgroundColor: prof.agenda_color }}
                               />
                             )}
-                            <span className="truncate">{prof.name}</span>
+                            <span className="truncate text-xs">{prof.name}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -985,45 +1048,71 @@ const Agenda = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sala</label>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sala</label>
                   <Select value={roomFilter} onValueChange={setRoomFilter}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-7 text-[11px]">
                       <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       {activeRooms.map((room) => (
                         <SelectItem key={room.id} value={room.id}>
-                          {room.name}
+                          <span className="text-xs">{room.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Equipamento</label>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-7 text-[11px]">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="scheduled">Agendado</SelectItem>
+                      <SelectItem value="confirmed">Confirmado</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                      <SelectItem value="missed">Faltou</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Pagamento</label>
+                  <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                    <SelectTrigger className="h-7 text-[11px]">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="partial">Parcial</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Equipamento</label>
                   <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-7 text-[11px]">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       {activeEquipment.map((eq) => (
                         <SelectItem key={eq.id} value={eq.id}>
-                          {eq.name}
+                          <span className="text-xs">{eq.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full h-7 text-xs">
-                    Limpar filtros
-                  </Button>
-                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -1033,28 +1122,28 @@ const Agenda = () => {
             variant="outline" 
             size="sm" 
             onClick={handleOpenNewAbsence}
-            className="h-8 px-2.5 gap-1.5"
+            className="h-7 px-2 gap-1"
           >
-            <UserX className="h-3.5 w-3.5" />
-            <span className="text-xs">Ausência</span>
+            <UserX className="h-3 w-3" />
+            <span className="text-[11px]">Ausência</span>
           </Button>
         </div>
 
         {/* Row 2: View Toggle */}
-        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start">
-          <ToggleGroupItem value="day" aria-label="Ver dia" className="h-7 px-3 text-xs gap-1">
+        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start gap-0.5">
+          <ToggleGroupItem value="day" aria-label="Ver dia" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
             <List className="h-3 w-3" />
             <span>Dia</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="week" aria-label="Ver semana" className="h-7 px-3 text-xs gap-1">
+          <ToggleGroupItem value="week" aria-label="Ver semana" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
             <LayoutGrid className="h-3 w-3" />
             <span>Semana</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="month" aria-label="Ver mês" className="h-7 px-3 text-xs gap-1">
+          <ToggleGroupItem value="month" aria-label="Ver mês" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
             <CalendarIcon className="h-3 w-3" />
             <span>Mês</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="h-7 px-3 text-xs gap-1">
+          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
             <User className="h-3 w-3" />
             <span>Prof.</span>
           </ToggleGroupItem>
@@ -1062,56 +1151,120 @@ const Agenda = () => {
       </div>
 
       {/* Navigation */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPrevious}>
+      <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNext}>
+            <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <span className="ml-2 font-medium text-foreground capitalize">
+            <span className="ml-1.5 text-sm font-medium text-foreground capitalize">
               {getNavigationLabel()}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={goToToday}>
+          <div className="flex items-center gap-1.5">
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-7 text-xs px-2.5">
               Hoje
             </Button>
             {(viewType === 'week' || viewType === 'month') && (
-              <Button size="sm" onClick={handleNewAppointment}>
-                <Plus className="h-4 w-4 mr-1" />
+              <Button size="sm" onClick={handleNewAppointment} className="h-7 text-xs px-2.5">
+                <Plus className="h-3.5 w-3.5 mr-1" />
                 Novo
               </Button>
             )}
           </div>
         </div>
 
-        {/* Calendar Views */}
+        {/* Calendar Views with Animation */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="flex flex-col items-center justify-center py-16 space-y-3">
             <div className="relative">
-              <div className="h-12 w-12 rounded-full border-4 border-muted animate-spin border-t-primary" />
+              <div className="h-10 w-10 rounded-full border-4 border-muted animate-spin border-t-primary" />
             </div>
-            <p className="text-sm text-muted-foreground">Carregando agenda...</p>
-            <div className="w-full max-w-md space-y-3">
-              <Skeleton className="h-4 w-3/4 mx-auto" />
-              <Skeleton className="h-4 w-1/2 mx-auto" />
-              <div className="grid grid-cols-7 gap-2 pt-4">
+            <p className="text-xs text-muted-foreground">Carregando agenda...</p>
+            <div className="w-full max-w-md space-y-2">
+              <Skeleton className="h-3 w-3/4 mx-auto" />
+              <Skeleton className="h-3 w-1/2 mx-auto" />
+              <div className="grid grid-cols-7 gap-1.5 pt-3">
                 {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <Skeleton key={i} className="h-20 rounded-lg" />
+                  <Skeleton key={i} className="h-16 rounded-lg" />
                 ))}
               </div>
             </div>
           </div>
         ) : (
-          <>
-            {viewType === 'day' && renderTimeSlotDayView()}
-            {viewType === 'week' && renderWeekView()}
-            {viewType === 'month' && renderMonthView()}
-            {viewType === 'professional' && renderProfessionalView()}
-          </>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={viewType}
+              variants={viewVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+            >
+              {viewType === 'day' && renderTimeSlotDayView()}
+              {viewType === 'week' && renderWeekView()}
+              {viewType === 'month' && renderMonthView()}
+              {viewType === 'professional' && renderProfessionalView()}
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* Day Summary - Compact at bottom */}
+        {!isLoading && (viewType === 'day' || viewType === 'professional') && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 pt-3 border-t border-border/50"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
+                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-semibold text-foreground">{dayStats.total}</span>
+                    <span className="text-muted-foreground ml-1">total</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-3 w-3 text-success" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-semibold text-success">{dayStats.confirmed}</span>
+                    <span className="text-muted-foreground ml-1">confirm.</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-5 w-5 rounded-full bg-warning/10 flex items-center justify-center">
+                    <Clock className="h-3 w-3 text-warning" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-semibold text-warning">{dayStats.pending}</span>
+                    <span className="text-muted-foreground ml-1">pend.</span>
+                  </div>
+                </div>
+                {dayStats.cancelled > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
+                      <AlertCircle className="h-3 w-3 text-destructive" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-destructive">{dayStats.cancelled}</span>
+                      <span className="text-muted-foreground ml-1">canc.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+              </span>
+            </div>
+          </motion.div>
         )}
       </div>
 

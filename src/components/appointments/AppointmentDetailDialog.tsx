@@ -60,13 +60,14 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useRooms } from '@/hooks/useRooms';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
+import { useCashRegisters } from '@/hooks/useCashRegisters';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
   professionals: Professional[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number }[], clientCredit?: number) => void;
+  onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], clientCredit?: number, cashRegisterId?: string) => void;
 }
 
 const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
@@ -96,6 +97,7 @@ export function AppointmentDetailDialog({
   const { rooms } = useRooms();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
+  const { currentOpenRegister } = useCashRegisters();
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -388,6 +390,12 @@ export function AppointmentDetailDialog({
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
 
   const handleConfirmPayment = () => {
+    // Verificar se existe caixa aberto
+    if (!currentOpenRegister) {
+      toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
+      return;
+    }
+    
     if (hasPartialPayment) {
       setShowConfirmDialog(true);
     } else {
@@ -406,7 +414,12 @@ export function AppointmentDetailDialog({
       }));
 
     if (validPayments.length > 0 || clientCredit > 0) {
-      onPayment(appointment.id, validPayments, clientCredit > 0 ? clientCredit : undefined);
+      onPayment(
+        appointment.id, 
+        validPayments, 
+        clientCredit > 0 ? clientCredit : undefined,
+        currentOpenRegister?.id
+      );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
       setClientCreditAmount('');

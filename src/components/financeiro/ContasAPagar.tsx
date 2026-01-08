@@ -39,13 +39,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Check, Calendar, Filter, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, Calendar, AlertCircle } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { useReminders } from '@/hooks/useReminders';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
@@ -56,8 +57,10 @@ export function ContasAPagar() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
-  const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('month');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('pending');
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    date: ['month'],
+    status: ['pending'],
+  });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<any>(null);
   const [deleteRecurring, setDeleteRecurring] = useState(false);
@@ -84,29 +87,58 @@ export function ContasAPagar() {
     split_value: false,
   });
 
+  // Filter groups
+  const filterGroups: FilterGroup[] = useMemo(() => [
+    {
+      id: 'date',
+      label: 'Período',
+      options: [
+        { value: 'today', label: 'Hoje' },
+        { value: 'month', label: 'Este mês' },
+      ],
+      multiSelect: false,
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      options: [
+        { value: 'pending', label: 'Pendentes' },
+        { value: 'paid', label: 'Pagas' },
+      ],
+      multiSelect: false,
+    },
+  ], []);
+
+  const handleFilterChange = (groupId: string, values: string[]) => {
+    setSelectedFilters(prev => ({ ...prev, [groupId]: values }));
+  };
+
   // Filter payables based on date and status
   const filteredPayables = useMemo(() => {
     const today = new Date();
+    const dateFilter = selectedFilters.date || ['all'];
+    const statusFilter = selectedFilters.status || ['all'];
     
     return payables.filter((entry) => {
       // Status filter
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'pending' && entry.status === 'paid') return false;
-        if (statusFilter === 'paid' && entry.status !== 'paid') return false;
+      if (!statusFilter.includes('all')) {
+        if (statusFilter.includes('pending') && entry.status === 'paid') return false;
+        if (statusFilter.includes('paid') && entry.status !== 'paid') return false;
       }
       
       // Date filter
-      if (dateFilterType === 'today') {
-        const dueDate = parseISO(entry.due_date);
-        return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
-      } else if (dateFilterType === 'month') {
-        const dueDate = parseISO(entry.due_date);
-        return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
+      if (!dateFilter.includes('all')) {
+        if (dateFilter.includes('today')) {
+          const dueDate = parseISO(entry.due_date);
+          return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
+        } else if (dateFilter.includes('month')) {
+          const dueDate = parseISO(entry.due_date);
+          return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
+        }
       }
       return true;
     });
-  }, [payables, dateFilterType, statusFilter]);
-
+  }, [payables, selectedFilters]);
   const resetForm = () => {
     setForm({
       description: '',
@@ -382,31 +414,12 @@ export function ContasAPagar() {
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle>Contas a Pagar</CardTitle>
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as datas</SelectItem>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="month">Este mês</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={(v: 'all' | 'pending' | 'paid') => setStatusFilter(v)}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos status</SelectItem>
-                <SelectItem value="pending">Pendentes</SelectItem>
-                <SelectItem value="paid">Pagas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            groups={filterGroups}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+          />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button>

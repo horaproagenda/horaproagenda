@@ -1,7 +1,7 @@
-import { Bell, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NotificationsPanel } from './NotificationsPanel';
 
 interface HeaderProps {
   title: string;
@@ -32,10 +32,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-        </Button>
+        <NotificationsPanel />
 
         {/* User Menu */}
         <div className="flex items-center gap-3">

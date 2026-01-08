@@ -1,13 +1,31 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Appointment } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Download, Calendar, Clock, DollarSign, CreditCard, Edit } from 'lucide-react';
+import { Download, Calendar, Clock, DollarSign, CreditCard, Edit, XCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
   id: string;
@@ -15,8 +33,14 @@ interface PaymentHistoryItem {
   description: string;
   serviceName: string;
   amount: number;
+  totalPrice: number;
+  pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
+  status: 'paid' | 'partial' | 'pending';
+  saleId?: string;
+  packageId?: string;
+  serviceId?: string;
 }
 
 interface ClientReportTabProps {
@@ -34,6 +58,13 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
+  const queryClient = useQueryClient();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<PaymentHistoryItem | null>(null);
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
+  const [usedSessionsValue, setUsedSessionsValue] = useState('0');
+  const [penaltyAmount, setPenaltyAmount] = useState('0');
+
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({
     queryKey: ['payment_methods_for_report'],
@@ -66,28 +97,115 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const summary = useMemo(() => {
     const completed = appointments.filter(a => a.status === 'completed');
     const totalValue = completed.reduce((sum, a) => sum + (a.amount_paid || a.service?.price || 0), 0);
-    
-    // Group by service
-    const serviceMap = new Map<string, { count: number; total: number }>();
-    completed.forEach(a => {
-      const serviceName = a.service?.name || a.package_appointment?.package?.name || 'Desconhecido';
-      const current = serviceMap.get(serviceName) || { count: 0, total: 0 };
-      serviceMap.set(serviceName, {
-        count: current.count + 1,
-        total: current.total + (a.amount_paid || a.service?.price || 0),
-      });
-    });
+    const totalPending = paymentHistory
+      .filter(p => p.status !== 'paid')
+      .reduce((sum, p) => sum + p.pendingAmount, 0);
     
     return {
       total: appointments.length,
       completed: completed.length,
       totalValue,
-      byService: Array.from(serviceMap.entries()).map(([name, data]) => ({
-        name,
-        ...data,
-      })),
+      totalPending,
     };
-  }, [appointments]);
+  }, [appointments, paymentHistory]);
+
+  // Cancel sale mutation
+  const cancelSaleMutation = useMutation({
+    mutationFn: async ({ saleId, packageId, refundAmount }: { saleId?: string; packageId?: string; refundAmount: number }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Create refund transaction in cash
+      const { data: openRegister } = await supabase
+        .from('cash_registers')
+        .select('id')
+        .eq('status', 'open')
+        .maybeSingle();
+
+      if (openRegister) {
+        await supabase.from('cash_transactions').insert({
+          cash_register_id: openRegister.id,
+          type: 'expense',
+          category: 'refund',
+          description: `Devolução: ${selectedSale?.serviceName}`,
+          amount: refundAmount,
+          created_by: user?.id,
+        });
+      }
+
+      // Create expense entry in financial
+      await supabase.from('financial_entries').insert({
+        type: 'payable',
+        description: `Devolução: ${selectedSale?.serviceName}`,
+        amount: refundAmount,
+        due_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        status: 'paid',
+        created_by: user?.id,
+      });
+
+      // If it's a sale, mark as cancelled
+      if (saleId) {
+        await supabase
+          .from('single_sales')
+          .update({ 
+            notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)}`,
+            final_amount: 0,
+          })
+          .eq('id', saleId);
+      }
+
+      // If it's a package, deactivate it
+      if (packageId) {
+        await supabase
+          .from('service_packages')
+          .update({ is_active: false })
+          .eq('id', packageId);
+      }
+
+      return { refundAmount };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      toast.success(`Venda cancelada! Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
+      setCancelDialogOpen(false);
+      setSelectedSale(null);
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao cancelar venda: ' + error.message);
+    },
+  });
+
+  const handleCancelSale = () => {
+    if (!selectedSale) return;
+
+    let refundAmount = selectedSale.amount;
+
+    if (refundType === 'partial') {
+      const usedValue = parseFloat(usedSessionsValue) || 0;
+      const penalty = parseFloat(penaltyAmount) || 0;
+      refundAmount = selectedSale.amount - usedValue - penalty;
+    }
+
+    if (refundAmount < 0) refundAmount = 0;
+
+    cancelSaleMutation.mutate({
+      saleId: selectedSale.saleId,
+      packageId: selectedSale.packageId,
+      refundAmount,
+    });
+  };
+
+  const openCancelDialog = (payment: PaymentHistoryItem) => {
+    setSelectedSale(payment);
+    setRefundType('full');
+    setUsedSessionsValue('0');
+    setPenaltyAmount('0');
+    setCancelDialogOpen(true);
+  };
 
   const exportToCSV = () => {
     const headers = ['Data', 'Horário', 'Serviço', 'Categoria', 'Duração (min)', 'Valor', 'Status'];
@@ -111,9 +229,6 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
       'RESUMO',
       `Total de procedimentos: ${summary.completed}`,
       `Valor total: R$ ${summary.totalValue.toFixed(2)}`,
-      '',
-      'POR SERVIÇO',
-      ...summary.byService.map(s => `${s.name}: ${s.count}x - R$ ${s.total.toFixed(2)}`),
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -134,7 +249,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -170,12 +285,28 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                 <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Valor Total</p>
+                <p className="text-sm text-muted-foreground">Valor Total Pago</p>
                 <p className="text-2xl font-bold">R$ {summary.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {summary.totalPending > 0 && (
+          <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor Pendente</p>
+                  <p className="text-2xl font-bold text-amber-600">R$ {summary.totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Payment History - from both agenda and caixa */}
@@ -191,22 +322,45 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
             <p className="text-muted-foreground text-sm">Nenhum pagamento registrado</p>
           ) : (
             <div className="space-y-2">
-              {paymentHistory.slice(0, 15).map(payment => (
-                <div key={payment.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground">{format(new Date(payment.date), 'dd/MM/yy')}</span>
-                    <span className="font-medium truncate max-w-[150px]">{payment.serviceName}</span>
+              {paymentHistory.slice(0, 20).map(payment => (
+                <div key={payment.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg text-sm">
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="text-muted-foreground w-20">{format(new Date(payment.date), 'dd/MM/yy')}</span>
+                    <span className="font-medium truncate max-w-[200px]">{payment.serviceName}</span>
                     <Badge variant="outline" className="text-xs">
                       {payment.source === 'sale' ? 'Caixa' : 'Agenda'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        R$ {Number(payment.amount).toFixed(2)}
+                      </div>
+                      {payment.pendingAmount > 0 && (
+                        <div className="text-xs text-amber-600">
+                          Pendente: R$ {payment.pendingAmount.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                    <Badge 
+                      variant={payment.status === 'paid' ? 'default' : payment.status === 'partial' ? 'secondary' : 'outline'}
+                      className={payment.status === 'paid' ? 'bg-emerald-500' : payment.status === 'partial' ? 'bg-amber-500' : ''}
+                    >
+                      {payment.status === 'paid' ? 'Pago' : payment.status === 'partial' ? 'Parcial' : 'Pendente'}
+                    </Badge>
                     <Badge variant="secondary" className="text-xs">
                       {payment.paymentMethod}
                     </Badge>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      R$ {Number(payment.amount).toFixed(2)}
-                    </span>
+                    {payment.saleId && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => openCancelDialog(payment)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -214,27 +368,6 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
           )}
         </CardContent>
       </Card>
-
-      {/* Services Summary */}
-      {summary.byService.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Resumo por Procedimento</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {summary.byService.map(service => (
-                <div key={service.name} className="p-2 bg-muted/50 rounded-lg">
-                  <p className="font-medium text-sm text-foreground truncate">{service.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {service.count}x - R$ {service.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Detailed Table */}
       <Card>
@@ -254,7 +387,9 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Serviço</TableHead>
+                    <TableHead>Valor Total</TableHead>
                     <TableHead>Valor Pago</TableHead>
+                    <TableHead>Pendente</TableHead>
                     <TableHead>Status Pgto.</TableHead>
                     <TableHead>Forma Pgto.</TableHead>
                     <TableHead>Status</TableHead>
@@ -265,16 +400,20 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                 {appointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
                     
-                    // Check if package appointment and if package was actually paid
+                    // Get service/package info
                     const isPackageAppointment = !!appointment.package_appointment?.package;
                     const packagePaymentMethods = appointment.package_appointment?.package?.payment_methods;
                     const isPackagePaid = isPackageAppointment && 
                       packagePaymentMethods && packagePaymentMethods.length > 0;
                     
-                    // Payment is considered complete only if:
-                    // 1. payment_status is 'paid', OR
-                    // 2. It's a package appointment AND the package has payment methods set
                     const isPaid = appointment.payment_status === 'paid' || isPackagePaid;
+                    const isPartial = appointment.payment_status === 'partial';
+                    
+                    // Get total price and paid amount
+                    const totalPrice = appointment.service?.price || 
+                      appointment.package_appointment?.package?.total_price || 0;
+                    const amountPaid = appointment.amount_paid || 0;
+                    const pendingAmount = Math.max(0, totalPrice - amountPaid);
                     
                     // Map payment method IDs to names
                     const paymentMethods = appointment.payment_methods?.length > 0 
@@ -283,13 +422,10 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         ? (packagePaymentMethods?.map(pm => getPaymentMethodName(pm)).join(', ') || 'Pacote')
                         : '-';
                     
-                    // Get service name - check service first, then package
+                    // Get service name
                     const serviceName = appointment.service?.name || 
                                        appointment.package_appointment?.package?.name || 
                                        '-';
-                    
-                    // Get actual paid amount
-                    const amountPaid = appointment.amount_paid || 0;
                     
                     return (
                       <TableRow key={appointment.id}>
@@ -300,11 +436,23 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                           {serviceName}
                         </TableCell>
                         <TableCell className="text-sm">
+                          R$ {totalPrice.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-sm text-emerald-600 font-medium">
                           R$ {amountPaid.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {pendingAmount > 0 ? (
+                            <span className="text-amber-600 font-medium">R$ {pendingAmount.toFixed(2)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           {isPaid ? (
                             <Badge className="bg-emerald-500 text-white text-xs">Pago</Badge>
+                          ) : isPartial ? (
+                            <Badge className="bg-amber-500 text-white text-xs">Parcial</Badge>
                           ) : (
                             <Badge variant="outline" className="text-xs">Pendente</Badge>
                           )}
@@ -333,6 +481,90 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
           )}
         </CardContent>
       </Card>
+
+      {/* Cancel Sale Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Venda</DialogTitle>
+            <DialogDescription>
+              Escolha como realizar a devolução para o cliente.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSale && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{selectedSale.serviceName}</p>
+                <p className="text-sm text-muted-foreground">
+                  Valor pago: R$ {selectedSale.amount.toFixed(2)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo de devolução</Label>
+                <Select value={refundType} onValueChange={(v: 'full' | 'partial') => setRefundType(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full">Devolução integral</SelectItem>
+                    <SelectItem value="partial">Considerar sessões usadas / multas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {refundType === 'partial' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <div className="space-y-2">
+                    <Label>Valor das sessões usadas (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={usedSessionsValue}
+                      onChange={(e) => setUsedSessionsValue(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Multa / Penalidade (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={penaltyAmount}
+                      onChange={(e) => setPenaltyAmount(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div className="pt-2 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Valor a devolver:{' '}
+                      <span className="font-bold text-foreground">
+                        R$ {Math.max(0, selectedSale.amount - (parseFloat(usedSessionsValue) || 0) - (parseFloat(penaltyAmount) || 0)).toFixed(2)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleCancelSale}
+              disabled={cancelSaleMutation.isPending}
+            >
+              Confirmar Devolução
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -21,6 +21,8 @@ export interface PaymentUpdate {
   client_credit?: number;
   client_id?: string;
   cash_register_id?: string;
+  card_fee_amount?: number;
+  installments?: number;
 }
 
 export interface AppointmentUpdate {
@@ -218,15 +220,19 @@ export function useAppointments() {
 
         // Create cash transaction if cash register is open - THIS IS THE KEY TO SYNC WITH CAIXA
         if (payment.cash_register_id) {
+          const cardFeeAmount = payment.card_fee_amount || 0;
+          
           const { error: cashError } = await supabase.from('cash_transactions').insert({
             cash_register_id: payment.cash_register_id,
             type: 'income',
             category: 'sale',
             description: `${serviceName} - ${clientName}`,
             amount: newPaymentAmount,
-            payment_method: primaryPaymentMethodId, // Store the ID, not the names
+            payment_method: primaryPaymentMethodId,
             reference_id: id,
             reference_type: 'appointment',
+            card_fee_amount: cardFeeAmount,
+            installments: payment.installments || 1,
             created_by: user?.id,
           });
 

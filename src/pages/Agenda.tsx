@@ -78,6 +78,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useAutoCompleteAppointments } from '@/hooks/useAutoCompleteAppointments';
+import { useCardBrands } from '@/hooks/useCardBrands';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -131,6 +132,7 @@ const Agenda = () => {
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
+  const { activeCardBrands } = useCardBrands();
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
@@ -466,6 +468,32 @@ const Agenda = () => {
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
     
+    // Calculate total card fees from payments
+    let totalCardFee = 0;
+    let primaryInstallments = 1;
+    paymentMethods.forEach(p => {
+      if (p.cardBrandId && p.amount > 0) {
+        const cardBrand = activeCardBrands.find(b => b.id === p.cardBrandId);
+        if (cardBrand) {
+          const fees = cardBrand.fees || [];
+          const installments = p.installments || 1;
+          const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
+          const matchingFee = sortedFees.find(f => f.installment_number <= installments);
+          const feePercentage = matchingFee?.fee_percentage || 0;
+          const feeAmount = (p.amount * feePercentage) / 100;
+          
+          // Only count fee if it's deducted from provider
+          if (cardBrand.fee_behavior === 'deduct_from_provider') {
+            totalCardFee += feeAmount;
+          }
+          
+          if (installments > primaryInstallments) {
+            primaryInstallments = installments;
+          }
+        }
+      }
+    });
+    
     let paymentStatus: PaymentStatus = 'pending';
     if (totalPaid >= totalPrice) {
       paymentStatus = 'paid';
@@ -482,6 +510,8 @@ const Agenda = () => {
         client_credit: creditAmount > 0 ? creditAmount : undefined,
         client_id: appointment.client_id,
         cash_register_id: cashRegisterId,
+        card_fee_amount: totalCardFee > 0 ? totalCardFee : undefined,
+        installments: primaryInstallments > 1 ? primaryInstallments : undefined,
       },
     });
   };

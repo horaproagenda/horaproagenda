@@ -18,6 +18,10 @@ export interface CashTransaction {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  // Card fee info
+  card_fee_amount?: number;
+  net_amount?: number;
+  installments?: number;
 }
 
 export function useCashTransactions(cashRegisterId?: string) {
@@ -58,17 +62,21 @@ export function useCashTransactions(cashRegisterId?: string) {
       const { data: packages } = await supabase
         .from('service_packages')
         .select('id, name');
-      // Fetch single_sales to get proper description with service/package names
+      // Fetch single_sales to get proper description with service/package names and fee info
       const { data: sales } = await supabase
         .from('single_sales')
-        .select('id, description, service_id, package_id');
+        .select('id, description, service_id, package_id, card_fee_amount, original_amount, final_amount, installments');
       
       const serviceMap = new Map(services?.map(s => [s.id, s.name]) || []);
       const packageMap = new Map(packages?.map(p => [p.id, p.name]) || []);
       const salesMap = new Map(sales?.map(s => [s.id, {
         description: s.description,
         service_id: s.service_id,
-        package_id: s.package_id
+        package_id: s.package_id,
+        card_fee_amount: s.card_fee_amount,
+        original_amount: s.original_amount,
+        final_amount: s.final_amount,
+        installments: s.installments
       }]) || []);
       
       // Map payment_method IDs to names and resolve service/package names in descriptions
@@ -121,10 +129,32 @@ export function useCashTransactions(cashRegisterId?: string) {
           }
         }
         
+        // Get card fee info - first from the transaction itself, then fallback to sales lookup
+        let card_fee_amount: number | undefined = t.card_fee_amount || undefined;
+        let net_amount: number | undefined = undefined;
+        let installments: number | undefined = t.installments || undefined;
+        
+        // If no fee in transaction, try to find from single_sales
+        if (!card_fee_amount && t.category === 'sale' && t.reference_type === 'single_sale' && t.reference_id) {
+          const saleInfo = salesMap.get(t.reference_id);
+          if (saleInfo?.card_fee_amount && saleInfo.card_fee_amount > 0) {
+            card_fee_amount = saleInfo.card_fee_amount;
+            installments = saleInfo.installments;
+          }
+        }
+        
+        // Calculate net amount if there's a fee
+        if (card_fee_amount && card_fee_amount > 0) {
+          net_amount = Number(t.amount) - card_fee_amount;
+        }
+        
         return {
           ...t,
           description,
           payment_method_name: t.payment_method ? paymentMethodMap.get(t.payment_method) || t.payment_method : null,
+          card_fee_amount,
+          net_amount,
+          installments,
         };
       }) as CashTransaction[];
     },

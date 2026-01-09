@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -36,7 +35,6 @@ import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
-
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -129,12 +127,12 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
 
       if (appointmentsError) throw appointmentsError;
 
-      toast.success('Pacote cadastrado com sucesso!');
+      toast.success('Pacote cadastrado!');
       form.reset();
       setOpen(false);
       onPackageCreated?.();
     } catch (error: any) {
-      toast.error('Erro ao cadastrar pacote: ' + error.message);
+      toast.error('Erro: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -144,113 +142,91 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="outline" className="gap-2">
-            <Package className="h-4 w-4" />
-            Novo Pacote
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Package className="h-3.5 w-3.5" />
+            <span className="text-xs">Novo Pacote</span>
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Pacote</DialogTitle>
-          <DialogDescription>
-            Cadastre um novo pacote de sessões.
-          </DialogDescription>
+          <DialogTitle className="text-base">Novo Pacote</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Pacote *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: 10 Aplicações Buço, Axila, Virilha e Canela" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoria *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            {/* Name & Category */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Nome *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
+                      <Input placeholder="Ex: 10 Sessões" className="h-8 text-sm" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Categoria *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map(cat => (
+                          <SelectItem key={cat} value={cat} className="text-sm">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Detalhes do pacote..."
-                      className="resize-none"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-3 gap-4">
+            {/* Sessions, Interval, Duration */}
+            <div className="grid grid-cols-3 gap-3">
               <FormField
                 control={form.control}
                 name="total_sessions"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Qtd. Sessões *</FormLabel>
+                    <FormLabel className="text-xs">Sessões *</FormLabel>
                     <FormControl>
-                      <Input type="number" min={1} max={100} {...field} />
+                      <Input type="number" min={1} max={100} className="h-8 text-sm" {...field} />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="interval_days"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Intervalo (dias) *</FormLabel>
+                    <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
                     <FormControl>
-                      <Input type="number" min={1} max={365} {...field} />
+                      <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duração *</FormLabel>
+                    <FormLabel className="text-xs">Duração *</FormLabel>
                     <FormControl>
                       <DurationSelect
                         value={field.value}
@@ -259,143 +235,154 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
                         maxDuration={480}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Professional & Room */}
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="professional_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Profissional</FormLabel>
+                    <FormLabel className="text-xs">Profissional</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="_none">Nenhum</SelectItem>
+                        <SelectItem value="_none" className="text-sm">Nenhum</SelectItem>
                         {professionals.filter(p => p.is_active).map(prof => (
-                          <SelectItem key={prof.id} value={prof.id}>
-                            {prof.name}
-                          </SelectItem>
+                          <SelectItem key={prof.id} value={prof.id} className="text-sm">{prof.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="room_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sala</FormLabel>
+                    <FormLabel className="text-xs">Sala</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="_none">Nenhuma</SelectItem>
+                        <SelectItem value="_none" className="text-sm">Nenhuma</SelectItem>
                         {rooms.filter(r => r.is_active).map(room => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
+                          <SelectItem key={room.id} value={room.id} className="text-sm">{room.name}</SelectItem>
                         ))}
                       </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </Select>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <FormField
-              control={form.control}
-              name="equipment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Equipamentos</FormLabel>
-                  <Select 
-                    onValueChange={(val) => field.onChange(val && val !== '_none' ? [val] : [])} 
-                    value={field.value?.[0] || '_none'}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="_none">Nenhum</SelectItem>
-                      {equipment.filter(e => e.is_active).map(eq => (
-                        <SelectItem key={eq.id} value={eq.id}>
-                          {eq.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Price */}
             <FormField
               control={form.control}
               name="total_price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor Total (R$) *</FormLabel>
+                  <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
+                    <Input type="number" min={0} step="0.01" className="h-8 text-sm" {...field} />
                   </FormControl>
                   {watchTotalSessions > 0 && watchTotalPrice > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Valor por sessão: R$ {pricePerSession.toFixed(2)}
+                    <p className="text-[10px] text-muted-foreground">
+                      R$ {pricePerSession.toFixed(2)}/sessão
                     </p>
                   )}
-                  <p className="text-xs text-primary mt-1">
-                    💰 O valor total será pago na compra do pacote (via Caixa ou no primeiro agendamento)
-                  </p>
-                  <FormMessage />
+                  <FormMessage className="text-[10px]" />
                 </FormItem>
               )}
             />
 
+            {/* Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Descrição</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Detalhes do pacote..."
+                      className="resize-none h-14 text-sm"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
+
+            {/* Equipment */}
+            {equipment.filter(e => e.is_active).length > 0 && (
+              <FormField
+                control={form.control}
+                name="equipment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Equipamento</FormLabel>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val && val !== '_none' ? [val] : [])} 
+                      value={field.value?.[0] || '_none'}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="_none" className="text-sm">Nenhum</SelectItem>
+                        {equipment.filter(e => e.is_active).map(eq => (
+                          <SelectItem key={eq.id} value={eq.id} className="text-sm">{eq.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* WhatsApp Reminder */}
             <FormField
               control={form.control}
               name="whatsapp_reminder"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Lembrete via WhatsApp</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Enviar lembrete de sessões agendadas via WhatsApp
-                    </p>
+                <FormItem className="flex items-center justify-between rounded-md border p-2">
+                  <div>
+                    <FormLabel className="text-xs">Lembrete WhatsApp</FormLabel>
+                    <p className="text-[10px] text-muted-foreground">Notificar sessões agendadas</p>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
             />
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" size="sm" disabled={isLoading}>
                 {isLoading ? 'Salvando...' : 'Criar Pacote'}
               </Button>
             </div>

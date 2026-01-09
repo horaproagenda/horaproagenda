@@ -6,49 +6,51 @@ import { CashRegisterPanel } from '@/components/caixa/CashRegisterPanel';
 import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
 import { PackageConsistencyReport } from '@/components/caixa/PackageConsistencyReport';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export default function Caixa() {
   const { closedRegisters, isLoading } = useCashRegisters();
+  const [activeTab, setActiveTab] = useLocalStorage('caixa-tab', 'vendas');
 
   return (
     <AppLayout title="Caixa" subtitle="Vendas e controle financeiro">
-      <div className="space-y-6">
-        <Tabs defaultValue="vendas" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="vendas" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Nova Venda
+      <div className="space-y-4 page-enter">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="h-9 bg-muted/50">
+            <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide">
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nova Venda</span>
             </TabsTrigger>
-            <TabsTrigger value="caixa" className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Controle do Caixa
+            <TabsTrigger value="caixa" className="gap-2 text-xs tracking-wide">
+              <Wallet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Controle</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-2">
-              <History className="h-4 w-4" />
-              Histórico
+            <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide">
+              <History className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Histórico</span>
             </TabsTrigger>
-            <TabsTrigger value="consistencia" className="gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Consistência
+            <TabsTrigger value="consistencia" className="gap-2 text-xs tracking-wide">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Consistência</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="vendas">
+          <TabsContent value="vendas" className="page-enter">
             <SaleForm />
           </TabsContent>
 
-          <TabsContent value="caixa">
+          <TabsContent value="caixa" className="page-enter">
             <CashRegisterPanel />
           </TabsContent>
 
-          <TabsContent value="historico">
+          <TabsContent value="historico" className="page-enter">
             <CashRegisterHistory 
               closedRegisters={closedRegisters} 
               isLoading={isLoading} 
             />
           </TabsContent>
 
-          <TabsContent value="consistencia">
+          <TabsContent value="consistencia" className="page-enter">
             <PackageConsistencyReport />
           </TabsContent>
         </Tabs>

@@ -44,12 +44,15 @@ import {
   Link2,
   Store,
   Building2,
+  Gift,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
+import { useServicePackages } from '@/hooks/useServicePackages';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
+import { usePackageProducts } from '@/hooks/usePackageProducts';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -106,7 +109,9 @@ export function ProductDetailDialog({
 }: ProductDetailDialogProps) {
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
+  const { activePackages } = useServicePackages();
   const { serviceProducts } = useServiceProducts();
+  const { packageProducts, createPackageProduct, deletePackageProduct } = usePackageProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -114,10 +119,12 @@ export function ProductDetailDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [selectedPackageId, setSelectedPackageId] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(1);
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [linkTab, setLinkTab] = useState<'service' | 'package'>('service');
 
   // Filter purchases for this product
   const productPurchases = useMemo(() => {
@@ -131,6 +138,12 @@ export function ProductDetailDialog({
     if (!product) return [];
     return serviceProducts.filter(sp => sp.product_id === product.id);
   }, [product, serviceProducts]);
+
+  // Get package links for this product
+  const productPackageLinks = useMemo(() => {
+    if (!product) return [];
+    return packageProducts.filter(pp => pp.product_id === product.id);
+  }, [product, packageProducts]);
 
   // Calculate usage statistics
   const usageStats = useMemo(() => {
@@ -163,6 +176,12 @@ export function ProductDetailDialog({
     const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
     return activeServices.filter(s => !linkedServiceIds.includes(s.id));
   }, [activeServices, productServiceLinks]);
+
+  // Available packages to link (not already linked)
+  const availablePackagesToLink = useMemo(() => {
+    const linkedPackageIds = productPackageLinks.map(pp => pp.package_id);
+    return activePackages.filter(p => !linkedPackageIds.includes(p.id));
+  }, [activePackages, productPackageLinks]);
 
   const handleStartEdit = () => {
     if (!product) return;
@@ -229,6 +248,39 @@ export function ProductDetailDialog({
     setContainerAmount(1);
   };
 
+  const handleAddPackageLink = async () => {
+    if (!product || !selectedPackageId) return;
+    
+    const useEstimated = isEstimatedTracking(product.product_type);
+    
+    if (useEstimated) {
+      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      await createPackageProduct.mutateAsync({
+        package_id: selectedPackageId,
+        product_id: product.id,
+        quantity_per_use: calculatedQuantityPerUse,
+        estimated_appointments: estimatedAppointments,
+        container_amount: containerAmount,
+        container_unit: product.unit,
+        tracking_method: 'estimated',
+        notes: null,
+      });
+    } else {
+      await createPackageProduct.mutateAsync({
+        package_id: selectedPackageId,
+        product_id: product.id,
+        quantity_per_use: quantityPerUse,
+        tracking_method: 'exact',
+        notes: null,
+      });
+    }
+    
+    setSelectedPackageId('');
+    setQuantityPerUse(1);
+    setEstimatedAppointments(30);
+    setContainerAmount(1);
+  };
+
   const supplierInfo = useMemo(() => {
     if (!product) return null;
     const supplierId = (product as any).supplier_id;
@@ -263,10 +315,11 @@ export function ProductDetailDialog({
 
         <ScrollArea className="max-h-[70vh]">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="info">Informações</TabsTrigger>
               <TabsTrigger value="purchases">Compras ({productPurchases.length})</TabsTrigger>
               <TabsTrigger value="services">Serviços ({productServiceLinks.length})</TabsTrigger>
+              <TabsTrigger value="packages">Pacotes ({productPackageLinks.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
@@ -754,6 +807,147 @@ export function ProductDetailDialog({
                             <Badge variant={remainingAppointments < 5 ? 'destructive' : 'secondary'}>
                               {remainingAppointments} atendimentos
                             </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            <TabsContent value="packages" className="mt-4">
+              {/* Add Package Link */}
+              {canEdit && availablePackagesToLink.length > 0 && (
+                <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gift className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Vincular a Pacote</span>
+                    {isEstimatedTracking(product.product_type) && (
+                      <Badge variant="outline" className="text-xs">
+                        Modo Estimado
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um pacote para vincular" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePackagesToLink.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} {p.client?.name ? `- ${p.client.name}` : ''} ({p.total_sessions} sessões)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {isEstimatedTracking(product.product_type) ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Quantidade no recipiente em uso
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              value={containerAmount}
+                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
+                              min="0.01"
+                              step="0.01"
+                              className="flex-1"
+                            />
+                            <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                              {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Quantos atendimentos dura?
+                          </Label>
+                          <Input
+                            type="number"
+                            value={estimatedAppointments}
+                            onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
+                            min="1"
+                            placeholder="Ex: 30 atendimentos"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-48">
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Quantidade usada por sessão
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            value={quantityPerUse}
+                            onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
+                            min="0.01"
+                            step="0.01"
+                          />
+                          <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                            {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button onClick={handleAddPackageLink} disabled={!selectedPackageId} className="w-full">
+                    <Gift className="h-4 w-4 mr-1" />
+                    Vincular Produto ao Pacote
+                  </Button>
+                </div>
+              )}
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pacote</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Sessões</TableHead>
+                    <TableHead>Consumo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productPackageLinks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        <Gift className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                        Nenhum pacote vinculado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    productPackageLinks.map(pp => {
+                      const isEstimated = pp.tracking_method === 'estimated';
+                      
+                      return (
+                        <TableRow key={pp.id}>
+                          <TableCell>
+                            <Badge variant="outline">{pp.package?.name || '-'}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {pp.package?.client_id ? 'Com cliente' : 'Modelo'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {pp.package?.total_sessions || 0} sessões
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {isEstimated ? (
+                              <div className="text-sm">
+                                <span className="font-medium">{pp.container_amount} {pp.container_unit}</span>
+                                <span className="text-muted-foreground"> → {pp.estimated_appointments} atend.</span>
+                              </div>
+                            ) : (
+                              <span>{pp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

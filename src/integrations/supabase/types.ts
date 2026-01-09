@@ -905,6 +905,63 @@ export type Database = {
           },
         ]
       }
+      package_products: {
+        Row: {
+          container_amount: number | null
+          container_unit: string | null
+          created_at: string
+          estimated_appointments: number | null
+          id: string
+          notes: string | null
+          package_id: string
+          product_id: string
+          quantity_per_use: number
+          tracking_method: string | null
+          updated_at: string
+        }
+        Insert: {
+          container_amount?: number | null
+          container_unit?: string | null
+          created_at?: string
+          estimated_appointments?: number | null
+          id?: string
+          notes?: string | null
+          package_id: string
+          product_id: string
+          quantity_per_use?: number
+          tracking_method?: string | null
+          updated_at?: string
+        }
+        Update: {
+          container_amount?: number | null
+          container_unit?: string | null
+          created_at?: string
+          estimated_appointments?: number | null
+          id?: string
+          notes?: string | null
+          package_id?: string
+          product_id?: string
+          quantity_per_use?: number
+          tracking_method?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_products_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_templates: {
         Row: {
           created_at: string

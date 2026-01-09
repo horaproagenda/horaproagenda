@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.create-appointment]
 verify_jwt = false
+
+[functions.create-client]
+verify_jwt = false
+
+[functions.process-payment]
+verify_jwt = false

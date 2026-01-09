@@ -23,24 +23,35 @@ interface ValidationError {
   message: string;
 }
 
-// Helper to extract time from ISO string in local format (HH:mm)
-function extractTimeFromISO(isoString: string): { hours: number; minutes: number } {
-  // Parse the ISO string - the time portion represents the local time the user selected
-  // ISO format: YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DDTHH:mm:ss+00:00
+// Helper to extract time from ISO string - parse the time from the ISO string directly
+// The frontend sends times like "2026-01-09T17:30:00.000Z" where 17:30 is the LOCAL time
+// but JavaScript Date converts it to UTC. We need to parse the string directly.
+function extractTimeFromISOString(isoString: string): { hours: number; minutes: number } {
+  // Extract time part from ISO string: "2026-01-09T17:30:00.000Z" -> "17:30"
+  const match = isoString.match(/T(\d{2}):(\d{2})/);
+  if (match) {
+    return { hours: parseInt(match[1], 10), minutes: parseInt(match[2], 10) };
+  }
+  // Fallback to Date parsing if regex fails
   const date = new Date(isoString);
-  
-  // Get UTC hours/minutes since that's what the user intended as local time
-  // (the frontend sends the appointment time as if it were UTC)
-  const hours = date.getUTCHours();
-  const minutes = date.getUTCMinutes();
-  
-  return { hours, minutes };
+  return { hours: date.getUTCHours(), minutes: date.getUTCMinutes() };
 }
 
-// Helper to get day of week from ISO string
-function getDayOfWeekFromISO(isoString: string): number {
+// Helper to get day of week from ISO string - parse date directly from string
+function getDayOfWeekFromISOString(isoString: string): number {
+  // Extract date part from ISO string: "2026-01-09T17:30:00.000Z" -> "2026-01-09"
+  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // JavaScript months are 0-indexed
+    const day = parseInt(match[3], 10);
+    // Create date at noon to avoid timezone issues
+    const date = new Date(year, month, day, 12, 0, 0);
+    return date.getDay(); // 0 = Sunday, 6 = Saturday
+  }
+  // Fallback
   const date = new Date(isoString);
-  return date.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  return date.getUTCDay();
 }
 
 serve(async (req) => {
@@ -135,9 +146,9 @@ serve(async (req) => {
     console.log('Business settings:', JSON.stringify(businessSettings));
 
     if (businessSettings) {
-      // Extract time from the appointment using UTC (since frontend sends times as UTC)
-      const { hours: startHour, minutes: startMinutes } = extractTimeFromISO(body.start_time);
-      const { hours: endHour, minutes: endMinutes } = extractTimeFromISO(body.end_time);
+      // Extract time from the appointment - parse from the ISO string directly
+      const { hours: startHour, minutes: startMinutes } = extractTimeFromISOString(body.start_time);
+      const { hours: endHour, minutes: endMinutes } = extractTimeFromISOString(body.end_time);
       
       const [openHour, openMinute] = businessSettings.opening_time.split(':').map(Number);
       const [closeHour, closeMinute] = businessSettings.closing_time.split(':').map(Number);
@@ -156,8 +167,8 @@ serve(async (req) => {
         });
       }
 
-      // Check day of week using UTC day
-      const dayOfWeek = getDayOfWeekFromISO(body.start_time);
+      // Check day of week - parse from the ISO string directly
+      const dayOfWeek = getDayOfWeekFromISOString(body.start_time);
       console.log(`Day of week: ${dayOfWeek} (0=Sun, 6=Sat), work_sundays=${businessSettings.work_sundays}, work_saturdays=${businessSettings.work_saturdays}`);
       
       if (dayOfWeek === 0 && !businessSettings.work_sundays) {

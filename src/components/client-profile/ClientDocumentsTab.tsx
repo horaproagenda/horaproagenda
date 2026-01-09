@@ -375,6 +375,11 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         document={selectedDocument}
+        client={client ? { 
+          name: client.name, 
+          phone: client.phone, 
+          email: client.email || undefined 
+        } : undefined}
         onDelete={(id) => {
           handleDeleteDocument(id);
           setViewDialogOpen(false);

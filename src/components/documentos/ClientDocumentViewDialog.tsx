@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -7,21 +8,35 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { 
   Printer, 
   FileSignature, 
   ExternalLink, 
   Trash2,
-  FileText
+  FileText,
+  Send,
+  Mail,
+  MessageCircle,
+  Loader2,
+  Check
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useWhatsapp } from '@/hooks/useWhatsapp';
 
 interface ClientDocumentViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   document: any;
+  client?: { name: string; phone: string; email?: string };
   onDelete?: (id: string) => void;
 }
 
@@ -45,8 +60,18 @@ export function ClientDocumentViewDialog({
   open, 
   onOpenChange, 
   document,
+  client,
   onDelete
 }: ClientDocumentViewDialogProps) {
+  const [emailInput, setEmailInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [whatsappSent, setWhatsappSent] = useState(false);
+  
+  const { sendMessage, isLoading: whatsappLoading } = useWhatsapp();
+
   if (!document) return null;
 
   const handlePrint = () => {
@@ -131,6 +156,102 @@ export function ClientDocumentViewDialog({
     }
   };
 
+  const handleSendWhatsApp = async () => {
+    const phone = phoneInput || client?.phone;
+    if (!phone) {
+      toast.error('Informe o número de telefone do cliente');
+      return;
+    }
+
+    if (!document.content) {
+      toast.error('Documento sem conteúdo para enviar');
+      return;
+    }
+
+    setIsSendingWhatsapp(true);
+    try {
+      // Prepare document message
+      const signedStatus = document.signed_at 
+        ? `✅ Assinado em ${format(new Date(document.signed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+        : '⚠️ Aguardando assinatura';
+      
+      const message = `📄 *${document.title}*
+${documentTypeLabels[document.type] || 'Documento'}
+
+${signedStatus}
+
+---
+${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n... (documento truncado)' : ''}
+---
+
+Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+
+      const success = await sendMessage(phone, message);
+      
+      if (success) {
+        setWhatsappSent(true);
+        setTimeout(() => setWhatsappSent(false), 3000);
+      }
+    } catch (error: any) {
+      console.error('Error sending WhatsApp:', error);
+      toast.error('Erro ao enviar por WhatsApp');
+    } finally {
+      setIsSendingWhatsapp(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    const email = emailInput || client?.email;
+    if (!email) {
+      toast.error('Informe o e-mail do cliente');
+      return;
+    }
+
+    if (!document.content) {
+      toast.error('Documento sem conteúdo para enviar');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('E-mail inválido');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      // For now, open mailto with the document content
+      // A proper implementation would use Resend API via edge function
+      const subject = encodeURIComponent(`Documento: ${document.title}`);
+      const signedStatus = document.signed_at 
+        ? `Assinado em ${format(new Date(document.signed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+        : 'Aguardando assinatura';
+      
+      const body = encodeURIComponent(`${document.title}
+${documentTypeLabels[document.type] || 'Documento'}
+
+Status: ${signedStatus}
+
+---
+${document.content}
+---
+
+Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`);
+
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+      
+      setEmailSent(true);
+      toast.success('E-mail aberto no seu cliente de e-mail');
+      setTimeout(() => setEmailSent(false), 3000);
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast.error('Erro ao preparar e-mail');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col p-0">
@@ -195,19 +316,108 @@ export function ClientDocumentViewDialog({
 
         <div className="border-t p-4">
           <div className="flex flex-wrap gap-2 justify-between">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {document.content && (
-                <Button variant="outline" size="sm" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-1.5" />
-                  Imprimir / PDF
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={handlePrint}>
+                    <Printer className="h-4 w-4 mr-1.5" />
+                    Imprimir / PDF
+                  </Button>
+                  
+                  {/* WhatsApp Send Button */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20">
+                        <MessageCircle className="h-4 w-4 mr-1.5" />
+                        WhatsApp
+                        {whatsappSent && <Check className="h-3 w-3 ml-1" />}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72" align="start">
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Telefone do cliente</Label>
+                          <Input
+                            placeholder={client?.phone || "(00) 00000-0000"}
+                            value={phoneInput}
+                            onChange={(e) => setPhoneInput(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          {client?.phone && !phoneInput && (
+                            <p className="text-xs text-muted-foreground">
+                              Padrão: {client.phone}
+                            </p>
+                          )}
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-green-600 hover:bg-green-700"
+                          onClick={handleSendWhatsApp}
+                          disabled={isSendingWhatsapp || whatsappLoading}
+                        >
+                          {isSendingWhatsapp || whatsappLoading ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-1.5" />
+                          )}
+                          Enviar por WhatsApp
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Email Send Button */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20">
+                        <Mail className="h-4 w-4 mr-1.5" />
+                        E-mail
+                        {emailSent && <Check className="h-3 w-3 ml-1" />}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72" align="start">
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">E-mail do cliente</Label>
+                          <Input
+                            type="email"
+                            placeholder={client?.email || "email@exemplo.com"}
+                            value={emailInput}
+                            onChange={(e) => setEmailInput(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          {client?.email && !emailInput && (
+                            <p className="text-xs text-muted-foreground">
+                              Padrão: {client.email}
+                            </p>
+                          )}
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full"
+                          onClick={handleSendEmail}
+                          disabled={isSendingEmail}
+                        >
+                          {isSendingEmail ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-1.5" />
+                          )}
+                          Enviar por E-mail
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </>
               )}
+              
               <Button variant="outline" size="sm" onClick={handleOpenGovBr}>
                 <FileSignature className="h-4 w-4 mr-1.5" />
                 Assinar Gov.br
                 <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             </div>
+            
             {onDelete && (
               <Button variant="destructive" size="sm" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-1.5" />

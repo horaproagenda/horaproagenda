@@ -455,19 +455,23 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   {filteredAppointments.slice(0, 20).map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
                     const isPackage = !!appointment.package_appointment?.package;
-                    const packagePaymentMethods = appointment.package_appointment?.package?.payment_methods;
+                    const packageData = appointment.package_appointment?.package;
+                    const packagePaymentMethods = packageData?.payment_methods;
                     const isPackagePaid = isPackage && packagePaymentMethods && packagePaymentMethods.length > 0;
                     
                     const serviceName = isPackage 
-                      ? appointment.package_appointment?.package?.name 
+                      ? packageData?.name 
                       : appointment.service?.name;
                     
+                    // IMPORTANT: For packages, use FULL package price, not per session
                     const totalPrice = isPackage
-                      ? (appointment.package_appointment?.package?.total_price || 0) / (appointment.package_appointment?.package?.total_sessions || 1)
-                      : appointment.service?.price || 0;
+                      ? (isPackagePaid ? 0 : (packageData?.total_price || 0))
+                      : (appointment.service?.price || 0);
                     
-                    const amountPaid = isPackagePaid ? totalPrice : (appointment.amount_paid || 0);
-                    const pendingAmount = totalPrice - amountPaid;
+                    const amountPaid = isPackagePaid 
+                      ? (packageData?.total_price || 0) 
+                      : (appointment.amount_paid || 0);
+                    const pendingAmount = Math.max(0, totalPrice - amountPaid);
                     
                     return (
                       <TableRow key={appointment.id} className="hover:bg-muted/30">

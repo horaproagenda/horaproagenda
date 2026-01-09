@@ -70,6 +70,7 @@ export function ContasAPagar() {
   const [entryToPay, setEntryToPay] = useState<any>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [paymentBankId, setPaymentBankId] = useState<string>('');
+  const [paymentInstallments, setPaymentInstallments] = useState<string>('1');
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   
   const [form, setForm] = useState({
@@ -302,6 +303,7 @@ export function ContasAPagar() {
     setEntryToPay(entry);
     setPaymentMethodId(entry.payment_method_id || '');
     setPaymentBankId(entry.bank_id || '');
+    setPaymentInstallments(entry.installments?.toString() || '1');
     setCreateBoletoReminder(false);
     setPayDialogOpen(true);
   };
@@ -309,9 +311,15 @@ export function ContasAPagar() {
   // Check if selected payment method is "Boleto"
   const selectedPaymentMethod = activePaymentMethods.find(pm => pm.id === paymentMethodId);
   const isBoleto = selectedPaymentMethod?.name?.toLowerCase().includes('boleto');
+  const isCard = selectedPaymentMethod?.name?.toLowerCase().includes('cartão') || 
+                 selectedPaymentMethod?.name?.toLowerCase().includes('crédito');
+  const showInstallments = isBoleto || isCard;
+  const maxInstallments = selectedPaymentMethod?.max_installments || 1;
 
   const handleConfirmPayment = async () => {
     if (!entryToPay) return;
+    
+    const installmentCount = parseInt(paymentInstallments) || 1;
     
     // If boleto and user wants a reminder, create it
     if (isBoleto && createBoletoReminder && entryToPay.due_date) {
@@ -338,6 +346,7 @@ export function ContasAPagar() {
         paid_date: format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
+        installments: installmentCount,
       });
     } else {
       // For boleto with reminder, only update payment method but keep pending
@@ -345,6 +354,7 @@ export function ContasAPagar() {
         id: entryToPay.id,
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
+        installments: installmentCount,
       });
     }
     
@@ -352,6 +362,7 @@ export function ContasAPagar() {
     setEntryToPay(null);
     setPaymentMethodId('');
     setPaymentBankId('');
+    setPaymentInstallments('1');
     setCreateBoletoReminder(false);
   };
 
@@ -742,6 +753,25 @@ export function ContasAPagar() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Installments for boleto and card */}
+            {showInstallments && maxInstallments > 1 && (
+              <div>
+                <Label>Número de Parcelas</Label>
+                <Select value={paymentInstallments} onValueChange={setPaymentInstallments}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione as parcelas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((num) => (
+                      <SelectItem key={num} value={num.toString()}>
+                        {num}x {num > 1 && entryToPay ? `de R$ ${(Number(entryToPay.amount) / num).toFixed(2)}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Boleto reminder option */}
             {isBoleto && (

@@ -37,13 +37,13 @@ import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário',
-  'Boleto Parcelado',
   'Cartão de Crédito',
   'Cartão de Débito',
   'Dinheiro',
   'PIX',
   'Cheque',
   'Crédito ao Cliente',
+  'Transferência Bancária',
   'Outros',
 ];
 
@@ -85,7 +85,7 @@ export function FormasPagamento() {
     { installment_number: 1, fee_percentage: 0 },
   ]);
 
-  // Create default payment methods if none exist
+  // Create default payment methods only if none exist at all
   useEffect(() => {
     if (paymentMethods.length === 0) {
       DEFAULT_PAYMENT_METHODS.forEach(name => {
@@ -93,7 +93,7 @@ export function FormasPagamento() {
           name,
           is_active: true,
           description: null,
-          max_installments: name.includes('Crédito') ? 12 : 1,
+          max_installments: name.includes('Crédito') || name.includes('Boleto') ? 12 : 1,
         });
       });
     }

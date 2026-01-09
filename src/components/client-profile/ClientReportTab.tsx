@@ -166,12 +166,15 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
         .eq('status', 'open')
         .maybeSingle();
 
+      // Build a more descriptive refund description
+      const refundDescription = `Devolução: ${selectedSale?.serviceName || 'Serviço'} - Cliente: ${clientName} - Pagamento: ${refundMethod || 'Não especificado'}`;
+
       if (openRegister) {
         await supabase.from('cash_transactions').insert({
           cash_register_id: openRegister.id,
           type: 'expense',
           category: 'refund',
-          description: `Devolução: ${selectedSale?.serviceName}`,
+          description: refundDescription,
           amount: refundAmount,
           reference_id: saleId,
           reference_type: 'refund',
@@ -181,12 +184,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
 
       await supabase.from('financial_entries').insert({
         type: 'payable',
-        description: `Devolução: ${selectedSale?.serviceName}`,
+        description: refundDescription,
         amount: refundAmount,
         due_date: today,
         paid_date: today,
         status: 'paid',
-        notes: `Cancelamento de venda - Método: ${refundMethod || 'Não especificado'}`,
+        notes: `Cancelamento de venda - Serviço: ${selectedSale?.serviceName || '-'} - Cliente: ${clientName}`,
         created_by: user?.id,
       });
 

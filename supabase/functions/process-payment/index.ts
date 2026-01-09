@@ -117,7 +117,7 @@ serve(async (req) => {
         *,
         client:clients(id, name, credit_balance),
         service:services(id, name, price),
-        package_appointment:package_appointments(
+        package_appointment:package_appointments!appointments_package_appointment_id_fkey(
           id,
           package_id,
           session_number,

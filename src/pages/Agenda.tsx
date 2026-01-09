@@ -456,7 +456,8 @@ const Agenda = () => {
     appointmentId: string, 
     paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
     clientCredit?: number,
-    cashRegisterId?: string
+    cashRegisterId?: string,
+    usedClientCredit?: number
   ) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
@@ -471,8 +472,9 @@ const Agenda = () => {
       : (appointment.service?.price || 0);
 
     const paymentTotal = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
-    const creditAmount = clientCredit || 0;
-    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + creditAmount;
+    const creditToAdd = clientCredit || 0;
+    const creditUsed = usedClientCredit || 0;
+    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + creditToAdd + creditUsed;
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
     
@@ -515,7 +517,8 @@ const Agenda = () => {
         payment_methods: newMethods,
         amount_paid: totalPaid,
         payment_status: paymentStatus,
-        client_credit: creditAmount > 0 ? creditAmount : undefined,
+        client_credit: creditToAdd > 0 ? creditToAdd : undefined,
+        used_client_credit: creditUsed > 0 ? creditUsed : undefined,
         client_id: appointment.client_id,
         cash_register_id: cashRegisterId,
         card_fee_amount: totalCardFee > 0 ? totalCardFee : undefined,

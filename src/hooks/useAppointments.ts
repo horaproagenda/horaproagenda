@@ -21,6 +21,7 @@ export interface PaymentUpdate {
   amount_paid: number;
   payment_status: PaymentStatus;
   client_credit?: number;
+  used_client_credit?: number;
   client_id?: string;
   cash_register_id?: string;
   card_fee_amount?: number;
@@ -175,6 +176,7 @@ export function useAppointments() {
           amount_paid: payment.amount_paid,
           payment_status: payment.payment_status,
           client_credit: payment.client_credit,
+          used_client_credit: payment.used_client_credit,
           cash_register_id: payment.cash_register_id,
           card_fee_amount: payment.card_fee_amount,
           installments: payment.installments,

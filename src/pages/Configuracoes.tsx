@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,264 +46,249 @@ const Configuracoes = () => {
     });
   };
 
-
   return (
-    <AppLayout 
-      title="Configurações" 
-      subtitle="Personalize seu sistema"
-    >
-      <div className="space-y-6">
-        {/* User Management */}
-        <UserManagement />
+    <AppLayout title="Configurações" subtitle="Personalize seu sistema">
+      <PageTransition>
+        <div className="space-y-6">
+          {/* User Management */}
+          <UserManagement />
 
-        {/* WhatsApp Templates */}
-        <WhatsappTemplatesSettings />
+          {/* WhatsApp Templates */}
+          <WhatsappTemplatesSettings />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Informações da Clínica</CardTitle>
-                <CardDescription>Dados básicos do estabelecimento</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="clinic-name">Nome da Clínica</Label>
-              <Input id="clinic-name" defaultValue="Belezza Estética & Bem-estar" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clinic-phone">Telefone</Label>
-              <Input id="clinic-phone" defaultValue="(11) 99999-9999" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clinic-email">Email</Label>
-              <Input id="clinic-email" type="email" defaultValue="contato@belezza.com" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clinic-address">Endereço</Label>
-              <Input id="clinic-address" defaultValue="Av. Paulista, 1234 - São Paulo, SP" />
-            </div>
-            <Button className="w-full">Salvar Alterações</Button>
-          </CardContent>
-        </Card>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="card-hover">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-medium">Informações da Clínica</CardTitle>
+                    <CardDescription className="text-xs">Dados básicos do estabelecimento</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome da Clínica</Label>
+                  <Input className="h-8 text-sm" defaultValue="Belezza Estética & Bem-estar" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Telefone</Label>
+                    <Input className="h-8 text-sm" defaultValue="(11) 99999-9999" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Email</Label>
+                    <Input className="h-8 text-sm" type="email" defaultValue="contato@belezza.com" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Endereço</Label>
+                  <Input className="h-8 text-sm" defaultValue="Av. Paulista, 1234 - São Paulo, SP" />
+                </div>
+                <Button size="sm" className="w-full btn-vibrant">Salvar Alterações</Button>
+              </CardContent>
+            </Card>
 
-        {/* Business Hours */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Clock className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Horário de Funcionamento</CardTitle>
-                <CardDescription>Configure os horários disponíveis na agenda</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Abertura</Label>
-                <Input 
-                  type="time" 
-                  value={openingTime}
-                  onChange={(e) => setOpeningTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fechamento</Label>
-                <Input 
-                  type="time" 
-                  value={closingTime}
-                  onChange={(e) => setClosingTime(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Intervalo entre agendamentos</Label>
-              <Input 
-                type="number" 
-                value={slotInterval}
-                onChange={(e) => setSlotInterval(Number(e.target.value))}
-                min={15}
-                max={120}
-                step={15}
-              />
-              <p className="text-xs text-muted-foreground">Tempo em minutos (15, 30, 45, 60...)</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Trabalhar aos sábados</Label>
-                <p className="text-xs text-muted-foreground">Habilitar agendamentos no sábado</p>
-              </div>
-              <Switch 
-                checked={workSaturdays} 
-                onCheckedChange={setWorkSaturdays}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Trabalhar aos domingos</Label>
-                <p className="text-xs text-muted-foreground">Habilitar agendamentos no domingo</p>
-              </div>
-              <Switch 
-                checked={workSundays} 
-                onCheckedChange={setWorkSundays}
-              />
-            </div>
-            <Button 
-              className="w-full" 
-              onClick={handleSaveHours}
-              disabled={updateSettings.isPending}
-            >
-              {updateSettings.isPending ? 'Salvando...' : 'Salvar Horários'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Bell className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Notificações</CardTitle>
-                <CardDescription>Configure lembretes e alertas</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Lembrete por email</Label>
-                <p className="text-xs text-muted-foreground">Enviar email para clientes</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Lembrete por SMS</Label>
-                <p className="text-xs text-muted-foreground">Enviar SMS para clientes</p>
-              </div>
-              <Switch />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>WhatsApp</Label>
-                <p className="text-xs text-muted-foreground">Enviar mensagem pelo WhatsApp</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <div className="space-y-2">
-              <Label>Antecedência do lembrete</Label>
-              <Input type="number" defaultValue="24" />
-              <p className="text-xs text-muted-foreground">Horas antes do agendamento</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Agenda Settings */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <GripVertical className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Agenda</CardTitle>
-                <CardDescription>Configure opções da agenda</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Arrastar e soltar</Label>
-                <p className="text-xs text-muted-foreground">Permitir mover agendamentos arrastando na agenda</p>
-              </div>
-              <Switch 
-                checked={dragAndDropEnabled} 
-                onCheckedChange={(checked) => {
-                  setDragAndDropEnabled(checked);
-                  updateSettings.mutate({ drag_and_drop_enabled: checked });
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="flex items-center gap-2">
-                  <CalendarCheck className="h-4 w-4" />
-                  Auto-completar agendamentos
-                </Label>
-                <p className="text-xs text-muted-foreground">Mudar automaticamente para "Atendido" após o horário passar</p>
-              </div>
-              <Switch 
-                checked={autoCompleteAppointments} 
-                onCheckedChange={(checked) => {
-                  setAutoCompleteAppointments(checked);
-                  updateSettings.mutate({ auto_complete_appointments: checked });
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Appearance */}
-        {/* Business Info */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Palette className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Aparência</CardTitle>
-                <CardDescription>Personalize a interface</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Cor Principal</Label>
-              <div className="flex gap-2">
-                {['#D4A5AC', '#E8B4BC', '#C9A86C', '#A8C9A7', '#B8A9C9'].map(color => (
-                  <button
-                    key={color}
-                    className="h-8 w-8 rounded-full border-2 border-border transition-transform hover:scale-110"
-                    style={{ backgroundColor: color }}
+            <Card className="card-hover">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-medium">Horário de Funcionamento</CardTitle>
+                    <CardDescription className="text-xs">Configure os horários da agenda</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Abertura</Label>
+                    <Input 
+                      type="time" 
+                      className="h-8 text-sm"
+                      value={openingTime}
+                      onChange={(e) => setOpeningTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fechamento</Label>
+                    <Input 
+                      type="time" 
+                      className="h-8 text-sm"
+                      value={closingTime}
+                      onChange={(e) => setClosingTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Intervalo entre agendamentos (min)</Label>
+                  <Input 
+                    type="number" 
+                    className="h-8 text-sm"
+                    value={slotInterval}
+                    onChange={(e) => setSlotInterval(Number(e.target.value))}
+                    min={15}
+                    max={120}
+                    step={15}
                   />
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Modo escuro</Label>
-                <p className="text-xs text-muted-foreground">Tema dark para a interface</p>
-              </div>
-              <Switch />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Animações</Label>
-                <p className="text-xs text-muted-foreground">Efeitos visuais na interface</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
-        </div>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <Label className="text-xs">Trabalhar aos sábados</Label>
+                  <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <Label className="text-xs">Trabalhar aos domingos</Label>
+                  <Switch checked={workSundays} onCheckedChange={setWorkSundays} />
+                </div>
+                <Button 
+                  size="sm"
+                  className="w-full btn-vibrant" 
+                  onClick={handleSaveHours}
+                  disabled={updateSettings.isPending}
+                >
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Horários'}
+                </Button>
+              </CardContent>
+            </Card>
 
-        {/* Bulk Delete - Danger Zone */}
-        <BulkDeleteDialog />
-      </div>
+            <Card className="card-hover">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Bell className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-medium">Notificações</CardTitle>
+                    <CardDescription className="text-xs">Configure lembretes e alertas</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">Lembrete por email</Label>
+                    <p className="text-[10px] text-muted-foreground">Enviar email para clientes</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">Lembrete por SMS</Label>
+                    <p className="text-[10px] text-muted-foreground">Enviar SMS para clientes</p>
+                  </div>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">WhatsApp</Label>
+                    <p className="text-[10px] text-muted-foreground">Enviar via WhatsApp</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Antecedência do lembrete (horas)</Label>
+                  <Input type="number" className="h-8 text-sm" defaultValue="24" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-hover">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <GripVertical className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-medium">Agenda</CardTitle>
+                    <CardDescription className="text-xs">Configure opções da agenda</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">Arrastar e soltar</Label>
+                    <p className="text-[10px] text-muted-foreground">Mover agendamentos arrastando</p>
+                  </div>
+                  <Switch 
+                    checked={dragAndDropEnabled} 
+                    onCheckedChange={(checked) => {
+                      setDragAndDropEnabled(checked);
+                      updateSettings.mutate({ drag_and_drop_enabled: checked });
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs flex items-center gap-1.5">
+                      <CalendarCheck className="h-3 w-3" />
+                      Auto-completar agendamentos
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Mudar automaticamente para "Atendido"</p>
+                  </div>
+                  <Switch 
+                    checked={autoCompleteAppointments} 
+                    onCheckedChange={(checked) => {
+                      setAutoCompleteAppointments(checked);
+                      updateSettings.mutate({ auto_complete_appointments: checked });
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-hover">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Palette className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-medium">Aparência</CardTitle>
+                    <CardDescription className="text-xs">Personalize a interface</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Cor Principal</Label>
+                  <div className="flex gap-2">
+                    {['#D4A5AC', '#E8B4BC', '#C9A86C', '#A8C9A7', '#B8A9C9'].map(color => (
+                      <button
+                        key={color}
+                        className="h-7 w-7 rounded-full border-2 border-border transition-transform hover:scale-110"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">Modo escuro</Label>
+                    <p className="text-[10px] text-muted-foreground">Tema dark</p>
+                  </div>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <Label className="text-xs">Animações</Label>
+                    <p className="text-[10px] text-muted-foreground">Efeitos visuais</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bulk Delete */}
+          <BulkDeleteDialog />
+        </div>
+      </PageTransition>
     </AppLayout>
   );
 };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
+import { format, parseISO, isToday, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -86,6 +86,17 @@ export function RemindersPanel() {
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter reminders by search
+  const filteredActiveReminders = activeReminders.filter(r => 
+    r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredCompletedReminders = completedReminders.filter(r =>
+    r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -180,67 +191,67 @@ export function RemindersPanel() {
     const isTodayReminder = reminder.reminder_date && isToday(parseISO(reminder.reminder_date));
 
     return (
-      <Card className={`transition-all ${isOverdue ? 'border-red-300 bg-red-50/50 dark:bg-red-950/20' : isTodayReminder ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
+      <Card className={`card-hover transition-all ${isOverdue ? 'border-l-4 border-l-red-500' : isTodayReminder ? 'border-l-4 border-l-amber-500' : ''}`}>
+        <CardContent className="p-3">
+          <div className="flex items-start gap-2">
             <Checkbox
               checked={reminder.is_completed}
               onCheckedChange={() => completeReminder.mutate(reminder.id)}
-              className="mt-1"
+              className="mt-0.5"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className={`font-medium ${reminder.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <h3 className={`font-medium text-sm ${reminder.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                   {reminder.title}
                 </h3>
-                <Flag className={`h-4 w-4 ${getPriorityColor(reminder.priority)}`} />
+                <Flag className={`h-3 w-3 ${getPriorityColor(reminder.priority)}`} />
                 {reminder.is_recurring && (
-                  <Badge variant="outline" className="text-xs gap-1">
-                    <Repeat className="h-3 w-3" />
+                  <Badge variant="outline" className="text-[10px] gap-0.5 h-4 px-1">
+                    <Repeat className="h-2.5 w-2.5" />
                     {RECURRING_FREQUENCIES.find(f => f.value === reminder.recurring_frequency)?.label}
                   </Badge>
                 )}
               </div>
               {reminder.description && (
-                <p className="text-sm text-muted-foreground mb-2">{reminder.description}</p>
+                <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{reminder.description}</p>
               )}
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 {reminder.reminder_date && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {format(parseISO(reminder.reminder_date), "dd/MM/yyyy", { locale: ptBR })}
+                  <span className="flex items-center gap-0.5">
+                    <Calendar className="h-2.5 w-2.5" />
+                    {format(parseISO(reminder.reminder_date), "dd/MM", { locale: ptBR })}
                   </span>
                 )}
                 {reminder.reminder_time && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
+                  <span className="flex items-center gap-0.5">
+                    <Clock className="h-2.5 w-2.5" />
                     {reminder.reminder_time.slice(0, 5)}
                   </span>
                 )}
                 {reminder.category && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1">
                     {reminder.category}
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => openEdit(reminder)}>
-                  <Edit className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(reminder)}>
+                  <Edit className="h-3 w-3" />
                 </Button>
               )}
               {canDelete && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir Lembrete</AlertDialogTitle>
-                      <AlertDialogDescription>
+                      <AlertDialogTitle className="text-base">Excluir Lembrete</AlertDialogTitle>
+                      <AlertDialogDescription className="text-sm">
                         Tem certeza que deseja excluir este lembrete?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -263,19 +274,23 @@ export function RemindersPanel() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Lembretes e Rotinas
-        </h2>
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex-1 w-full sm:max-w-xs">
+          <Input
+            placeholder="Buscar lembretes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-8 text-sm"
+          />
+        </div>
         {canEdit && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
+              <Button size="sm" className="gap-1.5 btn-vibrant">
+                <Plus className="h-3.5 w-3.5" />
                 Novo Lembrete
               </Button>
             </DialogTrigger>
@@ -413,32 +428,32 @@ export function RemindersPanel() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="active" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="active" className="gap-2">
-            <AlertCircle className="h-4 w-4" />
+      <Tabs defaultValue="active" className="space-y-3">
+        <TabsList className="h-8">
+          <TabsTrigger value="active" className="gap-1.5 text-xs px-3">
+            <AlertCircle className="h-3 w-3" />
             Pendentes
-            <Badge variant="secondary">{activeReminders.length}</Badge>
+            <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredActiveReminders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-2">
-            <CheckCircle className="h-4 w-4" />
+          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3">
+            <CheckCircle className="h-3 w-3" />
             Concluídos
-            <Badge variant="secondary">{completedReminders.length}</Badge>
+            <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredCompletedReminders.length}</Badge>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active">
-          {activeReminders.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Bell className="h-12 w-12 text-muted-foreground/20 mb-4" />
-                <p className="text-muted-foreground">Nenhum lembrete pendente</p>
+        <TabsContent value="active" className="page-enter">
+          {filteredActiveReminders.length === 0 ? (
+            <Card className="card-hover">
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <Bell className="h-8 w-8 text-muted-foreground/20 mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhum lembrete pendente</p>
               </CardContent>
             </Card>
           ) : (
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-3 pr-4">
-                {activeReminders.map(reminder => (
+            <ScrollArea className="h-[450px]">
+              <div className="space-y-2 pr-4">
+                {filteredActiveReminders.map(reminder => (
                   <ReminderCard key={reminder.id} reminder={reminder} />
                 ))}
               </div>
@@ -446,18 +461,18 @@ export function RemindersPanel() {
           )}
         </TabsContent>
 
-        <TabsContent value="completed">
-          {completedReminders.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <CheckCircle className="h-12 w-12 text-muted-foreground/20 mb-4" />
-                <p className="text-muted-foreground">Nenhum lembrete concluído</p>
+        <TabsContent value="completed" className="page-enter">
+          {filteredCompletedReminders.length === 0 ? (
+            <Card className="card-hover">
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <CheckCircle className="h-8 w-8 text-muted-foreground/20 mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhum lembrete concluído</p>
               </CardContent>
             </Card>
           ) : (
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-3 pr-4">
-                {completedReminders.map(reminder => (
+            <ScrollArea className="h-[450px]">
+              <div className="space-y-2 pr-4">
+                {filteredCompletedReminders.map(reminder => (
                   <ReminderCard key={reminder.id} reminder={reminder} />
                 ))}
               </div>

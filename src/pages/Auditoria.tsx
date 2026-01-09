@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Shield, Filter, Download, Eye } from 'lucide-react';
+import { Shield, Filter, Download, Eye, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuditLogs, AuditLog } from '@/hooks/useAuditLogs';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { exportToCSV } from '@/lib/exportUtils';
 
 const tableNameMap: Record<string, string> = {
   clients: 'Clientes',
@@ -33,12 +36,13 @@ const actionMap: Record<string, { label: string; variant: 'default' | 'secondary
 };
 
 export default function Auditoria() {
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useLocalStorage('auditoria-filters', {
     tableName: '',
     action: '',
     startDate: '',
     endDate: '',
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { auditLogs, isLoading } = useAuditLogs({
     tableName: filters.tableName || undefined,
@@ -47,151 +51,206 @@ export default function Auditoria() {
     endDate: filters.endDate || undefined,
   });
 
-  const exportToCSV = () => {
-    const headers = ['Data/Hora', 'Tabela', 'Ação', 'Usuário', 'ID do Registro'];
-    const rows = auditLogs.map(log => [
-      format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
-      tableNameMap[log.table_name] || log.table_name,
-      actionMap[log.action]?.label || log.action,
-      log.user_email || 'Sistema',
-      log.record_id || '-',
-    ]);
+  const activeFiltersCount = [filters.tableName, filters.action, filters.startDate, filters.endDate].filter(Boolean).length;
 
-    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `audit_logs_${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
+  const handleExport = () => {
+    exportToCSV({
+      filename: 'audit_logs',
+      headers: ['Data/Hora', 'Tabela', 'Ação', 'Usuário', 'ID do Registro'],
+      rows: auditLogs.map(log => [
+        format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
+        tableNameMap[log.table_name] || log.table_name,
+        actionMap[log.action]?.label || log.action,
+        log.user_email || 'Sistema',
+        log.record_id || '-',
+      ]),
+      successMessage: 'Logs exportados com sucesso!',
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({ tableName: '', action: '', startDate: '', endDate: '' });
   };
 
   return (
     <AppLayout title="Auditoria" subtitle="Logs de segurança e alterações">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Shield className="h-6 w-6" />
-              Logs de Auditoria
-            </h1>
-            <p className="text-muted-foreground">
-              Acompanhe todas as alterações realizadas no sistema
-            </p>
+      <div className="space-y-4 page-enter">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold tracking-wide">Logs de Auditoria</h1>
           </div>
-          <Button onClick={exportToCSV} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtros
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px] min-w-4 justify-center">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">Filtros</p>
+                    {activeFiltersCount > 0 && (
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clearFilters}>
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs">Tabela</Label>
+                    <Select
+                      value={filters.tableName || "all"}
+                      onValueChange={(value) => setFilters(prev => ({ ...prev, tableName: value === "all" ? "" : value }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {Object.entries(tableNameMap).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs">Ação</Label>
+                    <Select
+                      value={filters.action || "all"}
+                      onValueChange={(value) => setFilters(prev => ({ ...prev, action: value === "all" ? "" : value }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="INSERT">Criação</SelectItem>
+                        <SelectItem value="UPDATE">Edição</SelectItem>
+                        <SelectItem value="DELETE">Exclusão</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Início</Label>
+                      <Input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Fim</Label>
+                      <Input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            <Button onClick={handleExport} variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+              <Download className="h-3.5 w-3.5" />
+              Exportar
+            </Button>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filtros
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Tabela</Label>
-              <Select
-                  value={filters.tableName || "all"}
-                  onValueChange={(value) => setFilters({ ...filters, tableName: value === "all" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as tabelas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as tabelas</SelectItem>
-                    {Object.entries(tableNameMap).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Ação</Label>
-                <Select
-                  value={filters.action || "all"}
-                  onValueChange={(value) => setFilters({ ...filters, action: value === "all" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as ações" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as ações</SelectItem>
-                    <SelectItem value="INSERT">Criação</SelectItem>
-                    <SelectItem value="UPDATE">Edição</SelectItem>
-                    <SelectItem value="DELETE">Exclusão</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Data Início</Label>
-                <Input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Data Fim</Label>
-                <Input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Active filters badges */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {filters.tableName && (
+              <Badge variant="secondary" className="h-6 text-[10px] gap-1">
+                {tableNameMap[filters.tableName] || filters.tableName}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, tableName: '' }))} />
+              </Badge>
+            )}
+            {filters.action && (
+              <Badge variant="secondary" className="h-6 text-[10px] gap-1">
+                {actionMap[filters.action]?.label || filters.action}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, action: '' }))} />
+              </Badge>
+            )}
+            {filters.startDate && (
+              <Badge variant="secondary" className="h-6 text-[10px] gap-1">
+                De: {format(new Date(filters.startDate), 'dd/MM/yy')}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, startDate: '' }))} />
+              </Badge>
+            )}
+            {filters.endDate && (
+              <Badge variant="secondary" className="h-6 text-[10px] gap-1">
+                Até: {format(new Date(filters.endDate), 'dd/MM/yy')}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, endDate: '' }))} />
+              </Badge>
+            )}
+          </div>
+        )}
 
         <Card>
-          <CardHeader>
-            <CardTitle>Registros ({auditLogs.length})</CardTitle>
-            <CardDescription>Últimas alterações no sistema</CardDescription>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium tracking-wide">Registros ({auditLogs.length})</CardTitle>
+            </div>
+            <CardDescription className="text-xs">Últimas alterações no sistema</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              <div className="text-center py-8 text-muted-foreground text-sm">Carregando...</div>
             ) : auditLogs.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 Nenhum registro encontrado
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data/Hora</TableHead>
-                    <TableHead>Tabela</TableHead>
-                    <TableHead>Ação</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Detalhes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {auditLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell>
-                        {tableNameMap[log.table_name] || log.table_name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={actionMap[log.action]?.variant || 'default'}>
-                          {actionMap[log.action]?.label || log.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{log.user_email || 'Sistema'}</TableCell>
-                      <TableCell>
-                        <AuditDetailDialog log={log} />
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Data/Hora</TableHead>
+                      <TableHead className="text-xs">Tabela</TableHead>
+                      <TableHead className="text-xs">Ação</TableHead>
+                      <TableHead className="text-xs">Usuário</TableHead>
+                      <TableHead className="text-xs w-16"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLogs.map((log) => (
+                      <TableRow key={log.id} className="hover:bg-muted/50">
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {tableNameMap[log.table_name] || log.table_name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={actionMap[log.action]?.variant || 'default'} className="text-[10px] h-5">
+                            {actionMap[log.action]?.label || log.action}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs truncate max-w-[150px]">{log.user_email || 'Sistema'}</TableCell>
+                        <TableCell>
+                          <AuditDetailDialog log={log} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -204,31 +263,31 @@ function AuditDetailDialog({ log }: { log: AuditLog }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Eye className="h-4 w-4" />
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+          <Eye className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Detalhes da Alteração</DialogTitle>
+          <DialogTitle className="text-base">Detalhes da Alteração</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground">Tabela</Label>
-              <p className="font-medium">{tableNameMap[log.table_name] || log.table_name}</p>
+              <Label className="text-xs text-muted-foreground">Tabela</Label>
+              <p className="font-medium text-sm">{tableNameMap[log.table_name] || log.table_name}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Ação</Label>
-              <p className="font-medium">{actionMap[log.action]?.label || log.action}</p>
+              <Label className="text-xs text-muted-foreground">Ação</Label>
+              <p className="font-medium text-sm">{actionMap[log.action]?.label || log.action}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Usuário</Label>
-              <p className="font-medium">{log.user_email || 'Sistema'}</p>
+              <Label className="text-xs text-muted-foreground">Usuário</Label>
+              <p className="font-medium text-sm">{log.user_email || 'Sistema'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Data/Hora</Label>
-              <p className="font-medium">
+              <Label className="text-xs text-muted-foreground">Data/Hora</Label>
+              <p className="font-medium text-sm">
                 {format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
               </p>
             </div>
@@ -236,8 +295,8 @@ function AuditDetailDialog({ log }: { log: AuditLog }) {
 
           {log.old_data && (
             <div>
-              <Label className="text-muted-foreground">Dados Anteriores</Label>
-              <ScrollArea className="h-40 mt-2">
+              <Label className="text-xs text-muted-foreground">Dados Anteriores</Label>
+              <ScrollArea className="h-32 mt-2">
                 <pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
                   {JSON.stringify(log.old_data, null, 2)}
                 </pre>
@@ -247,8 +306,8 @@ function AuditDetailDialog({ log }: { log: AuditLog }) {
 
           {log.new_data && (
             <div>
-              <Label className="text-muted-foreground">Dados Novos</Label>
-              <ScrollArea className="h-40 mt-2">
+              <Label className="text-xs text-muted-foreground">Dados Novos</Label>
+              <ScrollArea className="h-32 mt-2">
                 <pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
                   {JSON.stringify(log.new_data, null, 2)}
                 </pre>

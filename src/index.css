@@ -189,6 +189,48 @@
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out forwards;
   }
+
+  /* Page transition animations */
+  .page-enter {
+    animation: pageEnter 0.4s ease-out forwards;
+  }
+
+  .page-exit {
+    animation: pageExit 0.3s ease-in forwards;
+  }
+
+  /* Button hover effects */
+  .btn-vibrant {
+    @apply relative overflow-hidden transition-all duration-300;
+  }
+
+  .btn-vibrant::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+  }
+
+  .btn-vibrant:hover::before {
+    @apply opacity-100;
+  }
+
+  .btn-vibrant:hover {
+    @apply transform scale-[1.02] shadow-lg;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .card-hover:hover {
+    @apply shadow-lg -translate-y-0.5 border-primary/20;
+  }
+
+  /* Clean spacing utility */
+  .clean-spacing {
+    @apply tracking-wide;
+  }
 }
 
 @keyframes fadeIn {
@@ -219,6 +261,28 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pageExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
   }
 }
 

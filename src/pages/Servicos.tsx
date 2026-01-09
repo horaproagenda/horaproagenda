@@ -26,9 +26,10 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { exportToCSV } from '@/lib/exportUtils';
 import { Service } from '@/types';
 import { Tables } from '@/integrations/supabase/types';
-import { toast } from 'sonner';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
 
 type ServicePackageDB = Tables<'service_packages'>;
@@ -37,27 +38,39 @@ const defaultCategories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
+interface ServicesFilters {
+  category: string | null;
+  professional: string | null;
+  room: string | null;
+  client: string | null;
+  status: string | null;
+  sort: string;
+}
+
+interface PackagesFilters {
+  category: string | null;
+  professional: string | null;
+  room: string | null;
+  client: string | null;
+  sessions: string | null;
+  status: string | null;
+  sort: string;
+}
+
 const Servicos: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('services');
+  const [activeTab, setActiveTab] = useLocalStorage<string>('servicos-tab', 'services');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ServicePackageDB | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Service filters
-  const [serviceCategory, setServiceCategory] = useState<string | null>(null);
-  const [serviceProfessional, setServiceProfessional] = useState<string | null>(null);
-  const [serviceRoom, setServiceRoom] = useState<string | null>(null);
-  const [serviceClient, setServiceClient] = useState<string | null>(null);
-  const [serviceStatus, setServiceStatus] = useState<string | null>(null);
-  const [serviceSort, setServiceSort] = useState('name-asc');
-
-  // Package filters
-  const [packageCategory, setPackageCategory] = useState<string | null>(null);
-  const [packageProfessional, setPackageProfessional] = useState<string | null>(null);
-  const [packageRoom, setPackageRoom] = useState<string | null>(null);
-  const [packageClient, setPackageClient] = useState<string | null>(null);
-  const [packageSessions, setPackageSessions] = useState<string | null>(null);
+  // Persist filters in localStorage
+  const [serviceFilters, setServiceFilters] = useLocalStorage<ServicesFilters>('servicos-service-filters', {
+    category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc'
+  });
+  const [packageFilters, setPackageFilters] = useLocalStorage<PackagesFilters>('servicos-package-filters', {
+    category: null, professional: null, room: null, client: null, sessions: null, status: null, sort: 'name-asc'
+  });
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
 
@@ -101,21 +114,21 @@ const Servicos: React.FC = () => {
 
   const filteredServices = useMemo(() => {
     let result = services.filter(service => {
-      if (serviceCategory && service.category !== serviceCategory) return false;
-      if (serviceProfessional && service.professional_id !== serviceProfessional) return false;
-      if (serviceRoom && service.room_id !== serviceRoom) return false;
-      if (serviceStatus === 'active' && !service.is_active) return false;
-      if (serviceStatus === 'inactive' && service.is_active) return false;
-      if (serviceClient) {
+      if (serviceFilters.category && service.category !== serviceFilters.category) return false;
+      if (serviceFilters.professional && service.professional_id !== serviceFilters.professional) return false;
+      if (serviceFilters.room && service.room_id !== serviceFilters.room) return false;
+      if (serviceFilters.status === 'active' && !service.is_active) return false;
+      if (serviceFilters.status === 'inactive' && service.is_active) return false;
+      if (serviceFilters.client) {
         const serviceAppointments = appointments.filter(a => a.service_id === service.id);
-        if (!serviceAppointments.some(a => a.client_id === serviceClient)) return false;
+        if (!serviceAppointments.some(a => a.client_id === serviceFilters.client)) return false;
       }
       if (searchTerm && !service.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
 
     result.sort((a, b) => {
-      switch (serviceSort) {
+      switch (serviceFilters.sort) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
         case 'price-asc': return Number(a.price) - Number(b.price);
@@ -127,23 +140,23 @@ const Servicos: React.FC = () => {
     });
 
     return result;
-  }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, searchTerm, serviceSort, appointments]);
+  }, [services, serviceFilters, searchTerm, appointments]);
 
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
-      if (!packageClient && pkg.client_id) return false;
-      if (packageCategory && pkg.category !== packageCategory) return false;
-      if (packageProfessional && pkg.professional_id !== packageProfessional) return false;
-      if (packageRoom && pkg.room_id !== packageRoom) return false;
-      if (packageClient && pkg.client_id !== packageClient) return false;
-      if (packageStatus === 'active' && !pkg.is_active) return false;
-      if (packageStatus === 'inactive' && pkg.is_active) return false;
+      if (!packageFilters.client && pkg.client_id) return false;
+      if (packageFilters.category && pkg.category !== packageFilters.category) return false;
+      if (packageFilters.professional && pkg.professional_id !== packageFilters.professional) return false;
+      if (packageFilters.room && pkg.room_id !== packageFilters.room) return false;
+      if (packageFilters.client && pkg.client_id !== packageFilters.client) return false;
+      if (packageFilters.status === 'active' && !pkg.is_active) return false;
+      if (packageFilters.status === 'inactive' && pkg.is_active) return false;
       if (searchTerm && !pkg.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (packageSessions) {
-        if (packageSessions === '10+') {
+      if (packageFilters.sessions) {
+        if (packageFilters.sessions === '10+') {
           if (pkg.total_sessions <= 10) return false;
         } else {
-          const num = parseInt(packageSessions);
+          const num = parseInt(packageFilters.sessions);
           if (!isNaN(num) && pkg.total_sessions !== num) return false;
         }
       }
@@ -151,7 +164,7 @@ const Servicos: React.FC = () => {
     });
 
     result.sort((a, b) => {
-      switch (packageSort) {
+      switch (packageFilters.sort) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
         case 'price-asc': return Number(a.total_price) - Number(b.total_price);
@@ -165,7 +178,7 @@ const Servicos: React.FC = () => {
     });
 
     return result;
-  }, [packages, packageCategory, packageProfessional, packageRoom, packageClient, packageSessions, packageStatus, searchTerm, packageSort]);
+  }, [packages, packageFilters, searchTerm]);
 
   const handleCategoryCreated = (category: string) => {
     const updatedCategories = [...customCategories, category];
@@ -174,50 +187,33 @@ const Servicos: React.FC = () => {
   };
 
   const clearServiceFilters = () => {
-    setServiceCategory(null);
-    setServiceProfessional(null);
-    setServiceRoom(null);
-    setServiceClient(null);
-    setServiceStatus(null);
+    setServiceFilters({ category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc' });
   };
 
   const clearPackageFilters = () => {
-    setPackageCategory(null);
-    setPackageProfessional(null);
-    setPackageRoom(null);
-    setPackageClient(null);
-    setPackageSessions(null);
-    setPackageStatus(null);
+    setPackageFilters({ category: null, professional: null, room: null, client: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
   const exportServicesCSV = () => {
-    const headers = ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'];
-    const rows = filteredServices.map(s => [
-      s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
-    ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `servicos_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    toast.success('Serviços exportados!');
+    exportToCSV({
+      filename: 'servicos',
+      headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
+      rows: filteredServices.map(s => [
+        s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
+      ]),
+      successMessage: 'Serviços exportados com sucesso!',
+    });
   };
 
   const exportPackagesCSV = () => {
-    const headers = ['Nome', 'Categoria', 'Preço Total', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'];
-    const rows = filteredPackages.map(p => [
-      p.name, p.category || '-', Number(p.total_price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
-    ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `pacotes_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    toast.success('Pacotes exportados!');
+    exportToCSV({
+      filename: 'pacotes',
+      headers: ['Nome', 'Categoria', 'Preço Total', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      rows: filteredPackages.map(p => [
+        p.name, p.category || '-', Number(p.total_price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+      ]),
+      successMessage: 'Pacotes exportados com sucesso!',
+    });
   };
 
   return (
@@ -242,30 +238,30 @@ const Servicos: React.FC = () => {
           </TabsList>
 
           {/* Services Tab */}
-          <TabsContent value="services" className="mt-3 space-y-3">
+          <TabsContent value="services" className="mt-3 space-y-3 page-enter">
             {/* Line 3: Filters + New Service + Import/Export */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <UnifiedServiceFilters
                   type="services"
                   categories={categoriesWithServices}
                   professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
                   rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
                   clients={serviceClients}
-                  selectedCategory={serviceCategory}
-                  selectedProfessional={serviceProfessional}
-                  selectedRoom={serviceRoom}
-                  selectedClient={serviceClient}
-                  selectedStatus={serviceStatus}
+                  selectedCategory={serviceFilters.category}
+                  selectedProfessional={serviceFilters.professional}
+                  selectedRoom={serviceFilters.room}
+                  selectedClient={serviceFilters.client}
+                  selectedStatus={serviceFilters.status}
                   searchTerm=""
-                  sortBy={serviceSort}
-                  onCategoryChange={setServiceCategory}
-                  onProfessionalChange={setServiceProfessional}
-                  onRoomChange={setServiceRoom}
-                  onClientChange={setServiceClient}
-                  onStatusChange={setServiceStatus}
+                  sortBy={serviceFilters.sort}
+                  onCategoryChange={(v) => setServiceFilters(prev => ({ ...prev, category: v }))}
+                  onProfessionalChange={(v) => setServiceFilters(prev => ({ ...prev, professional: v }))}
+                  onRoomChange={(v) => setServiceFilters(prev => ({ ...prev, room: v }))}
+                  onClientChange={(v) => setServiceFilters(prev => ({ ...prev, client: v }))}
+                  onStatusChange={(v) => setServiceFilters(prev => ({ ...prev, status: v }))}
                   onSearchChange={() => {}}
-                  onSortChange={setServiceSort}
+                  onSortChange={(v) => setServiceFilters(prev => ({ ...prev, sort: v }))}
                   onClearFilters={clearServiceFilters}
                   hideSearch
                 />
@@ -297,9 +293,9 @@ const Servicos: React.FC = () => {
               </div>
 
               <NewServiceDialog onServiceCreated={refetch}>
-                <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="text-xs">Novo Serviço</span>
+                  <span className="text-xs font-medium tracking-wide">Novo Serviço</span>
                 </Button>
               </NewServiceDialog>
             </div>
@@ -351,10 +347,10 @@ const Servicos: React.FC = () => {
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {searchTerm || serviceCategory || serviceProfessional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
+                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
+                  {searchTerm || serviceFilters.category || serviceFilters.professional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
                 </p>
-                {!searchTerm && !serviceCategory && (
+                {!searchTerm && !serviceFilters.category && (
                   <NewServiceDialog onServiceCreated={refetch}>
                     <Button size="sm" variant="secondary" className="mt-3">
                       <Plus className="h-3.5 w-3.5 mr-1" />
@@ -368,32 +364,32 @@ const Servicos: React.FC = () => {
           </TabsContent>
 
           {/* Packages Tab */}
-          <TabsContent value="packages" className="mt-3 space-y-3">
+          <TabsContent value="packages" className="mt-3 space-y-3 page-enter">
             {/* Line 3: Filters + New Package + Import/Export */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <UnifiedServiceFilters
                   type="packages"
                   categories={categoriesWithPackages as string[]}
                   professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
                   rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
                   clients={packageClients}
-                  selectedCategory={packageCategory}
-                  selectedProfessional={packageProfessional}
-                  selectedRoom={packageRoom}
-                  selectedClient={packageClient}
-                  selectedStatus={packageStatus}
-                  selectedSessions={packageSessions}
+                  selectedCategory={packageFilters.category}
+                  selectedProfessional={packageFilters.professional}
+                  selectedRoom={packageFilters.room}
+                  selectedClient={packageFilters.client}
+                  selectedStatus={packageFilters.status}
+                  selectedSessions={packageFilters.sessions}
                   searchTerm=""
-                  sortBy={packageSort}
-                  onCategoryChange={setPackageCategory}
-                  onProfessionalChange={setPackageProfessional}
-                  onRoomChange={setPackageRoom}
-                  onClientChange={setPackageClient}
-                  onStatusChange={setPackageStatus}
-                  onSessionsChange={setPackageSessions}
+                  sortBy={packageFilters.sort}
+                  onCategoryChange={(v) => setPackageFilters(prev => ({ ...prev, category: v }))}
+                  onProfessionalChange={(v) => setPackageFilters(prev => ({ ...prev, professional: v }))}
+                  onRoomChange={(v) => setPackageFilters(prev => ({ ...prev, room: v }))}
+                  onClientChange={(v) => setPackageFilters(prev => ({ ...prev, client: v }))}
+                  onStatusChange={(v) => setPackageFilters(prev => ({ ...prev, status: v }))}
+                  onSessionsChange={(v) => setPackageFilters(prev => ({ ...prev, sessions: v }))}
                   onSearchChange={() => {}}
-                  onSortChange={setPackageSort}
+                  onSortChange={(v) => setPackageFilters(prev => ({ ...prev, sort: v }))}
                   onClearFilters={clearPackageFilters}
                   hideSearch
                 />
@@ -418,9 +414,9 @@ const Servicos: React.FC = () => {
               </div>
 
               <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
-                <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white">
+                <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
                   <Package className="h-3.5 w-3.5" />
-                  <span className="text-xs">Novo Pacote</span>
+                  <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
                 </Button>
               </NewPackageDialog>
             </div>
@@ -497,10 +493,10 @@ const Servicos: React.FC = () => {
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {searchTerm || packageCategory ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
+                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
+                  {searchTerm || packageFilters.category ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
                 </p>
-                {!searchTerm && !packageCategory && (
+                {!searchTerm && !packageFilters.category && (
                   <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
                     <Button size="sm" variant="secondary" className="mt-3">
                       <Package className="h-3.5 w-3.5 mr-1" />

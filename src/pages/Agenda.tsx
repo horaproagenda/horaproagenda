@@ -42,6 +42,7 @@ import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
+import { ImportAppointmentsDialog } from '@/components/appointments/ImportAppointmentsDialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -128,6 +129,7 @@ const Agenda = () => {
   } | null>(null);
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<typeof absences[0] | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Track view changes for animation direction
   useEffect(() => {
@@ -1347,11 +1349,11 @@ const Agenda = () => {
                 Exportar CSV
               </DropdownMenuItem>
               <DropdownMenuItem 
-                className="text-xs gap-2 text-muted-foreground"
-                disabled
+                onClick={() => setImportDialogOpen(true)}
+                className="text-xs gap-2"
               >
                 <Upload className="h-3.5 w-3.5" />
-                Importar CSV (em breve)
+                Importar CSV
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1686,6 +1688,12 @@ const Agenda = () => {
         }}
         prefilledDate={selectedDate}
         editingAbsence={editingAbsence}
+      />
+
+      {/* Import Appointments Dialog */}
+      <ImportAppointmentsDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
       />
     </AppLayout>
   );

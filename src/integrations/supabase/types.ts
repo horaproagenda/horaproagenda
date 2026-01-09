@@ -924,6 +924,68 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_value: number
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          service_id: string | null
+          start_date: string
+          status: string
+          target_value: number
+          type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_value?: number
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          service_id?: string | null
+          start_date: string
+          status?: string
+          target_value: number
+          type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_value?: number
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          target_value?: number
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_appointments: {
         Row: {
           appointment_id: string | null

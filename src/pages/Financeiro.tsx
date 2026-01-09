@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Landmark,
   Percent,
+  Target,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ContasAReceber } from '@/components/financeiro/ContasAReceber';
@@ -21,6 +22,7 @@ import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
+import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -136,6 +138,10 @@ export default function Financeiro() {
               <Percent className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Comissões</span>
             </TabsTrigger>
+            <TabsTrigger value="metas" className="gap-1.5 text-xs tracking-wide h-8">
+              <Target className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Metas</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="contas-pagar" className="page-enter">
@@ -169,6 +175,10 @@ export default function Financeiro() {
               dateRange={commissionDateRange}
               dateRangeLabel="Mês Atual"
             />
+          </TabsContent>
+
+          <TabsContent value="metas" className="page-enter">
+            <GoalsPanel />
           </TabsContent>
         </Tabs>
       </div>

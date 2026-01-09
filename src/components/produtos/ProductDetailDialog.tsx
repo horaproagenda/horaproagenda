@@ -45,6 +45,7 @@ import {
   Store,
   Building2,
   Gift,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
@@ -758,12 +759,13 @@ export function ProductDetailDialog({
                     <TableHead>Método</TableHead>
                     <TableHead>Consumo</TableHead>
                     <TableHead>Atend. Restantes</TableHead>
+                    {canEdit && <TableHead className="w-12"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {productServiceLinks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={canEdit ? 5 : 4} className="text-center py-6 text-muted-foreground">
                         <Link2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhum serviço vinculado
                       </TableCell>
@@ -808,6 +810,18 @@ export function ProductDetailDialog({
                               {remainingAppointments} atendimentos
                             </Badge>
                           </TableCell>
+                          {canEdit && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => onDeleteServiceLink(sp.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })
@@ -912,12 +926,13 @@ export function ProductDetailDialog({
                     <TableHead>Cliente</TableHead>
                     <TableHead>Sessões</TableHead>
                     <TableHead>Consumo</TableHead>
+                    {canEdit && <TableHead className="w-12"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {productPackageLinks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={canEdit ? 5 : 4} className="text-center py-6 text-muted-foreground">
                         <Gift className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhum pacote vinculado
                       </TableCell>
@@ -949,6 +964,18 @@ export function ProductDetailDialog({
                               <span>{pp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
                             )}
                           </TableCell>
+                          {canEdit && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => deletePackageProduct.mutate(pp.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })

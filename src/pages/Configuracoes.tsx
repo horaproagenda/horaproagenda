@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck } from 'lucide-react';
+import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck, Globe } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useBusinessSettings, BRAZIL_TIMEZONES } from '@/hooks/useBusinessSettings';
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
@@ -23,6 +24,7 @@ const Configuracoes = () => {
   const [workSundays, setWorkSundays] = useState(false);
   const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
+  const [timezone, setTimezone] = useState('America/Sao_Paulo');
 
   useEffect(() => {
     if (settings) {
@@ -33,6 +35,7 @@ const Configuracoes = () => {
       setWorkSundays(settings.work_sundays ?? false);
       setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
+      setTimezone(settings.timezone || 'America/Sao_Paulo');
     }
   }, [settings]);
 
@@ -43,6 +46,7 @@ const Configuracoes = () => {
       slot_interval: slotInterval,
       work_saturdays: workSaturdays,
       work_sundays: workSundays,
+      timezone: timezone,
     });
   };
 
@@ -105,6 +109,27 @@ const Configuracoes = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <Globe className="h-3 w-3" />
+                    Fuso Horário
+                  </Label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione o fuso horário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRAZIL_TIMEZONES.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          <div className="flex flex-col">
+                            <span>{tz.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{tz.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Abertura</Label>

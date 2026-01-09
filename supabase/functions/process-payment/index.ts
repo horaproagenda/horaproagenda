@@ -11,7 +11,8 @@ interface PaymentRequest {
   payment_methods: string[];
   amount_paid: number;
   payment_status: 'pending' | 'partial' | 'paid';
-  client_credit?: number;
+  client_credit?: number; // Saldo: troco em dinheiro que fica como crédito (registrado no caixa/financeiro)
+  courtesy_credit?: number; // Cortesia: brinde/presente sem entrada de dinheiro
   used_client_credit?: number;
   cash_register_id?: string;
   card_fee_amount?: number;
@@ -75,7 +76,11 @@ serve(async (req) => {
     }
 
     if (body.client_credit && (typeof body.client_credit !== 'number' || body.client_credit < 0)) {
-      errors.push({ field: 'client_credit', message: 'Client credit must be a positive number' });
+      errors.push({ field: 'client_credit', message: 'Client credit (saldo/troco) must be a positive number' });
+    }
+
+    if (body.courtesy_credit && (typeof body.courtesy_credit !== 'number' || body.courtesy_credit < 0)) {
+      errors.push({ field: 'courtesy_credit', message: 'Courtesy credit (cortesia) must be a positive number' });
     }
 
     if (body.used_client_credit && (typeof body.used_client_credit !== 'number' || body.used_client_credit < 0)) {
@@ -195,7 +200,8 @@ serve(async (req) => {
     const today = new Date().toISOString().split('T')[0];
     const primaryPaymentMethodId = body.payment_methods[0] || null;
 
-    // 7a. Add credit to client (excess payment stored as credit)
+    // 7a. Add SALDO (client_credit) - excess payment stored as credit - REGISTERED in cash/financial
+    // This is real money that becomes a credit for the client
     if (body.client_credit && body.client_credit > 0 && appointment.client?.id) {
       const currentBalance = appointment.client.credit_balance || 0;
       const newBalance = Number(currentBalance) + body.client_credit;
@@ -206,8 +212,64 @@ serve(async (req) => {
         .eq('id', appointment.client.id);
 
       if (clientError) {
-        console.error('Error adding client credit:', clientError);
+        console.error('Error adding client credit (saldo):', clientError);
       }
+
+      // Create financial entry for the credit (saldo/troco is real money)
+      const { error: creditEntryError } = await supabase.from('financial_entries').insert({
+        type: 'receivable',
+        description: `Saldo/Troco: ${serviceName} - ${clientName}`,
+        amount: body.client_credit,
+        due_date: today,
+        paid_date: today,
+        status: 'paid',
+        client_id: appointment.client.id,
+        appointment_id: body.appointment_id,
+        notes: 'Troco deixado como saldo do cliente',
+        created_by: userId,
+      });
+
+      if (creditEntryError) {
+        console.error('Error creating saldo financial entry:', creditEntryError);
+      }
+
+      // Create cash transaction for the credit (saldo/troco)
+      if (body.cash_register_id) {
+        const { error: creditCashError } = await supabase.from('cash_transactions').insert({
+          cash_register_id: body.cash_register_id,
+          type: 'income',
+          category: 'client_credit',
+          description: `Saldo/Troco: ${serviceName} - ${clientName}`,
+          amount: body.client_credit,
+          payment_method: null,
+          reference_id: body.appointment_id,
+          reference_type: 'appointment',
+          created_by: userId,
+        });
+
+        if (creditCashError) {
+          console.error('Error creating saldo cash transaction:', creditCashError);
+        }
+      }
+    }
+
+    // 7a2. Add COURTESY (courtesy_credit) - gift/bonus - NOT registered in cash/financial
+    // This is a gift/bonus without real money entering
+    if (body.courtesy_credit && body.courtesy_credit > 0 && appointment.client?.id) {
+      const currentBalance = appointment.client.credit_balance || 0;
+      const newBalance = Number(currentBalance) + body.courtesy_credit;
+
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({ credit_balance: newBalance })
+        .eq('id', appointment.client.id);
+
+      if (clientError) {
+        console.error('Error adding courtesy credit:', clientError);
+      }
+
+      // No financial entry or cash transaction for courtesy - it's a gift
+      console.log(`Courtesy credit of ${body.courtesy_credit} added to client ${clientName} - no financial entry`);
     }
 
     // 7b. Deduct credit from client (using existing credit for payment)

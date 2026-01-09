@@ -40,9 +40,9 @@ export default function ClienteDetalhes() {
   if (isLoading) {
     return (
       <AppLayout title="Carregando...">
-        <div className="space-y-4">
-          <Skeleton className="h-40 w-full" />
+        <div className="space-y-3 animate-fade-in">
           <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-16 w-full" />
         </div>
       </AppLayout>
     );
@@ -51,9 +51,9 @@ export default function ClienteDetalhes() {
   if (!client) {
     return (
       <AppLayout title="Cliente não encontrado">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold">Cliente não encontrado</h2>
-          <Button onClick={() => navigate('/clientes')} className="mt-4">Voltar</Button>
+        <div className="text-center py-8">
+          <h2 className="text-lg font-medium">Cliente não encontrado</h2>
+          <Button onClick={() => navigate('/clientes')} className="mt-3" size="sm">Voltar</Button>
         </div>
       </AppLayout>
     );
@@ -61,66 +61,67 @@ export default function ClienteDetalhes() {
 
   return (
     <AppLayout title={client.name}>
-      <div className="space-y-6">
-        {/* Back button and refresh */}
+      <div className="space-y-4 animate-fade-in">
+        {/* Compact Header Row */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
-              <ArrowLeft className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/clientes')}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold">Perfil do Cliente</h1>
+            <h1 className="text-lg font-semibold">Perfil do Cliente</h1>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
+            className="h-8 text-xs"
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
 
-        {/* Client Header with full info */}
+        {/* Compact Client Header */}
         <ClientHeader client={client} onEdit={() => setActiveTab('info')} />
 
-        {/* Stats Section */}
+        {/* Compact Stats Section */}
         <ClientStatsSection stats={stats} />
 
-        {/* Tabs */}
+        {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="report" className="flex items-center gap-1">
-              <BarChart3 className="h-4 w-4" />
+          <TabsList className="grid w-full grid-cols-7 h-9">
+            <TabsTrigger value="report" className="flex items-center gap-1 text-xs px-1">
+              <BarChart3 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Relatório</span>
             </TabsTrigger>
-            <TabsTrigger value="credits" className="flex items-center gap-1">
-              <CreditCard className="h-4 w-4" />
+            <TabsTrigger value="credits" className="flex items-center gap-1 text-xs px-1">
+              <CreditCard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Créditos</span>
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Agendamentos</span>
+            <TabsTrigger value="appointments" className="flex items-center gap-1 text-xs px-1">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Agenda</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Documentos</span>
+            <TabsTrigger value="documents" className="flex items-center gap-1 text-xs px-1">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Docs</span>
             </TabsTrigger>
-            <TabsTrigger value="quotes" className="flex items-center gap-1">
-              <Receipt className="h-4 w-4" />
+            <TabsTrigger value="quotes" className="flex items-center gap-1 text-xs px-1">
+              <Receipt className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Orçamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="flex items-center gap-1">
-              <Image className="h-4 w-4" />
+            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs px-1">
+              <Image className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Fotos</span>
             </TabsTrigger>
-            <TabsTrigger value="info" className="flex items-center gap-1">
-              <Info className="h-4 w-4" />
-              <span className="hidden sm:inline">Informações</span>
+            <TabsTrigger value="info" className="flex items-center gap-1 text-xs px-1">
+              <Info className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Info</span>
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="report">
+          <TabsContent value="report" className="mt-3">
             <ClientReportTab 
               appointments={appointments} 
               clientName={client.name} 
@@ -128,22 +129,22 @@ export default function ClienteDetalhes() {
               onEditAppointment={setEditingAppointment}
             />
           </TabsContent>
-          <TabsContent value="credits">
+          <TabsContent value="credits" className="mt-3">
             <ClientCreditsTab clientId={client.id} />
           </TabsContent>
-          <TabsContent value="appointments">
+          <TabsContent value="appointments" className="mt-3">
             <ClientAppointmentsTab appointments={appointments} />
           </TabsContent>
-          <TabsContent value="documents">
+          <TabsContent value="documents" className="mt-3">
             <ClientDocumentsTab documents={documents} clientId={client.id} onAddDocument={addDocument.mutateAsync} />
           </TabsContent>
-          <TabsContent value="quotes">
+          <TabsContent value="quotes" className="mt-3">
             <ClientQuotesTab quotes={quotes} clientId={client.id} clientPhone={client.phone} onAddQuote={addQuote.mutateAsync} onUpdateQuote={updateQuote.mutateAsync} />
           </TabsContent>
-          <TabsContent value="photos">
+          <TabsContent value="photos" className="mt-3">
             <ClientPhotosTab photos={photos} clientId={client.id} onAddPhoto={addPhoto.mutateAsync} />
           </TabsContent>
-          <TabsContent value="info">
+          <TabsContent value="info" className="mt-3">
             <ClientInfoTab client={client} onUpdate={updateClient.mutateAsync} />
           </TabsContent>
         </Tabs>

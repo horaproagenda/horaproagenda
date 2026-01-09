@@ -1,24 +1,37 @@
 import { useState, useMemo } from 'react';
-import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus } from 'lucide-react';
+import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { BulkImportClientsDialog } from '@/components/clients/BulkImportClientsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useClients } from '@/hooks/useClients';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     status: ['all'],
     professional: ['all'],
@@ -26,6 +39,7 @@ const Clientes = () => {
   const { clients, isLoading, refetch } = useClients();
   const { professionals } = useProfessionals();
   const { hasRole } = useAuth();
+  const navigate = useNavigate();
   
   const isAdmin = hasRole('admin');
   const isReceptionist = hasRole('receptionist');
@@ -141,6 +155,12 @@ const Clientes = () => {
     link.click();
   };
 
+  const getProfessionalName = (professionalId: string | null) => {
+    if (!professionalId) return '-';
+    const professional = professionals.find(p => p.id === professionalId);
+    return professional?.name || '-';
+  };
+
   return (
     <AppLayout 
       title="Clientes" 
@@ -159,7 +179,7 @@ const Clientes = () => {
           />
         </div>
 
-        {/* Actions Row - Filters, Import/Export on left, New Client on right */}
+        {/* Actions Row - Filters, Import/Export on left, View Toggle and New Client on right */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {/* All Filters Together */}
@@ -196,13 +216,35 @@ const Clientes = () => {
             </DropdownMenu>
           </div>
 
-          {/* New Client Button - Right Side */}
-          <NewClientDialog onClientCreated={refetch}>
-            <Button size="sm" className="h-9 gap-1.5 text-xs">
-              <Plus className="h-3.5 w-3.5" />
-              <span>Novo Cliente</span>
-            </Button>
-          </NewClientDialog>
+          <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="flex items-center border border-border rounded-md">
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 px-2 rounded-r-none"
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 px-2 rounded-l-none"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            {/* New Client Button */}
+            <NewClientDialog onClientCreated={refetch}>
+              <Button size="sm" className="h-9 gap-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" />
+                <span>Novo Cliente</span>
+              </Button>
+            </NewClientDialog>
+          </div>
         </div>
 
         {/* Compact Stats */}
@@ -236,24 +278,77 @@ const Clientes = () => {
           </div>
         </div>
 
-        {/* Clients Grid */}
+        {/* Clients View */}
         <div>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filteredClients.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredClients.map((client, index) => (
-                <div
-                  key={client.id}
-                  style={{ animationDelay: `${index * 30}ms` }}
-                  className="animate-scale-in"
-                >
-                  <ClientCard client={client} />
-                </div>
-              ))}
-            </div>
+            viewMode === 'grid' ? (
+              /* Grid View */
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredClients.map((client, index) => (
+                  <div
+                    key={client.id}
+                    style={{ animationDelay: `${index * 30}ms` }}
+                    className="animate-scale-in"
+                  >
+                    <ClientCard client={client} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Table/List View */
+              <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="text-xs font-medium">Nome</TableHead>
+                      <TableHead className="text-xs font-medium">Telefone</TableHead>
+                      <TableHead className="text-xs font-medium hidden sm:table-cell">Email</TableHead>
+                      <TableHead className="text-xs font-medium hidden md:table-cell">Profissional</TableHead>
+                      <TableHead className="text-xs font-medium">Status</TableHead>
+                      <TableHead className="text-xs font-medium hidden lg:table-cell">Desde</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredClients.map((client, index) => (
+                      <TableRow 
+                        key={client.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
+                        onClick={() => navigate(`/clientes/${client.id}`)}
+                        style={{ animationDelay: `${index * 20}ms` }}
+                      >
+                        <TableCell className="text-sm font-medium py-2">
+                          {client.name}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2">
+                          {client.phone}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 hidden sm:table-cell">
+                          {client.email || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 hidden md:table-cell">
+                          {getProfessionalName(client.assigned_professional_id)}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Badge 
+                            variant={client.is_active ? "default" : "secondary"}
+                            className="text-[9px] px-1.5 py-0 h-4"
+                          >
+                            {client.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 hidden lg:table-cell">
+                          {format(new Date(client.created_at), "dd/MM/yy", { locale: ptBR })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
           ) : (
             <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
               <Users className="mx-auto h-8 w-8 text-muted-foreground/40" />

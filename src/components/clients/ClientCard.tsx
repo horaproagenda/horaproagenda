@@ -4,6 +4,7 @@ import { Phone, Mail, Calendar, ChevronRight, Edit, Trash2, MoreVertical } from 
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClients } from '@/hooks/useClients';
@@ -55,73 +56,97 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
   return (
     <>
       <div 
-        className="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in cursor-pointer"
+        className="group rounded-lg border border-border bg-card p-3 transition-all duration-300 hover:border-primary/20 hover:shadow-md cursor-pointer"
         onClick={() => navigate(`/clientes/${client.id}`)}
       >
-        <div className="flex items-start gap-4">
-          <Avatar className="h-12 w-12 border-2 border-primary/20">
-            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+        {/* Header with Avatar and Actions */}
+        <div className="flex items-start gap-3">
+          <Avatar className="h-9 w-9 border border-primary/10 transition-transform duration-200 group-hover:scale-105">
+            <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
               {getInitials(client.name)}
             </AvatarFallback>
           </Avatar>
+          
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between">
-              <h4 className="font-semibold text-foreground truncate">{client.name}</h4>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h4 className="font-medium text-sm text-foreground truncate leading-tight">
+                  {client.name}
+                </h4>
+                <Badge 
+                  variant={client.is_active ? "default" : "secondary"} 
+                  className="mt-0.5 text-[9px] px-1.5 py-0 h-4"
+                >
+                  {client.is_active ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/clientes/${client.id}`);
-                  }}>
-                    <Edit className="h-4 w-4 mr-2" />
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/clientes/${client.id}`);
+                    }}
+                    className="text-xs"
+                  >
+                    <Edit className="h-3.5 w-3.5 mr-2" />
                     Editar
                   </DropdownMenuItem>
                   {canDelete && (
                     <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
+                      className="text-xs text-destructive focus:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowDeleteDialog(true);
                       }}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
                       Excluir
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="mt-2 space-y-1">
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-3.5 w-3.5" />
-                {client.phone}
-              </p>
-              {client.email && (
-                <p className="flex items-center gap-2 text-sm text-muted-foreground truncate">
-                  <Mail className="h-3.5 w-3.5" />
-                  {client.email}
-                </p>
-              )}
-            </div>
           </div>
         </div>
 
+        {/* Contact Info */}
+        <div className="mt-2 space-y-0.5">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Phone className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{client.phone}</span>
+          </p>
+          {client.email && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Mail className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{client.email}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Notes */}
         {client.notes && (
-          <p className="mt-3 text-xs text-muted-foreground border-l-2 border-primary/30 pl-2 italic">
+          <p className="mt-2 text-[10px] text-muted-foreground/80 border-l border-primary/20 pl-2 italic line-clamp-2">
             {client.notes}
           </p>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            Cliente desde {format(new Date(client.created_at), "MMM 'de' yyyy", { locale: ptBR })}
+        {/* Footer */}
+        <div className="mt-2 pt-2 border-t border-border/50 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">
+            Desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button 
               variant="ghost" 
               size="sm"
@@ -129,12 +154,12 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
                 e.stopPropagation();
                 onSchedule?.(client);
               }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-6 px-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             >
-              <Calendar className="h-4 w-4 mr-1" />
+              <Calendar className="h-3 w-3 mr-1" />
               Agendar
             </Button>
-            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
           </div>
         </div>
       </div>
@@ -142,19 +167,19 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Cliente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o cliente "{client.name}"? 
-              Esta ação não pode ser desfeita e removerá todos os documentos, fotos e orçamentos associados.
+            <AlertDialogTitle className="text-base">Excluir Cliente</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Tem certeza que deseja excluir "{client.name}"? 
+              Esta ação removerá documentos, fotos e orçamentos.
               <br /><br />
-              <strong className="text-destructive">Atenção:</strong> Clientes com agendamentos não podem ser excluídos.
+              <strong className="text-destructive text-xs">Clientes com agendamentos não podem ser excluídos.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
             >
               Excluir
             </AlertDialogAction>

@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_product_consumption: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          product_id: string
+          quantity_used: number
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity_used?: number
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity_used?: number
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_product_consumption_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_product_consumption_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           amount_paid: number | null
@@ -905,7 +950,7 @@ export type Database = {
           },
         ]
       }
-      package_products: {
+      package_template_products: {
         Row: {
           container_amount: number | null
           container_unit: string | null
@@ -913,9 +958,9 @@ export type Database = {
           estimated_appointments: number | null
           id: string
           notes: string | null
-          package_id: string
           product_id: string
           quantity_per_use: number
+          template_id: string
           tracking_method: string | null
           updated_at: string
         }
@@ -926,9 +971,9 @@ export type Database = {
           estimated_appointments?: number | null
           id?: string
           notes?: string | null
-          package_id: string
           product_id: string
           quantity_per_use?: number
+          template_id: string
           tracking_method?: string | null
           updated_at?: string
         }
@@ -939,25 +984,25 @@ export type Database = {
           estimated_appointments?: number | null
           id?: string
           notes?: string | null
-          package_id?: string
           product_id?: string
           quantity_per_use?: number
+          template_id?: string
           tracking_method?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "package_products_package_id_fkey"
-            columns: ["package_id"]
-            isOneToOne: false
-            referencedRelation: "service_packages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "package_products_product_id_fkey"
+            foreignKeyName: "package_template_products_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_template_products_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "package_templates"
             referencedColumns: ["id"]
           },
         ]

@@ -5,9 +5,9 @@ import type { Product } from './useProducts';
 
 export type TrackingMethod = 'exact' | 'estimated';
 
-export interface PackageProduct {
+export interface PackageTemplateProduct {
   id: string;
-  package_id: string;
+  template_id: string;
   product_id: string;
   quantity_per_use: number;
   estimated_appointments: number | null;
@@ -18,39 +18,38 @@ export interface PackageProduct {
   created_at: string;
   updated_at: string;
   product?: Product;
-  package?: {
+  template?: {
     id: string;
     name: string;
     total_sessions: number;
-    client_id: string | null;
   };
 }
 
-export function usePackageProducts(packageId?: string) {
+export function usePackageTemplateProducts(templateId?: string) {
   const queryClient = useQueryClient();
 
-  const { data: packageProducts = [], isLoading, refetch } = useQuery({
-    queryKey: ['package_products', packageId],
+  const { data: templateProducts = [], isLoading, refetch } = useQuery({
+    queryKey: ['package_template_products', templateId],
     queryFn: async () => {
       let query = supabase
-        .from('package_products')
-        .select('*, product:products(*), package:service_packages(id, name, total_sessions, client_id)')
+        .from('package_template_products')
+        .select('*, product:products(*), template:package_templates(id, name, total_sessions)')
         .order('created_at', { ascending: true });
 
-      if (packageId) {
-        query = query.eq('package_id', packageId);
+      if (templateId) {
+        query = query.eq('template_id', templateId);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as PackageProduct[];
+      return data as PackageTemplateProduct[];
     },
   });
 
-  const createPackageProduct = useMutation({
-    mutationFn: async (packageProduct: {
-      package_id: string;
+  const createTemplateProduct = useMutation({
+    mutationFn: async (templateProduct: {
+      template_id: string;
       product_id: string;
       quantity_per_use?: number;
       estimated_appointments?: number | null;
@@ -60,16 +59,16 @@ export function usePackageProducts(packageId?: string) {
       notes?: string | null;
     }) => {
       const { data, error } = await supabase
-        .from('package_products')
+        .from('package_template_products')
         .insert({
-          package_id: packageProduct.package_id,
-          product_id: packageProduct.product_id,
-          quantity_per_use: packageProduct.quantity_per_use ?? 1,
-          estimated_appointments: packageProduct.estimated_appointments ?? null,
-          container_amount: packageProduct.container_amount ?? null,
-          container_unit: packageProduct.container_unit ?? null,
-          tracking_method: packageProduct.tracking_method ?? 'exact',
-          notes: packageProduct.notes ?? null,
+          template_id: templateProduct.template_id,
+          product_id: templateProduct.product_id,
+          quantity_per_use: templateProduct.quantity_per_use ?? 1,
+          estimated_appointments: templateProduct.estimated_appointments ?? null,
+          container_amount: templateProduct.container_amount ?? null,
+          container_unit: templateProduct.container_unit ?? null,
+          tracking_method: templateProduct.tracking_method ?? 'exact',
+          notes: templateProduct.notes ?? null,
         })
         .select()
         .single();
@@ -78,18 +77,18 @@ export function usePackageProducts(packageId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['package_products'] });
-      toast.success('Produto vinculado ao pacote!');
+      queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
+      toast.success('Produto vinculado ao template de pacote!');
     },
     onError: (error: any) => {
       toast.error('Erro ao vincular produto: ' + error.message);
     },
   });
 
-  const updatePackageProduct = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<PackageProduct> & { id: string }) => {
+  const updateTemplateProduct = useMutation({
+    mutationFn: async ({ id, ...data }: Partial<PackageTemplateProduct> & { id: string }) => {
       const { data: result, error } = await supabase
-        .from('package_products')
+        .from('package_template_products')
         .update(data)
         .eq('id', id)
         .select()
@@ -99,7 +98,7 @@ export function usePackageProducts(packageId?: string) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['package_products'] });
+      queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
       toast.success('Vínculo atualizado!');
     },
     onError: (error: any) => {
@@ -107,17 +106,17 @@ export function usePackageProducts(packageId?: string) {
     },
   });
 
-  const deletePackageProduct = useMutation({
+  const deleteTemplateProduct = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('package_products')
+        .from('package_template_products')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['package_products'] });
+      queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
       toast.success('Vínculo removido!');
     },
     onError: (error: any) => {
@@ -126,11 +125,11 @@ export function usePackageProducts(packageId?: string) {
   });
 
   return {
-    packageProducts,
+    templateProducts,
     isLoading,
     refetch,
-    createPackageProduct,
-    updatePackageProduct,
-    deletePackageProduct,
+    createTemplateProduct,
+    updateTemplateProduct,
+    deleteTemplateProduct,
   };
 }

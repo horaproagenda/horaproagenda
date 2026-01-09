@@ -46,14 +46,16 @@ import {
   Building2,
   Gift,
   Trash2,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
-import { usePackageProducts } from '@/hooks/usePackageProducts';
+import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
+import { useProductConsumption } from '@/hooks/useProductConsumption';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -110,9 +112,10 @@ export function ProductDetailDialog({
 }: ProductDetailDialogProps) {
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
-  const { activePackages } = useServicePackages();
+  const { templates } = usePackageTemplates();
   const { serviceProducts } = useServiceProducts();
-  const { packageProducts, createPackageProduct, deletePackageProduct } = usePackageProducts();
+  const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
+  const { consumptionReport } = useProductConsumption();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -120,12 +123,11 @@ export function ProductDetailDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [selectedPackageId, setSelectedPackageId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(1);
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
-  const [linkTab, setLinkTab] = useState<'service' | 'package'>('service');
 
   // Filter purchases for this product
   const productPurchases = useMemo(() => {
@@ -140,11 +142,17 @@ export function ProductDetailDialog({
     return serviceProducts.filter(sp => sp.product_id === product.id);
   }, [product, serviceProducts]);
 
-  // Get package links for this product
-  const productPackageLinks = useMemo(() => {
+  // Get template links for this product
+  const productTemplateLinks = useMemo(() => {
     if (!product) return [];
-    return packageProducts.filter(pp => pp.product_id === product.id);
-  }, [product, packageProducts]);
+    return templateProducts.filter(tp => tp.product_id === product.id);
+  }, [product, templateProducts]);
+
+  // Get consumption report for this product
+  const productConsumption = useMemo(() => {
+    if (!product) return null;
+    return consumptionReport.find(r => r.product_id === product.id);
+  }, [product, consumptionReport]);
 
   // Calculate usage statistics
   const usageStats = useMemo(() => {
@@ -178,11 +186,11 @@ export function ProductDetailDialog({
     return activeServices.filter(s => !linkedServiceIds.includes(s.id));
   }, [activeServices, productServiceLinks]);
 
-  // Available packages to link (not already linked)
-  const availablePackagesToLink = useMemo(() => {
-    const linkedPackageIds = productPackageLinks.map(pp => pp.package_id);
-    return activePackages.filter(p => !linkedPackageIds.includes(p.id));
-  }, [activePackages, productPackageLinks]);
+  // Available templates to link (not already linked)
+  const availableTemplatesToLink = useMemo(() => {
+    const linkedTemplateIds = productTemplateLinks.map(tp => tp.template_id);
+    return templates.filter(t => !linkedTemplateIds.includes(t.id));
+  }, [templates, productTemplateLinks]);
 
   const handleStartEdit = () => {
     if (!product) return;
@@ -220,7 +228,6 @@ export function ProductDetailDialog({
     const useEstimated = isEstimatedTracking(product.product_type);
     
     if (useEstimated) {
-      // For liquids/gel/cream: calculate quantity_per_use from estimated appointments
       const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
       await onCreateServiceLink({
         service_id: selectedServiceId,
@@ -233,7 +240,6 @@ export function ProductDetailDialog({
         notes: null,
       });
     } else {
-      // For solids: use exact quantity
       await onCreateServiceLink({
         service_id: selectedServiceId,
         product_id: product.id,
@@ -249,15 +255,15 @@ export function ProductDetailDialog({
     setContainerAmount(1);
   };
 
-  const handleAddPackageLink = async () => {
-    if (!product || !selectedPackageId) return;
+  const handleAddTemplateLink = async () => {
+    if (!product || !selectedTemplateId) return;
     
     const useEstimated = isEstimatedTracking(product.product_type);
     
     if (useEstimated) {
       const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
-      await createPackageProduct.mutateAsync({
-        package_id: selectedPackageId,
+      await createTemplateProduct.mutateAsync({
+        template_id: selectedTemplateId,
         product_id: product.id,
         quantity_per_use: calculatedQuantityPerUse,
         estimated_appointments: estimatedAppointments,
@@ -267,8 +273,8 @@ export function ProductDetailDialog({
         notes: null,
       });
     } else {
-      await createPackageProduct.mutateAsync({
-        package_id: selectedPackageId,
+      await createTemplateProduct.mutateAsync({
+        template_id: selectedTemplateId,
         product_id: product.id,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
@@ -276,7 +282,7 @@ export function ProductDetailDialog({
       });
     }
     
-    setSelectedPackageId('');
+    setSelectedTemplateId('');
     setQuantityPerUse(1);
     setEstimatedAppointments(30);
     setContainerAmount(1);
@@ -295,7 +301,7 @@ export function ProductDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -316,11 +322,12 @@ export function ProductDetailDialog({
 
         <ScrollArea className="max-h-[70vh]">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="info">Informações</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="info">Info</TabsTrigger>
               <TabsTrigger value="purchases">Compras ({productPurchases.length})</TabsTrigger>
               <TabsTrigger value="services">Serviços ({productServiceLinks.length})</TabsTrigger>
-              <TabsTrigger value="packages">Pacotes ({productPackageLinks.length})</TabsTrigger>
+              <TabsTrigger value="templates">Pacotes ({productTemplateLinks.length})</TabsTrigger>
+              <TabsTrigger value="consumption">Consumo</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
@@ -602,51 +609,49 @@ export function ProductDetailDialog({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    productPurchases.map(purchase => {
-                      const durationDays = purchase.started_using_at && purchase.finished_at
-                        ? differenceInDays(parseISO(purchase.finished_at), parseISO(purchase.started_using_at))
+                    productPurchases.map((purchase) => {
+                      const daysInUse = purchase.started_using_at 
+                        ? differenceInDays(
+                            purchase.finished_at ? parseISO(purchase.finished_at) : new Date(),
+                            parseISO(purchase.started_using_at)
+                          )
                         : null;
 
                       return (
                         <TableRow key={purchase.id}>
                           <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(parseISO(purchase.purchase_date), 'dd/MM/yyyy')}
-                            </div>
+                            {format(parseISO(purchase.purchase_date), 'dd/MM/yyyy')}
                           </TableCell>
                           <TableCell>
                             {purchase.quantity} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                           </TableCell>
                           <TableCell>
                             <div>
-                              <span className="font-medium">R$ {purchase.total_price.toFixed(2)}</span>
-                              <span className="text-xs text-muted-foreground block">
-                                R$ {purchase.unit_price.toFixed(2)}/un
-                              </span>
+                              <p className="font-medium">R$ {purchase.total_price.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                R$ {purchase.unit_price.toFixed(2)}/{PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                              </p>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            {purchase.supplier || '-'}
-                          </TableCell>
+                          <TableCell>{purchase.supplier || '-'}</TableCell>
                           <TableCell>
                             {purchase.started_using_at ? (
-                              <div className="text-xs">
-                                <p>Início: {format(parseISO(purchase.started_using_at), 'dd/MM/yy')}</p>
-                                {purchase.finished_at && (
-                                  <>
-                                    <p>Fim: {format(parseISO(purchase.finished_at), 'dd/MM/yy')}</p>
-                                    {durationDays !== null && (
-                                      <Badge variant="outline" className="mt-1">
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        {durationDays} dias
-                                      </Badge>
-                                    )}
-                                  </>
+                              <div className="text-sm">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(parseISO(purchase.started_using_at), 'dd/MM')}
+                                  {purchase.finished_at && (
+                                    <> - {format(parseISO(purchase.finished_at), 'dd/MM')}</>
+                                  )}
+                                </div>
+                                {daysInUse !== null && (
+                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                    {daysInUse} dias
+                                  </Badge>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground text-xs">Não iniciado</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -658,7 +663,7 @@ export function ProductDetailDialog({
             </TabsContent>
 
             <TabsContent value="services" className="mt-4">
-              {/* Add Service Link - Adapted form based on product type */}
+              {/* Add Service Link */}
               {canEdit && availableServicesToLink.length > 0 && (
                 <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
                   <div className="flex items-center gap-2 mb-2">
@@ -678,13 +683,14 @@ export function ProductDetailDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {availableServicesToLink.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} - {s.category}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     
                     {isEstimatedTracking(product.product_type) ? (
-                      // For liquids/gel/cream: Ask about container and estimated appointments
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">
@@ -724,7 +730,6 @@ export function ProductDetailDialog({
                         </div>
                       </div>
                     ) : (
-                      // For solids: Ask exact quantity per use
                       <div className="w-48">
                         <Label className="text-xs text-muted-foreground mb-1 block">
                           Quantidade usada por atendimento
@@ -775,10 +780,8 @@ export function ProductDetailDialog({
                       const service = services.find(s => s.id === sp.service_id);
                       const isEstimated = sp.tracking_method === 'estimated';
                       
-                      // Calculate remaining appointments
                       let remainingAppointments = 0;
                       if (isEstimated && sp.estimated_appointments && sp.container_amount) {
-                        // Based on estimated appointments per container
                         const containersRemaining = product.current_stock / sp.container_amount;
                         remainingAppointments = Math.floor(containersRemaining * sp.estimated_appointments);
                       } else if (sp.quantity_per_use > 0) {
@@ -830,13 +833,17 @@ export function ProductDetailDialog({
               </Table>
             </TabsContent>
 
-            <TabsContent value="packages" className="mt-4">
-              {/* Add Package Link */}
-              {canEdit && availablePackagesToLink.length > 0 && (
+            <TabsContent value="templates" className="mt-4">
+              <div className="text-sm text-muted-foreground mb-3">
+                Vincule produtos aos <strong>templates de pacotes</strong>. O consumo será contabilizado automaticamente em cada sessão agendada.
+              </div>
+              
+              {/* Add Template Link */}
+              {canEdit && availableTemplatesToLink.length > 0 && (
                 <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Vincular a Pacote</span>
+                    <span className="text-sm font-medium">Vincular a Template de Pacote</span>
                     {isEstimatedTracking(product.product_type) && (
                       <Badge variant="outline" className="text-xs">
                         Modo Estimado
@@ -845,14 +852,14 @@ export function ProductDetailDialog({
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3">
-                    <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione um pacote para vincular" />
+                        <SelectValue placeholder="Selecione um template de pacote" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availablePackagesToLink.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} {p.client?.name ? `- ${p.client.name}` : ''} ({p.total_sessions} sessões)
+                        {availableTemplatesToLink.map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} ({t.total_sessions} sessões)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -912,9 +919,9 @@ export function ProductDetailDialog({
                     )}
                   </div>
                   
-                  <Button onClick={handleAddPackageLink} disabled={!selectedPackageId} className="w-full">
+                  <Button onClick={handleAddTemplateLink} disabled={!selectedTemplateId} className="w-full">
                     <Gift className="h-4 w-4 mr-1" />
-                    Vincular Produto ao Pacote
+                    Vincular Produto ao Template
                   </Button>
                 </div>
               )}
@@ -922,46 +929,48 @@ export function ProductDetailDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pacote</TableHead>
-                    <TableHead>Cliente</TableHead>
+                    <TableHead>Template de Pacote</TableHead>
                     <TableHead>Sessões</TableHead>
-                    <TableHead>Consumo</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Consumo/Sessão</TableHead>
                     {canEdit && <TableHead className="w-12"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {productPackageLinks.length === 0 ? (
+                  {productTemplateLinks.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={canEdit ? 5 : 4} className="text-center py-6 text-muted-foreground">
                         <Gift className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        Nenhum pacote vinculado
+                        Nenhum template de pacote vinculado
                       </TableCell>
                     </TableRow>
                   ) : (
-                    productPackageLinks.map(pp => {
-                      const isEstimated = pp.tracking_method === 'estimated';
+                    productTemplateLinks.map(tp => {
+                      const isEstimated = tp.tracking_method === 'estimated';
                       
                       return (
-                        <TableRow key={pp.id}>
+                        <TableRow key={tp.id}>
                           <TableCell>
-                            <Badge variant="outline">{pp.package?.name || '-'}</Badge>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {pp.package?.client_id ? 'Com cliente' : 'Modelo'}
+                            <Badge variant="outline">{tp.template?.name || '-'}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">
-                              {pp.package?.total_sessions || 0} sessões
+                              {tp.template?.total_sessions || 0} sessões
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-xs">
+                              {isEstimated ? 'Estimado' : 'Exato'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {isEstimated ? (
                               <div className="text-sm">
-                                <span className="font-medium">{pp.container_amount} {pp.container_unit}</span>
-                                <span className="text-muted-foreground"> → {pp.estimated_appointments} atend.</span>
+                                <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
+                                <span className="text-muted-foreground"> → {tp.estimated_appointments} atend.</span>
                               </div>
                             ) : (
-                              <span>{pp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
+                              <span>{tp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
                             )}
                           </TableCell>
                           {canEdit && (
@@ -970,7 +979,7 @@ export function ProductDetailDialog({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => deletePackageProduct.mutate(pp.id)}
+                                onClick={() => deleteTemplateProduct.mutate(tp.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -982,6 +991,83 @@ export function ProductDetailDialog({
                   )}
                 </TableBody>
               </Table>
+            </TabsContent>
+
+            <TabsContent value="consumption" className="mt-4">
+              <div className="text-sm text-muted-foreground mb-4">
+                Relatório de consumo deste produto baseado nos atendimentos realizados.
+              </div>
+              
+              {productConsumption ? (
+                <div className="space-y-4">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="text-sm text-muted-foreground">Total Consumido</div>
+                      <div className="text-2xl font-bold">
+                        {productConsumption.total_quantity.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="text-sm text-muted-foreground">Atendimentos</div>
+                      <div className="text-2xl font-bold">{productConsumption.appointment_count}</div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="text-sm text-muted-foreground">Média por Atendimento</div>
+                      <div className="text-2xl font-bold">
+                        {productConsumption.avg_per_appointment.toFixed(3)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* By Source */}
+                  {productConsumption.by_source.length > 0 && (
+                    <>
+                      <Separator />
+                      <h4 className="font-medium flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Consumo por Serviço/Pacote
+                      </h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Origem</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Quantidade</TableHead>
+                            <TableHead>Atendimentos</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {productConsumption.by_source.map((source, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>
+                                <Badge variant="outline">{source.source_name}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="text-xs">
+                                  {source.source_type === 'service' ? 'Serviço' : 'Pacote'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {source.quantity.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                              </TableCell>
+                              <TableCell>{source.appointment_count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>Nenhum consumo registrado ainda.</p>
+                  <p className="text-sm mt-1">
+                    O consumo será contabilizado automaticamente quando atendimentos forem realizados.
+                  </p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </ScrollArea>

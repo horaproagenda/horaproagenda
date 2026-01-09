@@ -188,127 +188,132 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Novo Cliente
+          <Button size="sm" className="gap-1.5 btn-vibrant">
+            <UserPlus className="h-3.5 w-3.5" />
+            <span className="text-xs">Novo Cliente</span>
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
-          <DialogDescription>
-            Preencha os dados do cliente para cadastrá-lo no sistema.
-          </DialogDescription>
+          <DialogTitle className="text-base">Novo Cliente</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nome completo" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {duplicatesByName.length > 0 && (
-              <DuplicateClientAlert duplicates={duplicatesByName} matchType="name" />
-            )}
-            
-            <FormField
-              control={form.control}
-              name="cpf"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF</FormLabel>
-                  <FormControl>
-                    <Input placeholder="000.000.000-00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {duplicatesByCpf.length > 0 && (
-              <DuplicateClientAlert duplicates={duplicatesByCpf} matchType="cpf" />
-            )}
-            
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="(11) 99999-9999" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {duplicatesByPhone.length > 0 && (
-              <DuplicateClientAlert duplicates={duplicatesByPhone} matchType="phone" />
-            )}
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {duplicatesByEmail.length > 0 && (
-              <DuplicateClientAlert duplicates={duplicatesByEmail} matchType="email" />
-            )}
-
-            <FormField
-              control={form.control}
-              name="birthdate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Nascimento</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="referral_source"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Como nos conheceu?</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            {/* Name & Phone */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Nome *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma opção" />
-                      </SelectTrigger>
+                      <Input placeholder="Nome completo" className="h-8 text-sm" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {REFERRAL_SOURCES.map((source) => (
-                        <SelectItem key={source} value={source}>
-                          {source}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Telefone *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(11) 99999-9999" className="h-8 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            {(duplicatesByName.length > 0 || duplicatesByPhone.length > 0) && (
+              <DuplicateClientAlert 
+                duplicates={[...duplicatesByName, ...duplicatesByPhone.filter(p => !duplicatesByName.find(n => n.id === p.id))]} 
+                matchType={duplicatesByName.length > 0 ? "name" : "phone"} 
+              />
+            )}
+            
+            {/* CPF & Email */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">CPF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="000.000.000-00" className="h-8 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="email@exemplo.com" className="h-8 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            {(duplicatesByCpf.length > 0 || duplicatesByEmail.length > 0) && (
+              <DuplicateClientAlert 
+                duplicates={[...duplicatesByCpf, ...duplicatesByEmail.filter(e => !duplicatesByCpf.find(c => c.id === e.id))]} 
+                matchType={duplicatesByCpf.length > 0 ? "cpf" : "email"} 
+              />
+            )}
+
+            {/* Birthdate & Referral */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="birthdate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Data de Nascimento</FormLabel>
+                    <FormControl>
+                      <Input type="date" className="h-8 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="referral_source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Como conheceu?</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {REFERRAL_SOURCES.map((source) => (
+                          <SelectItem key={source} value={source} className="text-sm">
+                            {source}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {isAdminOrReceptionist && (
               <FormField
@@ -316,22 +321,22 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                 name="assigned_professional_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Profissional Responsável</FormLabel>
+                    <FormLabel className="text-xs">Profissional Responsável</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um profissional (opcional)" />
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione (opcional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {activeProfessionals.map((professional) => (
-                          <SelectItem key={professional.id} value={professional.id}>
+                          <SelectItem key={professional.id} value={professional.id} className="text-sm">
                             {professional.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -341,10 +346,10 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
               control={form.control}
               name="is_active"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>Status</FormLabel>
-                    <p className="text-sm text-muted-foreground">
+                <FormItem className="flex flex-row items-center justify-between rounded-md border p-2">
+                  <div>
+                    <FormLabel className="text-xs">Status</FormLabel>
+                    <p className="text-[10px] text-muted-foreground">
                       {field.value ? 'Cliente ativo' : 'Cliente inativo'}
                     </p>
                   </div>
@@ -363,23 +368,24 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Observações</FormLabel>
+                  <FormLabel className="text-xs">Observações</FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder="Alergias, preferências, etc."
-                      className="resize-none"
+                      className="resize-none h-14 text-sm"
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-[10px]" />
                 </FormItem>
               )}
             />
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" size="sm" className="btn-vibrant" disabled={isLoading}>
                 {isLoading ? 'Salvando...' : 'Cadastrar'}
               </Button>
             </div>

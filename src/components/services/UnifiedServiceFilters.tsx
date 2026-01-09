@@ -28,6 +28,7 @@ interface UnifiedServiceFiltersProps {
   selectedSessions?: string | null;
   searchTerm: string;
   sortBy: string;
+  hideSearch?: boolean;
   // Callbacks
   onCategoryChange: (category: string | null) => void;
   onProfessionalChange: (professionalId: string | null) => void;
@@ -54,6 +55,7 @@ export function UnifiedServiceFilters({
   selectedSessions,
   searchTerm,
   sortBy,
+  hideSearch,
   onCategoryChange,
   onProfessionalChange,
   onRoomChange,
@@ -180,49 +182,27 @@ export function UnifiedServiceFilters({
   );
 
   return (
-    <div className="space-y-2">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={`Buscar ${type === 'services' ? 'serviço' : 'pacote'}...`}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 h-9"
-        />
-        {searchTerm && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-            onClick={() => onSearchChange('')}
+    <div className="flex items-center gap-2">
+      {/* Filter button */}
+      <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={cn(
+              "h-8 gap-1.5",
+              hasActiveFilters && "border-primary text-primary"
+            )}
           >
-            <X className="h-3 w-3" />
+            <Filter className="h-3.5 w-3.5" />
+            <span className="text-xs">Filtros</span>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="h-4 px-1 text-[10px] min-w-4 justify-center">
+                {activeFilterCount}
+              </Badge>
+            )}
           </Button>
-        )}
-      </div>
-
-      {/* Filter button and Sort */}
-      <div className="flex items-center justify-between gap-2">
-        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className={cn(
-                "h-8 gap-1.5",
-                hasActiveFilters && "border-primary text-primary"
-              )}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              <span className="text-xs">Filtros</span>
-              {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="h-4 px-1 text-[10px] min-w-4 justify-center">
-                  {activeFilterCount}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
+        </PopoverTrigger>
           <PopoverContent align="start" className="w-72 p-3">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -337,48 +317,47 @@ export function UnifiedServiceFilters({
           </PopoverContent>
         </Popover>
 
-        {/* Active filter badges */}
-        {hasActiveFilters && (
-          <div className="flex-1 flex items-center gap-1 overflow-x-auto">
-            {selectedStatus && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {selectedStatus === 'active' ? 'Ativo' : 'Inativo'}
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onStatusChange(null)} />
-              </Badge>
-            )}
-            {selectedCategory && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {selectedCategory}
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onCategoryChange(null)} />
-              </Badge>
-            )}
-            {selectedProfessional && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {professionals.find(p => p.id === selectedProfessional)?.name}
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onProfessionalChange(null)} />
-              </Badge>
-            )}
-            {selectedRoom && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {rooms.find(r => r.id === selectedRoom)?.name}
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onRoomChange(null)} />
-              </Badge>
-            )}
-            {selectedClient && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {clients.find(c => c.id === selectedClient)?.name}
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onClientChange(null)} />
-              </Badge>
-            )}
-            {type === 'packages' && selectedSessions && (
-              <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-                {selectedSessions} sessões
-                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onSessionsChange?.(null)} />
-              </Badge>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Active filter badges */}
+      {hasActiveFilters && (
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {selectedStatus && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {selectedStatus === 'active' ? 'Ativo' : 'Inativo'}
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onStatusChange(null)} />
+            </Badge>
+          )}
+          {selectedCategory && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {selectedCategory}
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onCategoryChange(null)} />
+            </Badge>
+          )}
+          {selectedProfessional && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {professionals.find(p => p.id === selectedProfessional)?.name}
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onProfessionalChange(null)} />
+            </Badge>
+          )}
+          {selectedRoom && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {rooms.find(r => r.id === selectedRoom)?.name}
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onRoomChange(null)} />
+            </Badge>
+          )}
+          {selectedClient && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {clients.find(c => c.id === selectedClient)?.name}
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onClientChange(null)} />
+            </Badge>
+          )}
+          {type === 'packages' && selectedSessions && (
+            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
+              {selectedSessions} sessões
+              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onSessionsChange?.(null)} />
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   );
 }

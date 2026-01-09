@@ -108,6 +108,9 @@ serve(async (req) => {
     }
 
     // 2. Verify appointment exists and get details including package info
+    console.log('Looking for appointment:', body.appointment_id);
+    console.log('Using service role key:', supabaseServiceKey ? 'present' : 'missing');
+    
     const { data: appointment, error: aptError } = await supabase
       .from('appointments')
       .select(`
@@ -124,9 +127,12 @@ serve(async (req) => {
       .eq('id', body.appointment_id)
       .single();
 
+    console.log('Appointment query result:', { data: appointment, error: aptError });
+
     if (aptError || !appointment) {
+      console.error('Appointment not found. Error:', aptError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Appointment not found' }),
+        JSON.stringify({ success: false, error: 'Appointment not found', details: aptError?.message }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

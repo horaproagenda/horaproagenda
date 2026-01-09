@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Sparkles, Loader2, Package, Users } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Package, Upload, Download, FolderPlus } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
@@ -7,13 +7,12 @@ import { NewPackageDialog } from '@/components/services/NewPackageDialog';
 import { ServiceDetailDialog } from '@/components/services/ServiceDetailDialog';
 import { PackageDetailDialog } from '@/components/services/PackageDetailDialog';
 import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
-import { ServiceFilters } from '@/components/services/ServiceFilters';
-import { PackageFilters } from '@/components/services/PackageFilters';
+import { UnifiedServiceFilters } from '@/components/services/UnifiedServiceFilters';
 import { BulkImportDialog } from '@/components/services/BulkImportDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -23,18 +22,12 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { Service } from '@/types';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
+import { Clock, DollarSign, Layers } from 'lucide-react';
 
 type ServicePackageDB = Tables<'service_packages'>;
 
 const defaultCategories = [
-  'Cabelo',
-  'Unhas',
-  'Estética',
-  'Massagem',
-  'Maquiagem',
-  'Depilação',
-  'Tratamentos',
-  'Outros',
+  'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
 const Servicos: React.FC = () => {
@@ -71,9 +64,7 @@ const Servicos: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('customCategories');
-    if (saved) {
-      setCustomCategories(JSON.parse(saved));
-    }
+    if (saved) setCustomCategories(JSON.parse(saved));
   }, []);
 
   const allCategories = [...new Set([
@@ -86,7 +77,6 @@ const Servicos: React.FC = () => {
   const categoriesWithServices = [...new Set(services.map(s => s.category))];
   const categoriesWithPackages = [...new Set(packages.map(p => p.category).filter(Boolean))];
 
-  // Get unique clients that have used services (via appointments)
   const serviceClients = useMemo(() => {
     const clientIds = [...new Set(appointments.map(a => a.client_id))];
     return clientIds
@@ -95,7 +85,6 @@ const Servicos: React.FC = () => {
       .map(c => ({ id: c!.id, name: c!.name }));
   }, [appointments, clients]);
 
-  // Get unique clients from packages
   const packageClients = useMemo(() => {
     return [...new Map(
       packages
@@ -104,7 +93,6 @@ const Servicos: React.FC = () => {
     ).values()];
   }, [packages, clients]);
 
-  // Filter and sort services
   const filteredServices = useMemo(() => {
     let result = services.filter(service => {
       if (serviceCategory && service.category !== serviceCategory) return false;
@@ -120,7 +108,6 @@ const Servicos: React.FC = () => {
       return true;
     });
 
-    // Sort
     result.sort((a, b) => {
       switch (serviceSort) {
         case 'name-asc': return a.name.localeCompare(b.name);
@@ -136,13 +123,9 @@ const Servicos: React.FC = () => {
     return result;
   }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, serviceSearch, serviceSort, appointments]);
 
-  // Filter and sort packages - by default only show templates (no client_id)
-  // Only show client packages when a specific client is selected
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
-      // Only show templates (no client_id) unless filtering by a specific client
       if (!packageClient && pkg.client_id) return false;
-      
       if (packageCategory && pkg.category !== packageCategory) return false;
       if (packageProfessional && pkg.professional_id !== packageProfessional) return false;
       if (packageRoom && pkg.room_id !== packageRoom) return false;
@@ -161,7 +144,6 @@ const Servicos: React.FC = () => {
       return true;
     });
 
-    // Sort
     result.sort((a, b) => {
       switch (packageSort) {
         case 'name-asc': return a.name.localeCompare(b.name);
@@ -207,14 +189,8 @@ const Servicos: React.FC = () => {
   const exportServicesCSV = () => {
     const headers = ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'];
     const rows = filteredServices.map(s => [
-      s.name,
-      s.category,
-      Number(s.price).toFixed(2),
-      s.duration,
-      s.return_days || '-',
-      s.is_active ? 'Ativo' : 'Inativo'
+      s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
     ]);
-    
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -222,21 +198,14 @@ const Servicos: React.FC = () => {
     link.href = url;
     link.download = `servicos_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    toast.success('Serviços exportados com sucesso!');
+    toast.success('Serviços exportados!');
   };
 
   const exportPackagesCSV = () => {
     const headers = ['Nome', 'Categoria', 'Preço Total', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'];
     const rows = filteredPackages.map(p => [
-      p.name,
-      p.category || '-',
-      Number(p.total_price).toFixed(2),
-      p.total_sessions,
-      p.duration || 60,
-      p.interval_days || 7,
-      p.is_active ? 'Ativo' : 'Inativo'
+      p.name, p.category || '-', Number(p.total_price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
     ]);
-    
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -244,40 +213,22 @@ const Servicos: React.FC = () => {
     link.href = url;
     link.download = `pacotes_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    toast.success('Pacotes exportados com sucesso!');
+    toast.success('Pacotes exportados!');
   };
 
   return (
-    <AppLayout 
-      title="Serviços" 
-      subtitle="Catálogo de procedimentos e pacotes"
-    >
+    <AppLayout title="Serviços" subtitle="Catálogo de procedimentos e pacotes">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <TabsList>
-            <TabsTrigger value="services">Serviços</TabsTrigger>
-            <TabsTrigger value="packages">Pacotes</TabsTrigger>
-          </TabsList>
-          
-          {activeTab === 'services' ? (
-            <div className="flex gap-2 flex-wrap">
-              <BulkImportDialog type="services" onImportComplete={refetch} />
-              <NewCategoryDialog 
-                existingCategories={allCategories}
-                onCategoryCreated={handleCategoryCreated}
-              />
-              <NewServiceDialog onServiceCreated={refetch} />
-            </div>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              <BulkImportDialog type="services" onImportComplete={refetchPackages} />
-              <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories} />
-            </div>
-          )}
-        </div>
+        <TabsList className="mb-4">
+          <TabsTrigger value="services" className="text-xs">Serviços</TabsTrigger>
+          <TabsTrigger value="packages" className="text-xs">Pacotes</TabsTrigger>
+        </TabsList>
 
-        <TabsContent value="services" className="mt-0">
-          <ServiceFilters
+        {/* Services Tab */}
+        <TabsContent value="services" className="mt-0 space-y-3">
+          {/* Line 1: Search */}
+          <UnifiedServiceFilters
+            type="services"
             categories={categoriesWithServices}
             professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
             rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
@@ -297,71 +248,87 @@ const Servicos: React.FC = () => {
             onSearchChange={setServiceSearch}
             onSortChange={setServiceSort}
             onClearFilters={clearServiceFilters}
-            onExport={exportServicesCSV}
           />
 
-          <div className="mt-6 flex items-center gap-6 rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-display font-semibold">{filteredServices.filter(s => s.is_active).length}</p>
-                <p className="text-xs text-muted-foreground">Serviços {serviceCategory || serviceProfessional || serviceRoom || serviceClient || serviceSearch ? 'filtrados' : 'ativos'}</p>
-              </div>
+          {/* Line 2: New Service button */}
+          <div className="flex items-center justify-end gap-2">
+            <NewServiceDialog onServiceCreated={refetch}>
+              <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90">
+                <Plus className="h-3.5 w-3.5" />
+                <span className="text-xs">Novo Serviço</span>
+              </Button>
+            </NewServiceDialog>
+          </div>
+
+          {/* Line 3: Import, Export, New Category */}
+          <div className="flex items-center gap-2">
+            <BulkImportDialog type="services" onImportComplete={refetch} />
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={exportServicesCSV}>
+              <Download className="h-3 w-3" />
+              Exportar
+            </Button>
+            <NewCategoryDialog existingCategories={allCategories} onCategoryCreated={handleCategoryCreated}>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                <FolderPlus className="h-3 w-3" />
+                Nova Categoria
+              </Button>
+            </NewCategoryDialog>
+          </div>
+
+          {/* Stats Summary */}
+          <div className="flex items-center gap-4 text-xs bg-muted/30 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="font-semibold">{filteredServices.filter(s => s.is_active).length}</span>
+              <span className="text-muted-foreground">ativos</span>
             </div>
-            <div className="h-10 w-px bg-border" />
-            <div>
-              <p className="text-2xl font-display font-semibold">{categoriesWithServices.length}</p>
-              <p className="text-xs text-muted-foreground">Categorias</p>
+            <div className="h-3 w-px bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold">{categoriesWithServices.length}</span>
+              <span className="text-muted-foreground">categorias</span>
             </div>
             {filteredServices.length > 0 && (
               <>
-                <div className="h-10 w-px bg-border" />
-                <div>
-                  <p className="text-2xl font-display font-semibold">
+                <div className="h-3 w-px bg-border" />
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold">
                     R$ {Math.round(filteredServices.reduce((acc, s) => acc + Number(s.price), 0) / filteredServices.length)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Ticket médio</p>
+                  </span>
+                  <span className="text-muted-foreground">ticket médio</span>
                 </div>
               </>
             )}
           </div>
 
-          <div className="mt-6">
+          {/* Services Grid */}
+          <div>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredServices.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredServices.map((service, index) => (
                   <div
                     key={service.id}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                    className="animate-slide-up cursor-pointer"
+                    style={{ animationDelay: `${index * 30}ms` }}
+                    className="animate-fade-in cursor-pointer"
                     onClick={() => setSelectedService(service)}
                   >
-                    <ServiceCard 
-                      service={service} 
-                      onEdit={(s) => setSelectedService(s)}
-                      onDelete={refetch}
-                    />
+                    <ServiceCard service={service} onEdit={setSelectedService} onDelete={refetch} />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
-                <Sparkles className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                <p className="mt-3 text-muted-foreground">
-                  {serviceCategory || serviceProfessional || serviceRoom || serviceClient || serviceSearch
-                    ? 'Nenhum serviço encontrado com os filtros aplicados' 
-                    : 'Nenhum serviço cadastrado'}
+              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+                <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {serviceSearch || serviceCategory || serviceProfessional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
                 </p>
-                {!(serviceCategory || serviceProfessional || serviceRoom || serviceClient || serviceSearch) && (
+                {!serviceSearch && !serviceCategory && (
                   <NewServiceDialog onServiceCreated={refetch}>
-                    <Button className="mt-4" variant="secondary">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size="sm" variant="secondary" className="mt-3">
+                      <Plus className="h-3.5 w-3.5 mr-1" />
                       Cadastrar Serviço
                     </Button>
                   </NewServiceDialog>
@@ -371,8 +338,11 @@ const Servicos: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="packages" className="mt-0">
-          <PackageFilters
+        {/* Packages Tab */}
+        <TabsContent value="packages" className="mt-0 space-y-3">
+          {/* Line 1: Search */}
+          <UnifiedServiceFilters
+            type="packages"
             categories={categoriesWithPackages as string[]}
             professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
             rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
@@ -381,138 +351,130 @@ const Servicos: React.FC = () => {
             selectedProfessional={packageProfessional}
             selectedRoom={packageRoom}
             selectedClient={packageClient}
-            selectedSessions={packageSessions}
             selectedStatus={packageStatus}
+            selectedSessions={packageSessions}
             searchTerm={packageSearch}
             sortBy={packageSort}
             onCategoryChange={setPackageCategory}
             onProfessionalChange={setPackageProfessional}
             onRoomChange={setPackageRoom}
             onClientChange={setPackageClient}
-            onSessionsChange={setPackageSessions}
             onStatusChange={setPackageStatus}
+            onSessionsChange={setPackageSessions}
             onSearchChange={setPackageSearch}
             onSortChange={setPackageSort}
             onClearFilters={clearPackageFilters}
-            onExport={exportPackagesCSV}
           />
 
-          <div className="mt-6 flex items-center gap-6 rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Package className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-display font-semibold">{filteredPackages.filter(p => p.is_active).length}</p>
-                <p className="text-xs text-muted-foreground">Pacotes ativos</p>
-              </div>
-            </div>
-            <div className="h-10 w-px bg-border" />
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-purple-500/10 p-2">
-                <Users className="h-5 w-5 text-purple-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-display font-semibold">{packages.filter(p => p.client_id).length}</p>
-                <p className="text-xs text-muted-foreground">Com clientes</p>
-              </div>
-            </div>
-            {filteredPackages.length > 0 && (
-              <>
-                <div className="h-10 w-px bg-border" />
-                <div>
-                  <p className="text-2xl font-display font-semibold">
-                    R$ {Math.round(filteredPackages.reduce((acc, p) => acc + Number(p.total_price), 0) / filteredPackages.length)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Ticket médio</p>
-                </div>
-              </>
-            )}
+          {/* Line 2: New Package button */}
+          <div className="flex items-center justify-end gap-2">
+            <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
+              <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90">
+                <Package className="h-3.5 w-3.5" />
+                <span className="text-xs">Novo Pacote</span>
+              </Button>
+            </NewPackageDialog>
           </div>
 
-          {packagesLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          {/* Line 3: Import, Export */}
+          <div className="flex items-center gap-2">
+            <BulkImportDialog type="services" onImportComplete={refetchPackages} />
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={exportPackagesCSV}>
+              <Download className="h-3 w-3" />
+              Exportar
+            </Button>
+          </div>
+
+          {/* Stats Summary */}
+          <div className="flex items-center gap-4 text-xs bg-muted/30 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-primary" />
+              <span className="font-semibold">{filteredPackages.filter(p => p.is_active).length}</span>
+              <span className="text-muted-foreground">ativos</span>
             </div>
-          ) : filteredPackages.length > 0 ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredPackages.map((pkg) => (
-                <Card 
-                  key={pkg.id} 
-                  className="overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-lg transition-all"
-                  onClick={() => setSelectedPackage(pkg)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-lg bg-primary/10 p-2">
-                          <Package className="h-5 w-5 text-primary" />
+            <div className="h-3 w-px bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold">{packages.filter(p => p.client_id).length}</span>
+              <span className="text-muted-foreground">vendidos</span>
+            </div>
+          </div>
+
+          {/* Packages Grid */}
+          <div>
+            {packagesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : filteredPackages.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredPackages.map((pkg, index) => (
+                  <Card
+                    key={pkg.id}
+                    style={{ animationDelay: `${index * 30}ms` }}
+                    className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
+                    onClick={() => setSelectedPackage(pkg)}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
+                          <Package className="h-3.5 w-3.5 text-primary" />
                         </div>
-                        <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
+                          {pkg.category && (
+                            <Badge variant="outline" className="text-[10px] mt-0.5 h-4">{pkg.category}</Badge>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
+                      <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
                         {pkg.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {pkg.category && (
-                      <Badge variant="outline" className="text-xs">{pkg.category}</Badge>
-                    )}
-                    {pkg.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{pkg.description}</p>
-                    )}
 
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="p-2 rounded bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Sessões</p>
-                        <p className="font-medium">{pkg.total_sessions}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Layers className="h-3 w-3" />
+                        <span>{pkg.total_sessions} sessões</span>
                       </div>
-                      <div className="p-2 rounded bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Duração</p>
-                        <p className="font-medium">{pkg.duration || 60} min</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Intervalo</p>
-                        <p className="font-medium">{pkg.interval_days} dias</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/50">
-                        <p className="text-xs text-muted-foreground">Agendamento</p>
-                        <p className="font-medium">{pkg.auto_schedule ? 'Automático' : 'Manual'}</p>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{pkg.duration || 60}min</span>
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center pt-3 border-t">
-                      <span className="text-sm text-muted-foreground">Valor</span>
-                      <span className="text-xl font-bold text-primary">
-                        R$ {Number(pkg.total_price).toFixed(2)}
+                    <div className="mt-2 pt-2 border-t flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-sm font-semibold">
+                        <DollarSign className="h-3.5 w-3.5 text-green-600" />
+                        <span>R$ {Number(pkg.total_price).toFixed(0)}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        R$ {(Number(pkg.total_price) / pkg.total_sessions).toFixed(0)}/sessão
                       </span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
-              <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
-              <p className="mt-3 text-muted-foreground">
-                {packageCategory || packageProfessional || packageRoom || packageClient || packageSessions || packageStatus || packageSearch
-                  ? 'Nenhum pacote encontrado com os filtros aplicados'
-                  : 'Nenhum pacote cadastrado'}
-              </p>
-              {!(packageCategory || packageProfessional || packageRoom || packageClient || packageSessions || packageStatus || packageSearch) && (
-                <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
-                  <Button className="mt-4" variant="secondary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar Pacote
-                  </Button>
-                </NewPackageDialog>
-              )}
-            </div>
-          )}
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+                <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {packageSearch || packageCategory ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
+                </p>
+                {!packageSearch && !packageCategory && (
+                  <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
+                    <Button size="sm" variant="secondary" className="mt-3">
+                      <Package className="h-3.5 w-3.5 mr-1" />
+                      Criar Pacote
+                    </Button>
+                  </NewPackageDialog>
+                )}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
+      {/* Detail Dialogs */}
       {selectedService && (
         <ServiceDetailDialog
           service={selectedService}

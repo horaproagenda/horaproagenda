@@ -57,32 +57,51 @@ const APP_ROLES = [
 ];
 
 const PERMISSIONS_CONFIG = [
-  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Pode registrar e alterar pagamentos' },
-  { key: 'can_view_other_agendas', label: 'Ver agenda de outros profissionais', description: 'Visualizar agendamentos de outros' },
-  { key: 'can_view_other_clients', label: 'Ver clientes de outros profissionais', description: 'Acessar dados de clientes de outros' },
-  { key: 'can_view_daily_revenue', label: 'Ver lucro/receita do dia', description: 'Visualizar valores financeiros totais' },
-  { key: 'can_open_close_register', label: 'Abrir e fechar caixa', description: 'Iniciar e finalizar movimento de caixa' },
-  { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento' },
-  { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de outros' },
-  { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos' },
-  { key: 'can_view_other_reports', label: 'Ver relatórios de outros profissionais', description: 'Acessar relatórios completos' },
-  { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Ver logs de ações do sistema' },
-  { key: 'can_access_settings', label: 'Acessar Configurações', description: 'Alterar configurações do sistema' },
+  { key: 'can_access_financial', label: 'Acessar Financeiro', description: 'Ver módulo financeiro e movimentações', category: 'financial' },
+  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Registrar e alterar pagamentos', category: 'financial' },
+  { key: 'can_view_other_payments', label: 'Ver pagamentos de outros profissionais', description: 'Visualizar pagamentos de outros', category: 'financial' },
+  { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de caixa de outros', category: 'financial' },
+  { key: 'can_open_close_register', label: 'Abrir e fechar caixa', description: 'Iniciar e finalizar movimento de caixa', category: 'financial' },
+  { key: 'can_view_daily_revenue', label: 'Ver lucro/receita do dia', description: 'Visualizar valores financeiros totais', category: 'financial' },
+  { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Acesso a todos os clientes', category: 'clients' },
+  { key: 'can_view_only_own_clients', label: 'Ver somente próprios clientes', description: 'Acesso restrito aos seus clientes', category: 'clients' },
+  { key: 'can_view_other_agendas', label: 'Ver agenda de todos', description: 'Visualizar agendamentos de todos', category: 'agenda' },
+  { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
+  { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
+  { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos', category: 'products' },
+  { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Acessar relatórios de outros profissionais', category: 'reports' },
+  { key: 'can_view_only_own_reports', label: 'Ver somente próprios relatórios', description: 'Acesso restrito aos seus relatórios', category: 'reports' },
+  { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Ver logs de ações do sistema', category: 'system' },
+  { key: 'can_access_settings', label: 'Acessar Configurações', description: 'Alterar configurações do sistema', category: 'system' },
 ];
 
 const defaultPermissions = {
+  can_access_financial: false,
   can_manage_payments: false,
-  can_view_other_agendas: false,
-  can_view_other_clients: false,
-  can_view_daily_revenue: false,
-  can_open_close_register: false,
-  can_modify_agenda: false,
+  can_view_other_payments: false,
   can_view_other_registers: false,
+  can_open_close_register: false,
+  can_view_daily_revenue: false,
+  can_view_other_clients: false,
+  can_view_only_own_clients: true,
+  can_view_other_agendas: false,
+  can_view_only_own_agenda: true,
+  can_modify_agenda: false,
   can_manage_products: false,
   can_view_other_reports: false,
+  can_view_only_own_reports: true,
   can_access_audit: false,
   can_access_settings: false,
 };
+
+const PERMISSION_CATEGORIES = [
+  { key: 'financial', label: 'Financeiro', icon: '💰' },
+  { key: 'clients', label: 'Clientes', icon: '👥' },
+  { key: 'agenda', label: 'Agenda', icon: '📅' },
+  { key: 'products', label: 'Produtos', icon: '📦' },
+  { key: 'reports', label: 'Relatórios', icon: '📊' },
+  { key: 'system', label: 'Sistema', icon: '⚙️' },
+];
 
 const professionalSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -583,84 +602,109 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
 
                 <Separator />
 
-                {/* Permissions Section */}
-                <Collapsible open={permissionsOpen} onOpenChange={setPermissionsOpen}>
-                  <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-medium">Permissões de Acesso</span>
-                        {activePermissionsCount > 0 && (
-                          <Badge variant="secondary" className="text-[9px]">
-                            {activePermissionsCount} ativas
-                          </Badge>
-                        )}
-                      </div>
-                      {permissionsOpen ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                {/* Permissions Section - Always visible */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Permissões de Acesso</span>
+                      {activePermissionsCount > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {activePermissionsCount} ativas
+                        </Badge>
                       )}
                     </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="mt-3 p-3 rounded-lg border bg-card space-y-3">
-                      {appRole === 'admin' ? (
-                        <div className="p-2 rounded bg-primary/10 text-xs text-primary">
-                          Administradores possuem todas as permissões automaticamente.
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-muted-foreground">Selecionar permissões:</span>
-                            <div className="flex gap-1">
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 text-[10px] px-2"
-                                onClick={() => toggleAllPermissions(true)}
-                              >
-                                Todas
-                              </Button>
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 text-[10px] px-2"
-                                onClick={() => toggleAllPermissions(false)}
-                              >
-                                Nenhuma
-                              </Button>
+                    {appRole !== 'admin' && (
+                      <div className="flex gap-1">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-[10px] px-2"
+                          onClick={() => toggleAllPermissions(true)}
+                        >
+                          Marcar Todas
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-[10px] px-2"
+                          onClick={() => toggleAllPermissions(false)}
+                        >
+                          Desmarcar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {appRole === 'admin' ? (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-xs text-primary font-medium">
+                        ✓ Administradores possuem acesso total a todas as funções do sistema.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {PERMISSION_CATEGORIES.map((category) => {
+                        const categoryPerms = PERMISSIONS_CONFIG.filter(p => p.category === category.key);
+                        if (categoryPerms.length === 0) return null;
+                        
+                        return (
+                          <div key={category.key} className="rounded-lg border bg-card overflow-hidden">
+                            <div className="px-3 py-2 bg-muted/50 border-b">
+                              <span className="text-xs font-medium flex items-center gap-2">
+                                <span>{category.icon}</span>
+                                {category.label}
+                              </span>
+                            </div>
+                            <div className="p-2 space-y-1">
+                              {categoryPerms.map((perm) => (
+                                <div 
+                                  key={perm.key} 
+                                  className="flex items-center justify-between p-2 rounded hover:bg-muted/30 transition-colors"
+                                >
+                                  <div className="flex-1 min-w-0 pr-3">
+                                    <p className="text-xs font-medium truncate">{perm.label}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{perm.description}</p>
+                                  </div>
+                                  <Switch
+                                    checked={permissions?.[perm.key] || false}
+                                    onCheckedChange={(checked) => {
+                                      const newPermissions = { ...permissions, [perm.key]: checked };
+                                      
+                                      // Handle mutual exclusivity for "own only" vs "all" permissions
+                                      if (perm.key === 'can_view_other_clients' && checked) {
+                                        newPermissions.can_view_only_own_clients = false;
+                                      }
+                                      if (perm.key === 'can_view_only_own_clients' && checked) {
+                                        newPermissions.can_view_other_clients = false;
+                                      }
+                                      if (perm.key === 'can_view_other_agendas' && checked) {
+                                        newPermissions.can_view_only_own_agenda = false;
+                                      }
+                                      if (perm.key === 'can_view_only_own_agenda' && checked) {
+                                        newPermissions.can_view_other_agendas = false;
+                                      }
+                                      if (perm.key === 'can_view_other_reports' && checked) {
+                                        newPermissions.can_view_only_own_reports = false;
+                                      }
+                                      if (perm.key === 'can_view_only_own_reports' && checked) {
+                                        newPermissions.can_view_other_reports = false;
+                                      }
+                                      
+                                      form.setValue('permissions', newPermissions);
+                                    }}
+                                  />
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          <div className="grid gap-2">
-                            {PERMISSIONS_CONFIG.map((perm) => (
-                              <div 
-                                key={perm.key} 
-                                className="flex items-center justify-between p-2 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
-                              >
-                                <div>
-                                  <p className="text-xs font-medium">{perm.label}</p>
-                                  <p className="text-[10px] text-muted-foreground">{perm.description}</p>
-                                </div>
-                                <Switch
-                                  checked={permissions?.[perm.key] || false}
-                                  onCheckedChange={(checked) => {
-                                    form.setValue('permissions', {
-                                      ...permissions,
-                                      [perm.key]: checked,
-                                    });
-                                  }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
+                        );
+                      })}
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                  )}
+                </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button

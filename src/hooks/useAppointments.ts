@@ -20,7 +20,8 @@ export interface PaymentUpdate {
   payment_methods: string[];
   amount_paid: number;
   payment_status: PaymentStatus;
-  client_credit?: number;
+  client_credit?: number; // Saldo: troco em dinheiro que fica como crédito (registrado no caixa/financeiro)
+  courtesy_credit?: number; // Cortesia: brinde/presente sem entrada de dinheiro
   used_client_credit?: number;
   client_id?: string;
   cash_register_id?: string;
@@ -176,6 +177,7 @@ export function useAppointments() {
           amount_paid: payment.amount_paid,
           payment_status: payment.payment_status,
           client_credit: payment.client_credit,
+          courtesy_credit: payment.courtesy_credit,
           used_client_credit: payment.used_client_credit,
           cash_register_id: payment.cash_register_id,
           card_fee_amount: payment.card_fee_amount,

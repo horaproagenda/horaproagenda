@@ -70,7 +70,8 @@ interface AppointmentDetailDialogProps {
   onPayment: (
     appointmentId: string, 
     paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
-    clientCredit?: number, 
+    clientCredit?: number, // Saldo: troco real que fica no caixa
+    courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number
   ) => void;
@@ -112,7 +113,7 @@ export function AppointmentDetailDialog({
   const [payments, setPayments] = useState<{ method: string; methodId?: string; cardBrandId?: string; installments?: number; amount: string }[]>([
     { method: '', amount: '' },
   ]);
-  const [clientCreditAmount, setClientCreditAmount] = useState('');
+  const [courtesyCreditAmount, setCourtesyCreditAmount] = useState(''); // Cortesia: brinde sem entrada financeira
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
@@ -411,7 +412,7 @@ export function AppointmentDetailDialog({
   };
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const clientCredit = parseFloat(clientCreditAmount) || 0;
+  const courtesyCredit = parseFloat(courtesyCreditAmount) || 0; // Cortesia: brinde sem entrada financeira
   
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
@@ -419,9 +420,9 @@ export function AppointmentDetailDialog({
     ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAmount) 
     : 0;
   
-  const totalWithCredit = totalPaymentAmount + clientCredit + clientCreditUsed;
+  const totalWithCredit = totalPaymentAmount + courtesyCredit + clientCreditUsed;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;
-  const newRemainingAmount = remainingAmount - totalPaymentAmount - clientCredit - clientCreditUsed;
+  const newRemainingAmount = remainingAmount - totalPaymentAmount - courtesyCredit - clientCreditUsed;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
 
   
@@ -465,22 +466,25 @@ export function AppointmentDetailDialog({
         installments: p.installments
       }));
 
-    // If excess payment should become client credit, add it to the credit amount
-    const finalClientCredit = excessAction === 'credit' 
-      ? (clientCredit + excessPaymentAmount) 
-      : clientCredit;
+    // If excess payment should become client SALDO (credit with financial registration)
+    // excessAction === 'credit' means the excess becomes saldo (real money stored as credit)
+    const finalClientCredit = excessAction === 'credit' ? excessPaymentAmount : undefined;
+    
+    // courtesyCredit is a gift/bonus WITHOUT financial entry
+    const finalCourtesyCredit = courtesyCredit > 0 ? courtesyCredit : undefined;
 
-    if (validPayments.length > 0 || finalClientCredit > 0 || clientCreditUsed > 0) {
+    if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
-        finalClientCredit > 0 ? finalClientCredit : undefined,
+        finalClientCredit, // Saldo: troco real registrado no caixa/financeiro
+        finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
         currentOpenRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
-      setClientCreditAmount('');
+      setCourtesyCreditAmount('');
       setClientCreditUsedAmount('');
       setUseClientCredit(false);
       setShowConfirmDialog(false);
@@ -489,15 +493,20 @@ export function AppointmentDetailDialog({
       
       // Show toast about credit usage
       if (clientCreditUsed > 0) {
-        toast.success(`R$ ${clientCreditUsed.toFixed(2)} do crédito do cliente foi utilizado`);
+        toast.success(`R$ ${clientCreditUsed.toFixed(2)} do saldo do cliente foi utilizado`);
       }
       
       // Show toast about excess handling
       if (hasExcessPayment && excessAction === 'credit') {
-        toast.success(`R$ ${excessPaymentAmount.toFixed(2)} adicionado como crédito do cliente`);
+        toast.success(`R$ ${excessPaymentAmount.toFixed(2)} adicionado como saldo do cliente`);
       } else if (hasExcessPayment && excessAction === 'change') {
         const changeMethod = activePaymentMethods.find(m => m.id === changePaymentMethodId);
         toast.info(`Troco de R$ ${excessPaymentAmount.toFixed(2)} devolvido via ${changeMethod?.name || 'dinheiro'}`);
+      }
+      
+      // Show toast about courtesy
+      if (courtesyCredit > 0) {
+        toast.success(`R$ ${courtesyCredit.toFixed(2)} de cortesia adicionado ao cliente`);
       }
     }
   };
@@ -1008,34 +1017,34 @@ export function AppointmentDetailDialog({
                     Adicionar forma de pagamento
                   </Button>
 
-                  {/* Client Credit Section - Admin Only */}
+                  {/* Courtesy Section - Admin Only - Gift/bonus WITHOUT financial entry */}
                   {canAddClientCredit && (
-                    <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                    <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-500/5">
                       <div className="flex items-center gap-2 mb-2">
-                        <Gift className="h-4 w-4 text-amber-500" />
-                        <Label className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                          Crédito ao Cliente
+                        <Gift className="h-4 w-4 text-purple-500" />
+                        <Label className="text-sm font-medium text-purple-700 dark:text-purple-400">
+                          Cortesia ao Cliente
                         </Label>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">
-                        O valor não será contabilizado como recebimento, ficará como crédito do cliente.
+                        Brinde/presente: NÃO será contabilizado no caixa ou financeiro, apenas como crédito do cliente.
                       </p>
                       <Input
                         type="number"
                         step="0.01"
                         placeholder="0,00"
-                        value={clientCreditAmount}
-                        onChange={(e) => setClientCreditAmount(e.target.value)}
+                        value={courtesyCreditAmount}
+                        onChange={(e) => setCourtesyCreditAmount(e.target.value)}
                       />
                     </div>
                   )}
 
                   {/* Payment summary */}
-                  {(totalPaymentAmount > 0 || clientCredit > 0 || clientCreditUsed > 0) && (
+                  {(totalPaymentAmount > 0 || courtesyCredit > 0 || clientCreditUsed > 0) && (
                     <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                       {clientCreditUsed > 0 && (
                         <div className="flex justify-between text-sm text-amber-600">
-                          <span>Crédito utilizado:</span>
+                          <span>Saldo do cliente utilizado:</span>
                           <span className="font-semibold">- R$ {clientCreditUsed.toFixed(2)}</span>
                         </div>
                       )}
@@ -1051,10 +1060,10 @@ export function AppointmentDetailDialog({
                           <span className="font-semibold">+ R$ {totalFeesToAddToClient.toFixed(2)}</span>
                         </div>
                       )}
-                      {clientCredit > 0 && (
+                      {courtesyCredit > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span>Crédito ao cliente:</span>
-                          <span className="font-semibold text-amber-500">R$ {clientCredit.toFixed(2)}</span>
+                          <span>Cortesia ao cliente:</span>
+                          <span className="font-semibold text-purple-500">R$ {courtesyCredit.toFixed(2)}</span>
                         </div>
                       )}
                       <Separator className="my-1" />
@@ -1089,7 +1098,7 @@ export function AppointmentDetailDialog({
                   {hasExcessPayment && (
                     <div className="p-3 rounded-lg border border-success/30 bg-success/5 space-y-3">
                       <div className="flex items-center gap-2 text-success">
-                        <Gift className="h-4 w-4" />
+                        <DollarSign className="h-4 w-4" />
                         <span className="font-medium text-sm">
                           Valor excedente: R$ {excessPaymentAmount.toFixed(2)}
                         </span>
@@ -1109,8 +1118,8 @@ export function AppointmentDetailDialog({
                             setChangePaymentMethodId(null);
                           }}
                         >
-                          <Gift className="h-4 w-4 mr-1" />
-                          Crédito Cliente
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Saldo do Cliente
                         </Button>
                         <Button
                           variant={excessAction === 'change' ? 'default' : 'outline'}
@@ -1119,13 +1128,17 @@ export function AppointmentDetailDialog({
                           onClick={() => setExcessAction('change')}
                         >
                           <DollarSign className="h-4 w-4 mr-1" />
-                          Troco
+                          Devolver Troco
                         </Button>
                       </div>
 
                       {excessAction === 'credit' && (
                         <div className="text-xs text-success bg-success/10 p-2 rounded">
-                          R$ {excessPaymentAmount.toFixed(2)} será adicionado como crédito para o cliente usar em próximos atendimentos.
+                          <strong>Saldo:</strong> R$ {excessPaymentAmount.toFixed(2)} será adicionado como saldo do cliente.
+                          <br />
+                          <span className="text-muted-foreground">
+                            O valor será registrado no caixa e financeiro como recebimento.
+                          </span>
                         </div>
                       )}
 

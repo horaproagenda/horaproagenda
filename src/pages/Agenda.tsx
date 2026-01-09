@@ -455,7 +455,8 @@ const Agenda = () => {
   const handlePayment = (
     appointmentId: string, 
     paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
-    clientCredit?: number,
+    clientCredit?: number, // Saldo: troco real registrado no caixa/financeiro
+    courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number
   ) => {
@@ -472,9 +473,10 @@ const Agenda = () => {
       : (appointment.service?.price || 0);
 
     const paymentTotal = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
-    const creditToAdd = clientCredit || 0;
+    const saldoToAdd = clientCredit || 0; // Saldo: real money as credit (registered in cash/financial)
+    const courtesyToAdd = courtesyCredit || 0; // Cortesia: gift without financial entry
     const creditUsed = usedClientCredit || 0;
-    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + creditToAdd + creditUsed;
+    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + saldoToAdd + courtesyToAdd + creditUsed;
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
     
@@ -517,7 +519,8 @@ const Agenda = () => {
         payment_methods: newMethods,
         amount_paid: totalPaid,
         payment_status: paymentStatus,
-        client_credit: creditToAdd > 0 ? creditToAdd : undefined,
+        client_credit: saldoToAdd > 0 ? saldoToAdd : undefined, // Saldo: registered in cash/financial
+        courtesy_credit: courtesyToAdd > 0 ? courtesyToAdd : undefined, // Cortesia: NOT registered in cash/financial
         used_client_credit: creditUsed > 0 ? creditUsed : undefined,
         client_id: appointment.client_id,
         cash_register_id: cashRegisterId,

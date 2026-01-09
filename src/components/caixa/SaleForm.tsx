@@ -496,15 +496,20 @@ export function SaleForm() {
       }
 
       // Create financial entry (RECEITA - receivable = income)
+      // Build description with item names for financial entry
+      const financialItemNames = saleInfo.items.map(item => item.name).join(', ');
+      const financialDescription = `Venda: ${financialItemNames} - ${selectedClient?.name}`;
+      
       await supabase.from('financial_entries').insert({
         type: 'receivable',
-        description: `Venda ${saleInfo.code} - ${selectedClient?.name}`,
+        description: financialDescription,
         amount: paymentAmount,
         due_date: paymentDate,
         paid_date: paymentDate,
         status: 'paid',
         payment_method_id: paymentMethodId,
         client_id: selectedClientId,
+        installments: selectedCardBrand && isCreditCard ? installments : null,
         created_by: user?.id,
       });
 
@@ -513,14 +518,25 @@ export function SaleForm() {
       const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
                              paymentMethod.name.toLowerCase().includes('credito ao cliente');
       
+      // Build description with item names
+      const itemNames = saleInfo.items.map(item => item.name).join(', ');
+      const saleDescription = `${itemNames} - ${selectedClient?.name}`;
+      
       if (currentOpenRegister && !isClientCredit) {
+        // Calculate net amount for card payments
+        const netAmount = selectedCardBrand && feeInfo.feeAmount > 0 
+          ? paymentAmount - feeInfo.feeAmount 
+          : paymentAmount;
+        
         await supabase.from('cash_transactions').insert({
           cash_register_id: currentOpenRegister.id,
           type: 'income',
           category: 'sale',
-          description: `Venda ${saleInfo.code} - ${selectedClient?.name}`,
+          description: saleDescription,
           amount: paymentAmount,
           payment_method: paymentMethod.name,
+          card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
+          installments: selectedCardBrand && isCreditCard ? installments : null,
           created_by: user?.id,
         });
       }

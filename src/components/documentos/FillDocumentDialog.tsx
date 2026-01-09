@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Select, 
   SelectContent, 
@@ -20,19 +21,21 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { 
-  FileDown, 
   FileSignature, 
   ExternalLink, 
   Printer, 
   User, 
   Save,
-  Eye
+  Eye,
+  Edit3,
+  PenTool
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
+import { SignaturePad } from './SignaturePad';
 
 interface FillDocumentDialogProps {
   open: boolean;
@@ -54,8 +57,9 @@ export function FillDocumentDialog({
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<string>('content');
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signedBy, setSignedBy] = useState('');
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
@@ -80,6 +84,7 @@ export function FillDocumentDialog({
       content = content.replace(/\{telefone\}/gi, selectedClient.phone || '');
       content = content.replace(/\{cpf\}/gi, selectedClient.cpf || '');
       content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate), 'dd/MM/yyyy') : '');
+      setSignedBy(selectedClient.name);
     }
 
     content = content.replace(/\{data\}/gi, format(new Date(), 'dd/MM/yyyy', { locale: ptBR }));
@@ -101,6 +106,13 @@ export function FillDocumentDialog({
     }
   }, [preSelectedClientId]);
 
+  useEffect(() => {
+    if (!open) {
+      setSignatureData(null);
+      setActiveTab('content');
+    }
+  }, [open]);
+
   const handleCustomVariableChange = (variable: string, value: string) => {
     setCustomVariables(prev => ({
       ...prev,
@@ -108,12 +120,26 @@ export function FillDocumentDialog({
     }));
   };
 
-  const handlePrint = () => {
+  const handlePrint = (includeSignature: boolean = false) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('Bloqueador de pop-up ativo. Permita pop-ups para imprimir.');
       return;
     }
+
+    const signatureHtml = signatureData && includeSignature ? `
+      <div class="signature-image">
+        <p style="margin-bottom: 5px; font-size: 11px;">Assinatura Digital:</p>
+        <img src="${signatureData}" alt="Assinatura" style="max-width: 250px; border: 1px solid #ccc; border-radius: 4px;" />
+        <p style="font-size: 10px; color: #666; margin-top: 5px;">Assinado por: ${signedBy}</p>
+        <p style="font-size: 10px; color: #666;">Data: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+      </div>
+    ` : `
+      <div class="signature-area">
+        <div class="signature-line">Assinatura do Cliente</div>
+        <div class="signature-line">Assinatura do Responsável</div>
+      </div>
+    `;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -158,15 +184,19 @@ export function FillDocumentDialog({
               padding-top: 5px;
               font-size: 11px;
             }
+            .signature-image {
+              margin-top: 40px;
+              padding: 15px;
+              border: 1px solid #e5e7eb;
+              border-radius: 8px;
+              background: #f9fafb;
+            }
           </style>
         </head>
         <body>
           <h1>${template.title}</h1>
           <div class="content">${filledContent.replace(/\n/g, '<br>')}</div>
-          <div class="signature-area">
-            <div class="signature-line">Assinatura do Cliente</div>
-            <div class="signature-line">Assinatura do Responsável</div>
-          </div>
+          ${signatureHtml}
           <div class="footer">
             Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </div>
@@ -179,9 +209,15 @@ export function FillDocumentDialog({
     printWindow.print();
   };
 
-  const handleSaveToClient = async () => {
+  const handleSaveToClient = async (withSignature: boolean = false) => {
     if (!selectedClientId) {
       toast.error('Selecione um cliente');
+      return;
+    }
+
+    if (withSignature && !signatureData) {
+      toast.error('Capture a assinatura primeiro');
+      setActiveTab('signature');
       return;
     }
 
@@ -190,21 +226,28 @@ export function FillDocumentDialog({
       const docType = template.title.toLowerCase().includes('anamnese') ? 'anamnese' : 
                       template.title.toLowerCase().includes('contrato') ? 'contract' : 'other';
 
+      const insertData: any = {
+        client_id: selectedClientId,
+        template_id: template.id,
+        title: template.title,
+        description: `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+        type: docType,
+        content: filledContent,
+        filled_variables: customVariables,
+      };
+
+      if (withSignature && signatureData) {
+        insertData.signed_at = new Date().toISOString();
+        insertData.signed_by = signedBy;
+      }
+
       const { error } = await supabase
         .from('client_documents')
-        .insert({
-          client_id: selectedClientId,
-          template_id: template.id,
-          title: template.title,
-          description: `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
-          type: docType,
-          content: filledContent,
-          filled_variables: customVariables,
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
-      toast.success('Documento salvo no perfil do cliente!');
+      toast.success(withSignature ? 'Documento assinado e salvo!' : 'Documento salvo no perfil do cliente!');
       onDocumentSaved?.();
       onOpenChange(false);
     } catch (error) {
@@ -219,6 +262,11 @@ export function FillDocumentDialog({
     window.open('https://assinador.iti.br/', '_blank');
   };
 
+  const handleSignatureSave = (dataUrl: string) => {
+    setSignatureData(dataUrl);
+    toast.success('Assinatura capturada!');
+  };
+
   const unfilledVariables = variables.filter(v => {
     const lowerV = v.toLowerCase();
     const autoFilled = ['nome', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso'];
@@ -230,18 +278,18 @@ export function FillDocumentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="sm:max-w-[950px] h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-lg flex items-center gap-2">
-            <FileSignature className="h-5 w-5" />
+            <FileSignature className="h-5 w-5 text-primary" />
             Preencher Documento: {template.title}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Panel - Variables */}
-          <div className="w-[320px] border-r p-4 overflow-y-auto">
-            <div className="space-y-4">
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Left Panel - Client & Variables */}
+          <ScrollArea className="w-[300px] border-r">
+            <div className="p-4 space-y-4">
               <div>
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   <User className="h-4 w-4" />
@@ -273,7 +321,7 @@ export function FillDocumentDialog({
               <Separator />
 
               <div>
-                <Label className="text-sm font-medium">Variáveis do Documento</Label>
+                <Label className="text-sm font-medium">Variáveis</Label>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {variables.map((v, i) => (
                     <Badge 
@@ -306,65 +354,153 @@ export function FillDocumentDialog({
                   </div>
                 </>
               )}
-            </div>
-          </div>
 
-          {/* Right Panel - Content Preview */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-              <span className="text-sm font-medium">Pré-visualização</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowPreview(!showPreview)}
-                className="h-7 text-xs"
-              >
-                <Eye className="h-3.5 w-3.5 mr-1" />
-                {showPreview ? 'Editar' : 'Apenas Visualizar'}
-              </Button>
-            </div>
-            
-            <ScrollArea className="flex-1 p-4">
-              {showPreview ? (
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <pre className="whitespace-pre-wrap font-sans text-sm bg-white dark:bg-gray-900 rounded-lg p-4 border shadow-sm">
-                    {filledContent}
-                  </pre>
-                </div>
-              ) : (
-                <Textarea
-                  value={filledContent}
-                  onChange={(e) => setFilledContent(e.target.value)}
-                  className="min-h-[400px] font-mono text-sm resize-none"
-                  placeholder="Conteúdo do documento..."
-                />
+              {signatureData && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-green-600 flex items-center gap-1.5">
+                      <PenTool className="h-4 w-4" />
+                      Assinatura Capturada ✓
+                    </Label>
+                    <img 
+                      src={signatureData} 
+                      alt="Assinatura" 
+                      className="w-full border rounded-lg bg-white p-2"
+                    />
+                  </div>
+                </>
               )}
-            </ScrollArea>
+            </div>
+          </ScrollArea>
+
+          {/* Right Panel - Content & Signature */}
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b bg-muted/20 shrink-0">
+                <TabsList className="h-8">
+                  <TabsTrigger value="content" className="text-xs gap-1.5">
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Conteúdo
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="text-xs gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    Visualizar
+                  </TabsTrigger>
+                  <TabsTrigger value="signature" className="text-xs gap-1.5">
+                    <PenTool className="h-3.5 w-3.5" />
+                    Assinar
+                    {signatureData && <Badge variant="secondary" className="ml-1 h-4 px-1 text-[9px]">✓</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="content" className="flex-1 m-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <Textarea
+                      value={filledContent}
+                      onChange={(e) => setFilledContent(e.target.value)}
+                      className="min-h-[450px] font-mono text-sm resize-none"
+                      placeholder="Conteúdo do documento..."
+                    />
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border shadow-sm">
+                      <h2 className="text-lg font-semibold text-center mb-4 pb-3 border-b">{template.title}</h2>
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                        {filledContent}
+                      </pre>
+                      {signatureData && (
+                        <div className="mt-6 pt-4 border-t">
+                          <p className="text-xs text-muted-foreground mb-2">Assinatura Digital:</p>
+                          <img src={signatureData} alt="Assinatura" className="max-w-[200px] border rounded p-2 bg-gray-50" />
+                          <p className="text-[10px] text-muted-foreground mt-1">Assinado por: {signedBy}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="signature" className="flex-1 m-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Nome do Assinante</Label>
+                      <Input
+                        value={signedBy}
+                        onChange={(e) => setSignedBy(e.target.value)}
+                        placeholder="Nome completo..."
+                        className="h-9"
+                      />
+                    </div>
+                    
+                    <SignaturePad 
+                      onSave={handleSignatureSave}
+                      width={450}
+                      height={180}
+                    />
+
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Dica:</strong> Use o mouse ou toque na área acima para desenhar sua assinatura. 
+                        Para assinatura com validade jurídica, utilize o{' '}
+                        <a 
+                          href="https://assinador.iti.br/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Assinador Gov.br
+                        </a>.
+                      </p>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t p-4 bg-muted/20">
+        <div className="border-t p-4 bg-muted/10 shrink-0">
           <div className="flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" onClick={() => handlePrint(!!signatureData)}>
                 <Printer className="h-4 w-4 mr-1.5" />
                 Imprimir / PDF
               </Button>
               <Button variant="outline" size="sm" onClick={handleOpenGovBr}>
                 <FileSignature className="h-4 w-4 mr-1.5" />
-                Assinar Gov.br
+                Gov.br
                 <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             </div>
-            <Button 
-              size="sm" 
-              onClick={handleSaveToClient}
-              disabled={saving || !selectedClientId}
-            >
-              <Save className="h-4 w-4 mr-1.5" />
-              {saving ? 'Salvando...' : 'Salvar no Cliente'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm" 
+                onClick={() => handleSaveToClient(false)}
+                disabled={saving || !selectedClientId}
+              >
+                <Save className="h-4 w-4 mr-1.5" />
+                Salvar Rascunho
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={() => handleSaveToClient(true)}
+                disabled={saving || !selectedClientId || !signatureData}
+              >
+                <PenTool className="h-4 w-4 mr-1.5" />
+                {saving ? 'Salvando...' : 'Salvar Assinado'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

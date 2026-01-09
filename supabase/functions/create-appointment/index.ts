@@ -23,35 +23,32 @@ interface ValidationError {
   message: string;
 }
 
-// Helper to extract time from ISO string - parse the time from the ISO string directly
-// The frontend sends times like "2026-01-09T17:30:00.000Z" where 17:30 is the LOCAL time
-// but JavaScript Date converts it to UTC. We need to parse the string directly.
-function extractTimeFromISOString(isoString: string): { hours: number; minutes: number } {
-  // Extract time part from ISO string: "2026-01-09T17:30:00.000Z" -> "17:30"
-  const match = isoString.match(/T(\d{2}):(\d{2})/);
-  if (match) {
-    return { hours: parseInt(match[1], 10), minutes: parseInt(match[2], 10) };
-  }
-  // Fallback to Date parsing if regex fails
+// Brazil timezone offset (UTC-3) - converting UTC to local time
+const BRAZIL_TIMEZONE_OFFSET_HOURS = -3;
+
+// Helper to extract LOCAL time from UTC ISO string by applying Brazil timezone offset
+function extractLocalTimeFromUTC(isoString: string): { hours: number; minutes: number } {
   const date = new Date(isoString);
-  return { hours: date.getUTCHours(), minutes: date.getUTCMinutes() };
+  // Get UTC hours and apply Brazil offset
+  let hours = date.getUTCHours() + BRAZIL_TIMEZONE_OFFSET_HOURS;
+  let minutes = date.getUTCMinutes();
+  
+  // Handle day wrap-around
+  if (hours < 0) {
+    hours += 24;
+  } else if (hours >= 24) {
+    hours -= 24;
+  }
+  
+  return { hours, minutes };
 }
 
-// Helper to get day of week from ISO string - parse date directly from string
-function getDayOfWeekFromISOString(isoString: string): number {
-  // Extract date part from ISO string: "2026-01-09T17:30:00.000Z" -> "2026-01-09"
-  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) {
-    const year = parseInt(match[1], 10);
-    const month = parseInt(match[2], 10) - 1; // JavaScript months are 0-indexed
-    const day = parseInt(match[3], 10);
-    // Create date at noon to avoid timezone issues
-    const date = new Date(year, month, day, 12, 0, 0);
-    return date.getDay(); // 0 = Sunday, 6 = Saturday
-  }
-  // Fallback
+// Helper to get day of week in Brazil timezone from UTC ISO string
+function getLocalDayOfWeekFromUTC(isoString: string): number {
   const date = new Date(isoString);
-  return date.getUTCDay();
+  // Apply timezone offset to get local day
+  const localDate = new Date(date.getTime() + (BRAZIL_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000));
+  return localDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
 }
 
 serve(async (req) => {
@@ -146,9 +143,9 @@ serve(async (req) => {
     console.log('Business settings:', JSON.stringify(businessSettings));
 
     if (businessSettings) {
-      // Extract time from the appointment - parse from the ISO string directly
-      const { hours: startHour, minutes: startMinutes } = extractTimeFromISOString(body.start_time);
-      const { hours: endHour, minutes: endMinutes } = extractTimeFromISOString(body.end_time);
+      // Extract LOCAL time from the appointment - convert UTC to Brazil timezone
+      const { hours: startHour, minutes: startMinutes } = extractLocalTimeFromUTC(body.start_time);
+      const { hours: endHour, minutes: endMinutes } = extractLocalTimeFromUTC(body.end_time);
       
       const [openHour, openMinute] = businessSettings.opening_time.split(':').map(Number);
       const [closeHour, closeMinute] = businessSettings.closing_time.split(':').map(Number);
@@ -158,7 +155,7 @@ serve(async (req) => {
       const openInMinutes = openHour * 60 + openMinute;
       const closeInMinutes = closeHour * 60 + closeMinute;
 
-      console.log(`Time validation: start=${startHour}:${startMinutes} (${startInMinutes}min), end=${endHour}:${endMinutes} (${endInMinutes}min), open=${openHour}:${openMinute} (${openInMinutes}min), close=${closeHour}:${closeMinute} (${closeInMinutes}min)`);
+      console.log(`Time validation: LOCAL start=${startHour}:${startMinutes} (${startInMinutes}min), end=${endHour}:${endMinutes} (${endInMinutes}min), open=${openHour}:${openMinute} (${openInMinutes}min), close=${closeHour}:${closeMinute} (${closeInMinutes}min)`);
 
       if (startInMinutes < openInMinutes || endInMinutes > closeInMinutes) {
         errors.push({ 
@@ -167,8 +164,8 @@ serve(async (req) => {
         });
       }
 
-      // Check day of week - parse from the ISO string directly
-      const dayOfWeek = getDayOfWeekFromISOString(body.start_time);
+      // Check day of week in local timezone
+      const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time);
       console.log(`Day of week: ${dayOfWeek} (0=Sun, 6=Sat), work_sundays=${businessSettings.work_sundays}, work_saturdays=${businessSettings.work_saturdays}`);
       
       if (dayOfWeek === 0 && !businessSettings.work_sundays) {

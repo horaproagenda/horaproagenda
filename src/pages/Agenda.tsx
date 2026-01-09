@@ -461,10 +461,18 @@ const Agenda = () => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
 
+    // Calculate the correct total price based on appointment type
+    const isPackageAppointment = !!appointment.package_appointment;
+    const packageData = appointment.package_appointment?.package;
+    
+    // For package appointments, use the FULL package price, not per session
+    const totalPrice = isPackageAppointment 
+      ? (packageData?.total_price || 0)
+      : (appointment.service?.price || 0);
+
     const paymentTotal = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
     const creditAmount = clientCredit || 0;
     const totalPaid = (appointment.amount_paid || 0) + paymentTotal + creditAmount;
-    const totalPrice = appointment.service?.price || 0;
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
     

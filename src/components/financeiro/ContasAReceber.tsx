@@ -41,19 +41,28 @@ export function ContasAReceber() {
     const pendingAppointments = appointments
       .filter(apt => (apt.payment_status === 'pending' || apt.payment_status === 'partial') && apt.status !== 'cancelled')
       .map(apt => {
+        const isPackageAppointment = !!apt.package_appointment;
+        const packageData = apt.package_appointment?.package;
+        
+        // For packages: check if already paid via payment_methods
+        const isPackagePaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
+        if (isPackagePaid) return null; // Package already paid, don't show as pending
+        
+        // IMPORTANT: For package appointments, use FULL package price, not per session
         const servicePrice = apt.service?.price || 0;
-        const packageSessionPrice = apt.package_appointment?.package 
-          ? (apt.package_appointment.package.total_price / apt.package_appointment.package.total_sessions)
-          : 0;
-        const totalAmount = servicePrice || packageSessionPrice || 0;
+        const packagePrice = packageData?.total_price || 0;
+        const totalAmount = isPackageAppointment ? packagePrice : servicePrice;
+        
         const amountPaid = apt.amount_paid || 0;
-        const remainingAmount = totalAmount - amountPaid;
+        const remainingAmount = Math.max(0, totalAmount - amountPaid);
         
         return {
           id: apt.id,
           type: 'appointment' as const,
           date: apt.start_time.split('T')[0],
-          description: apt.service?.name || apt.package_appointment?.package?.name || 'Agendamento',
+          description: isPackageAppointment 
+            ? (packageData?.name || 'Pacote') 
+            : (apt.service?.name || 'Agendamento'),
           clientName: apt.client?.name || '-',
           amount: remainingAmount > 0 ? remainingAmount : totalAmount,
           installments: 1,
@@ -62,7 +71,7 @@ export function ContasAReceber() {
           originalAppointment: apt,
         };
       })
-      .filter(apt => apt.amount > 0); // Only show if there's actually remaining amount
+      .filter(apt => apt !== null && apt.amount > 0); // Only show if there's actually remaining amount
 
     return [...pendingFinancialEntries, ...pendingAppointments].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()

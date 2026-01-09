@@ -23,6 +23,7 @@ export interface ClientPackage {
   equipment: string[];
   description: string | null;
   created_at: string;
+  payment_methods?: string[] | null; // Indicates package was paid via caixa when set
 }
 
 export interface PackageSession {

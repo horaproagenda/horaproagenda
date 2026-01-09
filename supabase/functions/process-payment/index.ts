@@ -102,13 +102,19 @@ serve(async (req) => {
       );
     }
 
-    // 2. Verify appointment exists and get details
+    // 2. Verify appointment exists and get details including package info
     const { data: appointment, error: aptError } = await supabase
       .from('appointments')
       .select(`
         *,
         client:clients(id, name, credit_balance),
-        service:services(id, name, price)
+        service:services(id, name, price),
+        package_appointment:package_appointments(
+          id,
+          package_id,
+          session_number,
+          package:service_packages(id, name, total_price, payment_methods)
+        )
       `)
       .eq('id', body.appointment_id)
       .single();
@@ -119,6 +125,16 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Determine if this is a package appointment and get correct pricing
+    const isPackageAppointment = !!appointment.package_appointment;
+    const packageData = appointment.package_appointment?.package;
+    const isPackageAlreadyPaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
+    
+    // For packages: use full package price. For services: use service price
+    const totalRequiredAmount = isPackageAppointment 
+      ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
+      : (appointment.service?.price || 0);
 
     // 3. Verify cash register is open if provided
     if (body.cash_register_id) {
@@ -164,11 +180,10 @@ serve(async (req) => {
       );
     }
 
-    // 5. Calculate payment amounts
+    // 5. Calculate payment amounts using the correct total price
     const previousAmountPaid = appointment.amount_paid || 0;
     const newPaymentAmount = body.amount_paid - previousAmountPaid;
-    const servicePrice = appointment.service?.price || 0;
-    const remainingAfterPayment = servicePrice - body.amount_paid;
+    const remainingAfterPayment = Math.max(0, totalRequiredAmount - body.amount_paid);
 
     // Note: We allow payments exceeding service price for flexibility
     // (tips, advance payments, package adjustments, different negotiated prices, etc.)
@@ -196,9 +211,24 @@ serve(async (req) => {
 
     // 7. Handle client credit - ADD or DEDUCT
     const clientName = appointment.client?.name || 'Cliente';
-    const serviceName = appointment.service?.name || 'Serviço';
+    // Use package name if package appointment, otherwise use service name
+    const serviceName = isPackageAppointment 
+      ? (packageData?.name || 'Pacote')
+      : (appointment.service?.name || 'Serviço');
     const today = new Date().toISOString().split('T')[0];
     const primaryPaymentMethodId = body.payment_methods[0] || null;
+
+    // If this is a package payment and package exists, update its payment_methods
+    if (isPackageAppointment && packageData?.id && body.payment_status === 'paid' && !isPackageAlreadyPaid) {
+      const { error: updatePackageError } = await supabase
+        .from('service_packages')
+        .update({ payment_methods: body.payment_methods })
+        .eq('id', packageData.id);
+      
+      if (updatePackageError) {
+        console.error('Error updating package payment_methods:', updatePackageError);
+      }
+    }
 
     // 7a. Add SALDO (client_credit) - excess payment stored as credit - REGISTERED in cash/financial
     // This is real money that becomes a credit for the client

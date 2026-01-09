@@ -516,8 +516,9 @@ export function NewAppointmentDialog({
         
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
-        // isClientPackageSelected means the user picked an existing client package from the list
-        const isPackagePaid = isClientPackageSelected && existingClientPackage;
+        // Check if package has payment_methods filled (indicates it was paid via caixa sale)
+        const isPackagePaid = isClientPackageSelected && existingClientPackage && 
+          existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0;
         
         const appointmentResult = await createAppointment.mutateAsync({
           client_id: selectedClient,

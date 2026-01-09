@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Client } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,7 @@ import { Edit, Save, X, User, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -64,9 +58,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
           .select('full_name')
           .eq('id', client.updated_by)
           .maybeSingle();
-        if (data) {
-          setLastEditorName(data.full_name);
-        }
+        if (data) setLastEditorName(data.full_name);
       }
     }
     fetchEditorName();
@@ -114,131 +106,98 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 animate-fade-in">
+      {/* Main Info Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Informações do Cliente</CardTitle>
-          {!editing ? (
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleCancel}>
-                <X className="h-4 w-4 mr-1" />
-                Cancelar
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-medium text-muted-foreground">Informações</h3>
+            {!editing ? (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditing(true)}>
+                <Edit className="h-3.5 w-3.5 mr-1" /> Editar
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={loading}>
-                <Save className="h-4 w-4 mr-1" />
-                {loading ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Nome</Label>
+            ) : (
+              <div className="flex gap-1.5">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleCancel}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Cancelar
+                </Button>
+                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={loading}>
+                  <Save className="h-3.5 w-3.5 mr-1" /> {loading ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Nome</Label>
               {editing ? (
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="h-8 text-xs" />
               ) : (
-                <p className="text-foreground">{client.name}</p>
+                <p className="text-sm font-medium">{client.name}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Telefone</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Telefone</Label>
               {editing ? (
-                <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
+                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="h-8 text-xs" />
               ) : (
-                <p className="text-foreground">{client.phone}</p>
+                <p className="text-sm">{client.phone}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Email</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Email</Label>
               {editing ? (
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-8 text-xs" />
               ) : (
-                <p className="text-foreground">{client.email || '-'}</p>
+                <p className="text-sm">{client.email || '-'}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>CPF</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">CPF</Label>
               {editing ? (
-                <Input
-                  value={formData.cpf}
-                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                  placeholder="000.000.000-00"
-                />
+                <Input value={formData.cpf} onChange={(e) => setFormData({ ...formData, cpf: e.target.value })} placeholder="000.000.000-00" className="h-8 text-xs" />
               ) : (
-                <p className="text-foreground">{client.cpf || '-'}</p>
+                <p className="text-sm">{client.cpf || '-'}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Data de Nascimento</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Nascimento</Label>
               {editing ? (
-                <Input
-                  type="date"
-                  value={formData.birthdate}
-                  onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
-                />
+                <Input type="date" value={formData.birthdate} onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })} className="h-8 text-xs" />
               ) : (
-                <p className="text-foreground">
-                  {client.birthdate 
-                    ? format(new Date(client.birthdate), "dd/MM/yyyy")
-                    : '-'}
-                </p>
+                <p className="text-sm">{client.birthdate ? format(new Date(client.birthdate), "dd/MM/yyyy") : '-'}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Como nos conheceu</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Como nos conheceu</Label>
               {editing ? (
-                <Select 
-                  value={formData.referral_source} 
-                  onValueChange={(v) => setFormData({ ...formData, referral_source: v })}
-                >
-                  <SelectTrigger>
+                <Select value={formData.referral_source} onValueChange={(v) => setFormData({ ...formData, referral_source: v })}>
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
                     {REFERRAL_SOURCES.map(source => (
-                      <SelectItem key={source.value} value={source.value}>
-                        {source.label}
-                      </SelectItem>
+                      <SelectItem key={source.value} value={source.value} className="text-xs">{source.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-foreground">
-                  {REFERRAL_SOURCES.find(s => s.value === client.referral_source)?.label || '-'}
-                </p>
+                <p className="text-sm">{REFERRAL_SOURCES.find(s => s.value === client.referral_source)?.label || '-'}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Status</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Status</Label>
               {editing ? (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                  />
-                  <span className="text-sm">{formData.is_active ? 'Ativo' : 'Inativo'}</span>
+                <div className="flex items-center gap-2 h-8">
+                  <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
+                  <span className="text-xs">{formData.is_active ? 'Ativo' : 'Inativo'}</span>
                 </div>
               ) : (
                 <p className={`text-sm font-medium ${client.is_active ? 'text-green-600' : 'text-destructive'}`}>
@@ -248,85 +207,66 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
             </div>
 
             {isAdminOrReceptionist && (
-              <div className="space-y-2">
-                <Label>Profissional Responsável</Label>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">Profissional</Label>
                 {editing ? (
-                  <Select 
-                    value={formData.assigned_professional_id} 
-                    onValueChange={(v) => setFormData({ ...formData, assigned_professional_id: v === 'none' ? '' : v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um profissional..." />
+                  <Select value={formData.assigned_professional_id} onValueChange={(v) => setFormData({ ...formData, assigned_professional_id: v === 'none' ? '' : v })}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
+                      <SelectItem value="none" className="text-xs">Nenhum</SelectItem>
                       {activeProfessionals.map(professional => (
-                        <SelectItem key={professional.id} value={professional.id}>
-                          {professional.name}
-                        </SelectItem>
+                        <SelectItem key={professional.id} value={professional.id} className="text-xs">{professional.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-foreground">
-                    {client.assigned_professional?.name || 'Nenhum profissional atribuído'}
-                  </p>
+                  <p className="text-sm">{client.assigned_professional?.name || '-'}</p>
                 )}
               </div>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            {editing ? (
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                placeholder="Observações sobre o cliente..."
-              />
-            ) : (
-              <p className="text-foreground whitespace-pre-wrap">
-                {client.notes || 'Nenhuma observação'}
-              </p>
-            )}
-          </div>
+          <div className="mt-3 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Observações</Label>
+              {editing ? (
+                <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} className="text-xs" placeholder="Observações..." />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">{client.notes || '-'}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label>Informações Complementares</Label>
-            {editing ? (
-              <Textarea
-                value={formData.complementary_info}
-                onChange={(e) => setFormData({ ...formData, complementary_info: e.target.value })}
-                rows={5}
-                placeholder="Alergias, preferências, histórico médico relevante..."
-              />
-            ) : (
-              <p className="text-foreground whitespace-pre-wrap">
-                {client.complementary_info || 'Nenhuma informação complementar'}
-              </p>
-            )}
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Informações Complementares</Label>
+              {editing ? (
+                <Textarea value={formData.complementary_info} onChange={(e) => setFormData({ ...formData, complementary_info: e.target.value })} rows={3} className="text-xs" placeholder="Alergias, preferências..." />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">{client.complementary_info || '-'}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Audit Info */}
+      {/* Audit Info - Compact */}
       <Card className="bg-muted/30">
-        <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>Última atualização: {format(new Date(client.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+        <CardContent className="p-2.5">
+          <div className="flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>Atualizado: {format(new Date(client.updated_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
             </div>
             {lastEditorName && (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span>Editado por: {lastEditorName}</span>
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                <span>Por: {lastEditorName}</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>Cadastrado em: {format(new Date(client.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>Cadastro: {format(new Date(client.created_at), "dd/MM/yy", { locale: ptBR })}</span>
             </div>
           </div>
         </CardContent>

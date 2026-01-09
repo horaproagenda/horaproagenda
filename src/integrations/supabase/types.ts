@@ -490,33 +490,48 @@ export type Database = {
       client_documents: {
         Row: {
           client_id: string
+          content: string | null
           created_at: string
           description: string | null
           file_path: string | null
           file_url: string | null
+          filled_variables: Json | null
           id: string
+          signed_at: string | null
+          signed_by: string | null
+          template_id: string | null
           title: string
           type: Database["public"]["Enums"]["document_type"]
           updated_at: string
         }
         Insert: {
           client_id: string
+          content?: string | null
           created_at?: string
           description?: string | null
           file_path?: string | null
           file_url?: string | null
+          filled_variables?: Json | null
           id?: string
+          signed_at?: string | null
+          signed_by?: string | null
+          template_id?: string | null
           title: string
           type: Database["public"]["Enums"]["document_type"]
           updated_at?: string
         }
         Update: {
           client_id?: string
+          content?: string | null
           created_at?: string
           description?: string | null
           file_path?: string | null
           file_url?: string | null
+          filled_variables?: Json | null
           id?: string
+          signed_at?: string | null
+          signed_by?: string | null
+          template_id?: string | null
           title?: string
           type?: Database["public"]["Enums"]["document_type"]
           updated_at?: string
@@ -527,6 +542,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
             referencedColumns: ["id"]
           },
         ]

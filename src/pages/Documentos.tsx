@@ -14,7 +14,8 @@ import {
   FileCheck,
   Filter,
   MoreVertical,
-  Download
+  Download,
+  UserPlus
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
@@ -35,6 +36,7 @@ import { useDocumentTemplatesManagement } from '@/hooks/useDocumentTemplatesMana
 import { DocumentTemplateDialog } from '@/components/documentos/DocumentTemplateDialog';
 import { DocumentPreviewDialog } from '@/components/documentos/DocumentPreviewDialog';
 import { PrebuiltTemplatesDialog } from '@/components/documentos/PrebuiltTemplatesDialog';
+import { FillDocumentDialog } from '@/components/documentos/FillDocumentDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -73,6 +75,7 @@ const Documentos = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [prebuiltOpen, setPrebuiltOpen] = useState(false);
+  const [fillOpen, setFillOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   
   const { 
@@ -106,6 +109,11 @@ const Documentos = () => {
   const handlePreview = (template: any) => {
     setSelectedTemplate(template);
     setPreviewOpen(true);
+  };
+
+  const handleFill = (template: any) => {
+    setSelectedTemplate(template);
+    setFillOpen(true);
   };
 
   const handleDuplicate = async (template: any) => {
@@ -239,7 +247,12 @@ const Documentos = () => {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuContent align="end" className="w-44">
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleFill(template); }}>
+                                    <UserPlus className="h-4 w-4 mr-2" />
+                                    Preencher p/ Cliente
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePreview(template); }}>
                                     <Eye className="h-4 w-4 mr-2" />
                                     Visualizar
@@ -380,6 +393,16 @@ const Documentos = () => {
           onSelectTemplate={async (template) => {
             await createTemplate(template);
             setPrebuiltOpen(false);
+          }}
+        />
+
+        <FillDocumentDialog
+          open={fillOpen}
+          onOpenChange={setFillOpen}
+          template={selectedTemplate}
+          onDocumentSaved={() => {
+            setFillOpen(false);
+            toast.success('Documento vinculado ao cliente!');
           }}
         />
       </PageTransition>

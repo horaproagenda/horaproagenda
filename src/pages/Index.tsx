@@ -3,6 +3,7 @@ import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Users, Filter } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PageTransition } from '@/components/layout/PageTransition';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { SalesOverview } from '@/components/dashboard/SalesOverview';
 import { SalesChart } from '@/components/dashboard/SalesChart';
@@ -12,13 +13,14 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useClientsCredits } from '@/hooks/useClientCredits';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Index = () => {
   const today = new Date();
-  const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
+  const [selectedProfessional, setSelectedProfessional] = useLocalStorage<string | null>('dashboard-professional', null);
   
   const { professionals } = useProfessionals();
   const { appointments } = useAppointments();
@@ -36,7 +38,6 @@ const Index = () => {
     apt => isSameDay(new Date(apt.start_time), today) && apt.status !== 'cancelled'
   );
 
-  // Get client IDs from today's appointments for credits check
   const clientIds = useMemo(() => {
     const ids = todayAppointments.map(apt => apt.client_id).filter(Boolean);
     return [...new Set(ids)];
@@ -49,146 +50,142 @@ const Index = () => {
       title="Dashboard" 
       subtitle={format(today, "EEEE, d 'de' MMMM", { locale: ptBR })}
     >
-      {/* Filter */}
-      <div className="flex items-center gap-3 mb-6">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <Select 
-          value={selectedProfessional || 'all'} 
-          onValueChange={(v) => setSelectedProfessional(v === 'all' ? null : v)}
-        >
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder="Todos os profissionais" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os profissionais</SelectItem>
-            {professionals.filter(p => p.is_active).map(prof => (
-              <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Sales Overview */}
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-32" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <SalesOverview
-          daily={salesData?.daily || 0}
-          monthly={salesData?.monthly || 0}
-          yearly={salesData?.yearly || 0}
-          monthlyComparison={salesData?.monthlyComparison || 0}
-          todayAppointments={salesData?.todayAppointmentsCount || 0}
-        />
-      )}
-
-      {/* Charts Grid */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Sales & Clients Charts */}
-        <SalesChart 
-          salesData={monthlySalesChart || []}
-          clientsData={newClientsChart || []}
-        />
-
-        {/* Cash Flow */}
-        <CashFlowCard data={dailyCashFlow} />
-      </div>
-
-      {/* Bottom Grid */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Services Distribution */}
-        <ServicesDistribution data={servicesDistribution || []} />
-
-        {/* Today's Appointments */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Agenda de Hoje
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              {todayAppointments.length} agendamentos
-            </span>
-          </div>
-          
-          {todayAppointments.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {todayAppointments.slice(0, 6).map((appointment, index) => (
-                <div 
-                  key={appointment.id} 
-                  style={{ animationDelay: `${index * 100}ms` }}
-                  className="animate-slide-up"
-                >
-                  <AppointmentCard 
-                    appointment={appointment}
-                  />
-                </div>
+      <PageTransition>
+        {/* Filter */}
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select 
+            value={selectedProfessional || 'all'} 
+            onValueChange={(v) => setSelectedProfessional(v === 'all' ? null : v)}
+          >
+            <SelectTrigger className="w-[180px] h-8 text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os profissionais</SelectItem>
+              {professionals.filter(p => p.is_active).map(prof => (
+                <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
               ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Calendar className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Nenhum agendamento para hoje
-                </p>
-              </CardContent>
-            </Card>
-          )}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Total de Clientes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalClients || 0}</div>
-            <p className="text-xs text-muted-foreground">clientes ativos</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Agendamentos do Mês
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{salesData?.monthAppointmentsCount || 0}</div>
-            <p className="text-xs text-muted-foreground">realizados este mês</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Mês Anterior
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(salesData?.lastMonth || 0)}
+        {/* Sales Overview */}
+        {isLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="card-hover">
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-3 w-20" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-6 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <SalesOverview
+            daily={salesData?.daily || 0}
+            monthly={salesData?.monthly || 0}
+            yearly={salesData?.yearly || 0}
+            monthlyComparison={salesData?.monthlyComparison || 0}
+            todayAppointments={salesData?.todayAppointmentsCount || 0}
+          />
+        )}
+
+        {/* Charts Grid */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <SalesChart 
+            salesData={monthlySalesChart || []}
+            clientsData={newClientsChart || []}
+          />
+          <CashFlowCard data={dailyCashFlow} />
+        </div>
+
+        {/* Bottom Grid */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <ServicesDistribution data={servicesDistribution || []} />
+
+          {/* Today's Appointments */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                Agenda de Hoje
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {todayAppointments.length} agendamentos
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground">em vendas</p>
-          </CardContent>
-        </Card>
-      </div>
+            
+            {todayAppointments.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {todayAppointments.slice(0, 6).map((appointment, index) => (
+                  <div 
+                    key={appointment.id} 
+                    style={{ animationDelay: `${index * 50}ms` }}
+                    className="animate-fade-in"
+                  >
+                    <AppointmentCard appointment={appointment} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Card className="card-hover">
+                <CardContent className="py-6 text-center">
+                  <Calendar className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Nenhum agendamento para hoje
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Card className="card-hover">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" />
+                Total de Clientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{totalClients || 0}</div>
+              <p className="text-[10px] text-muted-foreground">clientes ativos</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="card-hover">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Agendamentos do Mês
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{salesData?.monthAppointmentsCount || 0}</div>
+              <p className="text-[10px] text-muted-foreground">realizados este mês</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="card-hover">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Mês Anterior
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(salesData?.lastMonth || 0)}
+              </div>
+              <p className="text-[10px] text-muted-foreground">em vendas</p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
     </AppLayout>
   );
 };

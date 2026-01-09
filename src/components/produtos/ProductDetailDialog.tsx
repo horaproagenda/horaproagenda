@@ -88,9 +88,9 @@ const PRODUCT_TYPES: { value: ProductType; label: string }[] = [
   { value: 'other', label: 'Outro' },
 ];
 
-// Helper to check if product uses estimated tracking (liquid/gel/cream)
-const isEstimatedTracking = (type: ProductType) => 
-  ['liquid', 'gel', 'cream'].includes(type);
+// Helper to check if product uses estimated tracking (liquid/gel/cream/other)
+const isEstimatedTracking = (type: ProductType, unit: ProductUnit) => 
+  ['liquid', 'gel', 'cream'].includes(type) || unit === 'other';
 
 const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'un', label: 'Unidade(s)' },
@@ -98,6 +98,7 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'l', label: 'L' },
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
+  { value: 'other', label: 'Outros' },
 ];
 
 export function ProductDetailDialog({
@@ -124,7 +125,7 @@ export function ProductDetailDialog({
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [quantityPerUse, setQuantityPerUse] = useState(1);
+  const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -225,7 +226,7 @@ export function ProductDetailDialog({
   const handleAddServiceLink = async () => {
     if (!product || !selectedServiceId) return;
     
-    const useEstimated = isEstimatedTracking(product.product_type);
+    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
     
     if (useEstimated) {
       const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
@@ -250,7 +251,7 @@ export function ProductDetailDialog({
     }
     
     setSelectedServiceId('');
-    setQuantityPerUse(1);
+    setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
   };
@@ -258,7 +259,7 @@ export function ProductDetailDialog({
   const handleAddTemplateLink = async () => {
     if (!product || !selectedTemplateId) return;
     
-    const useEstimated = isEstimatedTracking(product.product_type);
+    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
     
     if (useEstimated) {
       const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
@@ -283,7 +284,7 @@ export function ProductDetailDialog({
     }
     
     setSelectedTemplateId('');
-    setQuantityPerUse(1);
+    setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
   };
@@ -541,6 +542,62 @@ export function ProductDetailDialog({
                     </div>
                   </div>
 
+                  {/* Usage Dates - Editable */}
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium flex items-center gap-2 mb-3">
+                      <Calendar className="h-4 w-4" />
+                      Período de Uso
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Início do Uso
+                        </Label>
+                        {canEdit ? (
+                          <Input
+                            type="date"
+                            value={product.started_using_at || ''}
+                            onChange={(e) => onUpdateProduct({ id: product.id, started_using_at: e.target.value || null })}
+                            className="h-9"
+                          />
+                        ) : (
+                          <span className="text-sm">
+                            {product.started_using_at 
+                              ? format(parseISO(product.started_using_at), 'dd/MM/yyyy', { locale: ptBR })
+                              : 'Não iniciado'}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Término do Uso
+                        </Label>
+                        {canEdit ? (
+                          <Input
+                            type="date"
+                            value={product.finished_at || ''}
+                            onChange={(e) => onUpdateProduct({ id: product.id, finished_at: e.target.value || null })}
+                            className="h-9"
+                          />
+                        ) : (
+                          <span className="text-sm">
+                            {product.finished_at 
+                              ? format(parseISO(product.finished_at), 'dd/MM/yyyy', { locale: ptBR })
+                              : 'Em uso'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {product.started_using_at && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {product.finished_at 
+                          ? `Duração: ${differenceInDays(parseISO(product.finished_at), parseISO(product.started_using_at))} dias`
+                          : `Em uso há ${differenceInDays(new Date(), parseISO(product.started_using_at))} dias`}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Supplier Info */}
                   {(supplierInfo || product.supplier) && (
                     <>
@@ -669,7 +726,7 @@ export function ProductDetailDialog({
                   <div className="flex items-center gap-2 mb-2">
                     <Link2 className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Vincular a Serviço</span>
-                    {isEstimatedTracking(product.product_type) && (
+                    {isEstimatedTracking(product.product_type, product.unit) && (
                       <Badge variant="outline" className="text-xs">
                         Modo Estimado
                       </Badge>
@@ -690,7 +747,7 @@ export function ProductDetailDialog({
                       </SelectContent>
                     </Select>
                     
-                    {isEstimatedTracking(product.product_type) ? (
+                    {isEstimatedTracking(product.product_type, product.unit) ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">
@@ -730,22 +787,25 @@ export function ProductDetailDialog({
                         </div>
                       </div>
                     ) : (
-                      <div className="w-48">
+                      <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Quantidade usada por atendimento
+                          Quantidade usada por atendimento (0 = não sei a quantidade)
                         </Label>
                         <div className="flex gap-2">
                           <Input
                             type="number"
                             value={quantityPerUse}
-                            onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                            min="0.01"
+                            onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                            min="0"
                             step="0.01"
                           />
                           <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
                             {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                           </span>
                         </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Se não souber a quantidade, deixe 0. O app contará os atendimentos quando o produto acabar.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -844,7 +904,7 @@ export function ProductDetailDialog({
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Vincular a Template de Pacote</span>
-                    {isEstimatedTracking(product.product_type) && (
+                    {isEstimatedTracking(product.product_type, product.unit) && (
                       <Badge variant="outline" className="text-xs">
                         Modo Estimado
                       </Badge>
@@ -875,7 +935,7 @@ export function ProductDetailDialog({
                     
                     {availableTemplatesToLink.length > 0 && (
                       <>
-                        {isEstimatedTracking(product.product_type) ? (
+                        {isEstimatedTracking(product.product_type, product.unit) ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="text-xs text-muted-foreground mb-1 block">
@@ -909,22 +969,25 @@ export function ProductDetailDialog({
                             </div>
                           </div>
                         ) : (
-                          <div className="w-48">
+                          <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground mb-1 block">
-                              Quantidade usada por sessão
+                              Quantidade usada por sessão (0 = não sei)
                             </Label>
                             <div className="flex gap-2">
                               <Input
                                 type="number"
                                 value={quantityPerUse}
-                                onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                                min="0.01"
+                                onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                                min="0"
                                 step="0.01"
                               />
                               <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
                                 {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                               </span>
                             </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Se não souber, deixe 0. O app contará os atendimentos.
+                            </p>
                           </div>
                         )}
                       </>

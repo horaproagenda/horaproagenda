@@ -108,6 +108,7 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'l', label: 'L' },
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
+  { value: 'other', label: 'Outros' },
 ];
 
 const getTypeLabel = (type: ProductType) => PRODUCT_TYPES.find(t => t.value === type)?.label || type;

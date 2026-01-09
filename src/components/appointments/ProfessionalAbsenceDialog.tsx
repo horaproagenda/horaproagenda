@@ -251,6 +251,25 @@ export function ProfessionalAbsenceDialog({
                 </Select>
               </div>
 
+              {/* Campo de texto para detalhar o motivo */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Detalhes do Motivo
+                </Label>
+                <ScrollArea className="h-24 w-full rounded-md border">
+                  <Textarea
+                    value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Descreva os detalhes do motivo da ausência, como justificativas, observações importantes, se há necessidade de reposição, contato de emergência, etc..."
+                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
+                  />
+                </ScrollArea>
+                <p className="text-[10px] text-muted-foreground">
+                  Use este campo como lembrete ou para registrar informações importantes sobre a ausência.
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={setStatus}>
@@ -268,20 +287,6 @@ export function ProfessionalAbsenceDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Observação (opcional)
-                </Label>
-                <Textarea
-                  value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Detalhes adicionais sobre a ausência, como justificativas, observações ou informações importantes..."
-                  rows={4}
-                  className="resize-none"
-                />
               </div>
             </div>
           </ScrollArea>

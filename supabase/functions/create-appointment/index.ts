@@ -90,9 +90,8 @@ serve(async (req) => {
       errors.push({ field: 'time', message: 'Invalid date format' });
     } else if (endTime <= startTime) {
       errors.push({ field: 'end_time', message: 'End time must be after start time' });
-    } else if (startTime < new Date()) {
-      errors.push({ field: 'start_time', message: 'Cannot create appointments in the past' });
     }
+    // Note: We allow past appointments for flexibility (retroactive entries, timezone differences)
 
     if (errors.length > 0) {
       return new Response(

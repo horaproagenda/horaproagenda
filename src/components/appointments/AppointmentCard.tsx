@@ -39,26 +39,26 @@ interface AppointmentCardProps {
 const statusConfig = {
   scheduled: {
     label: 'Agendado',
-    className: 'bg-info/10 text-info border-info/20',
+    className: 'bg-info/5 text-info/80 border-info/10',
   },
   confirmed: {
     label: 'Confirmado',
-    className: 'bg-success/10 text-success border-success/20',
+    className: 'bg-success/5 text-success/80 border-success/10',
   },
   completed: {
     label: 'Concluído',
-    className: 'bg-muted text-muted-foreground border-muted',
+    className: 'bg-muted/50 text-muted-foreground/70 border-muted/30',
   },
   cancelled: {
     label: 'Cancelado',
-    className: 'bg-destructive/10 text-destructive border-destructive/20',
+    className: 'bg-destructive/5 text-destructive/70 border-destructive/10',
   },
 };
 
 const paymentStatusConfig = {
-  pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning' },
-  partial: { label: 'Parcial', icon: Clock, className: 'text-info' },
-  paid: { label: 'Pago', icon: CheckCircle, className: 'text-success' },
+  pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning/70' },
+  partial: { label: 'Parcial', icon: Clock, className: 'text-info/70' },
+  paid: { label: 'Pago', icon: CheckCircle, className: 'text-success/70' },
 };
 
 export function AppointmentCard({ appointment, compact = false, professionals = [], onEdit, onDelete }: AppointmentCardProps) {
@@ -74,7 +74,10 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const professionalId = appointment.professional_id || appointment.service?.professional_id;
   const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
   const professionalColor = professional?.agenda_color;
-  const hexColor = professionalColor || categoryColor?.hex || '#999';
+  const hexColor = professionalColor || categoryColor?.hex || '#a1a1aa';
+  
+  // Create softer version of the color for backgrounds
+  const softHexColor = `${hexColor}15`;
   
   const timeStr = format(new Date(appointment.start_time), 'HH:mm');
 
@@ -96,47 +99,53 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
     setShowDeleteDialog(false);
   };
 
-  
-
   if (compact) {
     return (
       <div 
-        className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
-        style={{ borderLeftColor: hexColor, borderLeftWidth: '3px' }}
+        className="group flex items-center gap-2 rounded-md border border-border/50 bg-card/80 backdrop-blur-sm px-2.5 py-2 transition-all duration-300 ease-out hover:border-border hover:shadow-sm hover:bg-card"
+        style={{ 
+          borderLeftColor: hexColor, 
+          borderLeftWidth: '2px',
+        }}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="font-medium text-sm truncate">{appointment.client?.name}</p>
-          </div>
-          <p className="text-xs text-muted-foreground truncate">{appointment.service?.name}</p>
+          <p className="font-medium text-xs truncate text-foreground/90">{appointment.client?.name}</p>
+          <p className="text-[10px] text-muted-foreground/70 truncate">{appointment.service?.name}</p>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-muted-foreground">{appointment.service?.duration}min</p>
+        <div className="text-right flex-shrink-0">
+          <p className="text-xs font-medium text-foreground/80">{timeStr}</p>
+          <p className="text-[10px] text-muted-foreground/60">{appointment.service?.duration}min</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-all duration-200"
+            >
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(appointment);
-            }}>
-              <Pencil className="h-4 w-4 mr-2" />
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(appointment);
+              }}
+              className="text-xs"
+            >
+              <Pencil className="h-3 w-3 mr-2" />
               Editar
             </DropdownMenuItem>
             {canDelete && (
               <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
+                className="text-xs text-destructive focus:text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowDeleteDialog(true);
                 }}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-3 w-3 mr-2" />
                 Excluir
               </DropdownMenuItem>
             )}
@@ -149,46 +158,57 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   return (
     <>
       <div 
-        className="group rounded-xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in"
-        style={{ borderLeftColor: hexColor, borderLeftWidth: '4px' }}
+        className="group rounded-lg border border-border/40 bg-card/90 backdrop-blur-sm p-3 transition-all duration-300 ease-out hover:border-border/60 hover:shadow-md hover:bg-card animate-fade-in"
+        style={{ 
+          borderLeftColor: hexColor, 
+          borderLeftWidth: '3px',
+        }}
       >
-        <div className="flex items-start justify-between gap-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-foreground truncate">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className="font-medium text-sm text-foreground/90 truncate">
                 {appointment.client?.name}
               </h4>
-              <Badge variant="outline" className={cn('text-xs', status.className)}>
+              <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 font-normal', status.className)}>
                 {status.label}
               </Badge>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground/70 truncate">
               {appointment.service?.name}
             </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(appointment);
-              }}>
-                <Pencil className="h-4 w-4 mr-2" />
+            <DropdownMenuContent align="end" className="w-32">
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(appointment);
+                }}
+                className="text-xs"
+              >
+                <Pencil className="h-3.5 w-3.5 mr-2" />
                 Editar
               </DropdownMenuItem>
               {canDelete && (
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
+                  className="text-xs text-destructive focus:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowDeleteDialog(true);
                   }}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
                   Excluir
                 </DropdownMenuItem>
               )}
@@ -196,37 +216,39 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
           </DropdownMenu>
         </div>
 
-        <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            <span>{timeStr}</span>
-            <span className="text-xs">({appointment.service?.duration}min)</span>
+        {/* Time and Professional */}
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground/70">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span className="font-medium">{timeStr}</span>
+            <span className="text-[10px]">({appointment.service?.duration}min)</span>
           </div>
           {professional && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <div 
-                className="h-3 w-3 rounded-full" 
-                style={{ backgroundColor: professionalColor || '#999' }}
+                className="h-2 w-2 rounded-full transition-transform duration-200 group-hover:scale-110" 
+                style={{ backgroundColor: professionalColor || '#a1a1aa' }}
               />
-              <span className="text-xs">{professional.name}</span>
+              <span className="text-[10px] truncate max-w-[80px]">{professional.name}</span>
             </div>
           )}
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
+        {/* Footer */}
+        <div className="mt-2 pt-2 border-t border-border/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span 
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: `${hexColor}20`, color: hexColor }}
+              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-medium transition-colors duration-200"
+              style={{ backgroundColor: softHexColor, color: hexColor }}
             >
               {appointment.service?.category}
             </span>
-            <div className={cn('flex items-center gap-1', paymentStatus.className)}>
-              <PaymentIcon className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium">{paymentStatus.label}</span>
+            <div className={cn('flex items-center gap-0.5', paymentStatus.className)}>
+              <PaymentIcon className="h-3 w-3" />
+              <span className="text-[9px] font-medium">{paymentStatus.label}</span>
             </div>
           </div>
-          <span className="text-sm font-semibold text-foreground">
+          <span className="text-xs font-medium text-foreground/70">
             R$ {appointment.service?.price.toFixed(2)}
           </span>
         </div>
@@ -235,17 +257,17 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Agendamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o agendamento de "{appointment.client?.name}"? 
+            <AlertDialogTitle className="text-base">Excluir Agendamento</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Excluir agendamento de "{appointment.client?.name}"? 
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
             >
               Excluir
             </AlertDialogAction>

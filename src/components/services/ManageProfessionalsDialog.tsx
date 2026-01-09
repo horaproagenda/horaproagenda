@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Plus, Trash2, Edit2, Shield, ChevronDown, ChevronRight } from 'lucide-react';
+import { User, Plus, Trash2, Edit2, Shield, ChevronDown, ChevronRight, Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -129,12 +130,31 @@ interface ManageProfessionalsDialogProps {
 }
 
 export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialogProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { professionals, refetch } = useProfessionals();
+
+  // Reset to list view when dialog opens
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      setShowForm(false);
+      setEditingId(null);
+      setSearchQuery('');
+    }
+  };
+
+  // Filter professionals by search
+  const filteredProfessionals = professionals.filter(prof => 
+    prof.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    prof.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    prof.specialties?.some((s: string) => s.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const form = useForm<ProfessionalFormData>({
     resolver: zodResolver(professionalSchema),
@@ -279,7 +299,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const activePermissionsCount = Object.values(permissions || {}).filter(Boolean).length;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children || (
           <Button variant="outline" size="sm" className="gap-2">
@@ -299,13 +319,28 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         <div className="flex-1 overflow-y-auto pr-2">
           {!showForm ? (
             <div className="space-y-4">
-              <Button onClick={() => setShowForm(true)} className="w-full gap-2 btn-vibrant">
-                <Plus className="h-4 w-4" />
-                Novo Profissional
-              </Button>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, email ou especialidade..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+                <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
+                  <Plus className="h-4 w-4" />
+                  Novo Profissional
+                </Button>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                {filteredProfessionals.length} profissional(is) encontrado(s)
+              </div>
 
               <div className="space-y-2">
-                {professionals.map(prof => (
+                {filteredProfessionals.map(prof => (
                   <div
                     key={prof.id}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card card-hover"
@@ -346,7 +381,20 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        onClick={() => {
+                          setOpen(false);
+                          navigate(`/profissional/${prof.id}`);
+                        }}
+                        title="Ver perfil"
+                      >
+                        <Eye className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleEdit(prof)}
+                        title="Editar"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -355,15 +403,16 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => handleDelete(prof.id)}
+                        title="Excluir"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </div>
                 ))}
-                {professionals.length === 0 && (
+                {filteredProfessionals.length === 0 && (
                   <p className="text-center text-muted-foreground py-4 text-sm">
-                    Nenhum profissional cadastrado
+                    {searchQuery ? 'Nenhum profissional encontrado' : 'Nenhum profissional cadastrado'}
                   </p>
                 )}
               </div>

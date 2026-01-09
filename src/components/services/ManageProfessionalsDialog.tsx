@@ -288,15 +288,15 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="sm:max-w-[650px] h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0 pb-2">
           <DialogTitle>Gerenciar Profissionais</DialogTitle>
           <DialogDescription>
             Cadastre e gerencie os profissionais da equipe e suas permissões.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[calc(90vh-140px)] pr-4">
+        <div className="flex-1 overflow-y-auto pr-2">
           {!showForm ? (
             <div className="space-y-4">
               <Button onClick={() => setShowForm(true)} className="w-full gap-2 btn-vibrant">
@@ -727,7 +727,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
               </form>
             </Form>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

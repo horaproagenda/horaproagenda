@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 
+const SUPABASE_URL = "https://nsgcllrbswodjoadybsj.supabase.co";
+
 export interface AppointmentInsert {
   client_id: string;
   service_id?: string | null;
@@ -32,6 +34,11 @@ export interface AppointmentUpdate {
   room_id?: string | null;
   notes?: string;
   status?: AppointmentStatus;
+}
+
+interface EdgeFunctionError {
+  field: string;
+  message: string;
 }
 
 export function useAppointments() {
@@ -98,19 +105,42 @@ export function useAppointments() {
 
   const createAppointment = useMutation({
     mutationFn: async (appointment: AppointmentInsert) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert({
-          ...appointment,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+      if (!session?.access_token) {
+        throw new Error('Não autenticado');
+      }
 
-      if (error) throw error;
-      return data;
+      // Use Edge Function for server-side validation
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          client_id: appointment.client_id,
+          service_id: appointment.service_id,
+          professional_id: appointment.professional_id,
+          room_id: appointment.room_id,
+          start_time: appointment.start_time,
+          end_time: appointment.end_time,
+          notes: appointment.notes,
+          status: 'scheduled',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        if (result.errors && Array.isArray(result.errors)) {
+          const errorMessages = result.errors.map((e: EdgeFunctionError) => e.message).join(', ');
+          throw new Error(errorMessages);
+        }
+        throw new Error(result.error || 'Erro ao criar agendamento');
+      }
+
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
@@ -126,155 +156,42 @@ export function useAppointments() {
 
   const updatePayment = useMutation({
     mutationFn: async ({ id, payment }: { id: string; payment: PaymentUpdate }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Não autenticado');
+      }
 
-      // Get the current appointment data first
-      const { data: currentApt, error: fetchError } = await supabase
-        .from('appointments')
-        .select('*, client:clients(name), service:services(name, price)')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const previousAmountPaid = currentApt?.amount_paid || 0;
-      const newPaymentAmount = payment.amount_paid - previousAmountPaid;
-      const servicePrice = currentApt?.service?.price || 0;
-      const remainingAfterPayment = servicePrice - payment.amount_paid;
-
-      console.log('Payment update:', {
-        id,
-        previousAmountPaid,
-        newAmountPaid: payment.amount_paid,
-        paymentDiff: newPaymentAmount,
-        servicePrice,
-        remainingAfterPayment,
-        paymentStatus: payment.payment_status,
-        paymentMethods: payment.payment_methods
-      });
-
-      // Update the appointment payment - ensure amount_paid is correctly set
-      const { data, error } = await supabase
-        .from('appointments')
-        .update({
+      // Use Edge Function for server-side validation
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/process-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          appointment_id: id,
           payment_methods: payment.payment_methods,
           amount_paid: payment.amount_paid,
           payment_status: payment.payment_status,
-          updated_by: user?.id,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+          client_credit: payment.client_credit,
+          cash_register_id: payment.cash_register_id,
+          card_fee_amount: payment.card_fee_amount,
+          installments: payment.installments,
+        }),
+      });
 
-      if (error) {
-        console.error('Error updating appointment payment:', error);
-        throw error;
+      const result = await response.json();
+
+      if (!result.success) {
+        if (result.errors && Array.isArray(result.errors)) {
+          const errorMessages = result.errors.map((e: EdgeFunctionError) => e.message).join(', ');
+          throw new Error(errorMessages);
+        }
+        throw new Error(result.error || 'Erro ao processar pagamento');
       }
 
-      console.log('Appointment updated successfully:', data);
-
-      // If there's client credit to add, update the client's credit balance
-      if (payment.client_credit && payment.client_credit > 0 && payment.client_id) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('credit_balance')
-          .eq('id', payment.client_id)
-          .single();
-
-        const currentBalance = clientData?.credit_balance || 0;
-        const newBalance = Number(currentBalance) + payment.client_credit;
-
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({ credit_balance: newBalance })
-          .eq('id', payment.client_id);
-
-        if (clientError) throw clientError;
-      }
-
-      // Create financial entries and cash transactions to sync with Financeiro and Caixa
-      if (newPaymentAmount > 0) {
-        const clientName = currentApt?.client?.name || 'Cliente';
-        const serviceName = currentApt?.service?.name || 'Serviço';
-        const today = new Date().toISOString().split('T')[0];
-        // Use the first payment method ID for cash transaction
-        const primaryPaymentMethodId = payment.payment_methods[0] || null;
-        
-        // Create entry for the payment received in financial_entries
-        const { error: entryError } = await supabase.from('financial_entries').insert({
-          type: 'receivable',
-          description: `Pagamento: ${serviceName} - ${clientName}`,
-          amount: newPaymentAmount,
-          due_date: today,
-          paid_date: today,
-          status: 'paid',
-          client_id: payment.client_id,
-          appointment_id: id,
-          payment_method_id: primaryPaymentMethodId,
-          created_by: user?.id,
-        });
-
-        if (entryError) {
-          console.error('Error creating financial entry:', entryError);
-        }
-
-        // Create cash transaction if cash register is open - THIS IS THE KEY TO SYNC WITH CAIXA
-        if (payment.cash_register_id) {
-          const cardFeeAmount = payment.card_fee_amount || 0;
-          
-          const { error: cashError } = await supabase.from('cash_transactions').insert({
-            cash_register_id: payment.cash_register_id,
-            type: 'income',
-            category: 'sale',
-            description: `${serviceName} - ${clientName}`,
-            amount: newPaymentAmount,
-            payment_method: primaryPaymentMethodId,
-            reference_id: id,
-            reference_type: 'appointment',
-            card_fee_amount: cardFeeAmount,
-            installments: payment.installments || 1,
-            created_by: user?.id,
-          });
-
-          if (cashError) {
-            console.error('Error creating cash transaction:', cashError);
-          }
-        }
-
-        // If there's remaining amount (partial payment), create a pending receivable
-        if (remainingAfterPayment > 0 && payment.payment_status === 'partial') {
-          const { error: pendingError } = await supabase.from('financial_entries').insert({
-            type: 'receivable',
-            description: `Saldo pendente: ${serviceName} - ${clientName}`,
-            amount: remainingAfterPayment,
-            due_date: today,
-            paid_date: null,
-            status: 'pending',
-            client_id: payment.client_id,
-            appointment_id: id,
-            created_by: user?.id,
-          });
-
-          if (pendingError) {
-            console.error('Error creating pending receivable:', pendingError);
-          }
-        }
-
-        // If it's now fully paid, check if there was a pending entry for this appointment and mark it paid
-        if (payment.payment_status === 'paid') {
-          const { error: updatePendingError } = await supabase
-            .from('financial_entries')
-            .update({ status: 'paid', paid_date: today })
-            .eq('appointment_id', id)
-            .eq('status', 'pending');
-
-          if (updatePendingError) {
-            console.error('Error updating pending entries:', updatePendingError);
-          }
-        }
-      }
-
-      return data;
+      return result.data;
     },
     onSuccess: (data) => {
       console.log('Payment mutation success, invalidating queries');

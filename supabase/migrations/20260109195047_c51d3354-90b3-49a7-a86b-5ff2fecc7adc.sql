@@ -1,0 +1,1 @@
+UPDATE business_settings SET work_saturdays = true WHERE id = 'b78b38e9-51c6-406b-988e-5c502f7f154e';

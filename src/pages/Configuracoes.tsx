@@ -208,17 +208,10 @@ const Configuracoes = () => {
                   </div>
                   <Switch />
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <Label className="text-xs">WhatsApp</Label>
-                    <p className="text-[10px] text-muted-foreground">Enviar via WhatsApp</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Antecedência do lembrete (horas)</Label>
-                  <Input type="number" className="h-8 text-sm" defaultValue="24" />
-                </div>
+                <p className="text-[10px] text-muted-foreground pt-2">
+                  Configure os templates e horários de envio do WhatsApp em{' '}
+                  <strong>Templates de WhatsApp</strong> acima.
+                </p>
               </CardContent>
             </Card>
 

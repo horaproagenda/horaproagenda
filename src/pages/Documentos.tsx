@@ -136,193 +136,217 @@ const Documentos = () => {
   return (
     <AppLayout title="Anamnese e Contratos" subtitle="Modelos de documentos editáveis para clínica estética">
       <PageTransition>
-        <div className="space-y-4">
-          {/* Header Actions */}
-          <Card className="card-hover">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                <div className="flex-1 w-full sm:max-w-sm">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar modelos..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 h-9"
-                    />
+        <ScrollArea className="h-[calc(100vh-140px)]">
+          <div className="space-y-4 pr-4">
+            {/* Header Actions */}
+            <Card className="card-hover">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                  <div className="flex-1 w-full sm:max-w-sm">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar modelos..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-1.5"
+                      onClick={() => setPrebuiltOpen(true)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Modelos Prontos</span>
+                      <span className="sm:hidden">Prontos</span>
+                    </Button>
+                    <Button size="sm" className="gap-1.5" onClick={handleNew}>
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Novo Modelo</span>
+                      <span className="sm:hidden">Novo</span>
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="gap-1.5"
-                    onClick={() => setPrebuiltOpen(true)}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="hidden sm:inline">Modelos Prontos</span>
-                    <span className="sm:hidden">Prontos</span>
-                  </Button>
-                  <Button size="sm" className="gap-1.5" onClick={handleNew}>
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Novo Modelo</span>
-                    <span className="sm:hidden">Novo</span>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="h-9">
-              <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
-              <TabsTrigger value="anamnese" className="text-xs">Anamneses</TabsTrigger>
-              <TabsTrigger value="contracts" className="text-xs">Contratos/Termos</TabsTrigger>
-            </TabsList>
+            {/* Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="h-9">
+                <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
+                <TabsTrigger value="anamnese" className="text-xs">Anamneses</TabsTrigger>
+                <TabsTrigger value="contracts" className="text-xs">Contratos/Termos</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value={activeTab} className="mt-4">
-              {isLoading ? (
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {[1, 2, 3].map(i => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-4 h-40" />
-                    </Card>
-                  ))}
-                </div>
-              ) : filteredTemplates.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {searchTerm ? 'Nenhum modelo encontrado' : 'Nenhum modelo cadastrado'}
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <Button variant="outline" size="sm" onClick={() => setPrebuiltOpen(true)}>
-                        <FileText className="h-4 w-4 mr-1" />
-                        Usar Modelo Pronto
-                      </Button>
-                      <Button size="sm" onClick={handleNew}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Criar do Zero
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredTemplates.map(template => {
-                    const type = getTemplateType(template.title);
-                    const config = templateTypeConfig[type];
-                    const Icon = config.icon;
-                    
-                    return (
-                      <Card 
-                        key={template.id} 
-                        className="card-hover group cursor-pointer transition-all"
-                        onClick={() => handlePreview(template)}
-                      >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className={`rounded-lg p-1.5 ${config.color}`}>
-                                <Icon className="h-4 w-4" />
-                              </div>
-                              <Badge variant="secondary" className={`${config.color} text-[10px]`}>
-                                {config.label}
-                              </Badge>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePreview(template); }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Visualizar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(template); }}>
-                                  <Edit2 className="h-4 w-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(template); }}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Duplicar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={(e) => { e.stopPropagation(); handleDelete(template.id); }}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <CardTitle className="text-sm font-medium line-clamp-1 mt-2">
-                            {template.title}
-                          </CardTitle>
-                          {template.description && (
-                            <CardDescription className="text-xs line-clamp-2">
-                              {template.description}
-                            </CardDescription>
-                          )}
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {template.variables?.slice(0, 3).map((v: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-[10px] px-1.5">
-                                {'{' + v + '}'}
-                              </Badge>
-                            ))}
-                            {template.variables?.length > 3 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5">
-                                +{template.variables.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            Atualizado em {format(new Date(template.updated_at), "dd/MM/yyyy", { locale: ptBR })}
-                          </p>
-                        </CardContent>
+              <TabsContent value={activeTab} className="mt-4">
+                {isLoading ? (
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                      <Card key={i} className="animate-pulse">
+                        <CardContent className="p-4 h-40" />
                       </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                    ))}
+                  </div>
+                ) : filteredTemplates.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {searchTerm ? 'Nenhum modelo encontrado' : 'Nenhum modelo cadastrado'}
+                      </p>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline" size="sm" onClick={() => setPrebuiltOpen(true)}>
+                          <FileText className="h-4 w-4 mr-1" />
+                          Usar Modelo Pronto
+                        </Button>
+                        <Button size="sm" onClick={handleNew}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Criar do Zero
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredTemplates.map(template => {
+                      const type = getTemplateType(template.title);
+                      const config = templateTypeConfig[type];
+                      const Icon = config.icon;
+                      
+                      return (
+                        <Card 
+                          key={template.id} 
+                          className="card-hover group cursor-pointer transition-all"
+                          onClick={() => handlePreview(template)}
+                        >
+                          <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`rounded-lg p-1.5 ${config.color}`}>
+                                  <Icon className="h-4 w-4" />
+                                </div>
+                                <Badge variant="secondary" className={`${config.color} text-[10px]`}>
+                                  {config.label}
+                                </Badge>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePreview(template); }}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Visualizar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(template); }}>
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(template); }}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Duplicar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(template.id); }}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <CardTitle className="text-sm font-medium line-clamp-1 mt-2">
+                              {template.title}
+                            </CardTitle>
+                            {template.description && (
+                              <CardDescription className="text-xs line-clamp-2">
+                                {template.description}
+                              </CardDescription>
+                            )}
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {template.variables?.slice(0, 3).map((v: string, i: number) => (
+                                <Badge key={i} variant="outline" className="text-[10px] px-1.5">
+                                  {'{' + v + '}'}
+                                </Badge>
+                              ))}
+                              {template.variables?.length > 3 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5">
+                                  +{template.variables.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] text-muted-foreground">
+                                Atualizado em {format(new Date(template.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                              </p>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => { e.stopPropagation(); handleEdit(template); }}
+                                  title="Editar"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(template.id); }}
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
 
-          {/* Info Card */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <FileSignature className="h-5 w-5 text-primary" />
+            {/* Info Card */}
+            <Card className="bg-muted/30">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <FileSignature className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium mb-1">Assinatura Digital</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Os documentos podem ser assinados digitalmente através do{' '}
+                      <a 
+                        href="https://assinador.iti.br/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Assinador Gov.br
+                      </a>
+                      {' '}ou exportados em PDF para assinatura em outros serviços.
+                      Use as variáveis como {'{nome}'}, {'{cpf}'}, {'{data}'} para personalizar automaticamente.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium mb-1">Assinatura Digital</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Os documentos podem ser assinados digitalmente através do{' '}
-                    <a 
-                      href="https://assinador.iti.br/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Assinador Gov.br
-                    </a>
-                    {' '}ou exportados em PDF para assinatura em outros serviços.
-                    Use as variáveis como {'{nome}'}, {'{cpf}'}, {'{data}'} para personalizar automaticamente.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
 
         {/* Dialogs */}
         <DocumentTemplateDialog

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List } from 'lucide-react';
+import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
@@ -28,6 +28,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type SortField = 'name' | 'created_at' | 'status';
+type SortDirection = 'asc' | 'desc';
+
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +48,11 @@ const Clientes = () => {
     status: ['all'],
     professional: ['all'],
   });
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  
   const { clients, isLoading, refetch } = useClients();
   const { professionals } = useProfessionals();
   const { hasRole } = useAuth();
@@ -87,6 +104,7 @@ const Clientes = () => {
 
   const handleFilterChange = (groupId: string, values: string[]) => {
     setSelectedFilters(prev => ({ ...prev, [groupId]: values }));
+    setCurrentPage(1); // Reset to first page on filter change
   };
 
   const handleClearFilters = () => {
@@ -95,6 +113,7 @@ const Clientes = () => {
       professional: ['all'],
       hasProfessional: ['all'],
     });
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = useMemo(() => {
@@ -103,8 +122,9 @@ const Clientes = () => {
     );
   }, [selectedFilters]);
 
-  const filteredClients = useMemo(() => {
-    return clients.filter(client => {
+  const filteredAndSortedClients = useMemo(() => {
+    // First, filter
+    const filtered = clients.filter(client => {
       const matchesSearch = 
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -133,12 +153,56 @@ const Clientes = () => {
 
       return matchesSearch && matchesStatus && matchesHasProfessional && matchesProfessional;
     });
-  }, [clients, searchTerm, selectedFilters]);
+
+    // Then, sort
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name, 'pt-BR');
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'status':
+          comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1;
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [clients, searchTerm, selectedFilters, sortField, sortDirection]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedClients.length / itemsPerPage);
+  const paginatedClients = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedClients.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedClients, currentPage, itemsPerPage]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
 
   const handleExport = () => {
     const csvContent = [
       ['Nome', 'Telefone', 'Email', 'CPF', 'Status', 'Data de Cadastro'].join(','),
-      ...filteredClients.map(client => [
+      ...filteredAndSortedClients.map(client => [
         `"${client.name}"`,
         client.phone,
         client.email || '',
@@ -161,6 +225,12 @@ const Clientes = () => {
     return professional?.name || '-';
   };
 
+  // Reset to page 1 when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
   return (
     <AppLayout 
       title="Clientes" 
@@ -174,7 +244,7 @@ const Clientes = () => {
             type="search"
             placeholder="Buscar por nome, email, telefone ou CPF..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 h-9 text-sm"
           />
         </div>
@@ -284,71 +354,172 @@ const Clientes = () => {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : filteredClients.length > 0 ? (
-            viewMode === 'grid' ? (
-              /* Grid View */
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredClients.map((client, index) => (
-                  <div
-                    key={client.id}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-scale-in"
-                  >
-                    <ClientCard client={client} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* Table/List View */
-              <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="text-xs font-medium">Nome</TableHead>
-                      <TableHead className="text-xs font-medium">Telefone</TableHead>
-                      <TableHead className="text-xs font-medium hidden sm:table-cell">Email</TableHead>
-                      <TableHead className="text-xs font-medium hidden md:table-cell">Profissional</TableHead>
-                      <TableHead className="text-xs font-medium">Status</TableHead>
-                      <TableHead className="text-xs font-medium hidden lg:table-cell">Desde</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredClients.map((client, index) => (
-                      <TableRow 
-                        key={client.id}
-                        className="cursor-pointer transition-colors hover:bg-muted/50"
-                        onClick={() => navigate(`/clientes/${client.id}`)}
-                        style={{ animationDelay: `${index * 20}ms` }}
-                      >
-                        <TableCell className="text-sm font-medium py-2">
-                          {client.name}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2">
-                          {client.phone}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2 hidden sm:table-cell">
-                          {client.email || '-'}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2 hidden md:table-cell">
-                          {getProfessionalName(client.assigned_professional_id)}
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge 
-                            variant={client.is_active ? "default" : "secondary"}
-                            className="text-[9px] px-1.5 py-0 h-4"
-                          >
-                            {client.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground py-2 hidden lg:table-cell">
-                          {format(new Date(client.created_at), "dd/MM/yy", { locale: ptBR })}
-                        </TableCell>
+          ) : filteredAndSortedClients.length > 0 ? (
+            <>
+              {viewMode === 'grid' ? (
+                /* Grid View */
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {paginatedClients.map((client, index) => (
+                    <div
+                      key={client.id}
+                      style={{ animationDelay: `${index * 30}ms` }}
+                      className="animate-scale-in"
+                    >
+                      <ClientCard client={client} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Table/List View */
+                <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead 
+                          className="text-xs font-medium cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleSort('name')}
+                        >
+                          <span className="flex items-center">
+                            Nome
+                            <SortIcon field="name" />
+                          </span>
+                        </TableHead>
+                        <TableHead className="text-xs font-medium">Telefone</TableHead>
+                        <TableHead className="text-xs font-medium hidden sm:table-cell">Email</TableHead>
+                        <TableHead className="text-xs font-medium hidden md:table-cell">Profissional</TableHead>
+                        <TableHead 
+                          className="text-xs font-medium cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleSort('status')}
+                        >
+                          <span className="flex items-center">
+                            Status
+                            <SortIcon field="status" />
+                          </span>
+                        </TableHead>
+                        <TableHead 
+                          className="text-xs font-medium hidden lg:table-cell cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleSort('created_at')}
+                        >
+                          <span className="flex items-center">
+                            Desde
+                            <SortIcon field="created_at" />
+                          </span>
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedClients.map((client, index) => (
+                        <TableRow 
+                          key={client.id}
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
+                          onClick={() => navigate(`/clientes/${client.id}`)}
+                          style={{ animationDelay: `${index * 20}ms` }}
+                        >
+                          <TableCell className="text-sm font-medium py-2">
+                            {client.name}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-2">
+                            {client.phone}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-2 hidden sm:table-cell">
+                            {client.email || '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-2 hidden md:table-cell">
+                            {getProfessionalName(client.assigned_professional_id)}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <Badge 
+                              variant={client.is_active ? "default" : "secondary"}
+                              className="text-[9px] px-1.5 py-0 h-4"
+                            >
+                              {client.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-2 hidden lg:table-cell">
+                            {format(new Date(client.created_at), "dd/MM/yy", { locale: ptBR })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between mt-4 gap-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="hidden sm:inline">Exibindo</span>
+                  <Select
+                    value={String(itemsPerPage)}
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-16 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEMS_PER_PAGE_OPTIONS.map(option => (
+                        <SelectItem key={option} value={String(option)} className="text-xs">
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span>de {filteredAndSortedClients.length}</span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  
+                  <div className="flex items-center gap-1 px-2">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "ghost"}
+                          size="sm"
+                          className="h-7 w-7 p-0 text-xs"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
-            )
+            </>
           ) : (
             <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
               <Users className="mx-auto h-8 w-8 text-muted-foreground/40" />

@@ -761,12 +761,12 @@ Até breve! ✨`;
                     </div>
                   )}
 
-                  {/* Client's paid packages */}
+                  {/* Client's packages (paid and pending) */}
                   {selectedClient && availablePackages.length > 0 && (
                     <div className="border-b-2 border-primary/20">
                       <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Package className="h-3 w-3" />
-                        Pacotes Pagos do Cliente
+                        Pacotes do Cliente
                       </div>
                       {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
@@ -775,11 +775,16 @@ Até breve! ✨`;
                           // Check if there are other packages with same name to show identifier
                           const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
+                          // Check if package is paid (has payment_methods set from caixa sale)
+                          const isPaid = pkg.payment_methods && pkg.payment_methods.length > 0;
                           
                           return (
                             <div
                               key={`client-pkg-${pkg.id}`}
-                              className="p-2 hover:bg-primary/5 cursor-pointer border-b bg-primary/5"
+                              className={cn(
+                                "p-2 cursor-pointer border-b",
+                                isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
+                              )}
                               onClick={() => {
                                 setSelectedService(pkg.id);
                                 setServiceSearch(`${pkg.name}${sameNameCount > 1 ? ` (${packageDate})` : ''}`);
@@ -790,15 +795,21 @@ Até breve! ✨`;
                             >
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-primary">{pkg.name}</span>
+                                  <span className={cn("font-medium", isPaid ? "text-green-700" : "text-primary")}>{pkg.name}</span>
                                   {sameNameCount > 1 && (
                                     <span className="text-xs text-muted-foreground">({packageDate})</span>
                                   )}
                                 </div>
-                                <Badge className="text-xs bg-green-500 text-white">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  PAGO
-                                </Badge>
+                                {isPaid ? (
+                                  <Badge className="text-xs bg-green-500 text-white">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    PAGO
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                    PENDENTE
+                                  </Badge>
+                                )}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {remaining} de {pkg.total_sessions} sessões disponíveis

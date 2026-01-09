@@ -5,7 +5,7 @@ import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
 import { ServiceDetailDialog } from '@/components/services/ServiceDetailDialog';
-import { PackageDetailDialog } from '@/components/services/PackageDetailDialog';
+import { PackageTemplateDetailDialog } from '@/components/services/PackageTemplateDetailDialog';
 import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
 import { UnifiedServiceFilters } from '@/components/services/UnifiedServiceFilters';
 import { BulkImportDialog } from '@/components/services/BulkImportDialog';
@@ -22,18 +22,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
-import { Service } from '@/types';
-import { Tables } from '@/integrations/supabase/types';
+import { Service, PackageTemplate } from '@/types';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
-
-type ServicePackageDB = Tables<'service_packages'>;
 
 const defaultCategories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
@@ -49,10 +46,8 @@ interface ServicesFilters {
 }
 
 interface PackagesFilters {
-  category: string | null;
   professional: string | null;
   room: string | null;
-  client: string | null;
   sessions: string | null;
   status: string | null;
   sort: string;
@@ -61,7 +56,7 @@ interface PackagesFilters {
 const Servicos: React.FC = () => {
   const [activeTab, setActiveTab] = useLocalStorage<string>('servicos-tab', 'services');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<ServicePackageDB | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<PackageTemplate | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -70,13 +65,13 @@ const Servicos: React.FC = () => {
     category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc'
   });
   const [packageFilters, setPackageFilters] = useLocalStorage<PackagesFilters>('servicos-package-filters', {
-    category: null, professional: null, room: null, client: null, sessions: null, status: null, sort: 'name-asc'
+    professional: null, room: null, sessions: null, status: null, sort: 'name-asc'
   });
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
 
   const { services, isLoading, refetch } = useServices();
-  const { packages, isLoading: packagesLoading, refetch: refetchPackages } = useServicePackages();
+  const { templates: packages, isLoading: packagesLoading, refetch: refetchPackages } = usePackageTemplates();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { clients } = useClients();
@@ -91,11 +86,9 @@ const Servicos: React.FC = () => {
     ...defaultCategories,
     ...customCategories,
     ...services.map(s => s.category),
-    ...packages.map(p => p.category).filter(Boolean) as string[]
   ])].sort();
 
   const categoriesWithServices = [...new Set(services.map(s => s.category))];
-  const categoriesWithPackages = [...new Set(packages.map(p => p.category).filter(Boolean))];
 
   const serviceClients = useMemo(() => {
     const clientIds = [...new Set(appointments.map(a => a.client_id))];
@@ -105,13 +98,8 @@ const Servicos: React.FC = () => {
       .map(c => ({ id: c!.id, name: c!.name }));
   }, [appointments, clients]);
 
-  const packageClients = useMemo(() => {
-    return [...new Map(
-      packages
-        .filter(p => p.client_id)
-        .map(p => [p.client_id, { id: p.client_id!, name: clients.find(c => c.id === p.client_id)?.name || 'Cliente' }])
-    ).values()];
-  }, [packages, clients]);
+  // Package templates don't have clients - they are catalog items
+  const packageClients: { id: string; name: string }[] = [];
 
   const filteredServices = useMemo(() => {
     let result = services.filter(service => {
@@ -145,11 +133,8 @@ const Servicos: React.FC = () => {
 
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
-      if (!packageFilters.client && pkg.client_id) return false;
-      if (packageFilters.category && pkg.category !== packageFilters.category) return false;
       if (packageFilters.professional && pkg.professional_id !== packageFilters.professional) return false;
       if (packageFilters.room && pkg.room_id !== packageFilters.room) return false;
-      if (packageFilters.client && pkg.client_id !== packageFilters.client) return false;
       if (packageFilters.status === 'active' && !pkg.is_active) return false;
       if (packageFilters.status === 'inactive' && pkg.is_active) return false;
       if (searchTerm && !pkg.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -168,8 +153,8 @@ const Servicos: React.FC = () => {
       switch (packageFilters.sort) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
-        case 'price-asc': return Number(a.total_price) - Number(b.total_price);
-        case 'price-desc': return Number(b.total_price) - Number(a.total_price);
+        case 'price-asc': return Number(a.price) - Number(b.price);
+        case 'price-desc': return Number(b.price) - Number(a.price);
         case 'sessions-asc': return a.total_sessions - b.total_sessions;
         case 'sessions-desc': return b.total_sessions - a.total_sessions;
         case 'date-asc': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -192,7 +177,7 @@ const Servicos: React.FC = () => {
   };
 
   const clearPackageFilters = () => {
-    setPackageFilters({ category: null, professional: null, room: null, client: null, sessions: null, status: null, sort: 'name-asc' });
+    setPackageFilters({ professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
   const exportServicesCSV = () => {
@@ -209,9 +194,9 @@ const Servicos: React.FC = () => {
   const exportPackagesCSV = () => {
     exportToCSV({
       filename: 'pacotes',
-      headers: ['Nome', 'Categoria', 'Preço Total', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Preço', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'],
       rows: filteredPackages.map(p => [
-        p.name, p.category || '-', Number(p.total_price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+        p.name, Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
       ]),
       successMessage: 'Pacotes exportados com sucesso!',
     });
@@ -371,22 +356,22 @@ const Servicos: React.FC = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <UnifiedServiceFilters
                   type="packages"
-                  categories={categoriesWithPackages as string[]}
+                  categories={[]}
                   professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
                   rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
-                  clients={packageClients}
-                  selectedCategory={packageFilters.category}
+                  clients={[]}
+                  selectedCategory={null}
                   selectedProfessional={packageFilters.professional}
                   selectedRoom={packageFilters.room}
-                  selectedClient={packageFilters.client}
+                  selectedClient={null}
                   selectedStatus={packageFilters.status}
                   selectedSessions={packageFilters.sessions}
                   searchTerm=""
                   sortBy={packageFilters.sort}
-                  onCategoryChange={(v) => setPackageFilters(prev => ({ ...prev, category: v }))}
+                  onCategoryChange={() => {}}
                   onProfessionalChange={(v) => setPackageFilters(prev => ({ ...prev, professional: v }))}
                   onRoomChange={(v) => setPackageFilters(prev => ({ ...prev, room: v }))}
-                  onClientChange={(v) => setPackageFilters(prev => ({ ...prev, client: v }))}
+                  onClientChange={() => {}}
                   onStatusChange={(v) => setPackageFilters(prev => ({ ...prev, status: v }))}
                   onSessionsChange={(v) => setPackageFilters(prev => ({ ...prev, sessions: v }))}
                   onSearchChange={() => {}}
@@ -404,7 +389,7 @@ const Servicos: React.FC = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem asChild>
-                      <BulkImportDialog type="services" onImportComplete={refetchPackages} />
+                      <BulkImportDialog type="package_templates" onImportComplete={refetchPackages} />
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportPackagesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
@@ -412,11 +397,9 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <ManagePackageTemplatesDialog />
               </div>
 
-              <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
+              <NewPackageDialog onPackageCreated={refetchPackages}>
                 <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
                   <Package className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
@@ -433,8 +416,8 @@ const Servicos: React.FC = () => {
             </div>
             <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold">{packages.filter(p => p.client_id).length}</span>
-              <span className="text-muted-foreground">vendidos</span>
+              <span className="font-semibold">{packages.length}</span>
+              <span className="text-muted-foreground">total</span>
             </div>
           </div>
 
@@ -460,9 +443,6 @@ const Servicos: React.FC = () => {
                         </div>
                         <div className="min-w-0">
                           <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
-                          {pkg.category && (
-                            <Badge variant="outline" className="text-[10px] mt-0.5 h-4">{pkg.category}</Badge>
-                          )}
                         </div>
                       </div>
                       <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
@@ -484,10 +464,10 @@ const Servicos: React.FC = () => {
                     <div className="mt-2 pt-2 border-t flex items-center justify-between">
                       <div className="flex items-center gap-1 text-sm font-semibold">
                         <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                        <span>R$ {Number(pkg.total_price).toFixed(0)}</span>
+                        <span>R$ {Number(pkg.price).toFixed(0)}</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground">
-                        R$ {(Number(pkg.total_price) / pkg.total_sessions).toFixed(0)}/sessão
+                        R$ {(Number(pkg.price) / pkg.total_sessions).toFixed(0)}/sessão
                       </span>
                     </div>
                   </Card>
@@ -497,10 +477,10 @@ const Servicos: React.FC = () => {
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground tracking-wide">
-                  {searchTerm || packageFilters.category ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
+                  {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
                 </p>
-                {!searchTerm && !packageFilters.category && (
-                  <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
+                {!searchTerm && (
+                  <NewPackageDialog onPackageCreated={refetchPackages}>
                     <Button size="sm" variant="secondary" className="mt-3">
                       <Package className="h-3.5 w-3.5 mr-1" />
                       Criar Pacote
@@ -526,12 +506,11 @@ const Servicos: React.FC = () => {
       )}
 
       {selectedPackage && (
-        <PackageDetailDialog
+        <PackageTemplateDetailDialog
           pkg={selectedPackage}
           open={!!selectedPackage}
           onOpenChange={(open) => !open && setSelectedPackage(null)}
           onPackageUpdated={refetchPackages}
-          categories={allCategories}
         />
       )}
     </AppLayout>

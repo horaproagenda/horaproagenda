@@ -67,7 +67,13 @@ interface AppointmentDetailDialogProps {
   professionals: Professional[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPayment: (appointmentId: string, paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], clientCredit?: number, cashRegisterId?: string) => void;
+  onPayment: (
+    appointmentId: string, 
+    paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
+    clientCredit?: number, 
+    cashRegisterId?: string,
+    usedClientCredit?: number
+  ) => void;
 }
 
 const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
@@ -118,6 +124,10 @@ export function AppointmentDetailDialog({
   // Excess payment handling (when amount paid > amount owed)
   const [excessAction, setExcessAction] = useState<'credit' | 'change' | null>(null);
   const [changePaymentMethodId, setChangePaymentMethodId] = useState<string | null>(null);
+  
+  // Client credit usage (use existing credit balance)
+  const [useClientCredit, setUseClientCredit] = useState(false);
+  const [clientCreditUsedAmount, setClientCreditUsedAmount] = useState('');
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -403,10 +413,17 @@ export function AppointmentDetailDialog({
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const clientCredit = parseFloat(clientCreditAmount) || 0;
   
-  const totalWithCredit = totalPaymentAmount + clientCredit;
+  // Calculate credit to be used from client's available balance
+  const availableClientCredit = appointment.client?.credit_balance || 0;
+  const clientCreditUsed = useClientCredit 
+    ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAmount) 
+    : 0;
+  
+  const totalWithCredit = totalPaymentAmount + clientCredit + clientCreditUsed;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;
-  const newRemainingAmount = remainingAmount - totalPaymentAmount - clientCredit;
+  const newRemainingAmount = remainingAmount - totalPaymentAmount - clientCredit - clientCreditUsed;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
+
   
   // Calculate excess payment (when paid more than owed)
   const excessPaymentAmount = totalPaymentAmount > remainingAmount ? totalPaymentAmount - remainingAmount : 0;
@@ -453,19 +470,27 @@ export function AppointmentDetailDialog({
       ? (clientCredit + excessPaymentAmount) 
       : clientCredit;
 
-    if (validPayments.length > 0 || finalClientCredit > 0) {
+    if (validPayments.length > 0 || finalClientCredit > 0 || clientCreditUsed > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
         finalClientCredit > 0 ? finalClientCredit : undefined,
-        currentOpenRegister?.id
+        currentOpenRegister?.id,
+        clientCreditUsed > 0 ? clientCreditUsed : undefined
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
       setClientCreditAmount('');
+      setClientCreditUsedAmount('');
+      setUseClientCredit(false);
       setShowConfirmDialog(false);
       setExcessAction(null);
       setChangePaymentMethodId(null);
+      
+      // Show toast about credit usage
+      if (clientCreditUsed > 0) {
+        toast.success(`R$ ${clientCreditUsed.toFixed(2)} do crédito do cliente foi utilizado`);
+      }
       
       // Show toast about excess handling
       if (hasExcessPayment && excessAction === 'credit') {
@@ -754,9 +779,9 @@ export function AppointmentDetailDialog({
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">
-                  {/* Client credit balance indicator */}
-                  {appointment.client?.credit_balance && appointment.client.credit_balance > 0 && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  {/* Client credit balance - Use Credit Section */}
+                  {availableClientCredit > 0 && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Gift className="h-4 w-4 text-amber-500" />
@@ -765,12 +790,71 @@ export function AppointmentDetailDialog({
                           </span>
                         </div>
                         <span className="text-lg font-bold text-amber-600">
-                          R$ {appointment.client.credit_balance.toFixed(2)}
+                          R$ {availableClientCredit.toFixed(2)}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        O cliente possui crédito que pode ser utilizado neste pagamento.
-                      </p>
+                      
+                      {!useClientCredit ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
+                          onClick={() => {
+                            setUseClientCredit(true);
+                            // Pre-fill with max usable amount (min of available credit and remaining)
+                            setClientCreditUsedAmount(Math.min(availableClientCredit, remainingAmount).toFixed(2));
+                          }}
+                        >
+                          <Gift className="h-4 w-4 mr-2" />
+                          Usar Crédito no Pagamento
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-amber-700 dark:text-amber-400">
+                              Valor do crédito a utilizar
+                            </Label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                setUseClientCredit(false);
+                                setClientCreditUsedAmount('');
+                              }}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancelar
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max={Math.min(availableClientCredit, remainingAmount)}
+                              placeholder="0,00"
+                              value={clientCreditUsedAmount}
+                              onChange={(e) => setClientCreditUsedAmount(e.target.value)}
+                              className="border-amber-500/30 focus:border-amber-500"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap border-amber-500/50"
+                              onClick={() => setClientCreditUsedAmount(Math.min(availableClientCredit, remainingAmount).toFixed(2))}
+                            >
+                              Usar Tudo
+                            </Button>
+                          </div>
+                          {clientCreditUsed > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-success bg-success/10 p-2 rounded">
+                              <CheckCircle className="h-3 w-3" />
+                              <span>R$ {clientCreditUsed.toFixed(2)} de crédito será descontado</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -947,11 +1031,17 @@ export function AppointmentDetailDialog({
                   )}
 
                   {/* Payment summary */}
-                  {(totalPaymentAmount > 0 || clientCredit > 0) && (
+                  {(totalPaymentAmount > 0 || clientCredit > 0 || clientCreditUsed > 0) && (
                     <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                      {clientCreditUsed > 0 && (
+                        <div className="flex justify-between text-sm text-amber-600">
+                          <span>Crédito utilizado:</span>
+                          <span className="font-semibold">- R$ {clientCreditUsed.toFixed(2)}</span>
+                        </div>
+                      )}
                       {totalPaymentAmount > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span>Valor do serviço:</span>
+                          <span>Pagamento em formas:</span>
                           <span className="font-semibold">R$ {totalPaymentAmount.toFixed(2)}</span>
                         </div>
                       )}
@@ -970,7 +1060,7 @@ export function AppointmentDetailDialog({
                       <Separator className="my-1" />
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">Total a cobrar do cliente:</span>
-                        <span className="font-bold text-primary">R$ {totalWithFees.toFixed(2)}</span>
+                        <span className="font-bold text-primary">R$ {Math.max(0, totalWithFees - clientCreditUsed).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Valor quitado do serviço:</span>

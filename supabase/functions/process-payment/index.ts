@@ -12,6 +12,7 @@ interface PaymentRequest {
   amount_paid: number;
   payment_status: 'pending' | 'partial' | 'paid';
   client_credit?: number;
+  used_client_credit?: number;
   cash_register_id?: string;
   card_fee_amount?: number;
   installments?: number;
@@ -75,6 +76,10 @@ serve(async (req) => {
 
     if (body.client_credit && (typeof body.client_credit !== 'number' || body.client_credit < 0)) {
       errors.push({ field: 'client_credit', message: 'Client credit must be a positive number' });
+    }
+
+    if (body.used_client_credit && (typeof body.used_client_credit !== 'number' || body.used_client_credit < 0)) {
+      errors.push({ field: 'used_client_credit', message: 'Used client credit must be a positive number' });
     }
 
     if (body.card_fee_amount && (typeof body.card_fee_amount !== 'number' || body.card_fee_amount < 0)) {
@@ -184,7 +189,13 @@ serve(async (req) => {
       );
     }
 
-    // 7. Handle client credit if applicable
+    // 7. Handle client credit - ADD or DEDUCT
+    const clientName = appointment.client?.name || 'Cliente';
+    const serviceName = appointment.service?.name || 'Serviço';
+    const today = new Date().toISOString().split('T')[0];
+    const primaryPaymentMethodId = body.payment_methods[0] || null;
+
+    // 7a. Add credit to client (excess payment stored as credit)
     if (body.client_credit && body.client_credit > 0 && appointment.client?.id) {
       const currentBalance = appointment.client.credit_balance || 0;
       const newBalance = Number(currentBalance) + body.client_credit;
@@ -195,17 +206,64 @@ serve(async (req) => {
         .eq('id', appointment.client.id);
 
       if (clientError) {
-        console.error('Error updating client credit:', clientError);
+        console.error('Error adding client credit:', clientError);
       }
     }
 
-    // 8. Create financial entries and cash transactions
-    if (newPaymentAmount > 0) {
-      const clientName = appointment.client?.name || 'Cliente';
-      const serviceName = appointment.service?.name || 'Serviço';
-      const today = new Date().toISOString().split('T')[0];
-      const primaryPaymentMethodId = body.payment_methods[0] || null;
+    // 7b. Deduct credit from client (using existing credit for payment)
+    if (body.used_client_credit && body.used_client_credit > 0 && appointment.client?.id) {
+      const currentBalance = appointment.client.credit_balance || 0;
+      const newBalance = Math.max(0, Number(currentBalance) - body.used_client_credit);
 
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({ credit_balance: newBalance })
+        .eq('id', appointment.client.id);
+
+      if (clientError) {
+        console.error('Error deducting client credit:', clientError);
+      }
+
+      // Create financial entry for credit usage
+      const { error: creditEntryError } = await supabase.from('financial_entries').insert({
+        type: 'receivable',
+        description: `Uso de crédito: ${serviceName} - ${clientName}`,
+        amount: body.used_client_credit,
+        due_date: today,
+        paid_date: today,
+        status: 'paid',
+        client_id: appointment.client.id,
+        appointment_id: body.appointment_id,
+        notes: 'Pagamento com crédito do cliente',
+        created_by: userId,
+      });
+
+      if (creditEntryError) {
+        console.error('Error creating credit usage financial entry:', creditEntryError);
+      }
+
+      // Create cash transaction for credit usage if register is open
+      if (body.cash_register_id) {
+        const { error: creditCashError } = await supabase.from('cash_transactions').insert({
+          cash_register_id: body.cash_register_id,
+          type: 'income',
+          category: 'credit_usage',
+          description: `Uso de crédito: ${serviceName} - ${clientName}`,
+          amount: body.used_client_credit,
+          payment_method: null,
+          reference_id: body.appointment_id,
+          reference_type: 'appointment',
+          created_by: userId,
+        });
+
+        if (creditCashError) {
+          console.error('Error creating credit usage cash transaction:', creditCashError);
+        }
+      }
+    }
+
+    // 8. Create financial entries and cash transactions for actual payments
+    if (newPaymentAmount > 0) {
       // Create financial entry
       const { error: entryError } = await supabase.from('financial_entries').insert({
         type: 'receivable',

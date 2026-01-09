@@ -296,7 +296,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 max-h-[calc(90vh-140px)] pr-4">
           {!showForm ? (
             <div className="space-y-4">
               <Button onClick={() => setShowForm(true)} className="w-full gap-2 btn-vibrant">

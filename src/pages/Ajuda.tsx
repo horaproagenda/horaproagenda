@@ -184,14 +184,15 @@ const Ajuda = () => {
   return (
     <AppLayout title="Central de Ajuda" subtitle="Guia completo do sistema">
       <PageTransition>
-        <div className="space-y-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 h-9">
-              <TabsTrigger value="modules" className="text-xs">Módulos</TabsTrigger>
-              <TabsTrigger value="status" className="text-xs">Status</TabsTrigger>
-              <TabsTrigger value="roles" className="text-xs">Permissões</TabsTrigger>
-              <TabsTrigger value="tips" className="text-xs">Dicas</TabsTrigger>
-            </TabsList>
+        <ScrollArea className="h-[calc(100vh-120px)]">
+          <div className="space-y-4 pr-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4 h-9">
+                <TabsTrigger value="modules" className="text-xs">Módulos</TabsTrigger>
+                <TabsTrigger value="status" className="text-xs">Status</TabsTrigger>
+                <TabsTrigger value="roles" className="text-xs">Permissões</TabsTrigger>
+                <TabsTrigger value="tips" className="text-xs">Dicas</TabsTrigger>
+              </TabsList>
 
             <TabsContent value="modules" className="space-y-3 page-enter">
               <p className="text-xs text-muted-foreground mb-4">
@@ -421,6 +422,7 @@ const Ajuda = () => {
             </TabsContent>
           </Tabs>
         </div>
+        </ScrollArea>
       </PageTransition>
     </AppLayout>
   );

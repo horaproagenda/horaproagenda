@@ -839,7 +839,7 @@ export function ProductDetailDialog({
               </div>
               
               {/* Add Template Link */}
-              {canEdit && availableTemplatesToLink.length > 0 && (
+              {canEdit && (
                 <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="h-4 w-4 text-muted-foreground" />
@@ -852,77 +852,91 @@ export function ProductDetailDialog({
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3">
-                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um template de pacote" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTemplatesToLink.map(t => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} ({t.total_sessions} sessões)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    {isEstimatedTracking(product.product_type) ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantidade no recipiente em uso
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              value={containerAmount}
-                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
-                              min="0.01"
-                              step="0.01"
-                              className="flex-1"
-                            />
-                            <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                              {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantos atendimentos dura?
-                          </Label>
-                          <Input
-                            type="number"
-                            value={estimatedAppointments}
-                            onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                            min="1"
-                            placeholder="Ex: 30 atendimentos"
-                          />
-                        </div>
-                      </div>
+                    {availableTemplatesToLink.length > 0 ? (
+                      <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um template de pacote" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTemplatesToLink.map(t => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name} ({t.total_sessions} sessões)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <div className="w-48">
-                        <Label className="text-xs text-muted-foreground mb-1 block">
-                          Quantidade usada por sessão
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            value={quantityPerUse}
-                            onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                            min="0.01"
-                            step="0.01"
-                          />
-                          <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                            {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                          </span>
-                        </div>
+                      <div className="text-sm text-muted-foreground p-2 text-center">
+                        {templates.length === 0 
+                          ? 'Nenhum template de pacote cadastrado. Cadastre um template de pacote primeiro.'
+                          : 'Todos os templates já estão vinculados a este produto.'}
                       </div>
+                    )}
+                    
+                    {availableTemplatesToLink.length > 0 && (
+                      <>
+                        {isEstimatedTracking(product.product_type) ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs text-muted-foreground mb-1 block">
+                                Quantidade no recipiente em uso
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="number"
+                                  value={containerAmount}
+                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
+                                  min="0.01"
+                                  step="0.01"
+                                  className="flex-1"
+                                />
+                                <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                                  {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground mb-1 block">
+                                Quantos atendimentos dura?
+                              </Label>
+                              <Input
+                                type="number"
+                                value={estimatedAppointments}
+                                onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
+                                min="1"
+                                placeholder="Ex: 30 atendimentos"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-48">
+                            <Label className="text-xs text-muted-foreground mb-1 block">
+                              Quantidade usada por sessão
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                value={quantityPerUse}
+                                onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
+                                min="0.01"
+                                step="0.01"
+                              />
+                              <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                                {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   
-                  <Button onClick={handleAddTemplateLink} disabled={!selectedTemplateId} className="w-full">
-                    <Gift className="h-4 w-4 mr-1" />
-                    Vincular Produto ao Template
-                  </Button>
+                  {availableTemplatesToLink.length > 0 && (
+                    <Button onClick={handleAddTemplateLink} disabled={!selectedTemplateId} className="w-full">
+                      <Gift className="h-4 w-4 mr-1" />
+                      Vincular Produto ao Template
+                    </Button>
+                  )}
                 </div>
               )}
 

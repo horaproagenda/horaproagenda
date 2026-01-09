@@ -26,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar, AlertTriangle, Wallet } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -61,7 +61,7 @@ export function SaleForm() {
   const queryClient = useQueryClient();
   const { clients } = useClients();
   const { activeServices } = useServices();
-  const { packages: packageTemplates } = useServicePackages();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { productsForSale } = useProducts();
   const { professionals } = useProfessionals();
   const { activePaymentMethods } = usePaymentMethods();
@@ -224,15 +224,18 @@ export function SaleForm() {
           type: 'service' as const
         }));
       case 'package':
-        // Use service_packages without client_id (templates) for creating new packages
-        return packageTemplates
-          .filter(p => !p.client_id && p.is_active)
-          .map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.total_price,
-            type: 'package' as const
-          }));
+        // Use package_templates for creating new packages
+        return packageTemplates.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          type: 'package' as const,
+          total_sessions: p.total_sessions,
+          duration: p.duration,
+          interval_days: p.interval_days,
+          professional_id: p.professional_id,
+          room_id: p.room_id,
+        }));
       default:
         return [];
     }
@@ -435,13 +438,50 @@ export function SaleForm() {
           }
         }
 
-        // For packages: Just record the sale. Do NOT create new service_packages here.
-        // The package is only created when scheduled in the agenda (NewAppointmentDialog)
-        // This prevents duplicate packages being created in Serviços > Pacotes
+        // For packages: Create service_package for the client with payment_methods set
         if (item.type === 'package') {
-          // Note: We don't create service_packages here anymore
-          // The sale is just recorded in single_sales with the template package_id reference
-          console.log(`Package sale recorded: ${item.name} for client ${selectedClientId}`);
+          const template = packageTemplates.find(t => t.id === item.originalId);
+          if (template) {
+            // Create service_package for the client
+            const { data: newPackage, error: pkgError } = await supabase
+              .from('service_packages')
+              .insert({
+                name: template.name,
+                client_id: selectedClientId,
+                template_id: template.id,
+                total_sessions: template.total_sessions,
+                duration: template.duration || 60,
+                interval_days: template.interval_days || 7,
+                total_price: template.price,
+                professional_id: template.professional_id,
+                room_id: template.room_id,
+                equipment: template.equipment || [],
+                payment_methods: [paymentMethod.name],
+                sessions_scheduled: 0,
+                is_active: true,
+              })
+              .select()
+              .single();
+
+            if (pkgError) throw pkgError;
+
+            // Create package_appointments for all sessions
+            const sessions = Array.from({ length: template.total_sessions }, (_, i) => ({
+              package_id: newPackage.id,
+              session_number: i + 1,
+              status: 'pending',
+            }));
+
+            await supabase.from('package_appointments').insert(sessions);
+
+            // Update single_sales with package_id
+            await supabase
+              .from('single_sales')
+              .update({ package_id: newPackage.id })
+              .eq('id', saleRecord.id);
+
+            console.log(`Package created with payment_methods for client ${selectedClientId}:`, newPackage.id);
+          }
         }
 
         // Decrement product stock for product sales

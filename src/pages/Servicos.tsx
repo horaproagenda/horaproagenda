@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Sparkles, Loader2, Package, Upload, Download, FolderPlus } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
@@ -13,6 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -22,7 +29,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { Service } from '@/types';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
-import { Clock, DollarSign, Layers } from 'lucide-react';
+import { Clock, DollarSign, Layers, Search } from 'lucide-react';
 
 type ServicePackageDB = Tables<'service_packages'>;
 
@@ -35,6 +42,7 @@ const Servicos: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ServicePackageDB | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Service filters
   const [serviceCategory, setServiceCategory] = useState<string | null>(null);
@@ -42,7 +50,6 @@ const Servicos: React.FC = () => {
   const [serviceRoom, setServiceRoom] = useState<string | null>(null);
   const [serviceClient, setServiceClient] = useState<string | null>(null);
   const [serviceStatus, setServiceStatus] = useState<string | null>(null);
-  const [serviceSearch, setServiceSearch] = useState('');
   const [serviceSort, setServiceSort] = useState('name-asc');
 
   // Package filters
@@ -52,7 +59,6 @@ const Servicos: React.FC = () => {
   const [packageClient, setPackageClient] = useState<string | null>(null);
   const [packageSessions, setPackageSessions] = useState<string | null>(null);
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
-  const [packageSearch, setPackageSearch] = useState('');
   const [packageSort, setPackageSort] = useState('name-asc');
 
   const { services, isLoading, refetch } = useServices();
@@ -104,7 +110,7 @@ const Servicos: React.FC = () => {
         const serviceAppointments = appointments.filter(a => a.service_id === service.id);
         if (!serviceAppointments.some(a => a.client_id === serviceClient)) return false;
       }
-      if (serviceSearch && !service.name.toLowerCase().includes(serviceSearch.toLowerCase())) return false;
+      if (searchTerm && !service.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
 
@@ -121,7 +127,7 @@ const Servicos: React.FC = () => {
     });
 
     return result;
-  }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, serviceSearch, serviceSort, appointments]);
+  }, [services, serviceCategory, serviceProfessional, serviceRoom, serviceClient, serviceStatus, searchTerm, serviceSort, appointments]);
 
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
@@ -132,7 +138,7 @@ const Servicos: React.FC = () => {
       if (packageClient && pkg.client_id !== packageClient) return false;
       if (packageStatus === 'active' && !pkg.is_active) return false;
       if (packageStatus === 'inactive' && pkg.is_active) return false;
-      if (packageSearch && !pkg.name.toLowerCase().includes(packageSearch.toLowerCase())) return false;
+      if (searchTerm && !pkg.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (packageSessions) {
         if (packageSessions === '10+') {
           if (pkg.total_sessions <= 10) return false;
@@ -159,7 +165,7 @@ const Servicos: React.FC = () => {
     });
 
     return result;
-  }, [packages, packageCategory, packageProfessional, packageRoom, packageClient, packageSessions, packageStatus, packageSearch, packageSort]);
+  }, [packages, packageCategory, packageProfessional, packageRoom, packageClient, packageSessions, packageStatus, searchTerm, packageSort]);
 
   const handleCategoryCreated = (category: string) => {
     const updatedCategories = [...customCategories, category];
@@ -173,7 +179,6 @@ const Servicos: React.FC = () => {
     setServiceRoom(null);
     setServiceClient(null);
     setServiceStatus(null);
-    setServiceSearch('');
   };
 
   const clearPackageFilters = () => {
@@ -183,7 +188,6 @@ const Servicos: React.FC = () => {
     setPackageClient(null);
     setPackageSessions(null);
     setPackageStatus(null);
-    setPackageSearch('');
   };
 
   const exportServicesCSV = () => {
@@ -218,62 +222,87 @@ const Servicos: React.FC = () => {
 
   return (
     <AppLayout title="Serviços" subtitle="Catálogo de procedimentos e pacotes">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="services" className="text-xs">Serviços</TabsTrigger>
-          <TabsTrigger value="packages" className="text-xs">Pacotes</TabsTrigger>
-        </TabsList>
-
-        {/* Services Tab */}
-        <TabsContent value="services" className="mt-0 space-y-3">
-          {/* Line 1: Search */}
-          <UnifiedServiceFilters
-            type="services"
-            categories={categoriesWithServices}
-            professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
-            rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
-            clients={serviceClients}
-            selectedCategory={serviceCategory}
-            selectedProfessional={serviceProfessional}
-            selectedRoom={serviceRoom}
-            selectedClient={serviceClient}
-            selectedStatus={serviceStatus}
-            searchTerm={serviceSearch}
-            sortBy={serviceSort}
-            onCategoryChange={setServiceCategory}
-            onProfessionalChange={setServiceProfessional}
-            onRoomChange={setServiceRoom}
-            onClientChange={setServiceClient}
-            onStatusChange={setServiceStatus}
-            onSearchChange={setServiceSearch}
-            onSortChange={setServiceSort}
-            onClearFilters={clearServiceFilters}
+      <div className="space-y-3">
+        {/* Line 1: Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar serviço ou pacote..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9"
           />
+        </div>
 
-          {/* Line 2: New Service button */}
-          <div className="flex items-center justify-end gap-2">
-            <NewServiceDialog onServiceCreated={refetch}>
-              <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90">
-                <Plus className="h-3.5 w-3.5" />
-                <span className="text-xs">Novo Serviço</span>
-              </Button>
-            </NewServiceDialog>
-          </div>
+        {/* Line 2: Tabs (Serviços / Pacotes) */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="h-8">
+            <TabsTrigger value="services" className="text-xs h-7 px-3">Serviços</TabsTrigger>
+            <TabsTrigger value="packages" className="text-xs h-7 px-3">Pacotes</TabsTrigger>
+          </TabsList>
 
-          {/* Line 3: Import, Export, New Category */}
-          <div className="flex items-center gap-2">
-            <BulkImportDialog type="services" onImportComplete={refetch} />
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={exportServicesCSV}>
-              <Download className="h-3 w-3" />
-              Exportar
-            </Button>
-            <NewCategoryDialog existingCategories={allCategories} onCategoryCreated={handleCategoryCreated}>
-              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-                <FolderPlus className="h-3 w-3" />
-                Nova Categoria
-              </Button>
-            </NewCategoryDialog>
-          </div>
+          {/* Services Tab */}
+          <TabsContent value="services" className="mt-3 space-y-3">
+            {/* Line 3: Filters + New Service + Import/Export */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <UnifiedServiceFilters
+                  type="services"
+                  categories={categoriesWithServices}
+                  professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
+                  rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
+                  clients={serviceClients}
+                  selectedCategory={serviceCategory}
+                  selectedProfessional={serviceProfessional}
+                  selectedRoom={serviceRoom}
+                  selectedClient={serviceClient}
+                  selectedStatus={serviceStatus}
+                  searchTerm=""
+                  sortBy={serviceSort}
+                  onCategoryChange={setServiceCategory}
+                  onProfessionalChange={setServiceProfessional}
+                  onRoomChange={setServiceRoom}
+                  onClientChange={setServiceClient}
+                  onStatusChange={setServiceStatus}
+                  onSearchChange={() => {}}
+                  onSortChange={setServiceSort}
+                  onClearFilters={clearServiceFilters}
+                  hideSearch
+                />
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                      Importar/Exportar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem asChild>
+                      <BulkImportDialog type="services" onImportComplete={refetch} />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportServicesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Serviços
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <NewCategoryDialog existingCategories={allCategories} onCategoryCreated={handleCategoryCreated}>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <FolderPlus className="h-3.5 w-3.5" />
+                    Categoria
+                  </Button>
+                </NewCategoryDialog>
+              </div>
+
+              <NewServiceDialog onServiceCreated={refetch}>
+                <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="text-xs">Novo Serviço</span>
+                </Button>
+              </NewServiceDialog>
+            </div>
 
           {/* Stats Summary */}
           <div className="flex items-center gap-4 text-xs bg-muted/30 rounded-lg px-3 py-2">
@@ -323,9 +352,9 @@ const Servicos: React.FC = () => {
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {serviceSearch || serviceCategory || serviceProfessional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
+                  {searchTerm || serviceCategory || serviceProfessional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
                 </p>
-                {!serviceSearch && !serviceCategory && (
+                {!searchTerm && !serviceCategory && (
                   <NewServiceDialog onServiceCreated={refetch}>
                     <Button size="sm" variant="secondary" className="mt-3">
                       <Plus className="h-3.5 w-3.5 mr-1" />
@@ -336,54 +365,65 @@ const Servicos: React.FC = () => {
               </div>
             )}
           </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Packages Tab */}
-        <TabsContent value="packages" className="mt-0 space-y-3">
-          {/* Line 1: Search */}
-          <UnifiedServiceFilters
-            type="packages"
-            categories={categoriesWithPackages as string[]}
-            professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
-            rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
-            clients={packageClients}
-            selectedCategory={packageCategory}
-            selectedProfessional={packageProfessional}
-            selectedRoom={packageRoom}
-            selectedClient={packageClient}
-            selectedStatus={packageStatus}
-            selectedSessions={packageSessions}
-            searchTerm={packageSearch}
-            sortBy={packageSort}
-            onCategoryChange={setPackageCategory}
-            onProfessionalChange={setPackageProfessional}
-            onRoomChange={setPackageRoom}
-            onClientChange={setPackageClient}
-            onStatusChange={setPackageStatus}
-            onSessionsChange={setPackageSessions}
-            onSearchChange={setPackageSearch}
-            onSortChange={setPackageSort}
-            onClearFilters={clearPackageFilters}
-          />
+          {/* Packages Tab */}
+          <TabsContent value="packages" className="mt-3 space-y-3">
+            {/* Line 3: Filters + New Package + Import/Export */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <UnifiedServiceFilters
+                  type="packages"
+                  categories={categoriesWithPackages as string[]}
+                  professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
+                  rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
+                  clients={packageClients}
+                  selectedCategory={packageCategory}
+                  selectedProfessional={packageProfessional}
+                  selectedRoom={packageRoom}
+                  selectedClient={packageClient}
+                  selectedStatus={packageStatus}
+                  selectedSessions={packageSessions}
+                  searchTerm=""
+                  sortBy={packageSort}
+                  onCategoryChange={setPackageCategory}
+                  onProfessionalChange={setPackageProfessional}
+                  onRoomChange={setPackageRoom}
+                  onClientChange={setPackageClient}
+                  onStatusChange={setPackageStatus}
+                  onSessionsChange={setPackageSessions}
+                  onSearchChange={() => {}}
+                  onSortChange={setPackageSort}
+                  onClearFilters={clearPackageFilters}
+                  hideSearch
+                />
 
-          {/* Line 2: New Package button */}
-          <div className="flex items-center justify-end gap-2">
-            <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
-              <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90">
-                <Package className="h-3.5 w-3.5" />
-                <span className="text-xs">Novo Pacote</span>
-              </Button>
-            </NewPackageDialog>
-          </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                      Importar/Exportar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem asChild>
+                      <BulkImportDialog type="services" onImportComplete={refetchPackages} />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportPackagesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Pacotes
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-          {/* Line 3: Import, Export */}
-          <div className="flex items-center gap-2">
-            <BulkImportDialog type="services" onImportComplete={refetchPackages} />
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={exportPackagesCSV}>
-              <Download className="h-3 w-3" />
-              Exportar
-            </Button>
-          </div>
+              <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
+                <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white">
+                  <Package className="h-3.5 w-3.5" />
+                  <span className="text-xs">Novo Pacote</span>
+                </Button>
+              </NewPackageDialog>
+            </div>
 
           {/* Stats Summary */}
           <div className="flex items-center gap-4 text-xs bg-muted/30 rounded-lg px-3 py-2">
@@ -458,9 +498,9 @@ const Servicos: React.FC = () => {
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {packageSearch || packageCategory ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
+                  {searchTerm || packageCategory ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
                 </p>
-                {!packageSearch && !packageCategory && (
+                {!searchTerm && !packageCategory && (
                   <NewPackageDialog onPackageCreated={refetchPackages} categories={allCategories}>
                     <Button size="sm" variant="secondary" className="mt-3">
                       <Package className="h-3.5 w-3.5 mr-1" />
@@ -471,8 +511,9 @@ const Servicos: React.FC = () => {
               </div>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Detail Dialogs */}
       {selectedService && (

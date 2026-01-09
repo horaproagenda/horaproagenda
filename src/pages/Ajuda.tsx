@@ -224,8 +224,8 @@ const Ajuda = () => {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <CardContent className="pt-0">
-                            <ScrollArea className="max-h-[300px]">
-                              <div className="space-y-3 pt-2 border-t">
+                            <ScrollArea className="h-[250px]">
+                              <div className="space-y-3 pt-2 border-t pr-3">
                                 {module.features.map((feature, idx) => (
                                   <div key={idx} className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <div className="flex items-start gap-2">

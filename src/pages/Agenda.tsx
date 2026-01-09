@@ -33,6 +33,9 @@ import {
   TrendingUp,
   DollarSign,
   Flame,
+  Download,
+  Upload,
+  MoreHorizontal,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -83,6 +86,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { exportToCSV } from '@/lib/exportUtils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -411,6 +421,76 @@ const Agenda = () => {
 
   const hasActiveFilters = professionalFilter !== 'all' || roomFilter !== 'all' || equipmentFilter !== 'all' || statusFilter !== 'all' || paymentFilter !== 'all';
   const activeFiltersCount = [professionalFilter !== 'all', roomFilter !== 'all', equipmentFilter !== 'all', statusFilter !== 'all', paymentFilter !== 'all'].filter(Boolean).length;
+
+  // Export appointments to CSV
+  const handleExportAppointments = () => {
+    const statusMap: Record<string, string> = {
+      'scheduled': 'Agendado',
+      'confirmed': 'Confirmado', 
+      'completed': 'Concluído',
+      'cancelled': 'Cancelado',
+      'missed': 'Faltou',
+      'rescheduled': 'Reagendado',
+    };
+    
+    const paymentMap: Record<string, string> = {
+      'pending': 'Pendente',
+      'partial': 'Parcial',
+      'paid': 'Pago',
+    };
+
+    // Get appointments based on current view and filters
+    let appointmentsToExport = filteredByFilters;
+    
+    if (viewType === 'day' || viewType === 'professional') {
+      appointmentsToExport = filteredAppointments;
+    } else if (viewType === 'week') {
+      appointmentsToExport = filteredByFilters.filter(apt => {
+        const aptDate = new Date(apt.start_time);
+        return weekDays.some(day => isSameDay(aptDate, day));
+      });
+    } else if (viewType === 'month') {
+      appointmentsToExport = filteredByFilters.filter(apt => {
+        const aptDate = new Date(apt.start_time);
+        return isSameMonth(aptDate, monthStart);
+      });
+    }
+
+    exportToCSV({
+      filename: `agendamentos_${viewType}`,
+      headers: [
+        'Data',
+        'Horário Início',
+        'Horário Fim',
+        'Cliente',
+        'Telefone',
+        'Serviço',
+        'Profissional',
+        'Sala',
+        'Status',
+        'Pagamento',
+        'Valor',
+        'Valor Pago',
+        'Observações',
+      ],
+      rows: appointmentsToExport.map(apt => [
+        format(new Date(apt.start_time), 'dd/MM/yyyy'),
+        format(new Date(apt.start_time), 'HH:mm'),
+        format(new Date(apt.end_time), 'HH:mm'),
+        apt.client?.name || '-',
+        apt.client?.phone || '-',
+        apt.service?.name || (apt.package_appointment?.package?.name ? `Pacote: ${apt.package_appointment.package.name}` : '-'),
+        apt.professional?.name || apt.service?.professional?.name || '-',
+        apt.room?.name || apt.service?.room?.name || '-',
+        statusMap[apt.status] || apt.status,
+        paymentMap[apt.payment_status || 'pending'] || apt.payment_status || 'Pendente',
+        apt.service?.price || apt.package_appointment?.package?.total_price || 0,
+        apt.amount_paid || 0,
+        apt.notes || '',
+      ]),
+      successMessage: `${appointmentsToExport.length} agendamentos exportados com sucesso!`,
+    });
+  };
 
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
@@ -1252,6 +1332,29 @@ const Agenda = () => {
             <UserX className="h-3 w-3" />
             <span className="text-[11px]">Ausência</span>
           </Button>
+
+          {/* Import/Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 px-2 gap-1">
+                <MoreHorizontal className="h-3 w-3" />
+                <span className="text-[11px]">Mais</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 bg-popover">
+              <DropdownMenuItem onClick={handleExportAppointments} className="text-xs gap-2">
+                <Download className="h-3.5 w-3.5" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-xs gap-2 text-muted-foreground"
+                disabled
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Importar CSV (em breve)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Row 2: View Toggle */}

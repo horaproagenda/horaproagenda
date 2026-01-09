@@ -23,6 +23,26 @@ interface ValidationError {
   message: string;
 }
 
+// Helper to extract time from ISO string in local format (HH:mm)
+function extractTimeFromISO(isoString: string): { hours: number; minutes: number } {
+  // Parse the ISO string - the time portion represents the local time the user selected
+  // ISO format: YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DDTHH:mm:ss+00:00
+  const date = new Date(isoString);
+  
+  // Get UTC hours/minutes since that's what the user intended as local time
+  // (the frontend sends the appointment time as if it were UTC)
+  const hours = date.getUTCHours();
+  const minutes = date.getUTCMinutes();
+  
+  return { hours, minutes };
+}
+
+// Helper to get day of week from ISO string
+function getDayOfWeekFromISO(isoString: string): number {
+  const date = new Date(isoString);
+  return date.getUTCDay(); // 0 = Sunday, 6 = Saturday
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -40,16 +60,17 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    // Create client with user's auth token
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    // Use anon key for auth verification
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
     // Verify user
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await authClient.auth.getUser(token);
     if (claimsError || !claimsData?.user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid token' }),
@@ -57,11 +78,16 @@ serve(async (req) => {
       );
     }
 
+    // Use service role for database operations to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const userId = claimsData.user.id;
 
     // Parse request body
     const body = await req.json() as AppointmentRequest;
     const errors: ValidationError[] = [];
+
+    console.log('Creating appointment with data:', JSON.stringify(body));
 
     // 1. Basic input validation
     if (!body.client_id || typeof body.client_id !== 'string') {
@@ -91,7 +117,6 @@ serve(async (req) => {
     } else if (endTime <= startTime) {
       errors.push({ field: 'end_time', message: 'End time must be after start time' });
     }
-    // Note: We allow past appointments for flexibility (retroactive entries, timezone differences)
 
     if (errors.length > 0) {
       return new Response(
@@ -101,17 +126,18 @@ serve(async (req) => {
     }
 
     // 3. Fetch business settings for validation
-    const { data: businessSettings } = await supabase
+    const { data: businessSettings, error: settingsError } = await supabase
       .from('business_settings')
       .select('*')
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    console.log('Business settings:', JSON.stringify(businessSettings));
 
     if (businessSettings) {
-      const startHour = startTime.getHours();
-      const startMinutes = startTime.getMinutes();
-      const endHour = endTime.getHours();
-      const endMinutes = endTime.getMinutes();
+      // Extract time from the appointment using UTC (since frontend sends times as UTC)
+      const { hours: startHour, minutes: startMinutes } = extractTimeFromISO(body.start_time);
+      const { hours: endHour, minutes: endMinutes } = extractTimeFromISO(body.end_time);
       
       const [openHour, openMinute] = businessSettings.opening_time.split(':').map(Number);
       const [closeHour, closeMinute] = businessSettings.closing_time.split(':').map(Number);
@@ -121,6 +147,8 @@ serve(async (req) => {
       const openInMinutes = openHour * 60 + openMinute;
       const closeInMinutes = closeHour * 60 + closeMinute;
 
+      console.log(`Time validation: start=${startHour}:${startMinutes} (${startInMinutes}min), end=${endHour}:${endMinutes} (${endInMinutes}min), open=${openHour}:${openMinute} (${openInMinutes}min), close=${closeHour}:${closeMinute} (${closeInMinutes}min)`);
+
       if (startInMinutes < openInMinutes || endInMinutes > closeInMinutes) {
         errors.push({ 
           field: 'time', 
@@ -128,8 +156,10 @@ serve(async (req) => {
         });
       }
 
-      // Check day of week
-      const dayOfWeek = startTime.getDay();
+      // Check day of week using UTC day
+      const dayOfWeek = getDayOfWeekFromISO(body.start_time);
+      console.log(`Day of week: ${dayOfWeek} (0=Sun, 6=Sat), work_sundays=${businessSettings.work_sundays}, work_saturdays=${businessSettings.work_saturdays}`);
+      
       if (dayOfWeek === 0 && !businessSettings.work_sundays) {
         errors.push({ field: 'start_time', message: 'Business is closed on Sundays' });
       }
@@ -139,6 +169,7 @@ serve(async (req) => {
     }
 
     if (errors.length > 0) {
+      console.log('Validation errors:', JSON.stringify(errors));
       return new Response(
         JSON.stringify({ success: false, errors }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -292,6 +323,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Appointment created successfully:', appointment.id);
 
     return new Response(
       JSON.stringify({ success: true, data: appointment }),

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Calendar, ChevronRight, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Phone, Mail, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function ClientCard({ client, onSchedule }: ClientCardProps) {
+export function ClientCard({ client }: ClientCardProps) {
   const navigate = useNavigate();
   const { deleteClient } = useClients();
   const { hasRole } = useAuth();
@@ -142,25 +142,10 @@ export function ClientCard({ client, onSchedule }: ClientCardProps) {
         )}
 
         {/* Footer */}
-        <div className="mt-2 pt-2 border-t border-border/50 flex items-center justify-between">
+        <div className="mt-2 pt-2 border-t border-border/50">
           <span className="text-[10px] text-muted-foreground">
             Desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
           </span>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSchedule?.(client);
-              }}
-              className="h-6 px-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            >
-              <Calendar className="h-3 w-3 mr-1" />
-              Agendar
-            </Button>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
         </div>
       </div>
 

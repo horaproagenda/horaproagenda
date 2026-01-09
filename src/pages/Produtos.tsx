@@ -97,6 +97,7 @@ const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode 
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },
   { value: 'liquid', label: 'Líquido', icon: <Droplets className="h-4 w-4" /> },
   { value: 'cream', label: 'Creme', icon: <Package className="h-4 w-4" /> },
+  { value: 'gel', label: 'Gel', icon: <Droplets className="h-4 w-4" /> },
   { value: 'powder', label: 'Pó', icon: <Package className="h-4 w-4" /> },
   { value: 'other', label: 'Outro', icon: <Package className="h-4 w-4" /> },
 ];
@@ -107,6 +108,7 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'l', label: 'L' },
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
+  { value: 'gel', label: 'Gel (aplicação)' },
 ];
 
 const getTypeLabel = (type: ProductType) => PRODUCT_TYPES.find(t => t.value === type)?.label || type;

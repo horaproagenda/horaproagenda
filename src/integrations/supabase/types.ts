@@ -1242,6 +1242,7 @@ export type Database = {
           is_active: boolean
           is_commission_based: boolean | null
           name: string
+          permissions: Json | null
           phone: string | null
           specialties: string[] | null
           updated_at: string
@@ -1262,6 +1263,7 @@ export type Database = {
           is_active?: boolean
           is_commission_based?: boolean | null
           name: string
+          permissions?: Json | null
           phone?: string | null
           specialties?: string[] | null
           updated_at?: string
@@ -1282,6 +1284,7 @@ export type Database = {
           is_active?: boolean
           is_commission_based?: boolean | null
           name?: string
+          permissions?: Json | null
           phone?: string | null
           specialties?: string[] | null
           updated_at?: string

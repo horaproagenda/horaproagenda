@@ -13,8 +13,65 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Missing token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // First validate the user token
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth validation error:', claimsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user:', userId);
+
+    // Check if user has admin or receptionist role
+    const { data: userRoles, error: rolesError } = await authClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+
+    if (rolesError) {
+      console.error('Error fetching user roles:', rolesError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to verify permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const roles = userRoles?.map(r => r.role) || [];
+    const hasPermission = roles.includes('admin') || roles.includes('receptionist');
+
+    if (!hasPermission) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden - Insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use service role for data access
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE');
@@ -33,8 +90,6 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
@@ -87,7 +142,7 @@ serve(async (req) => {
       try {
         console.log(`Sending notification to ${entry.client.name} (${phone})`);
         
-        const response = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+        const response = await fetch(`${evolutionApiUrl}/message/sendText/${encodeURIComponent(evolutionInstance)}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

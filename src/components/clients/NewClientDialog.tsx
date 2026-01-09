@@ -159,19 +159,40 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
         assignedProfessionalId = data.assigned_professional_id;
       }
 
-      const { error } = await supabase.from('clients').insert({
-        name: data.name,
-        email: data.email || null,
-        phone: data.phone,
-        cpf: data.cpf ? formatCPF(data.cpf) : null,
-        birthdate: data.birthdate || null,
-        notes: data.notes || null,
-        is_active: data.is_active,
-        referral_source: data.referral_source || null,
-        assigned_professional_id: assignedProfessionalId,
-      });
+      // Get auth session for Edge Function call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Usuário não autenticado');
+      }
 
-      if (error) throw error;
+      // Call Edge Function for server-side validation
+      const response = await fetch(
+        'https://nsgcllrbswodjoadybsj.supabase.co/functions/v1/create-client',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            name: data.name,
+            email: data.email || null,
+            phone: data.phone,
+            cpf: data.cpf ? formatCPF(data.cpf) : null,
+            birthdate: data.birthdate || null,
+            notes: data.notes || null,
+            is_active: data.is_active,
+            referral_source: data.referral_source || null,
+            assigned_professional_id: assignedProfessionalId,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao cadastrar cliente');
+      }
 
       toast.success('Cliente cadastrado com sucesso!');
       form.reset();

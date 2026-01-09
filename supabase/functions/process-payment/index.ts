@@ -160,17 +160,8 @@ serve(async (req) => {
     const servicePrice = appointment.service?.price || 0;
     const remainingAfterPayment = servicePrice - body.amount_paid;
 
-    // Validate payment amount doesn't exceed service price (unless adding credit)
-    if (body.amount_paid > servicePrice && !body.client_credit) {
-      errors.push({ field: 'amount_paid', message: 'Payment amount exceeds service price' });
-    }
-
-    if (errors.length > 0) {
-      return new Response(
-        JSON.stringify({ success: false, errors }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Note: We allow payments exceeding service price for flexibility
+    // (tips, advance payments, package adjustments, different negotiated prices, etc.)
 
     // 6. Update appointment payment
     const { data: updatedAppointment, error: updateError } = await supabase

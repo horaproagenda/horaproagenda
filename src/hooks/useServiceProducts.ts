@@ -4,11 +4,17 @@ import { toast } from 'sonner';
 import type { Product } from './useProducts';
 import type { Service } from '@/types';
 
+export type TrackingMethod = 'exact' | 'estimated';
+
 export interface ServiceProduct {
   id: string;
   service_id: string;
   product_id: string;
   quantity_per_use: number;
+  estimated_appointments: number | null;
+  container_amount: number | null;
+  container_unit: string | null;
+  tracking_method: TrackingMethod;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -39,10 +45,28 @@ export function useServiceProducts(serviceId?: string) {
   });
 
   const createServiceProduct = useMutation({
-    mutationFn: async (serviceProduct: Omit<ServiceProduct, 'id' | 'created_at' | 'updated_at' | 'product' | 'service'>) => {
+    mutationFn: async (serviceProduct: {
+      service_id: string;
+      product_id: string;
+      quantity_per_use?: number;
+      estimated_appointments?: number | null;
+      container_amount?: number | null;
+      container_unit?: string | null;
+      tracking_method?: TrackingMethod;
+      notes?: string | null;
+    }) => {
       const { data, error } = await supabase
         .from('service_products')
-        .insert(serviceProduct)
+        .insert({
+          service_id: serviceProduct.service_id,
+          product_id: serviceProduct.product_id,
+          quantity_per_use: serviceProduct.quantity_per_use ?? 1,
+          estimated_appointments: serviceProduct.estimated_appointments ?? null,
+          container_amount: serviceProduct.container_amount ?? null,
+          container_unit: serviceProduct.container_unit ?? null,
+          tracking_method: serviceProduct.tracking_method ?? 'exact',
+          notes: serviceProduct.notes ?? null,
+        })
         .select()
         .single();
 

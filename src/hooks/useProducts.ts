@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type ProductType = 'solid' | 'liquid' | 'cream' | 'powder' | 'gel' | 'other';
-export type ProductUnit = 'un' | 'ml' | 'l' | 'g' | 'kg' | 'gel';
+export type ProductUnit = 'un' | 'ml' | 'l' | 'g' | 'kg';
 
 export interface Product {
   id: string;

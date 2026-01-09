@@ -59,8 +59,17 @@ interface ProductDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateProduct: (data: Partial<Product> & { id: string }) => Promise<void>;
-  onCreateServiceLink: (data: { service_id: string; product_id: string; quantity_per_use: number; notes: string | null }) => Promise<void>;
-  onUpdateServiceLink: (data: { id: string; quantity_per_use: number }) => Promise<void>;
+  onCreateServiceLink: (data: { 
+    service_id: string; 
+    product_id: string; 
+    quantity_per_use?: number; 
+    estimated_appointments?: number | null;
+    container_amount?: number | null;
+    container_unit?: string | null;
+    tracking_method?: 'exact' | 'estimated';
+    notes?: string | null;
+  }) => Promise<void>;
+  onUpdateServiceLink: (data: { id: string; quantity_per_use?: number; estimated_appointments?: number | null }) => Promise<void>;
   onDeleteServiceLink: (id: string) => Promise<void>;
 }
 
@@ -68,9 +77,14 @@ const PRODUCT_TYPES: { value: ProductType; label: string }[] = [
   { value: 'solid', label: 'Sólido' },
   { value: 'liquid', label: 'Líquido' },
   { value: 'cream', label: 'Creme' },
+  { value: 'gel', label: 'Gel' },
   { value: 'powder', label: 'Pó' },
   { value: 'other', label: 'Outro' },
 ];
+
+// Helper to check if product uses estimated tracking (liquid/gel/cream)
+const isEstimatedTracking = (type: ProductType) => 
+  ['liquid', 'gel', 'cream'].includes(type);
 
 const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'un', label: 'Unidade(s)' },
@@ -101,6 +115,8 @@ export function ProductDetailDialog({
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(1);
+  const [estimatedAppointments, setEstimatedAppointments] = useState(30);
+  const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
   // Filter purchases for this product
@@ -180,14 +196,37 @@ export function ProductDetailDialog({
 
   const handleAddServiceLink = async () => {
     if (!product || !selectedServiceId) return;
-    await onCreateServiceLink({
-      service_id: selectedServiceId,
-      product_id: product.id,
-      quantity_per_use: quantityPerUse,
-      notes: null,
-    });
+    
+    const useEstimated = isEstimatedTracking(product.product_type);
+    
+    if (useEstimated) {
+      // For liquids/gel/cream: calculate quantity_per_use from estimated appointments
+      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      await onCreateServiceLink({
+        service_id: selectedServiceId,
+        product_id: product.id,
+        quantity_per_use: calculatedQuantityPerUse,
+        estimated_appointments: estimatedAppointments,
+        container_amount: containerAmount,
+        container_unit: product.unit,
+        tracking_method: 'estimated',
+        notes: null,
+      });
+    } else {
+      // For solids: use exact quantity
+      await onCreateServiceLink({
+        service_id: selectedServiceId,
+        product_id: product.id,
+        quantity_per_use: quantityPerUse,
+        tracking_method: 'exact',
+        notes: null,
+      });
+    }
+    
     setSelectedServiceId('');
     setQuantityPerUse(1);
+    setEstimatedAppointments(30);
+    setContainerAmount(1);
   };
 
   const supplierInfo = useMemo(() => {
@@ -565,32 +604,96 @@ export function ProductDetailDialog({
             </TabsContent>
 
             <TabsContent value="services" className="mt-4">
-              {/* Add Service Link */}
+              {/* Add Service Link - Adapted form based on product type */}
               {canEdit && availableServicesToLink.length > 0 && (
-                <div className="flex gap-2 mb-4 p-3 rounded-lg border bg-muted/30">
-                  <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione um serviço para vincular" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableServicesToLink.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="w-24">
-                    <Input
-                      type="number"
-                      placeholder="Qtd/uso"
-                      value={quantityPerUse}
-                      onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                      min="0.01"
-                      step="0.01"
-                    />
+                <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Vincular a Serviço</span>
+                    {isEstimatedTracking(product.product_type) && (
+                      <Badge variant="outline" className="text-xs">
+                        Modo Estimado
+                      </Badge>
+                    )}
                   </div>
-                  <Button onClick={handleAddServiceLink} disabled={!selectedServiceId}>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um serviço para vincular" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableServicesToLink.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {isEstimatedTracking(product.product_type) ? (
+                      // For liquids/gel/cream: Ask about container and estimated appointments
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Quantidade no recipiente em uso
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              value={containerAmount}
+                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
+                              min="0.01"
+                              step="0.01"
+                              className="flex-1"
+                            />
+                            <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                              {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Ex: 1L de um galão de 5L
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Quantos atendimentos dura?
+                          </Label>
+                          <Input
+                            type="number"
+                            value={estimatedAppointments}
+                            onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
+                            min="1"
+                            placeholder="Ex: 30 atendimentos"
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Média estimada de atendimentos
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      // For solids: Ask exact quantity per use
+                      <div className="w-48">
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Quantidade usada por atendimento
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            value={quantityPerUse}
+                            onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
+                            min="0.01"
+                            step="0.01"
+                          />
+                          <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
+                            {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button onClick={handleAddServiceLink} disabled={!selectedServiceId} className="w-full">
                     <Link2 className="h-4 w-4 mr-1" />
-                    Vincular
+                    Vincular Produto ao Serviço
                   </Button>
                 </div>
               )}
@@ -599,14 +702,15 @@ export function ProductDetailDialog({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Serviço</TableHead>
-                    <TableHead>Quantidade/Uso</TableHead>
-                    <TableHead>Atendimentos Estimados</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Consumo</TableHead>
+                    <TableHead>Atend. Restantes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {productServiceLinks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                         <Link2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhum serviço vinculado
                       </TableCell>
@@ -614,9 +718,17 @@ export function ProductDetailDialog({
                   ) : (
                     productServiceLinks.map(sp => {
                       const service = services.find(s => s.id === sp.service_id);
-                      const estimatedAppointments = sp.quantity_per_use > 0
-                        ? Math.floor(product.current_stock / sp.quantity_per_use)
-                        : 0;
+                      const isEstimated = sp.tracking_method === 'estimated';
+                      
+                      // Calculate remaining appointments
+                      let remainingAppointments = 0;
+                      if (isEstimated && sp.estimated_appointments && sp.container_amount) {
+                        // Based on estimated appointments per container
+                        const containersRemaining = product.current_stock / sp.container_amount;
+                        remainingAppointments = Math.floor(containersRemaining * sp.estimated_appointments);
+                      } else if (sp.quantity_per_use > 0) {
+                        remainingAppointments = Math.floor(product.current_stock / sp.quantity_per_use);
+                      }
 
                       return (
                         <TableRow key={sp.id}>
@@ -624,11 +736,23 @@ export function ProductDetailDialog({
                             <Badge variant="outline">{service?.name || '-'}</Badge>
                           </TableCell>
                           <TableCell>
-                            {sp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                            <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-xs">
+                              {isEstimated ? 'Estimado' : 'Exato'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={estimatedAppointments < 5 ? 'destructive' : 'secondary'}>
-                              {estimatedAppointments} atendimentos
+                            {isEstimated ? (
+                              <div className="text-sm">
+                                <span className="font-medium">{sp.container_amount} {sp.container_unit}</span>
+                                <span className="text-muted-foreground"> → {sp.estimated_appointments} atend.</span>
+                              </div>
+                            ) : (
+                              <span>{sp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/uso</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={remainingAppointments < 5 ? 'destructive' : 'secondary'}>
+                              {remainingAppointments} atendimentos
                             </Badge>
                           </TableCell>
                         </TableRow>

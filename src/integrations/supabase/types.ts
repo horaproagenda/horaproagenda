@@ -1597,30 +1597,42 @@ export type Database = {
       }
       service_products: {
         Row: {
+          container_amount: number | null
+          container_unit: string | null
           created_at: string
+          estimated_appointments: number | null
           id: string
           notes: string | null
           product_id: string
           quantity_per_use: number
           service_id: string
+          tracking_method: string | null
           updated_at: string
         }
         Insert: {
+          container_amount?: number | null
+          container_unit?: string | null
           created_at?: string
+          estimated_appointments?: number | null
           id?: string
           notes?: string | null
           product_id: string
           quantity_per_use?: number
           service_id: string
+          tracking_method?: string | null
           updated_at?: string
         }
         Update: {
+          container_amount?: number | null
+          container_unit?: string | null
           created_at?: string
+          estimated_appointments?: number | null
           id?: string
           notes?: string | null
           product_id?: string
           quantity_per_use?: number
           service_id?: string
+          tracking_method?: string | null
           updated_at?: string
         }
         Relationships: [

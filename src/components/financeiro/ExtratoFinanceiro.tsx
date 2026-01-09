@@ -87,15 +87,17 @@ export function ExtratoFinanceiro() {
     });
   }, [entries, dateFilterType, typeFilter]);
 
-  // Calculate running balance per bank
+  // Calculate running balance per bank - sorted newest first
   const entriesWithBalance = useMemo(() => {
     const bankBalances: Record<string, number> = {};
     
-    const sortedEntries = [...filteredEntries].sort((a, b) => 
+    // First sort oldest to newest for balance calculation
+    const sortedEntriesAsc = [...filteredEntries].sort((a, b) => 
       new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     );
 
-    return sortedEntries.map((entry) => {
+    // Calculate running balance
+    const entriesWithCalcBalance = sortedEntriesAsc.map((entry) => {
       const bankId = entry.bank_id || 'sem_banco';
       if (!(bankId in bankBalances)) {
         bankBalances[bankId] = 0;
@@ -113,7 +115,12 @@ export function ExtratoFinanceiro() {
         ...entry,
         runningBalance: bankBalances[bankId],
       };
-    }).reverse();
+    });
+
+    // Return sorted newest first (most recent updates at top)
+    return entriesWithCalcBalance.sort((a, b) => 
+      new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+    );
   }, [filteredEntries]);
 
   const openEditDialog = (entry: FinancialEntry) => {

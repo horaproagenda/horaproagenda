@@ -115,6 +115,10 @@ export function AppointmentDetailDialog({
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
   
+  // Excess payment handling (when amount paid > amount owed)
+  const [excessAction, setExcessAction] = useState<'credit' | 'change' | null>(null);
+  const [changePaymentMethodId, setChangePaymentMethodId] = useState<string | null>(null);
+  
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState('');
@@ -327,34 +331,49 @@ export function AppointmentDetailDialog({
   const isPackageAppointment = !!appointment.package_appointment;
   const packageData = appointment.package_appointment?.package;
   
-  // Check if this appointment used a pre-paid service (from caixa sale)
-  const isPrepaidService = appointment.payment_status === 'paid' && !isPackageAppointment;
-  
   // For package appointments, check if the package was actually paid
   // A package is paid when payment_methods are set and total_price > 0 implies it was sold
   const isPackagePaid = isPackageAppointment && packageData?.payment_methods && packageData.payment_methods.length > 0;
   
-  // Use the actual payment_status from the appointment, not assume paid for packages
-  const effectivePaymentStatus = isPrepaidService ? 'paid' : 
-    isPackagePaid ? 'paid' : 
-    (appointment.payment_status || 'pending');
+  // Check if this appointment used a pre-paid service (from caixa sale)
+  // Only consider prepaid if it's marked as paid AND has payment methods or explicitly amount_paid equals price
+  const isPrepaidService = !isPackageAppointment && appointment.payment_status === 'paid' && (
+    (appointment.payment_methods && appointment.payment_methods.length > 0) ||
+    (appointment.amount_paid || 0) > 0
+  );
+  
+  // Calculate prices based on appointment type
+  // IMPORTANT: For package appointments, the total price to pay is the FULL PACKAGE PRICE, not per session
+  // Packages must be paid in full, regardless of how many sessions are scheduled
+  const servicePrice = appointment.service?.price || 0;
+  const packagePrice = packageData?.total_price || 0;
+  
+  const totalPrice = isPackageAppointment 
+    ? (isPackagePaid ? 0 : packagePrice)
+    : servicePrice;
+  
+  // Calculate amount paid based on actual data
+  // For packages: if paid, show full package price as paid. If not paid, show appointment's amount_paid
+  // For regular services: show the actual amount_paid from the appointment
+  const amountPaid = isPackageAppointment 
+    ? (isPackagePaid ? packagePrice : (appointment.amount_paid || 0))
+    : (appointment.amount_paid || 0);
+  
+  const remainingAmount = Math.max(0, totalPrice - amountPaid);
+  
+  // Determine effective payment status based on actual amounts
+  // This ensures consistency between displayed status and values
+  const calculateEffectivePaymentStatus = () => {
+    if (isPackagePaid) return 'paid';
+    if (totalPrice === 0) return 'paid';
+    if (amountPaid >= totalPrice) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    return 'pending';
+  };
+  
+  const effectivePaymentStatus = calculateEffectivePaymentStatus();
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
-  
-  // For package appointments that are paid, the price is 0 (already covered by package)
-  // For unpaid package appointments, show the package session value
-  const packageSessionPrice = isPackageAppointment && packageData ? 
-    (packageData.total_price / packageData.total_sessions) : 0;
-  const totalPrice = isPackageAppointment 
-    ? (isPackagePaid ? 0 : packageSessionPrice)
-    : (appointment.service?.price || 0);
-  
-  const amountPaid = isPackageAppointment ? 
-    (isPackagePaid ? 0 : 0) : 
-    (isPrepaidService && appointment.amount_paid === 0 
-      ? totalPrice 
-      : (appointment.amount_paid || 0));
-  const remainingAmount = totalPrice - amountPaid;
 
   const addPaymentMethod = () => {
     setPayments([...payments, { method: '', amount: '' }]);
@@ -388,11 +407,27 @@ export function AppointmentDetailDialog({
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;
   const newRemainingAmount = remainingAmount - totalPaymentAmount - clientCredit;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
+  
+  // Calculate excess payment (when paid more than owed)
+  const excessPaymentAmount = totalPaymentAmount > remainingAmount ? totalPaymentAmount - remainingAmount : 0;
+  const hasExcessPayment = excessPaymentAmount > 0;
 
   const handleConfirmPayment = () => {
     // Verificar se existe caixa aberto
     if (!currentOpenRegister) {
       toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
+      return;
+    }
+    
+    // If there's excess payment, require user to choose what to do with it
+    if (hasExcessPayment && !excessAction) {
+      toast.error('Selecione o destino do valor excedente (crédito ou troco)');
+      return;
+    }
+    
+    // If change was selected, require payment method
+    if (hasExcessPayment && excessAction === 'change' && !changePaymentMethodId) {
+      toast.error('Selecione a forma de devolução do troco');
       return;
     }
     
@@ -413,17 +448,32 @@ export function AppointmentDetailDialog({
         installments: p.installments
       }));
 
-    if (validPayments.length > 0 || clientCredit > 0) {
+    // If excess payment should become client credit, add it to the credit amount
+    const finalClientCredit = excessAction === 'credit' 
+      ? (clientCredit + excessPaymentAmount) 
+      : clientCredit;
+
+    if (validPayments.length > 0 || finalClientCredit > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
-        clientCredit > 0 ? clientCredit : undefined,
+        finalClientCredit > 0 ? finalClientCredit : undefined,
         currentOpenRegister?.id
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
       setClientCreditAmount('');
       setShowConfirmDialog(false);
+      setExcessAction(null);
+      setChangePaymentMethodId(null);
+      
+      // Show toast about excess handling
+      if (hasExcessPayment && excessAction === 'credit') {
+        toast.success(`R$ ${excessPaymentAmount.toFixed(2)} adicionado como crédito do cliente`);
+      } else if (hasExcessPayment && excessAction === 'change') {
+        const changeMethod = activePaymentMethods.find(m => m.id === changePaymentMethodId);
+        toast.info(`Troco de R$ ${excessPaymentAmount.toFixed(2)} devolvido via ${changeMethod?.name || 'dinheiro'}`);
+      }
     }
   };
 
@@ -646,6 +696,19 @@ export function AppointmentDetailDialog({
                 </div>
               </div>
 
+              {/* Package payment indicator - packages must be paid in full */}
+              {isPackageAppointment && !isPackagePaid && remainingAmount > 0 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <Package className="h-4 w-4 text-primary flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-primary">Pagamento de Pacote</p>
+                    <p className="text-xs text-muted-foreground">
+                      O valor total do pacote é <strong>R$ {(packageData?.total_price || 0).toFixed(2)}</strong> e deve ser pago integralmente.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Prepaid Service Indicator */}
               {isPrepaidService && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
@@ -656,8 +719,18 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
+              {/* Package already paid indicator */}
+              {isPackagePaid && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+                  <Package className="h-4 w-4 text-success flex-shrink-0" />
+                  <p className="text-sm text-success">
+                    Pacote já foi pago integralmente
+                  </p>
+                </div>
+              )}
+
               {/* Outstanding Balance Warning */}
-              {remainingAmount > 0 && !showPaymentForm && !isPrepaidService && (
+              {remainingAmount > 0 && !showPaymentForm && !isPrepaidService && !isPackagePaid && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
                   <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
                   <p className="text-sm text-warning">
@@ -681,10 +754,35 @@ export function AppointmentDetailDialog({
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">
+                  {/* Client credit balance indicator */}
+                  {appointment.client?.credit_balance && appointment.client.credit_balance > 0 && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Gift className="h-4 w-4 text-amber-500" />
+                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            Crédito disponível do cliente
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-amber-600">
+                          R$ {appointment.client.credit_balance.toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        O cliente possui crédito que pode ser utilizado neste pagamento.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                     <p className="text-sm text-muted-foreground">Valor a pagar</p>
                     <p className="text-xl font-bold text-primary">R$ {remainingAmount.toFixed(2)}</p>
+                    {isPackageAppointment && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Valor total do pacote (pagamento integral obrigatório)
+                      </p>
+                    )}
                   </div>
                   
                   <p className="text-sm font-medium">Registrar Pagamento</p>
@@ -894,6 +992,73 @@ export function AppointmentDetailDialog({
                       <p className="text-xs text-warning">
                         Ficará um valor em aberto de R$ {newRemainingAmount.toFixed(2)}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Excess payment handling - when amount paid > amount owed */}
+                  {hasExcessPayment && (
+                    <div className="p-3 rounded-lg border border-success/30 bg-success/5 space-y-3">
+                      <div className="flex items-center gap-2 text-success">
+                        <Gift className="h-4 w-4" />
+                        <span className="font-medium text-sm">
+                          Valor excedente: R$ {excessPaymentAmount.toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        O valor pago é maior que o valor a pagar. Escolha o destino do excedente:
+                      </p>
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          variant={excessAction === 'credit' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setExcessAction('credit');
+                            setChangePaymentMethodId(null);
+                          }}
+                        >
+                          <Gift className="h-4 w-4 mr-1" />
+                          Crédito Cliente
+                        </Button>
+                        <Button
+                          variant={excessAction === 'change' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setExcessAction('change')}
+                        >
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Troco
+                        </Button>
+                      </div>
+
+                      {excessAction === 'credit' && (
+                        <div className="text-xs text-success bg-success/10 p-2 rounded">
+                          R$ {excessPaymentAmount.toFixed(2)} será adicionado como crédito para o cliente usar em próximos atendimentos.
+                        </div>
+                      )}
+
+                      {excessAction === 'change' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Como será devolvido o troco?</Label>
+                          <Select
+                            value={changePaymentMethodId || ''}
+                            onValueChange={setChangePaymentMethodId}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activePaymentMethods
+                                .filter(m => m.name.toLowerCase().includes('dinheiro') || m.name.toLowerCase().includes('pix'))
+                                .map(m => (
+                                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   )}
 

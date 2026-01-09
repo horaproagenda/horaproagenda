@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Appointment } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Calendar, Package, Sparkles } from 'lucide-react';
+import { Clock, Calendar, Package, Sparkles, Filter } from 'lucide-react';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
@@ -19,29 +20,48 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   rescheduled: { label: 'Reagendado', variant: 'secondary' },
 };
 
-// Generate unique colors for packages/services
 const generateColor = (str: string): string => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const colors = [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#8b5cf6', // violet
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#06b6d4', // cyan
-    '#ec4899', // pink
-    '#84cc16', // lime
-    '#6366f1', // indigo
-    '#f97316', // orange
-  ];
+  const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
   return colors[Math.abs(hash) % colors.length];
 };
 
+const getMonthOptions = () => {
+  const options = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = subMonths(now, i);
+    options.push({
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy', { locale: ptBR }),
+    });
+  }
+  return options;
+};
+
 export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabProps) {
-  // Group appointments by package/service for color coding
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const monthOptions = useMemo(() => getMonthOptions(), []);
+
+  const filteredAppointments = useMemo(() => {
+    const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
+    const monthEnd = endOfMonth(monthStart);
+    
+    return appointments
+      .filter(a => {
+        try {
+          const date = parseISO(a.start_time);
+          return isWithinInterval(date, { start: monthStart, end: monthEnd });
+        } catch {
+          return false;
+        }
+      })
+      .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+  }, [appointments, selectedMonth]);
+
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
     appointments.forEach(apt => {
@@ -54,90 +74,97 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
     return map;
   }, [appointments]);
 
-  if (appointments.length === 0) {
-    return (
+  return (
+    <div className="space-y-3 animate-fade-in">
+      {/* Filter */}
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {monthOptions.map(option => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">
+          {filteredAppointments.length} agendamento(s)
+        </span>
+      </div>
+
+      {/* Appointments List */}
       <Card>
-        <CardContent className="py-12 text-center">
-          <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+        <CardContent className="p-3">
+          {filteredAppointments.length === 0 ? (
+            <div className="py-6 text-center">
+              <Calendar className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-xs text-muted-foreground">Nenhum agendamento neste mês</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {filteredAppointments.map((appointment) => {
+                const status = statusConfig[appointment.status] || statusConfig.scheduled;
+                const isPackage = !!appointment.package_appointment;
+                const colorKey = appointment.package_appointment?.package?.id || appointment.service?.id || '';
+                const borderColor = colorMap.get(colorKey) || '#999';
+
+                return (
+                  <div
+                    key={appointment.id}
+                    className="p-2.5 rounded-lg bg-card hover:bg-muted/30 transition-colors border-l-3"
+                    style={{ borderLeftColor: borderColor, borderLeftWidth: '3px' }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {isPackage ? (
+                          <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                        )}
+                        <span className="font-medium text-sm truncate">
+                          {appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço'}
+                        </span>
+                        <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 shrink-0">
+                          {status.label}
+                        </Badge>
+                        {isPackage && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-primary/5 shrink-0">
+                            {appointment.package_appointment?.session_number}/{appointment.package_appointment?.package?.total_sessions}
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-primary shrink-0">
+                        R$ {(appointment.service?.price || 0).toFixed(0)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(appointment.start_time), "dd/MM/yyyy", { locale: ptBR })}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
+                      </div>
+                    </div>
+
+                    {appointment.notes && (
+                      <p className="mt-1 text-[10px] text-muted-foreground italic truncate">
+                        {appointment.notes}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
-    );
-  }
-
-  // Sort by date descending to show most recent first
-  const sortedAppointments = [...appointments].sort(
-    (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Histórico de Agendamentos</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {sortedAppointments.map((appointment) => {
-          const status = statusConfig[appointment.status] || statusConfig.scheduled;
-          const isPackage = !!appointment.package_appointment;
-          const packageId = appointment.package_appointment?.package?.id;
-          const serviceId = appointment.service?.id;
-          const colorKey = packageId || serviceId || '';
-          const borderColor = colorMap.get(colorKey) || '#999';
-
-          return (
-            <div
-              key={appointment.id}
-              className="p-3 rounded-lg bg-card hover:bg-muted/50 transition-colors border-l-4"
-              style={{ borderLeftColor: borderColor }}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    {isPackage ? (
-                      <Package className="h-4 w-4 text-primary flex-shrink-0" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
-                    )}
-                    <h4 className="font-medium text-foreground truncate">
-                      {appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço'}
-                    </h4>
-                    <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
-                    {isPackage && (
-                      <Badge variant="outline" className="text-xs bg-primary/5">
-                        Sessão {appointment.package_appointment?.session_number}/{appointment.package_appointment?.package?.total_sessions}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(appointment.start_time), "dd/MM/yyyy", { locale: ptBR })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {format(new Date(appointment.start_time), 'HH:mm')} -{' '}
-                      {format(new Date(appointment.end_time), 'HH:mm')}
-                    </div>
-                  </div>
-
-                  {appointment.notes && (
-                    <p className="mt-1 text-xs text-muted-foreground italic truncate">
-                      {appointment.notes}
-                    </p>
-                  )}
-                </div>
-
-                <div className="text-right text-sm">
-                  <p className="font-semibold text-primary">
-                    R$ {(appointment.service?.price || 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

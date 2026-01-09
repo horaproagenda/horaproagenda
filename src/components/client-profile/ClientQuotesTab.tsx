@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Quote, QuoteItem, QuoteStatus } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Receipt, Send, MessageCircle, Trash2 } from 'lucide-react';
+import { Plus, Receipt, MessageCircle, Trash2, Filter } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { toast } from 'sonner';
 
@@ -31,26 +31,50 @@ const statusLabels: Record<QuoteStatus, string> = {
 };
 
 const statusColors: Record<QuoteStatus, string> = {
-  draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
-  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  draft: 'bg-gray-100 text-gray-700',
+  sent: 'bg-blue-100 text-blue-700',
+  accepted: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  expired: 'bg-orange-100 text-orange-700',
 };
 
-export function ClientQuotesTab({
-  quotes,
-  clientId,
-  clientPhone,
-  onAddQuote,
-  onUpdateQuote,
-}: ClientQuotesTabProps) {
+const getMonthOptions = () => {
+  const options = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = subMonths(now, i);
+    options.push({
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy', { locale: ptBR }),
+    });
+  }
+  return options;
+};
+
+export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onUpdateQuote }: ClientQuotesTabProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [notes, setNotes] = useState('');
   const [validDays, setValidDays] = useState('7');
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const { services } = useServices();
+
+  const monthOptions = useMemo(() => getMonthOptions(), []);
+
+  const filteredQuotes = useMemo(() => {
+    const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
+    const monthEnd = endOfMonth(monthStart);
+    
+    return quotes.filter(q => {
+      try {
+        const date = parseISO(q.created_at);
+        return isWithinInterval(date, { start: monthStart, end: monthEnd });
+      } catch {
+        return false;
+      }
+    });
+  }, [quotes, selectedMonth]);
 
   const addItem = () => {
     setItems([...items, { service_id: '', service_name: '', quantity: 1, unit_price: 0, total: 0 }]);
@@ -132,74 +156,75 @@ export function ClientQuotesTab({
   };
 
   const generateQuoteMessage = (quote: Quote) => {
-    let message = `*ORÇAMENTO*\n\n`;
-    message += `📋 *Serviços:*\n`;
-    
+    let message = `*ORÇAMENTO*\n\n📋 *Serviços:*\n`;
     quote.items.forEach((item) => {
       message += `• ${item.service_name} (${item.quantity}x) - R$ ${item.total.toFixed(2)}\n`;
     });
-    
     message += `\n💰 *Total: R$ ${quote.total_amount.toFixed(2)}*\n`;
-    
     if (quote.valid_until) {
       message += `\n📅 Válido até: ${format(new Date(quote.valid_until), 'dd/MM/yyyy', { locale: ptBR })}\n`;
     }
-    
     if (quote.notes) {
-      message += `\n📝 Observações: ${quote.notes}\n`;
+      message += `\n📝 ${quote.notes}\n`;
     }
-    
     return message;
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Orçamentos</CardTitle>
+    <div className="space-y-3 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Orçamento
+            <Button size="sm" className="h-7 text-xs">
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Novo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Criar Orçamento</DialogTitle>
+              <DialogTitle className="text-base">Criar Orçamento</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-3">
+            <div className="space-y-3 py-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Serviços</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar Serviço
+                  <Label className="text-xs">Serviços</Label>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addItem}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
                   </Button>
                 </div>
 
                 {items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum serviço adicionado
-                  </p>
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum serviço</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {items.map((item, index) => (
-                      <div key={index} className="flex gap-2 items-center">
-                        <Select
-                          value={item.service_id}
-                          onValueChange={(v) => updateItem(index, v)}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Selecione um serviço" />
+                      <div key={index} className="flex gap-1.5 items-center">
+                        <Select value={item.service_id} onValueChange={(v) => updateItem(index, v)}>
+                          <SelectTrigger className="flex-1 h-8 text-xs">
+                            <SelectValue placeholder="Selecione..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {services
-                              .filter((s) => s.is_active)
-                              .map((service) => (
-                                <SelectItem key={service.id} value={service.id}>
-                                  {service.name} - R$ {service.price.toFixed(2)}
-                                </SelectItem>
-                              ))}
+                            {services.filter((s) => s.is_active).map((service) => (
+                              <SelectItem key={service.id} value={service.id} className="text-xs">
+                                {service.name} - R$ {service.price.toFixed(0)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Input
@@ -207,18 +232,11 @@ export function ClientQuotesTab({
                           min="1"
                           value={item.quantity}
                           onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                          className="w-20"
+                          className="w-14 h-8 text-xs"
                         />
-                        <span className="w-24 text-right font-medium">
-                          R$ {item.total.toFixed(2)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <span className="w-16 text-right text-xs font-medium">R$ {item.total.toFixed(0)}</span>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
                     ))}
@@ -227,103 +245,73 @@ export function ClientQuotesTab({
               </div>
 
               {items.length > 0 && (
-                <div className="flex justify-end p-3 bg-muted rounded-lg">
-                  <p className="text-lg font-bold">Total: R$ {totalAmount.toFixed(2)}</p>
+                <div className="flex justify-end p-2 bg-muted rounded text-sm font-bold">
+                  Total: R$ {totalAmount.toFixed(2)}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Validade (dias)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={validDays}
-                  onChange={(e) => setValidDays(e.target.value)}
-                />
+              <div className="space-y-1">
+                <Label className="text-xs">Validade (dias)</Label>
+                <Input type="number" min="1" value={validDays} onChange={(e) => setValidDays(e.target.value)} className="h-8 text-xs" />
               </div>
 
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Condições especiais, formas de pagamento..."
-                  rows={3}
-                />
+              <div className="space-y-1">
+                <Label className="text-xs">Observações</Label>
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Condições especiais..." rows={2} className="text-xs" />
               </div>
 
-              <Button onClick={handleSubmit} className="w-full" disabled={loading}>
+              <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading}>
                 {loading ? 'Salvando...' : 'Criar Orçamento'}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        {quotes.length === 0 ? (
-          <div className="py-12 text-center">
-            <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">Nenhum orçamento cadastrado</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {quotes.map((quote) => (
-              <div
-                key={quote.id}
-                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className={statusColors[quote.status]} variant="secondary">
-                        {statusLabels[quote.status]}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {format(new Date(quote.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                      {quote.sent_via && (
-                        <span className="text-xs text-muted-foreground">
-                          • Enviado via {quote.sent_via}
+      </div>
+
+      {/* Quotes List */}
+      <Card>
+        <CardContent className="p-3">
+          {filteredQuotes.length === 0 ? (
+            <div className="py-6 text-center">
+              <Receipt className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-xs text-muted-foreground">Nenhum orçamento neste mês</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {filteredQuotes.map((quote) => (
+                <div key={quote.id} className="p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Badge className={`${statusColors[quote.status]} text-[10px] px-1.5 py-0`} variant="secondary">
+                          {statusLabels[quote.status]}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(quote.created_at), "dd/MM/yy", { locale: ptBR })}
                         </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {quote.items.map(i => `${i.quantity}x ${i.service_name}`).join(', ')}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        R$ {quote.total_amount.toFixed(0)}
+                      </span>
+                      {quote.status === 'draft' && (
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => sendViaWhatsApp(quote)}>
+                          <MessageCircle className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                     </div>
-
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      {quote.items.map((item, i) => (
-                        <p key={i}>
-                          {item.quantity}x {item.service_name} - R$ {item.total.toFixed(2)}
-                        </p>
-                      ))}
-                    </div>
-
-                    {quote.valid_until && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Válido até {format(new Date(quote.valid_until), 'dd/MM/yyyy', { locale: ptBR })}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <p className="text-xl font-bold text-primary">
-                      R$ {quote.total_amount.toFixed(2)}
-                    </p>
-                    {quote.status === 'draft' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => sendViaWhatsApp(quote)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        WhatsApp
-                      </Button>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

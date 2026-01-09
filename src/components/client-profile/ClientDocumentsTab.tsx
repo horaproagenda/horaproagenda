@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { ClientDocument, DocumentType, Client, DocumentTemplate } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -16,7 +16,6 @@ import { useUploadFile } from '@/hooks/useClientProfile';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
 import { ManageTemplatesDialog } from '@/components/services/ManageTemplatesDialog';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -26,7 +25,7 @@ interface ClientDocumentsTabProps {
 }
 
 const documentTypeLabels: Record<DocumentType, string> = {
-  anamnese: 'Ficha de Anamnese',
+  anamnese: 'Anamnese',
   contract: 'Contrato',
   quote: 'Orçamento',
   photo: 'Foto',
@@ -34,11 +33,11 @@ const documentTypeLabels: Record<DocumentType, string> = {
 };
 
 const documentTypeColors: Record<DocumentType, string> = {
-  anamnese: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  contract: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  quote: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  photo: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  other: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+  anamnese: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  contract: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  quote: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  photo: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300',
 };
 
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument }: ClientDocumentsTabProps) {
@@ -127,7 +126,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument 
 
       setOpen(false);
       resetForm();
-      toast.success('Documento criado com sucesso!');
+      toast.success('Documento criado!');
     } catch (error) {
       console.error('Error adding document:', error);
     } finally {
@@ -145,70 +144,73 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument 
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Documentos</CardTitle>
-        <div className="flex gap-2">
+    <div className="space-y-3 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{documents.length} documento(s)</span>
+        <div className="flex gap-1.5">
           <ManageTemplatesDialog onTemplateCreated={refetchTemplates}>
-            <Button variant="outline" size="sm">
-              <FileSignature className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" className="h-7 text-xs">
+              <FileSignature className="h-3.5 w-3.5 mr-1" />
               Modelos
             </Button>
           </ManageTemplatesDialog>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="h-7 text-xs">
+                <Plus className="h-3.5 w-3.5 mr-1" />
                 Adicionar
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Adicionar Documento</DialogTitle>
+                <DialogTitle className="text-base">Adicionar Documento</DialogTitle>
               </DialogHeader>
               
               <Tabs defaultValue="upload" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="upload">Upload</TabsTrigger>
-                  <TabsTrigger value="template">Modelo Pronto</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="upload" className="text-xs">Upload</TabsTrigger>
+                  <TabsTrigger value="template" className="text-xs">Modelo</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="upload" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Tipo de Documento</Label>
+                <TabsContent value="upload" className="space-y-3 pt-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tipo</Label>
                     <Select value={type} onValueChange={(v) => setType(v as DocumentType)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="anamnese">Ficha de Anamnese</SelectItem>
-                        <SelectItem value="contract">Contrato</SelectItem>
-                        <SelectItem value="other">Outro</SelectItem>
+                        <SelectItem value="anamnese" className="text-xs">Anamnese</SelectItem>
+                        <SelectItem value="contract" className="text-xs">Contrato</SelectItem>
+                        <SelectItem value="other" className="text-xs">Outro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Título *</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Título *</Label>
                     <Input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ex: Ficha de Anamnese - Janeiro 2024"
+                      placeholder="Ex: Ficha de Anamnese"
+                      className="h-8 text-xs"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Descrição</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Descrição</Label>
                     <Textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Observações sobre o documento..."
-                      rows={3}
+                      placeholder="Observações..."
+                      rows={2}
+                      className="text-xs"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Arquivo (opcional)</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Arquivo (opcional)</Label>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -220,53 +222,48 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument 
                       <Button
                         type="button"
                         variant="outline"
-                        className="flex-1"
+                        className="flex-1 h-8 text-xs"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Upload className="h-3.5 w-3.5 mr-1" />
                         {file ? file.name : 'Escolher arquivo'}
                       </Button>
                       {file && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setFile(null)}
-                        >
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFile(null)}>
                           ×
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  <Button onClick={handleSubmit} className="w-full" disabled={loading}>
-                    {loading ? 'Salvando...' : 'Salvar Documento'}
+                  <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading}>
+                    {loading ? 'Salvando...' : 'Salvar'}
                   </Button>
                 </TabsContent>
 
-                <TabsContent value="template" className="space-y-4 pt-4">
+                <TabsContent value="template" className="space-y-3 pt-3">
                   {templates.length === 0 ? (
-                    <div className="text-center py-8">
-                      <FileSignature className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground mb-4">Nenhum modelo cadastrado</p>
+                    <div className="text-center py-6">
+                      <FileSignature className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                      <p className="text-xs text-muted-foreground mb-3">Nenhum modelo</p>
                       <ManageTemplatesDialog onTemplateCreated={refetchTemplates}>
-                        <Button variant="outline">
-                          <Plus className="h-4 w-4 mr-2" />
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Plus className="h-3.5 w-3.5 mr-1" />
                           Criar Modelo
                         </Button>
                       </ManageTemplatesDialog>
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <Label>Selecione um Modelo</Label>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Selecione um Modelo</Label>
                         <Select onValueChange={handleTemplateSelect}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Escolha um modelo..." />
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Escolha..." />
                           </SelectTrigger>
                           <SelectContent>
                             {templates.map(template => (
-                              <SelectItem key={template.id} value={template.id}>
+                              <SelectItem key={template.id} value={template.id} className="text-xs">
                                 {template.title}
                               </SelectItem>
                             ))}
@@ -276,36 +273,27 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument 
 
                       {selectedTemplate && (
                         <>
-                          <div className="space-y-2">
-                            <Label>Título do Documento</Label>
-                            <Input
-                              value={title}
-                              onChange={(e) => setTitle(e.target.value)}
-                            />
+                          <div className="space-y-1">
+                            <Label className="text-xs">Título</Label>
+                            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-xs" />
                           </div>
 
-                          <div className="space-y-2">
+                          <div className="space-y-1">
                             <div className="flex items-center justify-between">
-                              <Label>Conteúdo (com variáveis preenchidas)</Label>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setPreviewOpen(true)}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Visualizar
+                              <Label className="text-xs">Conteúdo</Label>
+                              <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setPreviewOpen(true)}>
+                                <Eye className="h-3 w-3 mr-1" /> Ver
                               </Button>
                             </div>
                             <Textarea
                               value={filledContent}
                               onChange={(e) => setFilledContent(e.target.value)}
-                              className="min-h-[150px] font-mono text-sm"
+                              className="min-h-[100px] font-mono text-xs"
                             />
                           </div>
 
-                          <Button onClick={handleSaveFromTemplate} className="w-full" disabled={loading}>
-                            {loading ? 'Salvando...' : 'Criar Documento para Assinatura'}
+                          <Button onClick={handleSaveFromTemplate} className="w-full h-8 text-xs" disabled={loading}>
+                            {loading ? 'Salvando...' : 'Criar Documento'}
                           </Button>
                         </>
                       )}
@@ -316,64 +304,63 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument 
             </DialogContent>
           </Dialog>
         </div>
-      </CardHeader>
-      <CardContent>
-        {documents.length === 0 ? (
-          <div className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">Nenhum documento cadastrado</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-foreground">{doc.title}</h4>
-                      <Badge className={documentTypeColors[doc.type]} variant="secondary">
-                        {documentTypeLabels[doc.type]}
-                      </Badge>
-                    </div>
-                    {doc.description && (
-                      <p className="text-sm text-muted-foreground">{doc.description}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Adicionado em {format(new Date(doc.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
+      </div>
 
-                {doc.file_url && (
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
+      {/* Documents List */}
+      <Card>
+        <CardContent className="p-3">
+          {documents.length === 0 ? (
+            <div className="py-6 text-center">
+              <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-xs text-muted-foreground">Nenhum documento</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-sm truncate">{doc.title}</span>
+                        <Badge className={`${documentTypeColors[doc.type]} text-[10px] px-1.5 py-0`} variant="secondary">
+                          {documentTypeLabels[doc.type]}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {doc.file_url && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
+                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Visualização do Documento</DialogTitle>
+            <DialogTitle className="text-base">Visualização</DialogTitle>
           </DialogHeader>
-          <div className="whitespace-pre-wrap font-mono text-sm bg-muted p-4 rounded-lg">
+          <div className="whitespace-pre-wrap font-mono text-xs bg-muted p-3 rounded-lg">
             {filledContent}
           </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

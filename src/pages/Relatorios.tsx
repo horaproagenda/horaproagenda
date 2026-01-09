@@ -265,15 +265,57 @@ const Relatorios = () => {
   const isLoading = clientsLoading || appointmentsLoading || packagesLoading;
 
   const handleExport = () => {
-    const dataMap: Record<string, { data: any[]; filename: string }> = {
-      aniversariantes: { data: aniversariantes, filename: 'aniversariantes' },
-      retornos: { data: retornos, filename: 'retornos' },
-      sumidos: { data: sumidos, filename: 'sumidos' },
-      pacotes: { data: packageProgress, filename: 'pacotes' },
-    };
-    const current = dataMap[activeTab];
-    if (current) {
-      exportToCSV(current.data, current.filename);
+    if (activeTab === 'aniversariantes') {
+      exportToCSV({
+        filename: 'aniversariantes',
+        headers: ['Nome', 'Tipo', 'Telefone', 'Email', 'Data de Nascimento'],
+        rows: aniversariantes.map(p => [
+          p.name,
+          p.type === 'professional' ? 'Profissional' : 'Cliente',
+          p.phone || '',
+          p.email || '',
+          p.birthDate ? format(p.birthDate, 'dd/MM/yyyy') : ''
+        ])
+      });
+    } else if (activeTab === 'retornos') {
+      exportToCSV({
+        filename: 'retornos',
+        headers: ['Nome', 'Telefone', 'Última Visita', 'Serviço', 'Dias desde Visita', 'Dias em Atraso'],
+        rows: retornos.map(c => [
+          c.name,
+          c.phone || '',
+          c.lastVisit ? format(c.lastVisit, 'dd/MM/yyyy') : '',
+          c.serviceName || '',
+          c.daysSinceVisit,
+          c.daysOverdue
+        ])
+      });
+    } else if (activeTab === 'sumidos') {
+      exportToCSV({
+        filename: 'sumidos',
+        headers: ['Nome', 'Telefone', 'Última Visita', 'Serviço', 'Dias Ausente'],
+        rows: sumidos.map(c => [
+          c.name,
+          c.phone || '',
+          c.lastVisit ? format(c.lastVisit, 'dd/MM/yyyy') : '',
+          c.serviceName || '',
+          c.daysSinceVisit
+        ])
+      });
+    } else if (activeTab === 'pacotes') {
+      exportToCSV({
+        filename: 'pacotes',
+        headers: ['Cliente', 'Pacote', 'Sessões Usadas', 'Sessões Restantes', 'Progresso %', 'Valor Total', 'Valor Utilizado'],
+        rows: packageProgress.map(p => [
+          p.client?.name || '',
+          p.name,
+          p.usedSessions,
+          p.remainingSessions,
+          Math.round(p.progress),
+          p.total_price,
+          p.valueUsed
+        ])
+      });
     }
   };
 

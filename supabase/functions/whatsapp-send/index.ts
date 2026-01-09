@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,37 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Missing token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Validate the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth validation error:', claimsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user:', userId);
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
@@ -32,6 +64,11 @@ serve(async (req) => {
       throw new Error('Phone and message are required');
     }
 
+    // Validate input lengths
+    if (phone.length > 20 || message.length > 4096) {
+      throw new Error('Invalid input: phone or message too long');
+    }
+
     // Clean phone number - remove non-digits and ensure country code
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) {
@@ -44,7 +81,7 @@ serve(async (req) => {
     const instance = instanceName || evolutionInstance;
 
     // Send message via Evolution API
-    const response = await fetch(`${evolutionApiUrl}/message/sendText/${instance}`, {
+    const response = await fetch(`${evolutionApiUrl}/message/sendText/${encodeURIComponent(instance)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

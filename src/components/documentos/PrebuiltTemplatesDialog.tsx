@@ -578,16 +578,16 @@ export function PrebuiltTemplatesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>Modelos Prontos</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[850px] h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <DialogTitle className="text-base">Modelos Prontos</DialogTitle>
+          <DialogDescription className="text-sm">
             Selecione um modelo pré-configurado para sua clínica de estética
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="anamnese" className="flex-1 flex flex-col">
-          <div className="px-6">
+        <Tabs defaultValue="anamnese" className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="px-6 pt-3 shrink-0">
             <TabsList className="h-9">
               <TabsTrigger value="anamnese" className="text-xs gap-1.5">
                 <Stethoscope className="h-3.5 w-3.5" />
@@ -600,64 +600,68 @@ export function PrebuiltTemplatesDialog({
             </TabsList>
           </div>
 
-          <ScrollArea className="flex-1 px-6 py-4">
-            {['anamnese', 'contracts'].map(tab => (
-              <TabsContent key={tab} value={tab} className="mt-0 space-y-3">
-                {prebuiltTemplates[tab as keyof typeof prebuiltTemplates].map((template, index) => (
-                  <Card key={index} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-sm">{template.title}</CardTitle>
-                          <CardDescription className="text-xs mt-1">
-                            {template.description}
-                          </CardDescription>
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-6 py-4">
+              {['anamnese', 'contracts'].map(tab => (
+                <TabsContent key={tab} value={tab} className="mt-0 space-y-3">
+                  {prebuiltTemplates[tab as keyof typeof prebuiltTemplates].map((template, index) => (
+                    <Card key={index} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-sm">{template.title}</CardTitle>
+                            <CardDescription className="text-xs mt-1">
+                              {template.description}
+                            </CardDescription>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => setSelectedPreview(selectedPreview?.title === template.title ? null : template)}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              {selectedPreview?.title === template.title ? 'Ocultar' : 'Ver'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleSelect(template)}
+                              disabled={isLoading}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              Usar
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => setSelectedPreview(selectedPreview?.title === template.title ? null : template)}
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            {selectedPreview?.title === template.title ? 'Ocultar' : 'Ver'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleSelect(template)}
-                            disabled={isLoading}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Usar
-                          </Button>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {template.variables.slice(0, 4).map((v, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px]">
+                              {'{' + v + '}'}
+                            </Badge>
+                          ))}
+                          {template.variables.length > 4 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              +{template.variables.length - 4}
+                            </Badge>
+                          )}
                         </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {template.variables.slice(0, 4).map((v, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">
-                            {'{' + v + '}'}
-                          </Badge>
-                        ))}
-                        {template.variables.length > 4 && (
-                          <Badge variant="outline" className="text-[10px]">
-                            +{template.variables.length - 4}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    {selectedPreview?.title === template.title && (
-                      <CardContent className="pt-2">
-                        <pre className="text-xs bg-muted/50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                          {template.content}
-                        </pre>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-              </TabsContent>
-            ))}
+                      </CardHeader>
+                      {selectedPreview?.title === template.title && (
+                        <CardContent className="pt-2">
+                          <ScrollArea className="h-[200px]">
+                            <pre className="text-xs bg-muted/50 rounded-lg p-3 whitespace-pre-wrap">
+                              {template.content}
+                            </pre>
+                          </ScrollArea>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </TabsContent>
+              ))}
+            </div>
           </ScrollArea>
         </Tabs>
       </DialogContent>

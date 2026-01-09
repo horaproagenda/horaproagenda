@@ -357,7 +357,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" size="sm" disabled={isLoading}>
+              <Button type="submit" size="sm" className="btn-vibrant" disabled={isLoading}>
                 {isLoading ? 'Salvando...' : 'Cadastrar'}
               </Button>
             </div>

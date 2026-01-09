@@ -382,7 +382,7 @@ export function NewPackageDialog({ onPackageCreated, children, categories = [] }
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" size="sm" disabled={isLoading}>
+              <Button type="submit" size="sm" className="btn-vibrant" disabled={isLoading}>
                 {isLoading ? 'Salvando...' : 'Criar Pacote'}
               </Button>
             </div>

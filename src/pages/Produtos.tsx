@@ -38,6 +38,17 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Table,
   TableBody,
   TableCell,
@@ -63,6 +74,10 @@ import {
   Store,
   Building2,
   CheckCircle2,
+  Filter,
+  X,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
@@ -75,6 +90,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
 import { ProductDetailDialog } from '@/components/produtos/ProductDetailDialog';
 import { toast } from 'sonner';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { exportToCSV } from '@/lib/exportUtils';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },
@@ -95,6 +112,20 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
 const getTypeLabel = (type: ProductType) => PRODUCT_TYPES.find(t => t.value === type)?.label || type;
 const getUnitLabel = (unit: ProductUnit) => PRODUCT_UNITS.find(u => u.value === unit)?.label || unit;
 
+interface ProductFilters {
+  type: string;
+  status: string;
+  forSale: string;
+  lowStock: boolean;
+}
+
+const defaultFilters: ProductFilters = {
+  type: 'all',
+  status: 'all',
+  forSale: 'all',
+  lowStock: false,
+};
+
 export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
@@ -107,7 +138,8 @@ export default function Produtos() {
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
 
-  // Search State
+  // Persistent filters
+  const [filters, setFilters] = useLocalStorage<ProductFilters>('produtos-filters', defaultFilters);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Product Dialog State
@@ -154,16 +186,65 @@ export default function Produtos() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  // Filtered products based on search
+  // Filtered products based on search and filters
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return products;
-    const search = searchTerm.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(search) ||
-      p.brand?.toLowerCase().includes(search) ||
-      p.category?.toLowerCase().includes(search)
-    );
-  }, [products, searchTerm]);
+    return products.filter(p => {
+      // Search filter
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        if (!p.name.toLowerCase().includes(search) &&
+            !p.brand?.toLowerCase().includes(search) &&
+            !p.category?.toLowerCase().includes(search)) {
+          return false;
+        }
+      }
+      
+      // Type filter
+      if (filters.type !== 'all' && p.product_type !== filters.type) return false;
+      
+      // Status filter
+      if (filters.status === 'active' && !p.is_active) return false;
+      if (filters.status === 'inactive' && p.is_active) return false;
+      if (filters.status === 'finished' && !p.finished_at) return false;
+      
+      // For sale filter
+      if (filters.forSale === 'yes' && !p.is_for_sale) return false;
+      if (filters.forSale === 'no' && p.is_for_sale) return false;
+      
+      // Low stock filter
+      if (filters.lowStock && !(p.current_stock <= (p.min_stock_alert || 0) && p.is_active)) return false;
+      
+      return true;
+    });
+  }, [products, searchTerm, filters]);
+  
+  const hasActiveFilters = filters.type !== 'all' || filters.status !== 'all' || filters.forSale !== 'all' || filters.lowStock;
+  const activeFiltersCount = [
+    filters.type !== 'all',
+    filters.status !== 'all',
+    filters.forSale !== 'all',
+    filters.lowStock
+  ].filter(Boolean).length;
+  
+  const clearFilters = () => setFilters(defaultFilters);
+  
+  const handleExport = () => {
+    exportToCSV({
+      filename: 'produtos',
+      headers: ['Nome', 'Marca', 'Categoria', 'Tipo', 'Estoque', 'Unidade', 'Status', 'Para Venda'],
+      rows: filteredProducts.map(p => [
+        p.name,
+        p.brand || '-',
+        p.category || '-',
+        getTypeLabel(p.product_type),
+        p.current_stock,
+        getUnitLabel(p.unit),
+        p.finished_at ? 'Finalizado' : (p.is_active ? 'Ativo' : 'Inativo'),
+        p.is_for_sale ? 'Sim' : 'Não'
+      ]),
+      successMessage: 'Produtos exportados com sucesso!'
+    });
+  };
 
   // Low stock products
   const lowStockProducts = useMemo(() => {
@@ -363,220 +444,152 @@ export default function Produtos() {
 
   return (
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e estoque">
-      <div className="space-y-6">
-        {/* Header Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar por nome, marca ou categoria..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+      <div className="space-y-4 page-enter">
+        {/* Search Row */}
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar por nome, marca ou categoria..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+        
+        {/* Actions Row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {/* Filters */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span>Filtros</span>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="h-4 w-4 p-0 text-[9px] justify-center">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-medium">Filtros</h4>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-[10px]">
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">Tipo</Label>
+                    <Select value={filters.type} onValueChange={(v) => setFilters({...filters, type: v})}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs">Todos</SelectItem>
+                        {PRODUCT_TYPES.map(t => (
+                          <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">Status</Label>
+                    <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs">Todos</SelectItem>
+                        <SelectItem value="active" className="text-xs">Ativos</SelectItem>
+                        <SelectItem value="inactive" className="text-xs">Inativos</SelectItem>
+                        <SelectItem value="finished" className="text-xs">Finalizados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">Para Venda</Label>
+                    <Select value={filters.forSale} onValueChange={(v) => setFilters({...filters, forSale: v})}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs">Todos</SelectItem>
+                        <SelectItem value="yes" className="text-xs">Sim</SelectItem>
+                        <SelectItem value="no" className="text-xs">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center justify-between rounded-md border p-2">
+                    <Label className="text-xs">Estoque Baixo</Label>
+                    <Switch 
+                      checked={filters.lowStock} 
+                      onCheckedChange={(v) => setFilters({...filters, lowStock: v})} 
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            {/* Import/Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                  <Upload className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">/</span>
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Produtos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <ManageSuppliersDialog />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {canEdit && (
               <>
-                <Dialog open={productDialogOpen} onOpenChange={(open) => {
-                  setProductDialogOpen(open);
-                  if (!open) resetProductForm();
-                }}>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Novo Produto
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg max-h-[90vh]">
-                    <DialogHeader>
-                      <DialogTitle>Cadastrar Produto</DialogTitle>
-                      <DialogDescription>
-                        Cadastre um novo produto para gerenciamento de estoque
-                      </DialogDescription>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-[60vh] pr-4">
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Nome *</Label>
-                          <Input
-                            value={productForm.name}
-                            onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                            placeholder="Nome do produto"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Marca</Label>
-                            <Input
-                              value={productForm.brand}
-                              onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                              placeholder="Marca"
-                            />
-                          </div>
-                          <div>
-                            <Label>Categoria</Label>
-                            <Input
-                              value={productForm.category}
-                              onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                              placeholder="Categoria"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Tipo</Label>
-                            <Select
-                              value={productForm.product_type}
-                              onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
-                            >
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_TYPES.map(type => (
-                                  <SelectItem key={type.value} value={type.value}>
-                                    <div className="flex items-center gap-2">
-                                      {type.icon}
-                                      {type.label}
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Unidade</Label>
-                            <Select
-                              value={productForm.unit}
-                              onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}
-                            >
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_UNITS.map(unit => (
-                                  <SelectItem key={unit.value} value={unit.value}>{unit.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Fornecedor</Label>
-                          <Select
-                            value={productForm.supplier_id || "none"}
-                            onValueChange={(v) => {
-                              const supplier = activeSuppliers.find(s => s.id === v);
-                              setProductForm({ 
-                                ...productForm, 
-                                supplier_id: v === "none" ? "" : v,
-                                supplier: supplier?.name || "" 
-                              });
-                            }}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Selecione um fornecedor" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhum</SelectItem>
-                              {activeSuppliers.map(s => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  <div className="flex items-center gap-2">
-                                    <Truck className="h-3 w-3" />
-                                    {s.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>Alerta Estoque Mínimo</Label>
-                          <Input
-                            type="number"
-                            value={productForm.min_stock_alert}
-                            onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-
-                        <Separator />
-
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label>Para Venda</Label>
-                            <Switch
-                              checked={productForm.is_for_sale}
-                              onCheckedChange={(v) => setProductForm({ ...productForm, is_for_sale: v })}
-                            />
-                          </div>
-                          {productForm.is_for_sale && (
-                            <div>
-                              <Label>Preço de Venda (R$)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={productForm.sale_price}
-                                onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label>Descrição</Label>
-                          <Textarea
-                            value={productForm.description}
-                            onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                            placeholder="Descrição do produto"
-                            rows={2}
-                          />
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-4">
-                          <Button variant="outline" onClick={() => { setProductDialogOpen(false); resetProductForm(); }}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleProductSubmit} disabled={!productForm.name.trim() || createProduct.isPending}>
-                            {createProduct.isPending ? 'Salvando...' : 'Cadastrar'}
-                          </Button>
-                        </div>
-                      </div>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-
                 <Dialog open={purchaseDialogOpen} onOpenChange={(open) => {
                   setPurchaseDialogOpen(open);
                   if (!open) resetPurchaseForm();
                 }}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <ShoppingCart className="h-4 w-4" />
-                      Nova Compra
+                    <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Nova Compra</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>Registrar Compra</DialogTitle>
-                      <DialogDescription>
+                      <DialogTitle className="text-base">Registrar Compra</DialogTitle>
+                      <DialogDescription className="text-xs">
                         O estoque será atualizado automaticamente
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <div>
-                        <Label>Produto *</Label>
+                        <Label className="text-xs">Produto *</Label>
                         <Select
                           value={purchaseForm.product_id}
                           onValueChange={(v) => setPurchaseForm({ ...purchaseForm, product_id: v })}
                         >
-                          <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
                           <SelectContent>
                             {products.map(product => (
-                              <SelectItem key={product.id} value={product.id}>
+                              <SelectItem key={product.id} value={product.id} className="text-sm">
                                 {product.name} {product.brand && `(${product.brand})`}
                               </SelectItem>
                             ))}
@@ -584,41 +597,43 @@ export default function Produtos() {
                         </Select>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <Label>Quantidade</Label>
+                          <Label className="text-xs">Quantidade</Label>
                           <Input
                             type="number"
                             value={purchaseForm.quantity}
                             onChange={(e) => updatePurchaseTotal(parseFloat(e.target.value) || 0, purchaseForm.unit_price)}
                             min="0"
                             step="0.01"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div>
-                          <Label>Preço Unit. (R$)</Label>
+                          <Label className="text-xs">Preço Unit. (R$)</Label>
                           <Input
                             type="number"
                             value={purchaseForm.unit_price}
                             onChange={(e) => updatePurchaseTotal(purchaseForm.quantity, parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div>
-                          <Label>Total (R$)</Label>
+                          <Label className="text-xs">Total (R$)</Label>
                           <Input
                             type="number"
                             value={purchaseForm.total_price}
                             readOnly
-                            className="bg-muted"
+                            className="bg-muted h-8 text-sm"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label>Fornecedor</Label>
+                          <Label className="text-xs">Fornecedor</Label>
                           <Select
                             value={purchaseForm.supplier_id || "none"}
                             onValueChange={(v) => {
@@ -630,83 +645,282 @@ export default function Produtos() {
                               });
                             }}
                           >
-                            <SelectTrigger><SelectValue placeholder="Fornecedor" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Nenhum</SelectItem>
+                              <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
                               {activeSuppliers.map(s => (
-                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label>Data da Compra</Label>
+                          <Label className="text-xs">Data da Compra</Label>
                           <Input
                             type="date"
                             value={purchaseForm.purchase_date}
                             onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })}
+                            className="h-8 text-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <Label>Data Início de Uso (opcional)</Label>
+                        <Label className="text-xs">Data Início de Uso (opcional)</Label>
                         <Input
                           type="date"
                           value={purchaseForm.started_using_at}
                           onChange={(e) => setPurchaseForm({ ...purchaseForm, started_using_at: e.target.value })}
+                          className="h-8 text-sm"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Pode ser preenchida posteriormente na tela principal
-                        </p>
                       </div>
 
-                      <div className="flex justify-end gap-2 pt-4">
-                        <Button variant="outline" onClick={() => { setPurchaseDialogOpen(false); resetPurchaseForm(); }}>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => { setPurchaseDialogOpen(false); resetPurchaseForm(); }}>
                           Cancelar
                         </Button>
-                        <Button onClick={handlePurchaseSubmit} disabled={!purchaseForm.product_id || createPurchase.isPending}>
-                          {createPurchase.isPending ? 'Salvando...' : 'Registrar Compra'}
+                        <Button size="sm" className="btn-vibrant" onClick={handlePurchaseSubmit} disabled={!purchaseForm.product_id || createPurchase.isPending}>
+                          {createPurchase.isPending ? 'Salvando...' : 'Registrar'}
                         </Button>
                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
+                
+                <Dialog open={productDialogOpen} onOpenChange={(open) => {
+                  setProductDialogOpen(open);
+                  if (!open) resetProductForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-9 gap-1.5 text-xs btn-vibrant">
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Novo Produto</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-base">Novo Produto</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[65vh] pr-4">
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Nome *</Label>
+                            <Input
+                              value={productForm.name}
+                              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                              placeholder="Nome do produto"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Marca</Label>
+                            <Input
+                              value={productForm.brand}
+                              onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                              placeholder="Marca"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs">Categoria</Label>
+                            <Input
+                              value={productForm.category}
+                              onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                              placeholder="Categoria"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Tipo</Label>
+                            <Select
+                              value={productForm.product_type}
+                              onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
+                            >
+                              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PRODUCT_TYPES.map(type => (
+                                  <SelectItem key={type.value} value={type.value} className="text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {type.icon}
+                                      {type.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Unidade</Label>
+                            <Select
+                              value={productForm.unit}
+                              onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}
+                            >
+                              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PRODUCT_UNITS.map(unit => (
+                                  <SelectItem key={unit.value} value={unit.value} className="text-sm">{unit.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Fornecedor</Label>
+                            <Select
+                              value={productForm.supplier_id || "none"}
+                              onValueChange={(v) => {
+                                const supplier = activeSuppliers.find(s => s.id === v);
+                                setProductForm({ 
+                                  ...productForm, 
+                                  supplier_id: v === "none" ? "" : v,
+                                  supplier: supplier?.name || "" 
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
+                                {activeSuppliers.map(s => (
+                                  <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Alerta Estoque Mín.</Label>
+                            <Input
+                              type="number"
+                              value={productForm.min_stock_alert}
+                              onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
+                              min="0"
+                              step="0.01"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md border p-2">
+                          <div>
+                            <Label className="text-xs">Para Venda</Label>
+                            <p className="text-[10px] text-muted-foreground">Produto disponível para venda</p>
+                          </div>
+                          <Switch
+                            checked={productForm.is_for_sale}
+                            onCheckedChange={(v) => setProductForm({ ...productForm, is_for_sale: v })}
+                          />
+                        </div>
+                        
+                        {productForm.is_for_sale && (
+                          <div>
+                            <Label className="text-xs">Preço de Venda (R$)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={productForm.sale_price}
+                              onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <Label className="text-xs">Descrição</Label>
+                          <Textarea
+                            value={productForm.description}
+                            onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                            placeholder="Descrição do produto"
+                            rows={2}
+                            className="text-sm resize-none"
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button variant="outline" size="sm" onClick={() => { setProductDialogOpen(false); resetProductForm(); }}>
+                            Cancelar
+                          </Button>
+                          <Button size="sm" className="btn-vibrant" onClick={handleProductSubmit} disabled={!productForm.name.trim() || createProduct.isPending}>
+                            {createProduct.isPending ? 'Salvando...' : 'Cadastrar'}
+                          </Button>
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
               </>
             )}
-
-            <ManageSuppliersDialog />
           </div>
         </div>
+        
+        {/* Active Filters Badges */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-1.5">
+            {filters.type !== 'all' && (
+              <Badge variant="secondary" className="gap-1 text-[10px] h-5">
+                Tipo: {getTypeLabel(filters.type as ProductType)}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters({...filters, type: 'all'})} />
+              </Badge>
+            )}
+            {filters.status !== 'all' && (
+              <Badge variant="secondary" className="gap-1 text-[10px] h-5">
+                Status: {filters.status === 'active' ? 'Ativo' : filters.status === 'inactive' ? 'Inativo' : 'Finalizado'}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters({...filters, status: 'all'})} />
+              </Badge>
+            )}
+            {filters.forSale !== 'all' && (
+              <Badge variant="secondary" className="gap-1 text-[10px] h-5">
+                Venda: {filters.forSale === 'yes' ? 'Sim' : 'Não'}
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters({...filters, forSale: 'all'})} />
+              </Badge>
+            )}
+            {filters.lowStock && (
+              <Badge variant="secondary" className="gap-1 text-[10px] h-5">
+                Estoque Baixo
+                <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => setFilters({...filters, lowStock: false})} />
+              </Badge>
+            )}
+          </div>
+        )}
 
         {/* Low Stock Alert */}
-        {lowStockProducts.length > 0 && (
-          <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-5 w-5" />
-                Produtos com Estoque Baixo ({lowStockProducts.length})
+        {lowStockProducts.length > 0 && !filters.lowStock && (
+          <Card className="border-warning/50 bg-warning/5 card-hover">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-warning">
+                <AlertTriangle className="h-4 w-4" />
+                Estoque Baixo ({lowStockProducts.length})
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {lowStockProducts.map(p => (
+            <CardContent className="py-2 px-3">
+              <div className="flex flex-wrap gap-1.5">
+                {lowStockProducts.slice(0, 5).map(p => (
                   <Badge 
                     key={p.id} 
                     variant="outline" 
-                    className="border-amber-500 text-amber-700 cursor-pointer hover:bg-amber-100"
+                    className="border-warning/50 text-warning text-[10px] cursor-pointer hover:bg-warning/10"
                     onClick={() => openProductDetail(p)}
                   >
-                    {p.name} ({p.current_stock} {getUnitLabel(p.unit)})
+                    {p.name} ({p.current_stock})
                   </Badge>
                 ))}
+                {lowStockProducts.length > 5 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    +{lowStockProducts.length - 5} mais
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
         )}
 
         {/* Products Table */}
-        <Card>
+        <Card className="card-hover">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>

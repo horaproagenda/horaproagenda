@@ -245,6 +245,7 @@ export type Database = {
           id: string
           opening_time: string
           slot_interval: number
+          timezone: string | null
           updated_at: string
           work_saturdays: boolean
           work_sundays: boolean
@@ -257,6 +258,7 @@ export type Database = {
           id?: string
           opening_time?: string
           slot_interval?: number
+          timezone?: string | null
           updated_at?: string
           work_saturdays?: boolean
           work_sundays?: boolean
@@ -269,6 +271,7 @@ export type Database = {
           id?: string
           opening_time?: string
           slot_interval?: number
+          timezone?: string | null
           updated_at?: string
           work_saturdays?: boolean
           work_sundays?: boolean

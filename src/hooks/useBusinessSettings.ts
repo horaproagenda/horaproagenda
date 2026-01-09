@@ -11,9 +11,24 @@ export interface BusinessSettings {
   work_sundays: boolean;
   drag_and_drop_enabled: boolean;
   auto_complete_appointments: boolean;
+  timezone: string;
   created_at: string;
   updated_at: string;
 }
+
+export const BRAZIL_TIMEZONES = [
+  { value: 'America/Sao_Paulo', label: 'Brasília (UTC-3)', description: 'SP, RJ, MG, RS, SC, PR, ES, GO, DF' },
+  { value: 'America/Fortaleza', label: 'Fortaleza (UTC-3)', description: 'CE, RN, PB, PI, MA, AL, SE' },
+  { value: 'America/Recife', label: 'Recife (UTC-3)', description: 'PE' },
+  { value: 'America/Bahia', label: 'Salvador (UTC-3)', description: 'BA' },
+  { value: 'America/Belem', label: 'Belém (UTC-3)', description: 'PA (leste), AP, TO' },
+  { value: 'America/Manaus', label: 'Manaus (UTC-4)', description: 'AM (leste), RO, MT, MS' },
+  { value: 'America/Cuiaba', label: 'Cuiabá (UTC-4)', description: 'MT' },
+  { value: 'America/Porto_Velho', label: 'Porto Velho (UTC-4)', description: 'RO' },
+  { value: 'America/Boa_Vista', label: 'Boa Vista (UTC-4)', description: 'RR' },
+  { value: 'America/Rio_Branco', label: 'Rio Branco (UTC-5)', description: 'AC, AM (oeste)' },
+  { value: 'America/Noronha', label: 'Fernando de Noronha (UTC-2)', description: 'Arquipélago' },
+];
 
 export function useBusinessSettings() {
   const queryClient = useQueryClient();

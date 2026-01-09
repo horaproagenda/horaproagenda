@@ -23,15 +23,35 @@ interface ValidationError {
   message: string;
 }
 
-// Brazil timezone offset (UTC-3) - converting UTC to local time
-const BRAZIL_TIMEZONE_OFFSET_HOURS = -3;
+// Brazil timezone offsets (in hours from UTC)
+const TIMEZONE_OFFSETS: Record<string, number> = {
+  'America/Sao_Paulo': -3,      // Brasília, São Paulo, Rio
+  'America/Manaus': -4,         // Manaus, Amazonas
+  'America/Rio_Branco': -5,     // Acre
+  'America/Noronha': -2,        // Fernando de Noronha
+  'America/Cuiaba': -4,         // Mato Grosso
+  'America/Porto_Velho': -4,    // Rondônia
+  'America/Boa_Vista': -4,      // Roraima
+  'America/Belem': -3,          // Pará (leste)
+  'America/Fortaleza': -3,      // Nordeste
+  'America/Recife': -3,         // Pernambuco
+  'America/Bahia': -3,          // Bahia
+};
 
-// Helper to extract LOCAL time from UTC ISO string by applying Brazil timezone offset
-function extractLocalTimeFromUTC(isoString: string): { hours: number; minutes: number } {
+// Get timezone offset in hours
+function getTimezoneOffset(timezone: string | null): number {
+  if (!timezone || !TIMEZONE_OFFSETS[timezone]) {
+    return -3; // Default to Brasília time
+  }
+  return TIMEZONE_OFFSETS[timezone];
+}
+
+// Helper to extract LOCAL time from UTC ISO string by applying timezone offset
+function extractLocalTimeFromUTC(isoString: string, timezoneOffset: number): { hours: number; minutes: number } {
   const date = new Date(isoString);
-  // Get UTC hours and apply Brazil offset
-  let hours = date.getUTCHours() + BRAZIL_TIMEZONE_OFFSET_HOURS;
-  let minutes = date.getUTCMinutes();
+  // Get UTC hours and apply timezone offset
+  let hours = date.getUTCHours() + timezoneOffset;
+  const minutes = date.getUTCMinutes();
   
   // Handle day wrap-around
   if (hours < 0) {
@@ -43,11 +63,11 @@ function extractLocalTimeFromUTC(isoString: string): { hours: number; minutes: n
   return { hours, minutes };
 }
 
-// Helper to get day of week in Brazil timezone from UTC ISO string
-function getLocalDayOfWeekFromUTC(isoString: string): number {
+// Helper to get day of week in local timezone from UTC ISO string
+function getLocalDayOfWeekFromUTC(isoString: string, timezoneOffset: number): number {
   const date = new Date(isoString);
   // Apply timezone offset to get local day
-  const localDate = new Date(date.getTime() + (BRAZIL_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000));
+  const localDate = new Date(date.getTime() + (timezoneOffset * 60 * 60 * 1000));
   return localDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
 }
 
@@ -143,9 +163,13 @@ serve(async (req) => {
     console.log('Business settings:', JSON.stringify(businessSettings));
 
     if (businessSettings) {
-      // Extract LOCAL time from the appointment - convert UTC to Brazil timezone
-      const { hours: startHour, minutes: startMinutes } = extractLocalTimeFromUTC(body.start_time);
-      const { hours: endHour, minutes: endMinutes } = extractLocalTimeFromUTC(body.end_time);
+      // Get timezone offset from settings
+      const timezoneOffset = getTimezoneOffset(businessSettings.timezone);
+      console.log(`Using timezone: ${businessSettings.timezone || 'America/Sao_Paulo'} (offset: ${timezoneOffset}h)`);
+      
+      // Extract LOCAL time from the appointment - convert UTC to local timezone
+      const { hours: startHour, minutes: startMinutes } = extractLocalTimeFromUTC(body.start_time, timezoneOffset);
+      const { hours: endHour, minutes: endMinutes } = extractLocalTimeFromUTC(body.end_time, timezoneOffset);
       
       const [openHour, openMinute] = businessSettings.opening_time.split(':').map(Number);
       const [closeHour, closeMinute] = businessSettings.closing_time.split(':').map(Number);
@@ -165,7 +189,7 @@ serve(async (req) => {
       }
 
       // Check day of week in local timezone
-      const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time);
+      const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time, timezoneOffset);
       console.log(`Day of week: ${dayOfWeek} (0=Sun, 6=Sat), work_sundays=${businessSettings.work_sundays}, work_saturdays=${businessSettings.work_saturdays}`);
       
       if (dayOfWeek === 0 && !businessSettings.work_sundays) {
@@ -295,6 +319,65 @@ serve(async (req) => {
           field: 'professional_id', 
           message: `Professional is unavailable during this time${absence.reason ? `: ${absence.reason}` : ''}` 
         });
+      }
+    }
+
+    // 11. Check for equipment conflicts (NEW)
+    // Get equipment from the room if specified
+    let newAppointmentEquipment: string[] = [];
+    
+    if (body.room_id) {
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('equipment')
+        .eq('id', body.room_id)
+        .single();
+      
+      if (roomData?.equipment && Array.isArray(roomData.equipment)) {
+        newAppointmentEquipment = [...roomData.equipment];
+      }
+    }
+    
+    // Remove duplicates
+    newAppointmentEquipment = [...new Set(newAppointmentEquipment)];
+    
+    if (newAppointmentEquipment.length > 0) {
+      console.log('Checking equipment conflicts for:', newAppointmentEquipment);
+      
+      // Find overlapping appointments with rooms that have equipment
+      const { data: overlappingAppointments } = await supabase
+        .from('appointments')
+        .select('id, room_id')
+        .not('status', 'eq', 'cancelled')
+        .not('room_id', 'is', null)
+        .or(`and(start_time.lt.${body.end_time},end_time.gt.${body.start_time})`);
+      
+      if (overlappingAppointments && overlappingAppointments.length > 0) {
+        // Get rooms for overlapping appointments
+        const roomIds = [...new Set(overlappingAppointments.map(a => a.room_id).filter(Boolean))];
+        
+        if (roomIds.length > 0) {
+          const { data: roomsData } = await supabase
+            .from('rooms')
+            .select('id, name, equipment')
+            .in('id', roomIds);
+          
+          if (roomsData) {
+            for (const room of roomsData) {
+              if (room.equipment && Array.isArray(room.equipment)) {
+                const conflictingEquipment = newAppointmentEquipment.filter(eq => room.equipment.includes(eq));
+                
+                if (conflictingEquipment.length > 0 && room.id !== body.room_id) {
+                  errors.push({
+                    field: 'equipment',
+                    message: `Equipamento(s) "${conflictingEquipment.join(', ')}" já está em uso neste horário na sala "${room.name}"`
+                  });
+                  break; // Only report first conflict
+                }
+              }
+            }
+          }
+        }
       }
     }
 

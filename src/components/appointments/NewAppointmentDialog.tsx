@@ -549,7 +549,11 @@ export function NewAppointmentDialog({
         
         if (autoScheduleEnabled && isFirstAppointment && totalSessions > 1 && editablePreviewDates.length > 1) {
           const sessionsToCreate = editablePreviewDates.length - 1;
+          let createdCount = 0;
+          const failedSessions: number[] = [];
 
+          // Create appointments sequentially to ensure proper conflict detection
+          // Each appointment must complete before the next one starts to avoid race conditions
           for (let i = 1; i <= sessionsToCreate; i++) {
             // Use editable dates instead of calculated dates
             const futureDate = editablePreviewDates[i];
@@ -557,23 +561,39 @@ export function NewAppointmentDialog({
             const futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + duration);
 
-            const futureAppointment = await createAppointment.mutateAsync({
-              client_id: selectedClient,
-              service_id: packageServiceId,
-              start_time: futureDate.toISOString(),
-              end_time: futureEnd.toISOString(),
-              notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
-              professional_id: selectedProfessional || packageData?.professional_id || undefined,
-              room_id: selectedRoom || packageData?.room_id || undefined,
-              payment_status: isPackagePaid ? 'paid' : 'pending',
-            });
-
-            if (clientPackageId) {
-              await incrementPackageSession.mutateAsync({
-                packageId: clientPackageId,
-                appointmentId: futureAppointment.id,
+            try {
+              // Wait for each appointment to be fully created before proceeding
+              // This ensures the Edge Function can properly detect conflicts
+              const futureAppointment = await createAppointment.mutateAsync({
+                client_id: selectedClient,
+                service_id: packageServiceId,
+                start_time: futureDate.toISOString(),
+                end_time: futureEnd.toISOString(),
+                notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
+                professional_id: selectedProfessional || packageData?.professional_id || undefined,
+                room_id: selectedRoom || packageData?.room_id || undefined,
+                payment_status: isPackagePaid ? 'paid' : 'pending',
               });
+
+              if (clientPackageId) {
+                await incrementPackageSession.mutateAsync({
+                  packageId: clientPackageId,
+                  appointmentId: futureAppointment.id,
+                });
+              }
+              createdCount++;
+            } catch (error) {
+              console.error(`Error creating session ${i + 1}:`, error);
+              failedSessions.push(i + 1);
+              // Continue creating other sessions even if one fails
             }
+          }
+
+          // Report results
+          if (failedSessions.length > 0) {
+            toast.warning(`${createdCount + 1} agendamentos criados. Sessões ${failedSessions.join(', ')} tiveram conflitos e não foram agendadas.`);
+          } else {
+            toast.success(`${createdCount + 1} agendamentos criados automaticamente!`);
           }
 
           toast.success(`${sessionsToCreate + 1} agendamentos criados automaticamente!`);

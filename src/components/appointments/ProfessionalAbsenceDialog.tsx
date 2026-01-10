@@ -164,15 +164,15 @@ export function ProfessionalAbsenceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-          <DialogHeader className="shrink-0">
+        <DialogContent className="max-w-md h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? <Edit className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
               {isEditing ? 'Editar Ausência' : 'Registrar Ausência de Profissional'}
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] pr-4">
+          <ScrollArea className="flex-1 min-h-0 px-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Profissional *</Label>
@@ -255,16 +255,14 @@ export function ProfessionalAbsenceDialog({
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Detalhes do Motivo
+                  Observações
                 </Label>
-                <ScrollArea className="h-24 w-full rounded-md border">
-                  <Textarea
-                    value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Descreva os detalhes do motivo da ausência, como justificativas, observações importantes, se há necessidade de reposição, contato de emergência, etc..."
-                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
-                  />
-                </ScrollArea>
+                <Textarea
+                  value={notes.replace(/\s*\[STATUS:.*?\]/, '')}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Descreva os detalhes do motivo da ausência, como justificativas, observações importantes, se há necessidade de reposição, contato de emergência, etc..."
+                  className="min-h-[120px] resize-none"
+                />
                 <p className="text-[10px] text-muted-foreground">
                   Use este campo como lembrete ou para registrar informações importantes sobre a ausência.
                 </p>
@@ -291,7 +289,7 @@ export function ProfessionalAbsenceDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="flex gap-2 pt-4 border-t">
+          <DialogFooter className="flex gap-2 px-6 py-4 border-t shrink-0">
             {isEditing && (
               <Button 
                 variant="destructive" 

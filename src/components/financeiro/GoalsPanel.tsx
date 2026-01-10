@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Target, 
   Plus, 
@@ -13,7 +14,9 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { useGoals, Goal } from '@/hooks/useGoals';
 import { NewGoalDialog } from './NewGoalDialog';
@@ -38,23 +41,29 @@ import {
 import { cn } from '@/lib/utils';
 
 export function GoalsPanel() {
-  const { goals, isLoading, calculateGoalProgress, updateGoal, deleteGoal } = useGoals();
+  const { goals, isLoading, calculateGoalProgress, updateGoal, deleteGoal, refetch } = useGoals();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [goalsWithProgress, setGoalsWithProgress] = useState<(Goal & { calculatedValue: number })[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Calculate progress for all goals
   useEffect(() => {
     const loadProgress = async () => {
-      const withProgress = await Promise.all(
-        goals.map(async (goal) => {
-          const calculatedValue = await calculateGoalProgress(goal);
-          return { ...goal, calculatedValue };
-        })
-      );
-      setGoalsWithProgress(withProgress);
+      setIsCalculating(true);
+      try {
+        const withProgress = await Promise.all(
+          goals.map(async (goal) => {
+            const calculatedValue = await calculateGoalProgress(goal);
+            return { ...goal, calculatedValue };
+          })
+        );
+        setGoalsWithProgress(withProgress);
+      } finally {
+        setIsCalculating(false);
+      }
     };
 
     if (goals.length > 0) {
@@ -90,6 +99,19 @@ export function GoalsPanel() {
         return 'Serviço Específico';
       default:
         return type;
+    }
+  };
+
+  const getDataSourceLabel = (type: string) => {
+    switch (type) {
+      case 'appointments':
+        return 'Agenda (concluídos)';
+      case 'revenue':
+        return 'Agendamentos + Caixa';
+      case 'service_appointments':
+        return 'Agenda filtrada';
+      default:
+        return '';
     }
   };
 
@@ -152,6 +174,10 @@ export function GoalsPanel() {
     setEditingGoal(null);
   };
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -175,11 +201,34 @@ export function GoalsPanel() {
           {activeGoals.length > 0 && (
             <Badge variant="secondary">{activeGoals.length} ativas</Badge>
           )}
+          {isCalculating && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </div>
-        <Button onClick={() => setDialogOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Meta
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isCalculating}
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isCalculating && "animate-spin")} />
+            Atualizar
+          </Button>
+          <Button onClick={() => setDialogOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Meta
+          </Button>
+        </div>
+      </div>
+
+      {/* Data Source Info */}
+      <div className="p-3 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
+        <p className="font-medium mb-1">📊 Dados sincronizados automaticamente:</p>
+        <ul className="space-y-0.5 ml-4 list-disc">
+          <li><span className="font-medium">Faturamento:</span> Soma de pagamentos (agendamentos concluídos + vendas do caixa)</li>
+          <li><span className="font-medium">Atendimentos:</span> Agendamentos com status "concluído" no período</li>
+        </ul>
       </div>
 
       {/* Active Goals */}
@@ -278,11 +327,17 @@ export function GoalsPanel() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {format(parseISO(goal.start_date), 'dd/MM', { locale: ptBR })} - {format(parseISO(goal.end_date), 'dd/MM/yyyy', { locale: ptBR })}
-                    </span>
+                  <div className="space-y-1 pt-2 border-t">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>
+                        {format(parseISO(goal.start_date), 'dd/MM', { locale: ptBR })} - {format(parseISO(goal.end_date), 'dd/MM/yyyy', { locale: ptBR })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <TrendingUp className="h-3 w-3" />
+                      <span>Fonte: {getDataSourceLabel(goal.type)}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

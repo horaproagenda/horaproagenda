@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEffect, useCallback } from 'react';
 
 export interface Goal {
   id: string;
@@ -34,6 +35,51 @@ export interface CreateGoalInput {
 
 export function useGoals() {
   const queryClient = useQueryClient();
+
+  // Set up real-time subscriptions for automatic updates
+  useEffect(() => {
+    // Subscribe to appointments changes
+    const appointmentsChannel = supabase
+      .channel('goals-appointments-sync')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'appointments' 
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['goals'] });
+      })
+      .subscribe();
+
+    // Subscribe to single_sales changes (for revenue goals)
+    const salesChannel = supabase
+      .channel('goals-sales-sync')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'single_sales' 
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['goals'] });
+      })
+      .subscribe();
+
+    // Subscribe to cash_transactions changes
+    const transactionsChannel = supabase
+      .channel('goals-transactions-sync')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'cash_transactions' 
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['goals'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+      supabase.removeChannel(salesChannel);
+      supabase.removeChannel(transactionsChannel);
+    };
+  }, [queryClient]);
 
   const { data: goals = [], isLoading, refetch } = useQuery({
     queryKey: ['goals'],
@@ -124,8 +170,8 @@ export function useGoals() {
     }
   });
 
-  // Calculate current values for goals based on real data
-  const calculateGoalProgress = async (goal: Goal): Promise<number> => {
+  // Calculate current values for goals based on real data from appointments, single_sales, and cash_transactions
+  const calculateGoalProgress = useCallback(async (goal: Goal): Promise<number> => {
     const startDate = goal.start_date;
     const endDate = goal.end_date;
 
@@ -135,10 +181,13 @@ export function useGoals() {
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .gte('start_time', startDate)
-        .lte('start_time', endDate)
+        .lte('start_time', `${endDate}T23:59:59`)
         .eq('status', 'completed');
 
-      if (error) return 0;
+      if (error) {
+        console.error('Error calculating appointments:', error);
+        return 0;
+      }
       return count || 0;
     }
 
@@ -149,38 +198,54 @@ export function useGoals() {
         .select('*', { count: 'exact', head: true })
         .eq('service_id', goal.service_id)
         .gte('start_time', startDate)
-        .lte('start_time', endDate)
+        .lte('start_time', `${endDate}T23:59:59`)
         .eq('status', 'completed');
 
-      if (error) return 0;
+      if (error) {
+        console.error('Error calculating service appointments:', error);
+        return 0;
+      }
       return count || 0;
     }
 
     if (goal.type === 'revenue') {
-      // Sum revenue from appointments and single_sales
+      // Sum revenue from completed appointments (amount_paid)
       const { data: appointmentsData, error: appError } = await supabase
         .from('appointments')
         .select('amount_paid')
         .gte('start_time', startDate)
-        .lte('start_time', endDate)
+        .lte('start_time', `${endDate}T23:59:59`)
         .eq('status', 'completed');
 
+      // Sum revenue from single_sales (final_amount)
       const { data: salesData, error: salesError } = await supabase
         .from('single_sales')
         .select('final_amount')
         .gte('sale_date', startDate)
         .lte('sale_date', endDate);
 
-      if (appError || salesError) return 0;
+      // Sum revenue from cash_transactions (income type only)
+      const { data: transactionsData, error: transError } = await supabase
+        .from('cash_transactions')
+        .select('amount')
+        .eq('type', 'income')
+        .gte('created_at', startDate)
+        .lte('created_at', `${endDate}T23:59:59`);
+
+      if (appError) console.error('Error fetching appointments revenue:', appError);
+      if (salesError) console.error('Error fetching sales revenue:', salesError);
+      if (transError) console.error('Error fetching transactions revenue:', transError);
 
       const appointmentsRevenue = appointmentsData?.reduce((sum, a) => sum + (a.amount_paid || 0), 0) || 0;
       const salesRevenue = salesData?.reduce((sum, s) => sum + (s.final_amount || 0), 0) || 0;
-
+      
+      // Note: We use appointments + sales as they represent actual client payments
+      // Cash transactions might have duplicates if already counted in appointments/sales
       return appointmentsRevenue + salesRevenue;
     }
 
     return 0;
-  };
+  }, []);
 
   return {
     goals,

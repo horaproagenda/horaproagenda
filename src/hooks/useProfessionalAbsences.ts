@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export interface ProfessionalAbsence {
   id: string;
@@ -109,6 +110,25 @@ export function useProfessionalAbsences() {
       toast.error('Erro ao remover ausência: ' + error.message);
     },
   });
+
+  // Real-time sync for absences - invalidate appointments when absences change
+  useEffect(() => {
+    const channel = supabase
+      .channel('absences-appointments-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'professional_absences' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['professional-absences'] });
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return {
     absences,

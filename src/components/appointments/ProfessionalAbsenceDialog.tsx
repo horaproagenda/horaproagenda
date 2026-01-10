@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, addDays, addWeeks, addMonths, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Dialog,
@@ -24,6 +24,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -31,9 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History } from 'lucide-react';
+import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays } from 'lucide-react';
 import { Professional } from '@/types';
 import { useProfessionalAbsences, ProfessionalAbsence } from '@/hooks/useProfessionalAbsences';
+import { toast } from 'sonner';
 
 interface ProfessionalAbsenceDialogProps {
   professionals: Professional[];
@@ -50,6 +53,8 @@ const ABSENCE_REASONS = [
   'Feriado',
   'Treinamento',
   'Folga',
+  'Compromisso Pessoal',
+  'Reunião',
   'Outro',
 ];
 
@@ -58,6 +63,23 @@ const ABSENCE_STATUS = [
   { value: 'completed', label: 'Concluído', icon: CheckCircle, className: 'bg-success/10 text-success' },
   { value: 'missed', label: 'Faltou', icon: XCircle, className: 'bg-destructive/10 text-destructive' },
   { value: 'rescheduled', label: 'Reagendado', icon: History, className: 'bg-primary/10 text-primary' },
+];
+
+const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Diariamente' },
+  { value: 'weekly', label: 'Semanalmente' },
+  { value: 'biweekly', label: 'Quinzenalmente' },
+  { value: 'monthly', label: 'Mensalmente' },
+];
+
+const WEEKDAYS = [
+  { value: 0, label: 'Dom' },
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
 ];
 
 export function ProfessionalAbsenceDialog({
@@ -76,6 +98,12 @@ export function ProfessionalAbsenceDialog({
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('pending');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Recurrence state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState('weekly');
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
+  const [repeatUntil, setRepeatUntil] = useState('');
 
   const isEditing = !!editingAbsence;
 
@@ -91,8 +119,15 @@ export function ProfessionalAbsenceDialog({
       // Extract status from notes or default to pending
       const statusMatch = editingAbsence.notes?.match(/\[STATUS:(.*?)\]/);
       setStatus(statusMatch ? statusMatch[1] : 'pending');
+      // Reset recurrence for editing (we don't edit recurring ones as a group)
+      setIsRecurring(false);
+      setFrequency('weekly');
+      setSelectedWeekdays([]);
+      setRepeatUntil('');
     } else if (prefilledDate) {
       setDate(format(prefilledDate, 'yyyy-MM-dd'));
+      // Set default weekday based on selected date
+      setSelectedWeekdays([prefilledDate.getDay()]);
     } else {
       resetForm();
     }
@@ -100,27 +135,66 @@ export function ProfessionalAbsenceDialog({
 
   const activeProfessionals = professionals.filter(p => p.is_active);
 
-  const handleSubmit = () => {
+  // Generate dates based on recurrence settings
+  const generateRecurringDates = (): Date[] => {
+    if (!isRecurring || !repeatUntil) return [new Date(date)];
+
+    const dates: Date[] = [];
+    const startDate = new Date(date);
+    const endDate = new Date(repeatUntil);
+
+    let currentDate = new Date(startDate);
+
+    while (isBefore(currentDate, endDate) || isEqual(currentDate, endDate)) {
+      if (frequency === 'daily') {
+        dates.push(new Date(currentDate));
+        currentDate = addDays(currentDate, 1);
+      } else if (frequency === 'weekly') {
+        // For weekly, check if the current day is in selectedWeekdays
+        if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
+          dates.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
+      } else if (frequency === 'biweekly') {
+        if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
+          dates.push(new Date(currentDate));
+        }
+        // Move to next occurrence (every 2 weeks for the same weekday)
+        if (dates.length > 0 && selectedWeekdays.includes(currentDate.getDay())) {
+          currentDate = addWeeks(currentDate, 2);
+        } else {
+          currentDate = addDays(currentDate, 1);
+        }
+      } else if (frequency === 'monthly') {
+        dates.push(new Date(currentDate));
+        currentDate = addMonths(currentDate, 1);
+      }
+
+      // Safety limit to prevent infinite loops
+      if (dates.length > 365) break;
+    }
+
+    return dates;
+  };
+
+  const handleSubmit = async () => {
     if (!professionalId) return;
 
-    const startDateTime = new Date(`${date}T${startTime}`);
-    const endDateTime = new Date(`${date}T${endTime}`);
-    
-    // Include status in notes
     const notesWithStatus = notes ? `${notes} [STATUS:${status}]` : `[STATUS:${status}]`;
 
-    const absenceData = {
-      professional_id: professionalId,
-      start_time: startDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
-      reason: reason || null,
-      notes: notesWithStatus,
-    };
-
     if (isEditing && editingAbsence) {
+      const startDateTime = new Date(`${date}T${startTime}`);
+      const endDateTime = new Date(`${date}T${endTime}`);
+      
       updateAbsence.mutate({
         id: editingAbsence.id,
-        updates: absenceData,
+        updates: {
+          professional_id: professionalId,
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          reason: reason || null,
+          notes: notesWithStatus,
+        },
       }, {
         onSuccess: () => {
           onOpenChange(false);
@@ -128,12 +202,44 @@ export function ProfessionalAbsenceDialog({
         },
       });
     } else {
-      createAbsence.mutate(absenceData, {
-        onSuccess: () => {
-          onOpenChange(false);
-          resetForm();
-        },
-      });
+      // Handle recurring absences
+      const datesToCreate = generateRecurringDates();
+      
+      if (datesToCreate.length === 0) {
+        toast.error('Selecione pelo menos uma data ou configure a recorrência corretamente.');
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const absenceDate of datesToCreate) {
+        const dateStr = format(absenceDate, 'yyyy-MM-dd');
+        const startDateTime = new Date(`${dateStr}T${startTime}`);
+        const endDateTime = new Date(`${dateStr}T${endTime}`);
+
+        try {
+          await createAbsence.mutateAsync({
+            professional_id: professionalId,
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            reason: reason || null,
+            notes: notesWithStatus,
+          });
+          successCount++;
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} ausência(s) registrada(s) com sucesso!`);
+        onOpenChange(false);
+        resetForm();
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} ausência(s) não puderam ser registradas.`);
+      }
     }
   };
 
@@ -157,6 +263,18 @@ export function ProfessionalAbsenceDialog({
     setReason('');
     setNotes('');
     setStatus('pending');
+    setIsRecurring(false);
+    setFrequency('weekly');
+    setSelectedWeekdays([]);
+    setRepeatUntil('');
+  };
+
+  const toggleWeekday = (day: number) => {
+    setSelectedWeekdays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
   };
 
   const isPending = createAbsence.isPending || updateAbsence.isPending || deleteAbsence.isPending;
@@ -234,6 +352,88 @@ export function ProfessionalAbsenceDialog({
                   />
                 </div>
               </div>
+
+              {/* Recurrence Section - Only show when not editing */}
+              {!isEditing && (
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2 cursor-pointer">
+                      <Repeat className="h-4 w-4" />
+                      Repetir Ausência
+                    </Label>
+                    <Switch
+                      checked={isRecurring}
+                      onCheckedChange={setIsRecurring}
+                    />
+                  </div>
+
+                  {isRecurring && (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label>Frequência</Label>
+                        <Select value={frequency} onValueChange={setFrequency}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCY_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {(frequency === 'weekly' || frequency === 'biweekly') && (
+                        <div className="space-y-2">
+                          <Label>Dias da Semana</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {WEEKDAYS.map((day) => (
+                              <Button
+                                key={day.value}
+                                type="button"
+                                variant={selectedWeekdays.includes(day.value) ? "default" : "outline"}
+                                size="sm"
+                                className="w-10 h-10"
+                                onClick={() => toggleWeekday(day.value)}
+                              >
+                                {day.label}
+                              </Button>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Selecione os dias em que a ausência se repete
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4" />
+                          Repetir Até
+                        </Label>
+                        <Input
+                          type="date"
+                          value={repeatUntil}
+                          onChange={(e) => setRepeatUntil(e.target.value)}
+                          min={date}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Data limite para repetição da ausência
+                        </p>
+                      </div>
+
+                      {isRecurring && repeatUntil && (
+                        <div className="p-2 rounded bg-primary/10 text-sm">
+                          <span className="font-medium">Prévia: </span>
+                          {generateRecurringDates().length} ausência(s) serão criadas
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Motivo</Label>

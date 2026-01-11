@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [authError, setAuthError] = useState<{ type: string; description: string } | null>(null);
+  const [lastEmail, setLastEmail] = useState('');
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -30,6 +36,65 @@ export default function Auth() {
       navigate('/');
     }
   }, [user, navigate]);
+
+  // Handle auth errors from URL hash (e.g., expired OTP links)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const error = params.get('error');
+      const errorCode = params.get('error_code');
+      const errorDescription = params.get('error_description');
+      
+      if (error === 'access_denied' && errorCode === 'otp_expired') {
+        setAuthError({
+          type: 'otp_expired',
+          description: errorDescription?.replace(/\+/g, ' ') || 'O link de verificação expirou.'
+        });
+        // Clear the hash from URL
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, [location]);
+
+  const handleResendVerificationEmail = async () => {
+    const emailToUse = lastEmail || loginEmail;
+    if (!emailToUse) {
+      toast({ 
+        title: 'Email necessário', 
+        description: 'Digite seu email no campo de login para reenviar a verificação.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    setResendingEmail(true);
+    const productionUrl = 'https://luxe-manage-daily.lovable.app';
+    const redirectUrl = `${productionUrl}/`;
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: emailToUse,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    });
+    setResendingEmail(false);
+
+    if (error) {
+      toast({ 
+        title: 'Erro', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    } else {
+      toast({ 
+        title: 'Email reenviado!', 
+        description: 'Verifique sua caixa de entrada para o novo link de verificação.' 
+      });
+      setAuthError(null);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +147,7 @@ export default function Auth() {
         toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
       }
     } else {
+      setLastEmail(signupEmail);
       toast({ 
         title: 'Cadastro realizado!', 
         description: 'Verifique seu email para confirmar a conta.' 
@@ -110,6 +176,33 @@ export default function Auth() {
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>
         </CardHeader>
         <CardContent>
+          {authError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Link expirado</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{authError.description}</p>
+                <p className="text-sm">Digite seu email abaixo e clique em "Reenviar email" para receber um novo link.</p>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleResendVerificationEmail}
+                    disabled={resendingEmail}
+                  >
+                    {resendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reenviar'}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>

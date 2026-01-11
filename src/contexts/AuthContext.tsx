@@ -92,7 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    // Use production URL for email verification to avoid localhost issues
+    const productionUrl = 'https://luxe-manage-daily.lovable.app';
+    const redirectUrl = import.meta.env.PROD ? `${window.location.origin}/` : `${productionUrl}/`;
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,

@@ -48,9 +48,12 @@ const DEFAULT_PAYMENT_METHODS = [
 ];
 
 export function FormasPagamento() {
-  const { paymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
+  const { paymentMethods, isLoading, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
   const { banks, activeBanks, createBank, updateBank, deleteBank } = useBanks();
   const { cardBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
+
+  // Track if we already tried to init defaults to prevent duplicates
+  const [defaultsInitialized, setDefaultsInitialized] = useState(false);
 
   // Payment Method Dialog
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
@@ -85,9 +88,11 @@ export function FormasPagamento() {
     { installment_number: 1, fee_percentage: 0 },
   ]);
 
-  // Create default payment methods only if none exist at all
+  // Create default payment methods only if none exist AND data has loaded
+  // With unique constraint in DB, duplicates will fail silently now
   useEffect(() => {
-    if (paymentMethods.length === 0) {
+    if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {
+      setDefaultsInitialized(true);
       DEFAULT_PAYMENT_METHODS.forEach(name => {
         createPaymentMethod.mutate({
           name,
@@ -97,7 +102,7 @@ export function FormasPagamento() {
         });
       });
     }
-  }, [paymentMethods.length]);
+  }, [isLoading, paymentMethods.length, defaultsInitialized]);
 
   const resetPmForm = () => {
     setPmForm({ name: '', description: '', is_active: true, max_installments: 1 });

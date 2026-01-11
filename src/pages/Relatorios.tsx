@@ -125,47 +125,84 @@ const Relatorios = () => {
       });
   }, [clients, professionals, today, currentMonth, currentDay, searchTerm]);
 
-  // Clientes para retorno
+  // Clientes para retorno - inclui clientes que devem retornar este mês
   const retornos = useMemo(() => {
-    const clientLastAppointments = new Map<string, { date: Date; serviceName: string; returnDays: number }>();
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
     
+    const clientLastAppointments = new Map<string, { date: Date; serviceName: string; returnDays: number; returnDate: Date }>();
+    
+    // Get completed appointments with return_days defined
     appointments
       .filter(apt => apt.status === 'completed' && apt.service?.return_days && apt.service.return_days > 0)
       .forEach(apt => {
         const aptDate = parseISO(apt.start_time);
+        const returnDate = addDays(aptDate, apt.service!.return_days!);
         const current = clientLastAppointments.get(apt.client_id);
+        
+        // Keep the most recent appointment per client
         if (!current || aptDate > current.date) {
           clientLastAppointments.set(apt.client_id, {
             date: aptDate,
             serviceName: apt.service?.name || 'Serviço',
-            returnDays: apt.service?.return_days || 30
+            returnDays: apt.service?.return_days || 30,
+            returnDate
           });
         }
       });
 
+    // Check if client already has a future appointment scheduled
+    const clientsWithFutureAppointments = new Set<string>();
+    appointments
+      .filter(apt => {
+        const aptDate = parseISO(apt.start_time);
+        return (apt.status === 'scheduled' || apt.status === 'confirmed') && aptDate >= today;
+      })
+      .forEach(apt => clientsWithFutureAppointments.add(apt.client_id));
+
     return clients
       .filter(client => {
         if (!client.is_active) return false;
+        // Exclude clients who already have future appointments
+        if (clientsWithFutureAppointments.has(client.id)) return false;
+        
         const lastAppt = clientLastAppointments.get(client.id);
         if (!lastAppt) return false;
+        
+        // Include if: return date is within this month OR already overdue (up to 3x the return period)
+        const isReturnThisMonth = isWithinInterval(lastAppt.returnDate, { start: monthStart, end: monthEnd });
         const daysSinceVisit = differenceInDays(today, lastAppt.date);
-        return daysSinceVisit >= lastAppt.returnDays && daysSinceVisit < lastAppt.returnDays * 3;
+        const isOverdue = daysSinceVisit >= lastAppt.returnDays;
+        const isNotTooOld = daysSinceVisit < lastAppt.returnDays * 3;
+        
+        return (isReturnThisMonth || isOverdue) && isNotTooOld;
       })
       .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .map(client => {
         const lastAppt = clientLastAppointments.get(client.id)!;
         const daysSinceVisit = differenceInDays(today, lastAppt.date);
-        const daysOverdue = daysSinceVisit - lastAppt.returnDays;
+        const daysUntilReturn = differenceInDays(lastAppt.returnDate, today);
+        const isOverdue = daysUntilReturn < 0;
+        
         return {
           ...client,
           lastVisit: lastAppt.date,
+          returnDate: lastAppt.returnDate,
           daysSinceVisit,
           serviceName: lastAppt.serviceName,
           returnDays: lastAppt.returnDays,
-          daysOverdue
+          daysUntilReturn,
+          daysOverdue: isOverdue ? Math.abs(daysUntilReturn) : 0,
+          isOverdue
         };
       })
-      .sort((a, b) => b.daysOverdue - a.daysOverdue);
+      .sort((a, b) => {
+        // Sort: overdue first (by most overdue), then upcoming (by soonest)
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        if (a.isOverdue && b.isOverdue) return b.daysOverdue - a.daysOverdue;
+        return a.daysUntilReturn - b.daysUntilReturn;
+      });
   }, [clients, appointments, today, searchTerm]);
 
   // Clientes sumidos
@@ -280,14 +317,15 @@ const Relatorios = () => {
     } else if (activeTab === 'retornos') {
       exportToCSV({
         filename: 'retornos',
-        headers: ['Nome', 'Telefone', 'Última Visita', 'Serviço', 'Dias desde Visita', 'Dias em Atraso'],
+        headers: ['Nome', 'Telefone', 'Última Visita', 'Data Retorno', 'Serviço', 'Status', 'Dias'],
         rows: retornos.map(c => [
           c.name,
           c.phone || '',
           c.lastVisit ? format(c.lastVisit, 'dd/MM/yyyy') : '',
+          c.returnDate ? format(c.returnDate, 'dd/MM/yyyy') : '',
           c.serviceName || '',
-          c.daysSinceVisit,
-          c.daysOverdue
+          c.isOverdue ? 'Atrasado' : 'Próximo',
+          c.isOverdue ? c.daysOverdue : c.daysUntilReturn
         ])
       });
     } else if (activeTab === 'sumidos') {
@@ -442,22 +480,33 @@ const Relatorios = () => {
 
                 <TabsContent value="retornos" className="space-y-4 page-enter">
                   <p className="text-xs text-muted-foreground">
-                    Clientes que passaram do tempo de retorno
+                    Clientes que devem retornar este mês (baseado no período de retorno do serviço)
                   </p>
                   {retornos.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
                       <RotateCcw className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                      <p className="mt-2 text-sm text-muted-foreground">Nenhum cliente pendente de retorno</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Nenhum cliente pendente de retorno este mês</p>
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {retornos.map(client => (
                         <ClientCard key={client.id} client={client}>
-                          <div className="text-right">
-                            <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">
-                              +{client.daysOverdue}d
-                            </Badge>
-                            <p className="text-[10px] text-muted-foreground mt-1">{client.serviceName}</p>
+                          <div className="text-right space-y-1">
+                            {client.isOverdue ? (
+                              <Badge variant="outline" className="border-red-500 text-red-600 text-xs">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                {client.daysOverdue}d atrasado
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                em {client.daysUntilReturn}d
+                              </Badge>
+                            )}
+                            <p className="text-[10px] text-muted-foreground">{client.serviceName}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Retorno: {format(client.returnDate, 'dd/MM')}
+                            </p>
                           </div>
                         </ClientCard>
                       ))}

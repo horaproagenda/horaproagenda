@@ -14,6 +14,7 @@ import {
   Landmark,
   Percent,
   Target,
+  Calculator,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ContasAReceber } from '@/components/financeiro/ContasAReceber';
@@ -23,6 +24,7 @@ import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinance
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
+import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -142,6 +144,10 @@ export default function Financeiro() {
               <Target className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Metas</span>
             </TabsTrigger>
+            <TabsTrigger value="precificacao" className="gap-1.5 text-xs tracking-wide h-8">
+              <Calculator className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Precificação</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="contas-pagar" className="page-enter">
@@ -179,6 +185,10 @@ export default function Financeiro() {
 
           <TabsContent value="metas" className="page-enter">
             <GoalsPanel />
+          </TabsContent>
+
+          <TabsContent value="precificacao" className="page-enter">
+            <PrecificacaoServicos />
           </TabsContent>
         </Tabs>
       </div>

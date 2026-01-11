@@ -26,6 +26,9 @@ import Ajuda from "./pages/Ajuda";
 import Suporte from "./pages/Suporte";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Assinatura from "./pages/Assinatura";
+import AssinaturaSucesso from "./pages/AssinaturaSucesso";
+import AssinaturaCancelado from "./pages/AssinaturaCancelado";
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({
@@ -76,6 +79,9 @@ const App = () => {
                 <Route path="/auditoria" element={<ProtectedRoute><Auditoria /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />
+                <Route path="/assinatura" element={<ProtectedRoute><Assinatura /></ProtectedRoute>} />
+                <Route path="/assinatura/sucesso" element={<ProtectedRoute><AssinaturaSucesso /></ProtectedRoute>} />
+                <Route path="/assinatura/cancelado" element={<ProtectedRoute><AssinaturaCancelado /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

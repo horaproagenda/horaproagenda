@@ -70,9 +70,9 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
               {!isCollapsed && (
                 <div className="overflow-hidden">
                   <h1 className="font-display text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
-                    Belezza
+                    Lume Agenda
                   </h1>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">Estética & Bem-estar</p>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">Beleza com elegância</p>
                 </div>
               )}
             </div>

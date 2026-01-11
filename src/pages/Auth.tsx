@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,27 +7,25 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, AlertCircle, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Sparkles, Loader2, Mail, ArrowLeft, CheckCircle2, Crown, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Badge } from '@/components/ui/badge';
 
-type AuthStep = 'email' | 'code' | 'password';
+type AuthStep = 'email' | 'code' | 'plan' | 'password';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
-  const [authError, setAuthError] = useState<{ type: string; description: string } | null>(null);
-  const [lastEmail, setLastEmail] = useState('');
 
   // Auth flow state
   const [authStep, setAuthStep] = useState<AuthStep>('email');
   const [verificationCode, setVerificationCode] = useState('');
   const [codeVerified, setCodeVerified] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string>('');
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -40,31 +38,37 @@ export default function Auth() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
+  // Plans
+  const plans = [
+    {
+      id: 'essencial',
+      name: 'Essencial',
+      price: 97,
+      description: '1 profissional',
+      features: ['Agenda ilimitada', 'Gestão de clientes', 'Relatórios básicos']
+    },
+    {
+      id: 'profissional',
+      name: 'Profissional',
+      price: 147,
+      description: 'Até 3 profissionais',
+      features: ['Tudo do Essencial', 'Lembretes WhatsApp', 'Comissões automáticas'],
+      popular: true
+    },
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: 197,
+      description: 'Até 5 profissionais',
+      features: ['Tudo do Profissional', 'Multi-unidades', 'Suporte prioritário']
+    }
+  ];
+
   useEffect(() => {
     if (user) {
       navigate('/');
     }
   }, [user, navigate]);
-
-  // Handle auth errors from URL hash (e.g., expired OTP links)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const error = params.get('error');
-      const errorCode = params.get('error_code');
-      const errorDescription = params.get('error_description');
-      
-      if (error === 'access_denied' && errorCode === 'otp_expired') {
-        setAuthError({
-          type: 'otp_expired',
-          description: errorDescription?.replace(/\+/g, ' ') || 'O link de verificação expirou.'
-        });
-        // Clear the hash from URL
-        window.history.replaceState(null, '', window.location.pathname);
-      }
-    }
-  }, [location]);
 
   const handleSendVerificationCode = async () => {
     if (!signupEmail) {
@@ -120,10 +124,10 @@ export default function Auth() {
       }
 
       setCodeVerified(true);
-      setAuthStep('password');
+      setAuthStep('plan');
       toast({ 
         title: 'Email verificado!', 
-        description: 'Agora crie sua senha para finalizar o cadastro.' 
+        description: 'Agora escolha seu plano.' 
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar código';
@@ -153,45 +157,6 @@ export default function Auth() {
       toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });
     } finally {
       setResendingEmail(false);
-    }
-  };
-
-  const handleResendVerificationEmail = async () => {
-    const emailToUse = lastEmail || loginEmail;
-    if (!emailToUse) {
-      toast({ 
-        title: 'Email necessário', 
-        description: 'Digite seu email no campo de login para reenviar a verificação.', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    setResendingEmail(true);
-    const productionUrl = 'https://luxe-manage-daily.lovable.app';
-    const redirectUrl = `${productionUrl}/`;
-    
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: emailToUse,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    setResendingEmail(false);
-
-    if (error) {
-      toast({ 
-        title: 'Erro', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    } else {
-      toast({ 
-        title: 'Email reenviado!', 
-        description: 'Verifique sua caixa de entrada para o novo link de verificação.' 
-      });
-      setAuthError(null);
     }
   };
 
@@ -251,7 +216,6 @@ export default function Auth() {
         toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
       }
     } else {
-      setLastEmail(signupEmail);
       toast({ 
         title: 'Cadastro realizado!', 
         description: 'Sua conta foi criada com sucesso.' 
@@ -263,6 +227,16 @@ export default function Auth() {
     setAuthStep('email');
     setVerificationCode('');
     setCodeVerified(false);
+    setSelectedPlan('');
+  };
+
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlan(planId);
+    setAuthStep('password');
+    toast({ 
+      title: 'Plano selecionado!', 
+      description: 'Agora crie sua senha para finalizar o cadastro.' 
+    });
   };
 
   if (authLoading) {
@@ -275,7 +249,7 @@ export default function Auth() {
 
   return (
     <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
-      <Card className="w-full max-w-md shadow-lg animate-scale-in">
+      <Card className={`w-full shadow-lg animate-scale-in ${authStep === 'plan' ? 'max-w-lg' : 'max-w-md'}`}>
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
@@ -286,33 +260,6 @@ export default function Auth() {
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>
         </CardHeader>
         <CardContent>
-          {authError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Link expirado</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <p>{authError.description}</p>
-                <p className="text-sm">Digite seu email abaixo e clique em "Reenviar email" para receber um novo link.</p>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleResendVerificationEmail}
-                    disabled={resendingEmail}
-                  >
-                    {resendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reenviar'}
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
           <Tabs defaultValue="login" className="w-full" onValueChange={() => resetSignupFlow()}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>
@@ -455,17 +402,88 @@ export default function Auth() {
                 </div>
               )}
 
-              {/* Step 3: Create Password */}
-              {authStep === 'password' && (
-                <form onSubmit={handleSignup} className="space-y-4">
+              {/* Step 3: Select Plan */}
+              {authStep === 'plan' && (
+                <div className="space-y-4">
                   <div className="text-center space-y-2 mb-4">
                     <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                       <CheckCircle2 className="h-6 w-6 text-green-600" />
                     </div>
                     <h3 className="font-semibold">Email verificado!</h3>
                     <p className="text-sm text-muted-foreground">
-                      Agora crie uma senha para sua conta
+                      Escolha seu plano e comece com <span className="font-semibold text-primary">7 dias grátis</span>
                     </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {plans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => handleSelectPlan(plan.id)}
+                        className={`w-full p-4 rounded-lg border-2 text-left transition-all hover:border-primary ${
+                          selectedPlan === plan.id ? 'border-primary bg-primary/5' : 'border-border'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{plan.name}</span>
+                              {plan.popular && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  Popular
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{plan.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-bold">R$ {plan.price}</span>
+                            <span className="text-sm text-muted-foreground">/mês</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {plan.features.slice(0, 2).map((feature, idx) => (
+                            <span key={idx} className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Check className="h-3 w-3 text-green-500" />
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-center text-muted-foreground">
+                    Você não será cobrado durante o período de teste
+                  </p>
+
+                  <button 
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    onClick={() => setAuthStep('code')}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar
+                  </button>
+                </div>
+              )}
+
+              {/* Step 4: Create Password */}
+              {authStep === 'password' && (
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="text-center space-y-2 mb-4">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Crown className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold">Plano {plans.find(p => p.id === selectedPlan)?.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Crie sua senha para finalizar o cadastro
+                    </p>
+                    <Badge variant="outline" className="text-green-600 border-green-300">
+                      7 dias grátis inclusos
+                    </Badge>
                   </div>
 
                   <div className="space-y-2">
@@ -490,16 +508,16 @@ export default function Auth() {
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Criar conta
+                    Criar conta e começar teste grátis
                   </Button>
 
                   <button 
                     type="button"
                     className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                    onClick={resetSignupFlow}
+                    onClick={() => setAuthStep('plan')}
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Recomeçar
+                    Escolher outro plano
                   </button>
                 </form>
               )}

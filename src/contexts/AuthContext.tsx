@@ -92,18 +92,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Use production URL for email verification to avoid localhost issues
-    const productionUrl = 'https://luxe-manage-daily.lovable.app';
-    const redirectUrl = import.meta.env.PROD ? `${window.location.origin}/` : `${productionUrl}/`;
-    
-    const { error } = await supabase.auth.signUp({
+    // Since we use our own email verification code system,
+    // we don't need Supabase's email confirmation
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: fullName }
+        data: { full_name: fullName, email_verified: true }
       }
     });
+    
+    // Auto sign-in after signup since email is already verified via our code system
+    if (!error && data.user) {
+      await supabase.auth.signInWithPassword({ email, password });
+    }
+    
     return { error: error as Error | null };
   };
 

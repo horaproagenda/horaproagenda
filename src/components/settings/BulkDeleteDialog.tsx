@@ -25,51 +25,113 @@ interface DeleteOption {
   label: string;
   description: string;
   confirmText: string;
+  // Tables must be ordered to respect foreign key constraints (delete children first)
   tables: string[];
 }
 
+// IMPORTANT: Tables are ordered to respect foreign key constraints
+// Delete child tables before parent tables
 const deleteOptions: DeleteOption[] = [
   {
     type: 'clients',
     label: 'Clientes',
-    description: 'Excluir todos os clientes cadastrados',
+    description: 'Excluir todos os clientes e dados relacionados',
     confirmText: 'EXCLUIR CLIENTES',
-    tables: ['clients'],
+    // Order: financial_entries -> cash_transactions -> single_sales -> client_services -> 
+    // appointment_product_consumption -> package_appointments -> appointments -> 
+    // service_packages -> quotes -> treatment_photos -> client_documents -> clients
+    tables: [
+      'financial_entries',
+      'cash_transactions', 
+      'single_sales',
+      'client_services',
+      'appointment_product_consumption',
+      'package_appointments',
+      'appointments',
+      'service_packages',
+      'quotes',
+      'treatment_photos',
+      'client_documents',
+      'clients',
+    ],
   },
   {
     type: 'appointments',
     label: 'Agendamentos',
-    description: 'Excluir todos os agendamentos',
+    description: 'Excluir todos os agendamentos e dados relacionados',
     confirmText: 'EXCLUIR AGENDAMENTOS',
-    tables: ['appointments'],
+    // Order: financial_entries -> cash_transactions -> appointment_product_consumption -> 
+    // client_services (that reference appointments) -> package_appointments -> appointments
+    tables: [
+      'financial_entries',
+      'cash_transactions',
+      'appointment_product_consumption',
+      'client_services',
+      'package_appointments',
+      'appointments',
+    ],
   },
   {
     type: 'services',
     label: 'Serviços',
-    description: 'Excluir todos os serviços cadastrados',
+    description: 'Excluir todos os serviços e dados relacionados',
     confirmText: 'EXCLUIR SERVIÇOS',
-    tables: ['services'],
+    // Order: financial_entries -> cash_transactions -> appointment_product_consumption -> 
+    // client_services -> package_appointments -> appointments -> service_packages -> 
+    // service_products -> goals -> services
+    tables: [
+      'financial_entries',
+      'cash_transactions',
+      'appointment_product_consumption',
+      'client_services',
+      'package_appointments',
+      'appointments',
+      'service_packages',
+      'service_products',
+      'goals',
+      'services',
+    ],
   },
   {
     type: 'packages',
     label: 'Pacotes',
     description: 'Excluir todos os pacotes e modelos de pacotes',
     confirmText: 'EXCLUIR PACOTES',
-    tables: ['package_appointments', 'service_packages', 'package_templates'],
+    // Order: package_appointments -> service_packages -> package_template_products -> package_templates
+    tables: [
+      'package_appointments', 
+      'service_packages', 
+      'package_template_products',
+      'package_templates',
+    ],
   },
   {
     type: 'products',
     label: 'Produtos',
     description: 'Excluir todos os produtos cadastrados',
     confirmText: 'EXCLUIR PRODUTOS',
-    tables: ['product_purchases', 'service_products', 'products'],
+    // Order: appointment_product_consumption -> service_products -> package_template_products -> 
+    // product_purchases -> products
+    tables: [
+      'appointment_product_consumption',
+      'service_products',
+      'package_template_products', 
+      'product_purchases', 
+      'products',
+    ],
   },
   {
     type: 'financial',
     label: 'Financeiro',
     description: 'Excluir todas as entradas financeiras e vendas',
     confirmText: 'EXCLUIR FINANCEIRO',
-    tables: ['cash_transactions', 'single_sales', 'financial_entries'],
+    // Order: client_services (linked to sales) -> cash_transactions -> single_sales -> financial_entries
+    tables: [
+      'client_services',
+      'cash_transactions', 
+      'single_sales', 
+      'financial_entries',
+    ],
   },
 ];
 
@@ -86,27 +148,41 @@ export function BulkDeleteDialog() {
     }
 
     setIsDeleting(true);
+    const deletedTables: string[] = [];
+    
     try {
-      // Delete from all related tables in order
+      // Delete from all related tables in order (respecting FK constraints)
       for (const table of selectedOption.tables) {
+        console.log(`Deletando tabela: ${table}`);
+        
         const { error } = await supabase
           .from(table as any)
           .delete()
           .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
 
         if (error) {
+          // Log but continue if table is empty or already deleted
+          if (error.code === 'PGRST116' || error.message.includes('0 rows')) {
+            console.log(`Tabela ${table} vazia ou já limpa`);
+            deletedTables.push(table);
+            continue;
+          }
           console.error(`Erro ao excluir ${table}:`, error);
           throw new Error(`Erro ao excluir ${table}: ${error.message}`);
         }
+        
+        deletedTables.push(table);
       }
 
-      // Invalidate all queries
+      // Invalidate all queries to refresh the UI
       queryClient.invalidateQueries();
       
       toast.success(`${selectedOption.label} excluídos com sucesso!`);
       setSelectedOption(null);
       setConfirmInput('');
     } catch (error: any) {
+      console.error('Erro na exclusão:', error);
+      console.log('Tabelas excluídas antes do erro:', deletedTables);
       toast.error(error.message || 'Erro ao excluir dados');
     } finally {
       setIsDeleting(false);
@@ -135,7 +211,8 @@ export function BulkDeleteDialog() {
                 <p className="font-medium text-destructive">Atenção!</p>
                 <p className="text-muted-foreground">
                   Estas ações são <strong>permanentes e irreversíveis</strong>. 
-                  Todos os dados selecionados serão excluídos definitivamente.
+                  Todos os dados selecionados serão excluídos definitivamente, 
+                  incluindo todos os registros relacionados.
                 </p>
               </div>
             </div>
@@ -173,6 +250,12 @@ export function BulkDeleteDialog() {
                   Você está prestes a excluir <strong>TODOS</strong> os {selectedOption?.label.toLowerCase()}.
                   Esta ação é <strong>permanente e irreversível</strong>.
                 </p>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    <strong>Importante:</strong> Todos os registros relacionados (agendamentos, financeiro, etc.) 
+                    também serão excluídos para manter a integridade do sistema.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label>Para confirmar, digite: <strong className="text-destructive">{selectedOption?.confirmText}</strong></Label>
                   <Input

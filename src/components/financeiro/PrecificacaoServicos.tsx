@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   Select, 
   SelectContent, 
@@ -42,11 +43,14 @@ import {
   RefreshCw,
   Check,
   AlertTriangle,
-  Clock
+  Clock,
+  Layers
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { useProducts, Product } from '@/hooks/useProducts';
 import { useServiceProducts, ServiceProduct } from '@/hooks/useServiceProducts';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
+import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { cn } from '@/lib/utils';
@@ -59,17 +63,24 @@ interface ManualCost {
   type: 'fixed' | 'per_service';
 }
 
+type CalculationType = 'service' | 'package';
+
 export function PrecificacaoServicos() {
   const { services, activeServices } = useServices();
   const { products, activeProducts } = useProducts();
   const { serviceProducts } = useServiceProducts();
+  const { templates } = usePackageTemplates();
+  const { templateProducts } = usePackageTemplateProducts();
   const { payables } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
 
+  const [calculationType, setCalculationType] = useState<CalculationType>('service');
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [profitType, setProfitType] = useState<'percentage' | 'fixed'>('percentage');
   const [profitValue, setProfitValue] = useState<number>(30);
   const [servicesPerMonth, setServicesPerMonth] = useState<number>(20);
+  const [packagesPerMonth, setPackagesPerMonth] = useState<number>(5);
   const [workingHoursPerMonth, setWorkingHoursPerMonth] = useState<number>(176);
   const [manualCosts, setManualCosts] = useState<ManualCost[]>([]);
   const [newCostDesc, setNewCostDesc] = useState('');
@@ -78,14 +89,24 @@ export function PrecificacaoServicos() {
   const [activeTab, setActiveTab] = useState('calculator');
 
   const selectedService = activeServices.find(s => s.id === selectedServiceId);
+  const selectedPackage = templates.find(t => t.id === selectedPackageId);
   
   // Get products linked to selected service
-  const linkedProducts = useMemo(() => {
+  const linkedServiceProducts = useMemo(() => {
     if (!selectedServiceId) return [];
     return serviceProducts.filter(sp => sp.service_id === selectedServiceId);
   }, [selectedServiceId, serviceProducts]);
 
-  // Calculate product costs for the service
+  // Get products linked to selected package template
+  const linkedPackageProducts = useMemo(() => {
+    if (!selectedPackageId) return [];
+    return templateProducts.filter(tp => tp.template_id === selectedPackageId);
+  }, [selectedPackageId, templateProducts]);
+
+  // Use appropriate linked products based on calculation type
+  const linkedProducts = calculationType === 'service' ? linkedServiceProducts : linkedPackageProducts;
+
+  // Calculate product costs for service or package
   const productCosts = useMemo(() => {
     return linkedProducts.map(sp => {
       const product = sp.product;
@@ -109,7 +130,14 @@ export function PrecificacaoServicos() {
     });
   }, [linkedProducts]);
 
-  const totalProductCost = productCosts.reduce((sum, pc) => sum + pc.costPerUse, 0);
+  // For packages, multiply product costs by total sessions
+  const totalProductCost = useMemo(() => {
+    const baseCost = productCosts.reduce((sum, pc) => sum + pc.costPerUse, 0);
+    if (calculationType === 'package' && selectedPackage) {
+      return baseCost * selectedPackage.total_sessions;
+    }
+    return baseCost;
+  }, [productCosts, calculationType, selectedPackage]);
 
   // Calculate monthly fixed costs (from financial entries - expenses)
   const monthlyFixedCosts = useMemo(() => {
@@ -125,9 +153,10 @@ export function PrecificacaoServicos() {
     }).reduce((sum, entry) => sum + Number(entry.amount), 0);
   }, [payables]);
 
-  // Fixed cost per service (distributed)
-  const fixedCostPerService = servicesPerMonth > 0 
-    ? monthlyFixedCosts / servicesPerMonth 
+  // Fixed cost per item (distributed) - use appropriate monthly count
+  const itemsPerMonth = calculationType === 'service' ? servicesPerMonth : packagesPerMonth;
+  const fixedCostPerItem = itemsPerMonth > 0 
+    ? monthlyFixedCosts / itemsPerMonth 
     : 0;
 
   // Manual additional costs
@@ -135,23 +164,26 @@ export function PrecificacaoServicos() {
     .filter(c => c.type === 'fixed')
     .reduce((sum, c) => sum + c.amount, 0);
   
-  const totalManualPerServiceCosts = manualCosts
+  const totalManualPerItemCosts = manualCosts
     .filter(c => c.type === 'per_service')
     .reduce((sum, c) => sum + c.amount, 0);
 
-  const manualFixedCostPerService = servicesPerMonth > 0 
-    ? totalManualFixedCosts / servicesPerMonth 
+  const manualFixedCostPerItem = itemsPerMonth > 0 
+    ? totalManualFixedCosts / itemsPerMonth 
     : 0;
 
-  // Service duration cost (hourly rate calculation)
-  const serviceDuration = selectedService?.duration || 60;
+  // Item duration cost (hourly rate calculation)
+  const itemDuration = calculationType === 'service' 
+    ? (selectedService?.duration || 60)
+    : (selectedPackage ? selectedPackage.duration * selectedPackage.total_sessions : 60);
+  
   const hourlyOperatingCost = workingHoursPerMonth > 0 
     ? monthlyFixedCosts / workingHoursPerMonth 
     : 0;
-  const timeCost = (serviceDuration / 60) * hourlyOperatingCost;
+  const timeCost = (itemDuration / 60) * hourlyOperatingCost;
 
   // Total base cost
-  const totalBaseCost = totalProductCost + fixedCostPerService + manualFixedCostPerService + totalManualPerServiceCosts;
+  const totalBaseCost = totalProductCost + fixedCostPerItem + manualFixedCostPerItem + totalManualPerItemCosts;
   
   // Including time cost
   const totalCostWithTime = totalBaseCost + timeCost;
@@ -173,11 +205,22 @@ export function PrecificacaoServicos() {
   const actualProfit = suggestedPrice - totalCostWithTime;
   const actualMargin = suggestedPrice > 0 ? (actualProfit / suggestedPrice) * 100 : 0;
 
-  // Current price comparison
-  const currentPrice = selectedService?.price || 0;
+  // Current price comparison - works for both services and packages
+  const currentPrice = calculationType === 'service' 
+    ? (selectedService?.price || 0)
+    : (selectedPackage?.price || 0);
   const currentProfit = currentPrice - totalCostWithTime;
   const currentMargin = currentPrice > 0 ? (currentProfit / currentPrice) * 100 : 0;
   const isProfitable = currentProfit > 0;
+
+  // Selected item name and duration for display
+  const selectedItemName = calculationType === 'service' 
+    ? selectedService?.name 
+    : selectedPackage?.name;
+  const selectedItemDuration = calculationType === 'service'
+    ? selectedService?.duration
+    : (selectedPackage ? selectedPackage.duration * selectedPackage.total_sessions : 0);
+  const hasSelectedItem = calculationType === 'service' ? !!selectedServiceId : !!selectedPackageId;
 
   const addManualCost = () => {
     if (!newCostDesc.trim() || !newCostAmount) return;
@@ -263,46 +306,121 @@ export function PrecificacaoServicos() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Type toggle */}
                 <div className="space-y-2">
-                  <Label className="text-xs">Serviço</Label>
-                  <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione um serviço..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeServices.map(service => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} - R$ {service.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs">Tipo de Cálculo</Label>
+                  <RadioGroup 
+                    value={calculationType} 
+                    onValueChange={(v) => {
+                      setCalculationType(v as CalculationType);
+                      setSelectedServiceId('');
+                      setSelectedPackageId('');
+                    }}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="service" id="type-service" />
+                      <Label htmlFor="type-service" className="text-xs font-normal cursor-pointer flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Serviço
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="package" id="type-package" />
+                      <Label htmlFor="type-package" className="text-xs font-normal cursor-pointer flex items-center gap-1">
+                        <Layers className="h-3 w-3" />
+                        Pacote
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 <Separator />
 
-                <div className="space-y-2">
-                  <Label className="text-xs flex items-center gap-1">
-                    Serviços por Mês
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Quantidade média de atendimentos mensais para este serviço</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={servicesPerMonth}
-                    onChange={(e) => setServicesPerMonth(parseInt(e.target.value) || 1)}
-                    className="h-9"
-                  />
-                </div>
+                {/* Service/Package selector based on type */}
+                {calculationType === 'service' ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Serviço</Label>
+                    <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione um serviço..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeServices.map(service => (
+                          <SelectItem key={service.id} value={service.id}>
+                            {service.name} - R$ {service.price.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Pacote</Label>
+                    <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione um pacote..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map(template => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} ({template.total_sessions} sessões) - R$ {template.price.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <Separator />
+
+                {calculationType === 'service' ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1">
+                      Serviços por Mês
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Quantidade média de atendimentos mensais para este serviço</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={servicesPerMonth}
+                      onChange={(e) => setServicesPerMonth(parseInt(e.target.value) || 1)}
+                      className="h-9"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1">
+                      Pacotes por Mês
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Quantidade média de pacotes vendidos mensalmente</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={packagesPerMonth}
+                      onChange={(e) => setPackagesPerMonth(parseInt(e.target.value) || 1)}
+                      className="h-9"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label className="text-xs flex items-center gap-1">
@@ -370,17 +488,20 @@ export function PrecificacaoServicos() {
                   <Package className="h-4 w-4 text-primary" />
                   Composição de Custos
                 </CardTitle>
-                {selectedService && (
+                {hasSelectedItem && (
                   <CardDescription className="text-xs">
-                    {selectedService.name} • {selectedService.duration} min
+                    {selectedItemName} • {selectedItemDuration} min
+                    {calculationType === 'package' && selectedPackage && (
+                      <span> • {selectedPackage.total_sessions} sessões</span>
+                    )}
                   </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
-                {!selectedServiceId ? (
+                {!hasSelectedItem ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calculator className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Selecione um serviço para calcular</p>
+                    <p className="text-sm">Selecione {calculationType === 'service' ? 'um serviço' : 'um pacote'} para calcular</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[350px]">
@@ -390,10 +511,15 @@ export function PrecificacaoServicos() {
                         <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
                           <Package className="h-3.5 w-3.5" />
                           Custos de Produtos
+                          {calculationType === 'package' && selectedPackage && (
+                            <Badge variant="outline" className="text-[9px] px-1">
+                              × {selectedPackage.total_sessions} sessões
+                            </Badge>
+                          )}
                         </h4>
                         {productCosts.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic p-2 bg-muted/30 rounded">
-                            Nenhum produto vinculado a este serviço
+                            Nenhum produto vinculado a este {calculationType === 'service' ? 'serviço' : 'pacote'}
                           </p>
                         ) : (
                           <div className="space-y-1">
@@ -425,12 +551,12 @@ export function PrecificacaoServicos() {
                                 R$ {monthlyFixedCosts.toFixed(0)}/mês
                               </Badge>
                             </span>
-                            <span className="font-medium">R$ {fixedCostPerService.toFixed(2)}</span>
+                            <span className="font-medium">R$ {fixedCostPerItem.toFixed(2)}</span>
                           </div>
                           <div className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              Custo do Tempo ({serviceDuration} min)
+                              Custo do Tempo ({itemDuration} min)
                               <Badge variant="outline" className="text-[9px] px-1">
                                 R$ {hourlyOperatingCost.toFixed(2)}/h
                               </Badge>
@@ -526,7 +652,7 @@ export function PrecificacaoServicos() {
           </div>
 
           {/* Results */}
-          {selectedServiceId && (
+          {hasSelectedItem && (
             <div className="grid gap-4 md:grid-cols-2">
               {/* Suggested Price */}
               <Card className="border-primary/30 bg-primary/5">
@@ -555,7 +681,9 @@ export function PrecificacaoServicos() {
                         <p className="font-medium">{actualMargin.toFixed(1)}%</p>
                       </div>
                       <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Lucro por Serviço</span>
+                        <span className="text-muted-foreground">
+                          Lucro por {calculationType === 'service' ? 'Serviço' : 'Pacote'}
+                        </span>
                         <p className="font-medium text-green-600">+{profitType === 'percentage' ? profitValue + '%' : 'R$ ' + profitValue.toFixed(2)}</p>
                       </div>
                     </div>

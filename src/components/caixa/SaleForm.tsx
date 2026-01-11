@@ -246,6 +246,26 @@ export function SaleForm() {
     [availableItems, selectedItemId]
   );
 
+  // Auto-fill professional when service or package is selected
+  useEffect(() => {
+    if (!selectedItemId) {
+      setSelectedProfessionalId('');
+      return;
+    }
+
+    if (itemType === 'service') {
+      const service = activeServices.find(s => s.id === selectedItemId);
+      if (service?.professional_id) {
+        setSelectedProfessionalId(service.professional_id);
+      }
+    } else if (itemType === 'package') {
+      const template = packageTemplates.find(t => t.id === selectedItemId);
+      if (template?.professional_id) {
+        setSelectedProfessionalId(template.professional_id);
+      }
+    }
+  }, [selectedItemId, itemType, activeServices, packageTemplates]);
+
   const itemTotal = useMemo(() => 
     (selectedItem?.price || 0) * quantity,
     [selectedItem, quantity]

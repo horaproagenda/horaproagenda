@@ -11,10 +11,11 @@ import {
   isSameDay, 
   isSameMonth,
   getDay,
+  getYear,
 } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ptBR } from 'date-fns/locale';
-import { 
+import {
   ChevronLeft, 
   ChevronRight, 
   Filter, 
@@ -36,6 +37,7 @@ import {
   Download,
   Upload,
   MoreHorizontal,
+  Star,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -83,6 +85,7 @@ import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useAutoCompleteAppointments } from '@/hooks/useAutoCompleteAppointments';
 import { useCardBrands } from '@/hooks/useCardBrands';
+import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -145,6 +148,7 @@ const Agenda = () => {
   const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { activeCardBrands } = useCardBrands();
+  const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
@@ -726,12 +730,32 @@ const Agenda = () => {
   }, []);
 
   // Render time slot grid for day view - Clean and compact
-  const renderTimeSlotDayView = () => (
+  const renderTimeSlotDayView = () => {
+    const holiday = getHolidayForDate(selectedDate);
+    
+    return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold text-foreground">
-          {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </h2>
+          {holiday && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                    <Star className="h-3 w-3 fill-current" />
+                    {holiday.name}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Feriado Nacional</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <Button onClick={handleNewAppointment} size="sm" className="h-7 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1" />
           Novo
@@ -869,6 +893,7 @@ const Agenda = () => {
       </ScrollArea>
     </div>
   );
+  };
 
   const renderWeekView = () => (
     <div className="space-y-4">
@@ -878,35 +903,52 @@ const Agenda = () => {
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
+          const holiday = getHolidayForDate(day);
 
           return (
-            <button
-              key={day.toISOString()}
-              onClick={() => {
-                setSelectedDate(day);
-                setViewType('day');
-              }}
-              className={cn(
-                'flex flex-col items-center rounded-lg p-2 transition-all duration-200',
-                isSelected 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'hover:bg-secondary',
-                isToday && !isSelected && 'ring-2 ring-primary/30'
-              )}
-            >
-              <span className={cn(
-                'text-xs font-medium uppercase',
-                isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
-              )}>
-                {format(day, 'EEE', { locale: ptBR })}
-              </span>
-              <span className={cn(
-                'text-lg font-semibold',
-                isSelected ? 'text-primary-foreground' : 'text-foreground'
-              )}>
-                {format(day, 'd')}
-              </span>
-            </button>
+            <TooltipProvider key={day.toISOString()}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setViewType('day');
+                    }}
+                    className={cn(
+                      'flex flex-col items-center rounded-lg p-2 transition-all duration-200 relative',
+                      isSelected 
+                        ? 'bg-primary text-primary-foreground' 
+                        : holiday 
+                          ? 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30' 
+                          : 'hover:bg-secondary',
+                      isToday && !isSelected && 'ring-2 ring-primary/30'
+                    )}
+                  >
+                    {holiday && !isSelected && (
+                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                    )}
+                    <span className={cn(
+                      'text-xs font-medium uppercase',
+                      isSelected ? 'text-primary-foreground/80' : holiday ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                    )}>
+                      {format(day, 'EEE', { locale: ptBR })}
+                    </span>
+                    <span className={cn(
+                      'text-lg font-semibold',
+                      isSelected ? 'text-primary-foreground' : holiday ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'
+                    )}>
+                      {format(day, 'd')}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                {holiday && (
+                  <TooltipContent>
+                    <p className="font-medium">{holiday.name}</p>
+                    <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           );
         })}
       </div>
@@ -1005,57 +1047,78 @@ const Agenda = () => {
           const isToday = isSameDay(day, new Date());
           const isCurrentMonth = isSameMonth(day, monthStart);
           const dayAppointments = getAppointmentsForDay(day);
+          const holiday = getHolidayForDate(day);
 
           return (
-            <button
-              key={day.toISOString()}
-              onClick={() => {
-                setSelectedDate(day);
-                setViewType('day');
-              }}
-              className={cn(
-                'flex flex-col items-center rounded-lg p-2 min-h-[80px] transition-all duration-200',
-                isSelected 
-                  ? 'bg-primary text-primary-foreground shadow-glow' 
-                  : 'hover:bg-secondary',
-                isToday && !isSelected && 'ring-2 ring-primary/30',
-                !isCurrentMonth && 'opacity-40'
-              )}
-            >
-              <span className={cn(
-                'text-sm font-medium',
-                isSelected ? 'text-primary-foreground' : 'text-foreground'
-              )}>
-                {format(day, 'd')}
-              </span>
-              
-              {dayAppointments.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
-                  {dayAppointments.slice(0, 4).map((apt, i) => {
-                    const profId = apt.professional_id || apt.service?.professional_id;
-                    const prof = professionals.find(p => p.id === profId);
-                    const color = prof?.agenda_color || '#3B82F6';
-                    
-                    return (
-                      <div 
-                        key={i} 
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
-                        title={`${apt.client?.name} - ${apt.service?.name}`}
-                      />
-                    );
-                  })}
-                  {dayAppointments.length > 4 && (
+            <TooltipProvider key={day.toISOString()}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setViewType('day');
+                    }}
+                    className={cn(
+                      'flex flex-col items-center rounded-lg p-2 min-h-[80px] transition-all duration-200 relative',
+                      isSelected 
+                        ? 'bg-primary text-primary-foreground shadow-glow' 
+                        : holiday && isCurrentMonth
+                          ? 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                          : 'hover:bg-secondary',
+                      isToday && !isSelected && 'ring-2 ring-primary/30',
+                      !isCurrentMonth && 'opacity-40'
+                    )}
+                  >
+                    {holiday && !isSelected && isCurrentMonth && (
+                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                    )}
                     <span className={cn(
-                      'text-[10px]',
-                      isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                      'text-sm font-medium',
+                      isSelected 
+                        ? 'text-primary-foreground' 
+                        : holiday && isCurrentMonth 
+                          ? 'text-amber-700 dark:text-amber-300' 
+                          : 'text-foreground'
                     )}>
-                      +{dayAppointments.length - 4}
+                      {format(day, 'd')}
                     </span>
-                  )}
-                </div>
-              )}
-            </button>
+                    
+                    {dayAppointments.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
+                        {dayAppointments.slice(0, 4).map((apt, i) => {
+                          const profId = apt.professional_id || apt.service?.professional_id;
+                          const prof = professionals.find(p => p.id === profId);
+                          const color = prof?.agenda_color || '#3B82F6';
+                          
+                          return (
+                            <div 
+                              key={i} 
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
+                              title={`${apt.client?.name} - ${apt.service?.name}`}
+                            />
+                          );
+                        })}
+                        {dayAppointments.length > 4 && (
+                          <span className={cn(
+                            'text-[10px]',
+                            isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                          )}>
+                            +{dayAppointments.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                {holiday && (
+                  <TooltipContent>
+                    <p className="font-medium">{holiday.name}</p>
+                    <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           );
         })}
       </div>

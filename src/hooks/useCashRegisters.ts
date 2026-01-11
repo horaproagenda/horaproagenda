@@ -135,6 +135,80 @@ export function useCashRegisters() {
     },
   });
 
+  const updateCashRegister = useMutation({
+    mutationFn: async (params: {
+      id: string;
+      opening_balance?: number;
+      closing_balance?: number;
+      expected_balance?: number;
+      total_received?: number;
+      total_receivables?: number;
+      payments_count?: number;
+      payment_breakdown?: Record<string, number>;
+      notes?: string;
+      cash_amount?: number;
+      check_amount?: number;
+      bank_deposits?: BankDeposit[];
+    }) => {
+      const { id, ...updateData } = params;
+      
+      // Recalculate difference if closing and expected balance are provided
+      const dataToUpdate: any = { ...updateData };
+      if (updateData.closing_balance !== undefined && updateData.expected_balance !== undefined) {
+        dataToUpdate.difference = updateData.closing_balance - updateData.expected_balance;
+      }
+      
+      if (updateData.bank_deposits) {
+        dataToUpdate.bank_deposits = JSON.parse(JSON.stringify(updateData.bank_deposits));
+      }
+
+      const { data, error } = await supabase
+        .from('cash_registers')
+        .update(dataToUpdate)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      toast.success('Caixa atualizado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao atualizar caixa: ' + error.message);
+    },
+  });
+
+  const deleteCashRegister = useMutation({
+    mutationFn: async (id: string) => {
+      // First delete related cash_transactions
+      const { error: transactionsError } = await supabase
+        .from('cash_transactions')
+        .delete()
+        .eq('cash_register_id', id);
+
+      if (transactionsError) throw transactionsError;
+
+      // Then delete the cash register
+      const { error } = await supabase
+        .from('cash_registers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      toast.success('Caixa excluído com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao excluir caixa: ' + error.message);
+    },
+  });
+
   return {
     cashRegisters,
     currentOpenRegister,
@@ -143,5 +217,7 @@ export function useCashRegisters() {
     refetch,
     openCashRegister,
     closeCashRegister,
+    updateCashRegister,
+    deleteCashRegister,
   };
 }

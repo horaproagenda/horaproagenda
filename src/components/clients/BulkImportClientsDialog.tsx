@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, FileText, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file';
 import {
   Dialog,
   DialogContent,
@@ -120,46 +120,73 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
     };
   };
 
-  const parseExcelFile = (file: File): Promise<ParsedClient[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  const parseExcelFile = async (file: File): Promise<ParsedClient[]> => {
+    try {
+      const rows = await readXlsxFile(file);
+      
+      if (rows.length === 0) {
+        throw new Error('Arquivo vazio');
+      }
 
-          const clients = jsonData.map((row: any) => {
-            // Map common column names (case insensitive)
-            const getName = () => row.nome || row.name || row.Nome || row.NAME || row.NOME || '';
-            const getPhone = () => row.telefone || row.phone || row.Telefone || row.PHONE || row.TELEFONE || row.celular || row.Celular || '';
-            const getEmail = () => row.email || row.Email || row.EMAIL || row['e-mail'] || row['E-mail'] || '';
-            const getCpf = () => row.cpf || row.CPF || row.Cpf || '';
-            const getBirthdate = () => row.nascimento || row.birthdate || row.Nascimento || row['data_nascimento'] || row['Data Nascimento'] || '';
-            const getNotes = () => row.observacoes || row.notes || row.Observacoes || row.obs || row.Obs || '';
-            const getReferral = () => row.indicacao || row.referral || row.Indicacao || row.origem || row.Origem || '';
-
-            return validateClient({
-              name: getName(),
-              phone: getPhone(),
-              email: getEmail(),
-              cpf: getCpf(),
-              birthdate: getBirthdate(),
-              notes: getNotes(),
-              referral_source: getReferral(),
-            });
-          });
-
-          resolve(clients);
-        } catch (error) {
-          reject(new Error('Erro ao processar arquivo Excel'));
-        }
+      // First row is likely header, detect column indices
+      const headerRow = rows[0].map(cell => String(cell || '').toLowerCase());
+      
+      const findColumnIndex = (keywords: string[]): number => {
+        return headerRow.findIndex(h => 
+          keywords.some(k => h.includes(k))
+        );
       };
-      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
-      reader.readAsBinaryString(file);
-    });
+
+      const nameIdx = findColumnIndex(['nome', 'name']);
+      const phoneIdx = findColumnIndex(['telefone', 'phone', 'celular']);
+      const emailIdx = findColumnIndex(['email', 'e-mail']);
+      const cpfIdx = findColumnIndex(['cpf']);
+      const birthdateIdx = findColumnIndex(['nascimento', 'birthdate', 'data_nascimento']);
+      const notesIdx = findColumnIndex(['observ', 'notes', 'obs']);
+      const referralIdx = findColumnIndex(['indica', 'referral', 'origem']);
+
+      // Check if first row looks like a header
+      const hasHeader = nameIdx >= 0 || phoneIdx >= 0;
+      const startRow = hasHeader ? 1 : 0;
+
+      // Default column positions if no header found
+      const finalNameIdx = nameIdx >= 0 ? nameIdx : 0;
+      const finalPhoneIdx = phoneIdx >= 0 ? phoneIdx : 1;
+
+      const clients: ParsedClient[] = [];
+
+      for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+
+        const getValue = (idx: number): string => {
+          if (idx < 0 || idx >= row.length) return '';
+          const cell = row[idx];
+          if (cell === null || cell === undefined) return '';
+          if (cell instanceof Date) {
+            return cell.toISOString().split('T')[0];
+          }
+          return String(cell);
+        };
+
+        const name = getValue(finalNameIdx);
+        if (!name.trim()) continue;
+
+        clients.push(validateClient({
+          name: name,
+          phone: getValue(finalPhoneIdx),
+          email: emailIdx >= 0 ? getValue(emailIdx) : undefined,
+          cpf: cpfIdx >= 0 ? getValue(cpfIdx) : undefined,
+          birthdate: birthdateIdx >= 0 ? getValue(birthdateIdx) : undefined,
+          notes: notesIdx >= 0 ? getValue(notesIdx) : undefined,
+          referral_source: referralIdx >= 0 ? getValue(referralIdx) : undefined,
+        }));
+      }
+
+      return clients;
+    } catch (error: any) {
+      throw new Error('Erro ao processar arquivo Excel: ' + (error.message || 'formato inválido'));
+    }
   };
 
   const parseTextFile = (file: File): Promise<ParsedClient[]> => {

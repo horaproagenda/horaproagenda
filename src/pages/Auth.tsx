@@ -210,16 +210,13 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
-      if (error.message.includes('already registered')) {
-        toast({ title: 'Erro', description: 'Este email já está cadastrado', variant: 'destructive' });
-      } else {
-        toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
-      }
+      toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
     } else {
       toast({ 
-        title: 'Cadastro realizado!', 
-        description: 'Sua conta foi criada com sucesso.' 
+        title: 'Bem-vindo(a)!', 
+        description: 'Você será redirecionado para a agenda.' 
       });
+      // Navigation will happen automatically via useEffect when user is set
     }
   };
 

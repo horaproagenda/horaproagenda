@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +14,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Truck } from 'lucide-react';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Truck } from 'lucide-react';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
+import { supplierSchema, type SupplierFormData } from '@/lib/validationSchemas';
 
 interface SupplierDialogProps {
   editingSupplier?: Supplier | null;
@@ -24,23 +35,47 @@ interface SupplierDialogProps {
 export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDialogProps) {
   const { createSupplier, updateSupplier } = useSuppliers();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: editingSupplier?.name || '',
-    contact_name: editingSupplier?.contact_name || '',
-    email: editingSupplier?.email || '',
-    phone: editingSupplier?.phone || '',
-    address: editingSupplier?.address || '',
-    notes: editingSupplier?.notes || '',
-    is_active: editingSupplier?.is_active ?? true,
-    cnpj: editingSupplier?.cnpj || '',
-    uf: editingSupplier?.uf || '',
-    company_name: editingSupplier?.company_name || '',
-    state_registration: editingSupplier?.state_registration || '',
-    municipal_registration: editingSupplier?.municipal_registration || '',
+
+  const form = useForm<SupplierFormData>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: '',
+      contact_name: '',
+      email: '',
+      phone: '',
+      address: '',
+      notes: '',
+      is_active: true,
+      cnpj: '',
+      uf: '',
+      company_name: '',
+      state_registration: '',
+      municipal_registration: '',
+    },
   });
 
+  // Reset form when editing supplier changes
+  useEffect(() => {
+    if (editingSupplier) {
+      form.reset({
+        name: editingSupplier.name || '',
+        contact_name: editingSupplier.contact_name || '',
+        email: editingSupplier.email || '',
+        phone: editingSupplier.phone || '',
+        address: editingSupplier.address || '',
+        notes: editingSupplier.notes || '',
+        is_active: editingSupplier.is_active ?? true,
+        cnpj: editingSupplier.cnpj || '',
+        uf: editingSupplier.uf || '',
+        company_name: editingSupplier.company_name || '',
+        state_registration: editingSupplier.state_registration || '',
+        municipal_registration: editingSupplier.municipal_registration || '',
+      });
+    }
+  }, [editingSupplier, form]);
+
   const resetForm = () => {
-    setForm({
+    form.reset({
       name: '',
       contact_name: '',
       email: '',
@@ -56,21 +91,20 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
     });
   };
 
-  const handleSubmit = async () => {
-    if (!form.name.trim()) return;
-
+  const onSubmit = async (data: SupplierFormData) => {
     const supplierData = {
-      ...form,
-      contact_name: form.contact_name || null,
-      email: form.email || null,
-      phone: form.phone || null,
-      address: form.address || null,
-      notes: form.notes || null,
-      cnpj: form.cnpj || null,
-      uf: form.uf || null,
-      company_name: form.company_name || null,
-      state_registration: form.state_registration || null,
-      municipal_registration: form.municipal_registration || null,
+      name: data.name,
+      is_active: data.is_active,
+      contact_name: data.contact_name || null,
+      email: data.email || null,
+      phone: data.phone || null,
+      address: data.address || null,
+      notes: data.notes || null,
+      cnpj: data.cnpj || null,
+      uf: data.uf?.toUpperCase() || null,
+      company_name: data.company_name || null,
+      state_registration: data.state_registration || null,
+      municipal_registration: data.municipal_registration || null,
     };
 
     if (editingSupplier) {
@@ -109,148 +143,220 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
             {editingSupplier ? 'Atualize as informações do fornecedor' : 'Cadastre um novo fornecedor'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Nome Fantasia *</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Nome do fornecedor"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Fantasia *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do fornecedor" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="company_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Razão Social</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Razão social da empresa" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cnpj"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CNPJ</FormLabel>
+                        <FormControl>
+                          <Input placeholder="00.000.000/0000-00" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="uf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>UF</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="SP" 
+                            maxLength={2}
+                            {...field} 
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="state_registration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Inscrição Estadual</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Inscrição estadual" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="municipal_registration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Inscrição Municipal</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Inscrição municipal" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="contact_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contato</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome do contato" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div>
-                <Label>Razão Social</Label>
-                <Input
-                  value={form.company_name}
-                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                  placeholder="Razão social da empresa"
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Endereço</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Endereço completo" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>CNPJ</Label>
-                <Input
-                  value={form.cnpj}
-                  onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                  placeholder="00.000.000/0000-00"
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Observações adicionais" 
+                          rows={2}
+                          {...field} 
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div>
-                <Label>UF</Label>
-                <Input
-                  value={form.uf}
-                  onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase().slice(0, 2) })}
-                  placeholder="SP"
-                  maxLength={2}
+
+                <FormField
+                  control={form.control}
+                  name="is_active"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
+                      <div>
+                        <FormLabel>Fornecedor Ativo</FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setOpen(false);
+                      resetForm();
+                      onClose?.();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createSupplier.isPending || updateSupplier.isPending}
+                  >
+                    {createSupplier.isPending || updateSupplier.isPending ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Inscrição Estadual</Label>
-                <Input
-                  value={form.state_registration}
-                  onChange={(e) => setForm({ ...form, state_registration: e.target.value })}
-                  placeholder="Inscrição estadual"
-                />
-              </div>
-              <div>
-                <Label>Inscrição Municipal</Label>
-                <Input
-                  value={form.municipal_registration}
-                  onChange={(e) => setForm({ ...form, municipal_registration: e.target.value })}
-                  placeholder="Inscrição municipal"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Contato</Label>
-              <Input
-                value={form.contact_name}
-                onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
-                placeholder="Nome do contato"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-
-              <div>
-                <Label>Telefone</Label>
-                <Input
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Endereço</Label>
-              <Input
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="Endereço completo"
-              />
-            </div>
-
-            <div>
-              <Label>Observações</Label>
-              <Textarea
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Observações adicionais"
-                rows={2}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="supplier_active"
-                checked={form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                className="h-4 w-4 rounded border-input"
-              />
-              <Label htmlFor="supplier_active" className="cursor-pointer">
-                Fornecedor Ativo
-              </Label>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setOpen(false);
-                  resetForm();
-                  onClose?.();
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={!form.name.trim() || createSupplier.isPending || updateSupplier.isPending}
-              >
-                {createSupplier.isPending || updateSupplier.isPending ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </div>
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

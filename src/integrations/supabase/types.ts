@@ -2123,6 +2123,57 @@ export type Database = {
           },
         ]
       }
+      trial_registrations: {
+        Row: {
+          cnpj: string | null
+          company_name: string | null
+          created_at: string
+          email: string
+          full_name: string
+          has_paid: boolean | null
+          id: string
+          phone: string | null
+          subscription_status: string | null
+          trial_days: number | null
+          trial_ended_at: string | null
+          trial_started_at: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          company_name?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          has_paid?: boolean | null
+          id?: string
+          phone?: string | null
+          subscription_status?: string | null
+          trial_days?: number | null
+          trial_ended_at?: string | null
+          trial_started_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          has_paid?: boolean | null
+          id?: string
+          phone?: string | null
+          subscription_status?: string | null
+          trial_days?: number | null
+          trial_ended_at?: string | null
+          trial_started_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -2215,6 +2266,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_trial_eligibility: {
+        Args: { p_cnpj?: string; p_email: string; p_phone?: string }
+        Returns: Json
+      }
       get_professional_id_for_user: {
         Args: { _user_id: string }
         Returns: string

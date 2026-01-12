@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, CheckCircle2, Crown, Check } from 'lucide-react';
+import { Sparkles, Loader2, Mail, ArrowLeft, CheckCircle2, Crown, Check, KeyRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type AuthStep = 'email' | 'code' | 'plan' | 'password';
+type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -21,11 +23,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
 
+  // View state
+  const [authView, setAuthView] = useState<AuthView>('login');
+
   // Auth flow state
   const [authStep, setAuthStep] = useState<AuthStep>('email');
   const [verificationCode, setVerificationCode] = useState('');
   const [codeVerified, setCodeVerified] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
+  const [existingUserAlert, setExistingUserAlert] = useState<string | null>(null);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -35,8 +41,16 @@ export default function Auth() {
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
+  const [signupCompany, setSignupCompany] = useState('');
+  const [signupCnpj, setSignupCnpj] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+
+  // Forgot password
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetCode, setResetCode] = useState('');
 
   // Plans
   const plans = [
@@ -70,6 +84,27 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  // Check if user already used trial
+  const checkTrialEligibility = async (email: string, phone?: string, cnpj?: string) => {
+    try {
+      const { data, error } = await supabase.rpc('check_trial_eligibility', {
+        p_email: email.toLowerCase(),
+        p_phone: phone || null,
+        p_cnpj: cnpj || null
+      });
+
+      if (error) {
+        console.error('Error checking trial eligibility:', error);
+        return { eligible: true };
+      }
+
+      return data as { eligible: boolean; reason?: string; message?: string; email?: string };
+    } catch (error) {
+      console.error('Error checking trial eligibility:', error);
+      return { eligible: true };
+    }
+  };
+
   const handleSendVerificationCode = async () => {
     if (!signupEmail) {
       toast({ title: 'Erro', description: 'Digite seu email', variant: 'destructive' });
@@ -82,6 +117,17 @@ export default function Auth() {
     }
 
     setLoading(true);
+    setExistingUserAlert(null);
+
+    // Check trial eligibility
+    const eligibility = await checkTrialEligibility(signupEmail, signupPhone, signupCnpj);
+    
+    if (!eligibility.eligible) {
+      setLoading(false);
+      setExistingUserAlert(eligibility.message || 'Este e-mail já possui cadastro.');
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: signupEmail, type: 'signup' }
@@ -206,6 +252,22 @@ export default function Auth() {
     }
 
     setLoading(true);
+    
+    // Register trial usage
+    try {
+      await supabase.from('trial_registrations').insert({
+        email: signupEmail.toLowerCase(),
+        phone: signupPhone || null,
+        full_name: signupName,
+        company_name: signupCompany || null,
+        cnpj: signupCnpj || null,
+        trial_started_at: new Date().toISOString(),
+        trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      });
+    } catch (error) {
+      console.error('Error registering trial:', error);
+    }
+
     const { error } = await signUp(signupEmail, signupPassword, signupName);
     setLoading(false);
 
@@ -216,7 +278,92 @@ export default function Auth() {
         title: 'Bem-vindo(a)!', 
         description: 'Você será redirecionado para a agenda.' 
       });
-      // Navigation will happen automatically via useEffect when user is set
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      toast({ title: 'Erro', description: 'Digite seu email', variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Send verification code for password reset
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: forgotEmail, type: 'login' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setAuthView('reset-code');
+      toast({ 
+        title: 'Código enviado!', 
+        description: 'Verifique seu email para o código de recuperação.' 
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar código';
+      toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (resetCode.length !== 6) {
+      toast({ title: 'Erro', description: 'Digite o código de 6 dígitos', variant: 'destructive' });
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      toast({ title: 'Erro', description: 'A senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Verify code
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
+        body: { email: forgotEmail, code: resetCode }
+      });
+
+      if (verifyError) throw verifyError;
+      if (!verifyData?.valid) {
+        toast({ title: 'Erro', description: verifyData?.error || 'Código inválido', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      // Update password using Supabase Admin API through edge function
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: { email: forgotEmail, newPassword }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ 
+        title: 'Senha alterada!', 
+        description: 'Sua senha foi atualizada com sucesso. Faça login.' 
+      });
+      
+      setAuthView('login');
+      setLoginEmail(forgotEmail);
+      setForgotEmail('');
+      setResetCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao alterar senha';
+      toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -225,6 +372,7 @@ export default function Auth() {
     setVerificationCode('');
     setCodeVerified(false);
     setSelectedPlan('');
+    setExistingUserAlert(null);
   };
 
   const handleSelectPlan = (planId: string) => {
@@ -244,6 +392,137 @@ export default function Auth() {
     );
   }
 
+  // Forgot Password View
+  if (authView === 'forgot-password') {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
+        <Card className="w-full max-w-md shadow-lg animate-scale-in">
+          <CardHeader className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+                <KeyRound className="h-5 w-5 text-primary-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Esqueci minha senha</CardTitle>
+            <CardDescription>Digite seu email para recuperar sua senha</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handleForgotPassword}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Enviar código de recuperação
+            </Button>
+            <button 
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
+              onClick={() => setAuthView('login')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para o login
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Reset Password Code View
+  if (authView === 'reset-code') {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
+        <Card className="w-full max-w-md shadow-lg animate-scale-in">
+          <CardHeader className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+                <KeyRound className="h-5 w-5 text-primary-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Redefinir senha</CardTitle>
+            <CardDescription>
+              Digite o código enviado para <span className="font-medium">{forgotEmail}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-center">
+              <InputOTP 
+                maxLength={6} 
+                value={resetCode} 
+                onChange={setResetCode}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nova senha</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-new-password">Confirmar nova senha</Label>
+              <Input
+                id="confirm-new-password"
+                type="password"
+                placeholder="••••••••"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+              />
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={handleResetPassword}
+              disabled={loading || resetCode.length !== 6}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Alterar senha
+            </Button>
+
+            <button 
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
+              onClick={() => {
+                setAuthView('forgot-password');
+                setResetCode('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+              }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
       <Card className={`w-full shadow-lg animate-scale-in ${authStep === 'plan' ? 'max-w-lg' : 'max-w-md'}`}>
@@ -253,7 +532,7 @@ export default function Auth() {
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Agenda Mais</CardTitle>
+          <CardTitle className="text-2xl">Lume Agenda</CardTitle>
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>
         </CardHeader>
         <CardContent>
@@ -289,15 +568,38 @@ export default function Auth() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Entrar
                 </Button>
+                <button 
+                  type="button"
+                  className="w-full text-sm text-primary hover:underline"
+                  onClick={() => setAuthView('forgot-password')}
+                >
+                  Esqueci minha senha
+                </button>
               </form>
             </TabsContent>
 
             <TabsContent value="signup">
+              {/* Alert for existing users */}
+              {existingUserAlert && (
+                <Alert className="mb-4 border-amber-500 bg-amber-50">
+                  <AlertDescription className="text-amber-800">
+                    {existingUserAlert}
+                    <button 
+                      type="button"
+                      className="block mt-2 text-primary font-medium hover:underline"
+                      onClick={() => setAuthView('forgot-password')}
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Step 1: Email and Name */}
               {authStep === 'email' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Nome completo</Label>
+                    <Label htmlFor="signup-name">Nome completo *</Label>
                     <Input
                       id="signup-name"
                       type="text"
@@ -307,7 +609,7 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">Email *</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -317,13 +619,33 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Celular</Label>
+                    <Label htmlFor="signup-phone">Celular *</Label>
                     <Input
                       id="signup-phone"
                       type="tel"
                       placeholder="(00) 00000-0000"
                       value={signupPhone}
                       onChange={(e) => setSignupPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-company">Nome da empresa</Label>
+                    <Input
+                      id="signup-company"
+                      type="text"
+                      placeholder="Nome da sua empresa (opcional)"
+                      value={signupCompany}
+                      onChange={(e) => setSignupCompany(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-cnpj">CNPJ</Label>
+                    <Input
+                      id="signup-cnpj"
+                      type="text"
+                      placeholder="00.000.000/0000-00 (opcional)"
+                      value={signupCnpj}
+                      onChange={(e) => setSignupCnpj(e.target.value)}
                     />
                   </div>
                   <Button 
@@ -458,7 +780,7 @@ export default function Auth() {
 
                   <button 
                     type="button"
-                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
                     onClick={() => setAuthStep('code')}
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -472,15 +794,12 @@ export default function Auth() {
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="text-center space-y-2 mb-4">
                     <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Crown className="h-6 w-6 text-primary" />
+                      <CheckCircle2 className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold">Plano {plans.find(p => p.id === selectedPlan)?.name}</h3>
+                    <h3 className="font-semibold">Último passo!</h3>
                     <p className="text-sm text-muted-foreground">
-                      Crie sua senha para finalizar o cadastro
+                      Crie uma senha para acessar sua conta
                     </p>
-                    <Badge variant="outline" className="text-green-600 border-green-300">
-                      7 dias grátis inclusos
-                    </Badge>
                   </div>
 
                   <div className="space-y-2">
@@ -494,15 +813,16 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm">Confirmar senha</Label>
+                    <Label htmlFor="signup-confirm-password">Confirmar senha</Label>
                     <Input
-                      id="signup-confirm"
+                      id="signup-confirm-password"
                       type="password"
                       placeholder="••••••••"
                       value={signupConfirmPassword}
                       onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     />
                   </div>
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Criar conta e começar teste grátis
@@ -510,11 +830,11 @@ export default function Auth() {
 
                   <button 
                     type="button"
-                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
                     onClick={() => setAuthStep('plan')}
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Escolher outro plano
+                    Voltar
                   </button>
                 </form>
               )}

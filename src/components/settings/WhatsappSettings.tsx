@@ -68,12 +68,31 @@ export function WhatsappSettings() {
         {connectionStatus?.configured && !connectionStatus?.connected && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>WhatsApp desconectado</AlertTitle>
-            <AlertDescription>
-              A instância do WhatsApp não está conectada. Acesse o painel da Evolution API 
-              para escanear o QR Code e conectar seu número.
+            <AlertTitle>⚠️ WhatsApp desconectado</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                A instância do WhatsApp não está conectada. O envio de mensagens automáticas 
+                está <strong>temporariamente indisponível</strong>.
+              </p>
+              <div className="bg-destructive/10 p-3 rounded-md mt-2 space-y-1">
+                <p className="font-medium text-sm">Possíveis causas:</p>
+                <ul className="list-disc list-inside text-sm space-y-0.5">
+                  <li>O WhatsApp foi desconectado do aparelho</li>
+                  <li>A sessão expirou e precisa ser reconectada</li>
+                  <li>Problemas de conexão com a Evolution API</li>
+                </ul>
+              </div>
+              <p className="text-sm mt-2">
+                <strong>Solução:</strong> Acesse o painel da Evolution API e escaneie o QR Code 
+                novamente para reconectar.
+              </p>
               {connectionStatus.instance && (
-                <p className="mt-1 text-sm">Instância: {connectionStatus.instance}</p>
+                <p className="text-xs mt-1 opacity-80">Instância: {connectionStatus.instance}</p>
+              )}
+              {connectionStatus.error && (
+                <div className="mt-2 p-2 bg-destructive/20 rounded text-xs font-mono">
+                  Erro: {connectionStatus.error}
+                </div>
               )}
             </AlertDescription>
           </Alert>

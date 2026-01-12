@@ -1,0 +1,241 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Missing authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+
+    if (!evolutionApiUrl || !evolutionApiKey) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          configured: false,
+          error: 'Evolution API not configured' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // First check if instance exists
+    const instanceCheckResponse = await fetch(`${evolutionApiUrl}/instance/fetchInstances`, {
+      method: 'GET',
+      headers: {
+        'apikey': evolutionApiKey,
+      },
+    });
+
+    let instanceExists = false;
+    if (instanceCheckResponse.ok) {
+      const instances = await instanceCheckResponse.json();
+      instanceExists = Array.isArray(instances) && instances.some((inst: any) => 
+        inst.instance?.instanceName === evolutionInstance || inst.instanceName === evolutionInstance
+      );
+    }
+
+    // If instance doesn't exist, create it
+    if (!instanceExists) {
+      console.log('Creating new instance:', evolutionInstance);
+      const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
+        method: 'POST',
+        headers: {
+          'apikey': evolutionApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          instanceName: evolutionInstance,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS',
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('Failed to create instance:', errorText);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Failed to create instance: ${errorText}` 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const createResult = await createResponse.json();
+      console.log('Instance created:', createResult);
+
+      // If QR code is returned in creation response
+      if (createResult.qrcode?.base64) {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            qrcode: createResult.qrcode.base64,
+            instance: evolutionInstance,
+            pairingCode: createResult.qrcode?.pairingCode || null,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Connect instance to get QR code
+    const connectResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
+      method: 'GET',
+      headers: {
+        'apikey': evolutionApiKey,
+      },
+    });
+
+    if (!connectResponse.ok) {
+      const errorText = await connectResponse.text();
+      console.error('Failed to connect instance:', errorText);
+      
+      // Try to restart the instance
+      const restartResponse = await fetch(`${evolutionApiUrl}/instance/restart/${evolutionInstance}`, {
+        method: 'PUT',
+        headers: {
+          'apikey': evolutionApiKey,
+        },
+      });
+      
+      if (restartResponse.ok) {
+        // Wait a moment and try again
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const retryResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
+          method: 'GET',
+          headers: {
+            'apikey': evolutionApiKey,
+          },
+        });
+        
+        if (retryResponse.ok) {
+          const retryResult = await retryResponse.json();
+          if (retryResult.base64 || retryResult.qrcode?.base64) {
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                qrcode: retryResult.base64 || retryResult.qrcode?.base64,
+                instance: evolutionInstance,
+                pairingCode: retryResult.pairingCode || retryResult.qrcode?.pairingCode || null,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to get QR code: ${errorText}` 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const result = await connectResponse.json();
+    console.log('Connect result:', JSON.stringify(result));
+    
+    // Handle different response formats from Evolution API
+    const qrcode = result.base64 || result.qrcode?.base64 || result.qrcode;
+    const pairingCode = result.pairingCode || result.qrcode?.pairingCode;
+
+    if (!qrcode) {
+      // Instance might already be connected
+      const stateResponse = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolutionApiKey,
+        },
+      });
+      
+      if (stateResponse.ok) {
+        const stateResult = await stateResponse.json();
+        if (stateResult.instance?.state === 'open') {
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              connected: true,
+              instance: evolutionInstance,
+              message: 'WhatsApp já está conectado'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'QR Code not available. Try again in a few seconds.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        qrcode: qrcode,
+        instance: evolutionInstance,
+        pairingCode: pairingCode || null,
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('WhatsApp QR code error:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+});

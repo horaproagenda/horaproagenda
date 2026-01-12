@@ -10,9 +10,22 @@ interface WhatsAppConnectionStatus {
   error?: string;
 }
 
+interface QRCodeResponse {
+  success: boolean;
+  qrcode?: string;
+  pairingCode?: string;
+  instance?: string;
+  connected?: boolean;
+  message?: string;
+  error?: string;
+}
+
 export function useWhatsapp() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<WhatsAppConnectionStatus | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [isLoadingQR, setIsLoadingQR] = useState(false);
 
   const checkConnection = useCallback(async () => {
     setIsLoading(true);
@@ -22,6 +35,13 @@ export function useWhatsapp() {
       if (error) throw error;
       
       setConnectionStatus(data);
+      
+      // Clear QR code if connected
+      if (data?.connected) {
+        setQrCode(null);
+        setPairingCode(null);
+      }
+      
       return data;
     } catch (error: any) {
       console.error('Error checking WhatsApp connection:', error);
@@ -31,6 +51,42 @@ export function useWhatsapp() {
       setIsLoading(false);
     }
   }, []);
+
+  const getQRCode = useCallback(async () => {
+    setIsLoadingQR(true);
+    setQrCode(null);
+    setPairingCode(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-get-qrcode');
+      
+      if (error) throw error;
+      
+      const response = data as QRCodeResponse;
+      
+      if (response.connected) {
+        toast.success('WhatsApp já está conectado!');
+        await checkConnection();
+        return { connected: true };
+      }
+      
+      if (response.success && response.qrcode) {
+        setQrCode(response.qrcode);
+        if (response.pairingCode) {
+          setPairingCode(response.pairingCode);
+        }
+        return response;
+      }
+      
+      throw new Error(response.error || 'Não foi possível obter o QR Code');
+    } catch (error: any) {
+      console.error('Error getting QR code:', error);
+      toast.error('Erro ao obter QR Code: ' + error.message);
+      return null;
+    } finally {
+      setIsLoadingQR(false);
+    }
+  }, [checkConnection]);
 
   const sendMessage = useCallback(async (phone: string, message: string) => {
     setIsLoading(true);
@@ -108,6 +164,11 @@ Um grande abraço! 🎁`;
     return sendMessage(clientPhone, message);
   }, [sendMessage]);
 
+  const clearQRCode = useCallback(() => {
+    setQrCode(null);
+    setPairingCode(null);
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -115,5 +176,10 @@ Um grande abraço! 🎁`;
     sendMessage,
     sendReminder,
     sendBirthdayMessage,
+    qrCode,
+    pairingCode,
+    isLoadingQR,
+    getQRCode,
+    clearQRCode,
   };
 }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -19,10 +18,12 @@ import {
   MessageSquare,
   Bell,
   FileSignature,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -49,6 +50,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: SidebarProps) {
+  const { signOut, profile } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside 
@@ -151,6 +158,33 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
             ))}
           </nav>
 
+          {/* Logout Button */}
+          <div className={cn("px-2 py-1", isCollapsed && "px-2")}>
+            {isCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center rounded-lg p-3 text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  Sair
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Sair</span>
+              </button>
+            )}
+          </div>
+
           {/* Toggle Button */}
           <div className="px-3 py-2">
             <Button
@@ -178,10 +212,10 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
             <div className="border-t border-sidebar-border p-4">
               <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-4">
                 <p className="text-xs font-medium text-foreground">
-                  Versão 1.0
+                  {profile?.full_name || 'Usuário'}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Sistema de Agendamento
+                  {profile?.email || 'Sistema de Agendamento'}
                 </p>
               </div>
             </div>

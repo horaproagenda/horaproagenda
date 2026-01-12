@@ -12,6 +12,7 @@ import { useBusinessSettings, BRAZIL_TIMEZONES } from '@/hooks/useBusinessSettin
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
+import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 
 const Configuracoes = () => {
@@ -56,6 +57,9 @@ const Configuracoes = () => {
         <div className="space-y-6">
           {/* User Management */}
           <UserManagement />
+
+          {/* WhatsApp Connection Status */}
+          <WhatsappSettings />
 
           {/* WhatsApp Templates */}
           <WhatsappTemplatesSettings />

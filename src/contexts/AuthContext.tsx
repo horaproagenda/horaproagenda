@@ -102,12 +102,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
     
-    // Auto sign-in after signup since email is already verified via our code system
-    if (!error && data.user) {
-      await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { error: error as Error };
+    }
+
+    // Check if user already exists (user_repeated_signup scenario)
+    // In this case, data.user exists but data.user.identities is empty
+    const isExistingUser = data.user && data.user.identities && data.user.identities.length === 0;
+    
+    if (isExistingUser) {
+      // User already exists - try to sign in with provided password
+      // If it fails, they need to use their original password
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        return { error: new Error('Este e-mail já está cadastrado. Use sua senha original para entrar.') };
+      }
+    } else if (data.user) {
+      // New user - auto sign-in
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        console.error('Auto sign-in failed:', signInError);
+      }
     }
     
-    return { error: error as Error | null };
+    return { error: null };
   };
 
   const signOut = async () => {

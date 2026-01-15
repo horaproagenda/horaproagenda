@@ -173,6 +173,7 @@ export interface Appointment {
   professional_id: string | null;
   room_id: string | null;
   package_appointment_id: string | null;
+  recurring_group_id: string | null;
   start_time: string;
   end_time: string;
   status: AppointmentStatus;

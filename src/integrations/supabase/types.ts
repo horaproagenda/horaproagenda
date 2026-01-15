@@ -72,6 +72,7 @@ export type Database = {
           payment_methods: string[] | null
           payment_status: string | null
           professional_id: string | null
+          recurring_group_id: string | null
           room_id: string | null
           service_id: string | null
           start_time: string
@@ -91,6 +92,7 @@ export type Database = {
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
+          recurring_group_id?: string | null
           room_id?: string | null
           service_id?: string | null
           start_time: string
@@ -110,6 +112,7 @@ export type Database = {
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
+          recurring_group_id?: string | null
           room_id?: string | null
           service_id?: string | null
           start_time?: string

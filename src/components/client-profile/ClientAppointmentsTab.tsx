@@ -2,13 +2,20 @@ import { useMemo, useState } from 'react';
 import { Appointment } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Calendar, Package, Sparkles, Filter } from 'lucide-react';
+import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square } from 'lucide-react';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
+  clientName?: string;
+  clientCpf?: string;
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -19,6 +26,16 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   missed: { label: 'Faltou', variant: 'destructive' },
   rescheduled: { label: 'Reagendado', variant: 'secondary' },
 };
+
+const statusOptions = [
+  { value: 'all', label: 'Todos os status' },
+  { value: 'scheduled', label: 'Agendado' },
+  { value: 'confirmed', label: 'Confirmado' },
+  { value: 'completed', label: 'Realizado' },
+  { value: 'cancelled', label: 'Cancelado' },
+  { value: 'missed', label: 'Faltou' },
+  { value: 'rescheduled', label: 'Reagendado' },
+];
 
 const generateColor = (str: string): string => {
   let hash = 0;
@@ -42,8 +59,12 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabProps) {
+export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '' }: ClientAppointmentsTabProps) {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const filteredAppointments = useMemo(() => {
@@ -54,13 +75,15 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
       .filter(a => {
         try {
           const date = parseISO(a.start_time);
-          return isWithinInterval(date, { start: monthStart, end: monthEnd });
+          const inMonth = isWithinInterval(date, { start: monthStart, end: monthEnd });
+          const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
+          return inMonth && matchesStatus;
         } catch {
           return false;
         }
       })
       .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
-  }, [appointments, selectedMonth]);
+  }, [appointments, selectedMonth, selectedStatus]);
 
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -74,13 +97,122 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
     return map;
   }, [appointments]);
 
+  const toggleAppointmentSelection = (id: string) => {
+    const newSelection = new Set(selectedAppointments);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedAppointments(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedAppointments.size === filteredAppointments.length) {
+      setSelectedAppointments(new Set());
+    } else {
+      setSelectedAppointments(new Set(filteredAppointments.map(a => a.id)));
+    }
+  };
+
+  const handleExportPDF = () => {
+    const appointmentsToExport = filteredAppointments.filter(a => selectedAppointments.has(a.id));
+    
+    if (appointmentsToExport.length === 0) {
+      toast.error('Selecione pelo menos um agendamento para exportar');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Histórico de Agendamentos', 14, 20);
+    
+    // Client info
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Cliente: ${clientName || 'Não informado'}`, 14, 32);
+    doc.text(`CPF: ${clientCpf || 'Não informado'}`, 14, 39);
+    doc.text(`Data de emissão: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 14, 46);
+    
+    // Table
+    const tableData = appointmentsToExport.map(apt => {
+      const serviceName = apt.service?.name || apt.package_appointment?.package?.name || 'Serviço';
+      const status = statusConfig[apt.status]?.label || apt.status;
+      const date = format(new Date(apt.start_time), 'dd/MM/yyyy', { locale: ptBR });
+      const time = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
+      
+      return [serviceName, date, time, status];
+    });
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Serviço', 'Data', 'Horário', 'Status']],
+      body: tableData,
+      styles: {
+        fontSize: 10,
+        cellPadding: 4,
+      },
+      headStyles: {
+        fillColor: [59, 130, 246],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250],
+      },
+    });
+
+    // Footer with summary
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total de agendamentos: ${appointmentsToExport.length}`, 14, finalY);
+    
+    // Status summary
+    const statusCounts = appointmentsToExport.reduce((acc, apt) => {
+      const status = statusConfig[apt.status]?.label || apt.status;
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    let summaryY = finalY + 7;
+    doc.setFont('helvetica', 'normal');
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      doc.text(`${status}: ${count}`, 14, summaryY);
+      summaryY += 5;
+    });
+
+    // Save
+    const fileName = `agendamentos_${clientName?.replace(/\s+/g, '_') || 'cliente'}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    doc.save(fileName);
+    
+    toast.success('PDF exportado com sucesso!');
+    setSelectedAppointments(new Set());
+    setIsSelectionMode(false);
+  };
+
+  const startSelectionMode = () => {
+    setIsSelectionMode(true);
+    setSelectedAppointments(new Set());
+  };
+
+  const cancelSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedAppointments(new Set());
+  };
+
   return (
     <div className="space-y-3 animate-fade-in">
-      {/* Filter */}
-      <div className="flex items-center gap-2">
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-2">
         <Filter className="h-4 w-4 text-muted-foreground" />
+        
+        {/* Month Filter */}
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
+          <SelectTrigger className="w-[150px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -91,9 +223,72 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
             ))}
           </SelectContent>
         </Select>
+
+        {/* Status Filter */}
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {statusOptions.map(option => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <span className="text-xs text-muted-foreground">
           {filteredAppointments.length} agendamento(s)
         </span>
+
+        <div className="ml-auto flex items-center gap-2">
+          {isSelectionMode ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={toggleSelectAll}
+              >
+                {selectedAppointments.size === filteredAppointments.length ? (
+                  <CheckSquare className="h-3.5 w-3.5 mr-1" />
+                ) : (
+                  <Square className="h-3.5 w-3.5 mr-1" />
+                )}
+                {selectedAppointments.size === filteredAppointments.length ? 'Desmarcar' : 'Selecionar'} todos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={cancelSelectionMode}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={handleExportPDF}
+                disabled={selectedAppointments.size === 0}
+              >
+                <FileDown className="h-3.5 w-3.5 mr-1" />
+                Exportar PDF ({selectedAppointments.size})
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={startSelectionMode}
+              disabled={filteredAppointments.length === 0}
+            >
+              <FileDown className="h-3.5 w-3.5 mr-1" />
+              Exportar PDF
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Appointments List */}
@@ -102,7 +297,7 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
           {filteredAppointments.length === 0 ? (
             <div className="py-6 text-center">
               <Calendar className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-xs text-muted-foreground">Nenhum agendamento neste mês</p>
+              <p className="text-xs text-muted-foreground">Nenhum agendamento encontrado</p>
             </div>
           ) : (
             <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
@@ -111,15 +306,27 @@ export function ClientAppointmentsTab({ appointments }: ClientAppointmentsTabPro
                 const isPackage = !!appointment.package_appointment;
                 const colorKey = appointment.package_appointment?.package?.id || appointment.service?.id || '';
                 const borderColor = colorMap.get(colorKey) || '#999';
+                const isSelected = selectedAppointments.has(appointment.id);
 
                 return (
                   <div
                     key={appointment.id}
-                    className="p-2.5 rounded-lg bg-card hover:bg-muted/30 transition-colors border-l-3"
+                    className={`p-2.5 rounded-lg bg-card hover:bg-muted/30 transition-colors border-l-3 ${
+                      isSelectionMode ? 'cursor-pointer' : ''
+                    } ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
                     style={{ borderLeftColor: borderColor, borderLeftWidth: '3px' }}
+                    onClick={isSelectionMode ? () => toggleAppointmentSelection(appointment.id) : undefined}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {isSelectionMode && (
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleAppointmentSelection(appointment.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="shrink-0"
+                          />
+                        )}
                         {isPackage ? (
                           <Package className="h-3.5 w-3.5 text-primary shrink-0" />
                         ) : (

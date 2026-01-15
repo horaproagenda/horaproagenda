@@ -133,7 +133,11 @@ export default function ClienteDetalhes() {
             <ClientCreditsTab clientId={client.id} />
           </TabsContent>
           <TabsContent value="appointments" className="mt-3">
-            <ClientAppointmentsTab appointments={appointments} />
+            <ClientAppointmentsTab 
+              appointments={appointments} 
+              clientName={client.name}
+              clientCpf={client.cpf || ''}
+            />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">
             <ClientDocumentsTab documents={documents} clientId={client.id} onAddDocument={addDocument.mutateAsync} />

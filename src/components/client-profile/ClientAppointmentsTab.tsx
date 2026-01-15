@@ -115,6 +115,22 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     }
   };
 
+  // Helper function to remove accents for PDF compatibility
+  const removeAccents = (str: string): string => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x00-\x7F]/g, (char) => {
+        const map: Record<string, string> = {
+          'ç': 'c', 'Ç': 'C',
+          'ñ': 'n', 'Ñ': 'N',
+          'ã': 'a', 'Ã': 'A',
+          'õ': 'o', 'Õ': 'O',
+        };
+        return map[char] || char;
+      });
+  };
+
   const handleExportPDF = () => {
     const appointmentsToExport = filteredAppointments.filter(a => selectedAppointments.has(a.id));
     
@@ -128,65 +144,88 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     // Header
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Histórico de Agendamentos', 14, 20);
+    doc.text('Historico de Agendamentos', 14, 20);
     
     // Client info
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Cliente: ${clientName || 'Não informado'}`, 14, 32);
-    doc.text(`CPF: ${clientCpf || 'Não informado'}`, 14, 39);
-    doc.text(`Data de emissão: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 14, 46);
+    const cleanClientName = removeAccents(clientName || 'Nao informado');
+    const cleanCpf = clientCpf || 'Nao informado';
+    const emissionDate = format(new Date(), "dd/MM/yyyy 'as' HH:mm");
     
-    // Table
+    doc.text(`Cliente:  ${cleanClientName}`, 14, 32);
+    doc.text(`CPF:  ${cleanCpf}`, 14, 40);
+    doc.text(`Data de emissao:  ${emissionDate}`, 14, 48);
+    
+    // Table data with proper spacing and clean text
     const tableData = appointmentsToExport.map(apt => {
-      const serviceName = apt.service?.name || apt.package_appointment?.package?.name || 'Serviço';
-      const status = statusConfig[apt.status]?.label || apt.status;
-      const date = format(new Date(apt.start_time), 'dd/MM/yyyy', { locale: ptBR });
-      const time = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
+      const serviceName = removeAccents(apt.service?.name || apt.package_appointment?.package?.name || 'Servico');
+      const status = removeAccents(statusConfig[apt.status]?.label || apt.status);
+      const date = format(new Date(apt.start_time), 'dd/MM/yyyy');
+      const startTime = format(new Date(apt.start_time), 'HH:mm');
+      const endTime = format(new Date(apt.end_time), 'HH:mm');
+      const time = `${startTime}  -  ${endTime}`;
       
       return [serviceName, date, time, status];
     });
 
     autoTable(doc, {
-      startY: 55,
-      head: [['Serviço', 'Data', 'Horário', 'Status']],
+      startY: 58,
+      head: [['Servico', 'Data', 'Horario', 'Status']],
       body: tableData,
       styles: {
         fontSize: 10,
-        cellPadding: 4,
+        cellPadding: 5,
+        halign: 'left',
+        valign: 'middle',
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1,
       },
       headStyles: {
         fillColor: [59, 130, 246],
         textColor: 255,
         fontStyle: 'bold',
+        halign: 'center',
+        cellPadding: 6,
+      },
+      bodyStyles: {
+        textColor: [50, 50, 50],
       },
       alternateRowStyles: {
-        fillColor: [245, 247, 250],
+        fillColor: [248, 250, 252],
       },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 45, halign: 'center' },
+        3: { cellWidth: 35, halign: 'center' },
+      },
+      margin: { left: 14, right: 14 },
     });
 
     // Footer with summary
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total de agendamentos: ${appointmentsToExport.length}`, 14, finalY);
+    doc.text(`Total de agendamentos:  ${appointmentsToExport.length}`, 14, finalY);
     
     // Status summary
     const statusCounts = appointmentsToExport.reduce((acc, apt) => {
-      const status = statusConfig[apt.status]?.label || apt.status;
+      const status = removeAccents(statusConfig[apt.status]?.label || apt.status);
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
-    let summaryY = finalY + 7;
+    let summaryY = finalY + 8;
     doc.setFont('helvetica', 'normal');
     Object.entries(statusCounts).forEach(([status, count]) => {
-      doc.text(`${status}: ${count}`, 14, summaryY);
-      summaryY += 5;
+      doc.text(`${status}:  ${count}`, 14, summaryY);
+      summaryY += 6;
     });
 
-    // Save
-    const fileName = `agendamentos_${clientName?.replace(/\s+/g, '_') || 'cliente'}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    // Save with clean filename
+    const cleanFileName = removeAccents(clientName || 'cliente').replace(/\s+/g, '_');
+    const fileName = `agendamentos_${cleanFileName}_${format(new Date(), 'yyyyMMdd')}.pdf`;
     doc.save(fileName);
     
     toast.success('PDF exportado com sucesso!');

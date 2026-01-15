@@ -261,6 +261,7 @@ export const mockAppointments: Appointment[] = [
     professional_id: null,
     room_id: null,
     package_appointment_id: null,
+    recurring_group_id: null,
     start_time: createAppointmentTime(tomorrow, 11, 0),
     end_time: addMinutes(createAppointmentTime(tomorrow, 11, 0), 50),
     status: 'confirmed',

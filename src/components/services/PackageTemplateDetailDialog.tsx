@@ -456,14 +456,14 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Profissional</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={(val) => field.onChange(val === "_none" ? "" : val)} value={field.value || "_none"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Nenhum</SelectItem>
+                            <SelectItem value="_none">Nenhum</SelectItem>
                             {professionals.filter(p => p.is_active).map(prof => (
                               <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
                             ))}
@@ -480,14 +480,14 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Sala</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={(val) => field.onChange(val === "_none" ? "" : val)} value={field.value || "_none"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Nenhuma</SelectItem>
+                            <SelectItem value="_none">Nenhuma</SelectItem>
                             {rooms.filter(r => r.is_active).map(room => (
                               <SelectItem key={room.id} value={room.id}>{room.name}</SelectItem>
                             ))}

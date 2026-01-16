@@ -14,7 +14,7 @@ import { ClientQuotesTab } from '@/components/client-profile/ClientQuotesTab';
 import { ClientInfoTab } from '@/components/client-profile/ClientInfoTab';
 import { ClientReportTab } from '@/components/client-profile/ClientReportTab';
 import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
-import { EditRecurringAppointmentDialog } from '@/components/appointments/EditRecurringAppointmentDialog';
+import { EditAppointmentDialog } from '@/components/client-profile/EditAppointmentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
@@ -155,7 +155,7 @@ export default function ClienteDetalhes() {
       </div>
 
       {/* Edit Appointment Dialog */}
-      <EditRecurringAppointmentDialog
+      <EditAppointmentDialog
         appointment={editingAppointment}
         open={!!editingAppointment}
         onOpenChange={(open) => !open && setEditingAppointment(null)}

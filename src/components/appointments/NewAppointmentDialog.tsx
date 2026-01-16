@@ -1123,20 +1123,28 @@ Até breve! ✨`;
                           
                           <div className="space-y-1">
                             <Label className="text-xs">Horário preferido</Label>
-                            <Select
-                              value={preferredTime || '_same'}
-                              onValueChange={(v) => setPreferredTime(v === '_same' ? '' : v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Mesmo horário" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-[200px]">
-                                <SelectItem value="_same">Mesmo horário do primeiro</SelectItem>
-                                {timeSlots.map(slot => (
-                                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Input
+                              type="time"
+                              className="h-8 text-xs"
+                              value={preferredTime}
+                              onChange={(e) => setPreferredTime(e.target.value)}
+                              placeholder="Mesmo horário do primeiro"
+                            />
+                            {!preferredTime && (
+                              <p className="text-[10px] text-muted-foreground">Deixe vazio para manter o mesmo horário</p>
+                            )}
+                          </div>
+
+                          {/* WhatsApp notification toggle for recurring services */}
+                          <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                            <div className="flex items-center gap-2">
+                              <MessageCircle className="h-4 w-4 text-green-600" />
+                              <span className="text-xs font-medium">Notificar por WhatsApp</span>
+                            </div>
+                            <Switch
+                              checked={sendWhatsappNotification}
+                              onCheckedChange={setSendWhatsappNotification}
+                            />
                           </div>
 
                           {/* Preview of scheduled dates */}
@@ -1542,39 +1550,60 @@ Até breve! ✨`;
 
               <div className="space-y-2">
                 <Label>Horário *</Label>
-                <Select value={time} onValueChange={setTime}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Horário">
-                      {time && (
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {time}
-                        </span>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
-                    {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
-                      <SelectItem 
-                        key={slot} 
-                        value={slot}
-                        className={cn(!isAvailable && 'opacity-50')}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isAvailable ? (
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <AlertTriangle className="h-3 w-3 text-destructive" />
-                          )}
-                          <span>{slot}</span>
-                          {!isAvailable && (
-                            <span className="text-xs text-destructive">({conflictReason})</span>
-                          )}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="pl-9"
+                      placeholder="HH:MM"
+                    />
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" type="button" className="shrink-0">
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2 z-50" align="end">
+                      <p className="text-xs font-medium mb-2">Horários sugeridos</p>
+                      <ScrollArea className="h-[200px]">
+                        <div className="space-y-1">
+                          {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
+                            <Button
+                              key={slot}
+                              variant={time === slot ? "default" : "ghost"}
+                              size="sm"
+                              type="button"
+                              className={cn(
+                                "w-full justify-start text-left h-8",
+                                !isAvailable && "opacity-50"
+                              )}
+                              onClick={() => {
+                                setTime(slot);
+                              }}
+                            >
+                              <div className="flex items-center gap-2 w-full">
+                                {isAvailable ? (
+                                  <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                ) : (
+                                  <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                                )}
+                                <span>{slot}</span>
+                                {!isAvailable && (
+                                  <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
+                                )}
+                              </div>
+                            </Button>
+                          ))}
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Digite qualquer horário ou clique no ícone para sugestões</p>
               </div>
             </div>
 

@@ -1040,17 +1040,17 @@ Até breve! ✨`;
                                             />
                                           </div>
                                         ) : (
-                                          <button
+                                        <button
                                             type="button"
                                             className={cn(
-                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center gap-1",
+                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
                                               index === 0 ? "font-medium" : "text-muted-foreground",
                                               hasConflict && "text-destructive"
                                             )}
                                             onClick={() => setEditingDateIndex(index)}
                                           >
-                                            {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                                            <Pencil className="h-3 w-3 opacity-50" />
+                                            <span className="truncate">{format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
+                                            <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
                                           </button>
                                         )}
                                         {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}

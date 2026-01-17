@@ -807,6 +807,95 @@ export default function Produtos() {
                           </div>
                         </div>
 
+                        {/* Estoque Inicial Section */}
+                        <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <Label className="text-sm font-medium">Estoque Inicial (sem registrar compra)</Label>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Use para produtos adquiridos antes de usar o sistema
+                          </p>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">Quantidade</Label>
+                              <Input
+                                type="number"
+                                value={productForm.current_stock}
+                                onChange={(e) => {
+                                  const qty = parseFloat(e.target.value) || 0;
+                                  setProductForm({ 
+                                    ...productForm, 
+                                    current_stock: qty,
+                                    quantity_purchased: qty
+                                  });
+                                }}
+                                min="0"
+                                step="0.01"
+                                className="h-8 text-sm"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Preço Unit. (R$)</Label>
+                              <Input
+                                type="number"
+                                value={productForm.unit_price}
+                                onChange={(e) => {
+                                  const price = parseFloat(e.target.value) || 0;
+                                  setProductForm({ 
+                                    ...productForm, 
+                                    unit_price: price,
+                                    total_price: productForm.current_stock * price
+                                  });
+                                }}
+                                min="0"
+                                step="0.01"
+                                className="h-8 text-sm"
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Total (R$)</Label>
+                              <Input
+                                type="number"
+                                value={productForm.total_price}
+                                readOnly
+                                className="h-8 text-sm bg-muted"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Data da Compra</Label>
+                              <Input
+                                type="date"
+                                value={productForm.purchase_date}
+                                onChange={(e) => setProductForm({ ...productForm, purchase_date: e.target.value })}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Data Validade</Label>
+                              <Input
+                                type="date"
+                                value={productForm.expiry_date}
+                                onChange={(e) => setProductForm({ ...productForm, expiry_date: e.target.value })}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Data Início de Uso</Label>
+                            <Input
+                              type="date"
+                              value={productForm.started_using_at}
+                              onChange={(e) => setProductForm({ ...productForm, started_using_at: e.target.value })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between rounded-md border p-2">
                           <div>
                             <Label className="text-xs">Para Venda</Label>
@@ -1003,6 +1092,8 @@ export default function Produtos() {
                               onChange={(e) => handleUpdateStartDate(product.id, e.target.value)}
                               className="w-32 h-8 text-xs"
                               disabled={isFinished}
+                              min="2000-01-01"
+                              max="2099-12-31"
                             />
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1019,6 +1110,8 @@ export default function Produtos() {
                                 className="w-32 h-8 text-xs"
                                 disabled={!product.started_using_at}
                                 title={!product.started_using_at ? "Preencha a data de início primeiro" : ""}
+                                min="2000-01-01"
+                                max="2099-12-31"
                               />
                             )}
                           </TableCell>
@@ -1114,6 +1207,12 @@ export default function Produtos() {
           onOpenChange={setDetailDialogOpen}
           onUpdateProduct={async (data) => {
             await updateProduct.mutateAsync(data);
+          }}
+          onUpdatePurchase={async (data) => {
+            await updatePurchase.mutateAsync(data);
+          }}
+          onDeletePurchase={async (id) => {
+            await deletePurchase.mutateAsync(id);
           }}
           onCreateServiceLink={async (data) => {
             await createServiceProduct.mutateAsync(data);

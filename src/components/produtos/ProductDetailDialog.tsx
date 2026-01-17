@@ -65,6 +65,8 @@ interface ProductDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateProduct: (data: Partial<Product> & { id: string }) => Promise<void>;
+  onUpdatePurchase?: (data: Partial<ProductPurchase> & { id: string }) => Promise<void>;
+  onDeletePurchase?: (id: string) => Promise<void>;
   onCreateServiceLink: (data: { 
     service_id: string; 
     product_id: string; 
@@ -107,6 +109,8 @@ export function ProductDetailDialog({
   open,
   onOpenChange,
   onUpdateProduct,
+  onUpdatePurchase,
+  onDeletePurchase,
   onCreateServiceLink,
   onUpdateServiceLink,
   onDeleteServiceLink,
@@ -129,6 +133,18 @@ export function ProductDetailDialog({
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Purchase editing state
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [purchaseEditForm, setPurchaseEditForm] = useState({
+    quantity: 0,
+    unit_price: 0,
+    total_price: 0,
+    purchase_date: '',
+    supplier: '',
+    started_using_at: '',
+    notes: '',
+  });
 
   // Filter purchases for this product
   const productPurchases = useMemo(() => {
@@ -560,6 +576,8 @@ export function ProductDetailDialog({
                             value={product.started_using_at || ''}
                             onChange={(e) => onUpdateProduct({ id: product.id, started_using_at: e.target.value || null })}
                             className="h-9"
+                            min="2000-01-01"
+                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">
@@ -579,6 +597,8 @@ export function ProductDetailDialog({
                             value={product.finished_at || ''}
                             onChange={(e) => onUpdateProduct({ id: product.id, finished_at: e.target.value || null })}
                             className="h-9"
+                            min="2000-01-01"
+                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">
@@ -655,12 +675,15 @@ export function ProductDetailDialog({
                     <TableHead>Valor</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Uso</TableHead>
+                    {canEdit && (onUpdatePurchase || onDeletePurchase) && (
+                      <TableHead className="text-right">Ações</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {productPurchases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                         <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhuma compra registrada
                       </TableCell>
@@ -673,6 +696,110 @@ export function ProductDetailDialog({
                             parseISO(purchase.started_using_at)
                           )
                         : null;
+
+                      const isEditingThisPurchase = editingPurchaseId === purchase.id;
+
+                      if (isEditingThisPurchase) {
+                        return (
+                          <TableRow key={purchase.id} className="bg-muted/30">
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={purchaseEditForm.purchase_date}
+                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: e.target.value })}
+                                className="h-8 text-xs w-28"
+                                min="2000-01-01"
+                                max="2099-12-31"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={purchaseEditForm.quantity}
+                                onChange={(e) => {
+                                  const qty = parseFloat(e.target.value) || 0;
+                                  setPurchaseEditForm({ 
+                                    ...purchaseEditForm, 
+                                    quantity: qty,
+                                    total_price: qty * purchaseEditForm.unit_price
+                                  });
+                                }}
+                                className="h-8 text-xs w-20"
+                                min="0"
+                                step="0.01"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={purchaseEditForm.unit_price}
+                                onChange={(e) => {
+                                  const price = parseFloat(e.target.value) || 0;
+                                  setPurchaseEditForm({ 
+                                    ...purchaseEditForm, 
+                                    unit_price: price,
+                                    total_price: purchaseEditForm.quantity * price
+                                  });
+                                }}
+                                className="h-8 text-xs w-24"
+                                min="0"
+                                step="0.01"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={purchaseEditForm.supplier || ''}
+                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, supplier: e.target.value })}
+                                className="h-8 text-xs w-28"
+                                placeholder="Fornecedor"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={purchaseEditForm.started_using_at || ''}
+                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: e.target.value })}
+                                className="h-8 text-xs w-28"
+                                min="2000-01-01"
+                                max="2099-12-31"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={async () => {
+                                    if (onUpdatePurchase) {
+                                      await onUpdatePurchase({
+                                        id: purchase.id,
+                                        quantity: purchaseEditForm.quantity,
+                                        unit_price: purchaseEditForm.unit_price,
+                                        total_price: purchaseEditForm.total_price,
+                                        purchase_date: purchaseEditForm.purchase_date,
+                                        supplier: purchaseEditForm.supplier || null,
+                                        started_using_at: purchaseEditForm.started_using_at || null,
+                                      });
+                                    }
+                                    setEditingPurchaseId(null);
+                                  }}
+                                >
+                                  <Save className="h-3.5 w-3.5 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => setEditingPurchaseId(null)}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
 
                       return (
                         <TableRow key={purchase.id}>
@@ -711,6 +838,43 @@ export function ProductDetailDialog({
                               <span className="text-muted-foreground text-xs">Não iniciado</span>
                             )}
                           </TableCell>
+                          {canEdit && (onUpdatePurchase || onDeletePurchase) && (
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                {onUpdatePurchase && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setEditingPurchaseId(purchase.id);
+                                      setPurchaseEditForm({
+                                        quantity: purchase.quantity,
+                                        unit_price: purchase.unit_price,
+                                        total_price: purchase.total_price,
+                                        purchase_date: purchase.purchase_date,
+                                        supplier: purchase.supplier || '',
+                                        started_using_at: purchase.started_using_at || '',
+                                        notes: purchase.notes || '',
+                                      });
+                                    }}
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {onDeletePurchase && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive"
+                                    onClick={() => onDeletePurchase(purchase.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })

@@ -90,6 +90,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { exportToCSV } from '@/lib/exportUtils';
 import {
   DropdownMenu,
@@ -166,9 +167,24 @@ const Agenda = () => {
 
   const timeSlots = generateTimeSlots();
 
+  // Hide Sunday toggle state
+  const [hideSunday, setHideSunday] = useState(() => {
+    const stored = localStorage.getItem('agenda-hide-sunday');
+    return stored ? JSON.parse(stored) : false;
+  });
+
+  const saveHideSunday = (value: boolean) => {
+    setHideSunday(value);
+    localStorage.setItem('agenda-hide-sunday', JSON.stringify(value));
+  };
+
   const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  }, [weekStart]);
+    const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    if (hideSunday) {
+      return allDays.filter(day => getDay(day) !== 0); // 0 = Sunday
+    }
+    return allDays;
+  }, [weekStart, hideSunday]);
 
   const monthDays = useMemo(() => {
     const start = startOfMonth(monthStart);
@@ -187,8 +203,12 @@ const Agenda = () => {
       addDays(end, i + 1)
     );
     
-    return [...prevMonthDays, ...days, ...nextMonthDays];
-  }, [monthStart]);
+    let allDays = [...prevMonthDays, ...days, ...nextMonthDays];
+    if (hideSunday) {
+      allDays = allDays.filter(day => getDay(day) !== 0);
+    }
+    return allDays;
+  }, [monthStart, hideSunday]);
 
   // Filter appointments by search, professional, room, status and payment
   const filteredByFilters = useMemo(() => {
@@ -886,7 +906,7 @@ const Agenda = () => {
   const renderWeekView = () => (
     <div className="space-y-4">
       {/* Week days header */}
-      <div className="grid grid-cols-8 gap-0.5">
+      <div className={cn("grid gap-0.5", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
         <div className="w-14" /> {/* Empty space for time column */}
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
@@ -945,7 +965,7 @@ const Agenda = () => {
       <ScrollArea className="h-[500px]">
         <div className="space-y-0.5">
           {timeSlots.map(time => (
-            <div key={time} className="grid grid-cols-8 gap-0.5 min-h-[26px]">
+            <div key={time} className={cn("grid gap-0.5 min-h-[26px]", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
               <div className="w-14 flex items-center justify-center text-[10px] font-medium text-muted-foreground">
                 {time}
               </div>
@@ -1019,8 +1039,8 @@ const Agenda = () => {
   const renderMonthView = () => (
     <div className="space-y-4">
       {/* Week days header */}
-      <div className="grid grid-cols-7 gap-1">
-        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(day => (
+      <div className={cn("grid gap-1", hideSunday ? "grid-cols-6" : "grid-cols-7")}>
+        {(hideSunday ? ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] : ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']).map(day => (
           <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
             {day}
           </div>
@@ -1028,7 +1048,7 @@ const Agenda = () => {
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className={cn("grid gap-1", hideSunday ? "grid-cols-6" : "grid-cols-7")}>
         {monthDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
@@ -1368,6 +1388,19 @@ const Agenda = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <Separator className="my-2" />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="hide-sunday"
+                      checked={hideSunday}
+                      onCheckedChange={saveHideSunday}
+                    />
+                    <Label htmlFor="hide-sunday" className="text-xs">Ocultar Domingo</Label>
+                  </div>
                 </div>
               </div>
             </PopoverContent>

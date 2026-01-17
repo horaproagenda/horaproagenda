@@ -792,7 +792,7 @@ const Agenda = () => {
               <div
                 key={time}
                 className={cn(
-                  'flex items-stretch gap-2 min-h-[42px] rounded-lg transition-all',
+                  'flex items-stretch gap-1 min-h-[28px] rounded transition-all',
                   apt ? '' : absence ? '' : 'hover:bg-muted/30 cursor-pointer',
                   draggedAppointment && !apt && !absence && 'bg-primary/5 border border-dashed border-primary/20'
                 )}
@@ -800,29 +800,26 @@ const Agenda = () => {
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, selectedDate, time)}
               >
-                <div className="w-12 flex-shrink-0 flex flex-col items-center justify-center">
-                  <span className="text-xs font-medium text-muted-foreground">{time}</span>
-                  {peakIndicator && (
-                    <div className={cn('h-1 w-6 rounded-full mt-0.5', peakIndicator.bg)} title={`Horário ${peakIndicator.label}`} />
-                  )}
+                <div className="w-10 flex-shrink-0 flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-muted-foreground">{time}</span>
                 </div>
                 <div className={cn(
-                  'flex-1 rounded-lg border border-dashed p-1.5 min-h-[42px]',
-                  peakIndicator ? cn(peakIndicator.bg, peakIndicator.border) : 'border-border/40',
+                  'flex-1 rounded border border-dashed p-0.5 min-h-[28px]',
+                  peakIndicator ? cn(peakIndicator.bg, peakIndicator.border) : 'border-border/30',
                   (apt && !isStart) && 'opacity-0 pointer-events-none',
                   (absence && !isAbsenceStart) && 'opacity-0 pointer-events-none'
                 )}>
                   {isStart && apt && (
                     <div 
                       className={cn(
-                        'h-full rounded-lg p-2.5 transition-all shadow-sm',
+                        'h-full rounded px-2 py-1 transition-all shadow-sm',
                         dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
                       style={{ 
                         backgroundColor: `${color}15`,
-                        borderLeft: `3px solid ${color}`,
-                        minHeight: `${slotsSpan * 42 - 6}px`
+                        borderLeft: `2px solid ${color}`,
+                        minHeight: `${slotsSpan * 28 - 4}px`
                       }}
                       draggable={dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
@@ -832,57 +829,48 @@ const Agenda = () => {
                         handleAppointmentClick(apt);
                       }}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 min-w-0 flex-1">
                           {dragAndDropEnabled && (
-                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                            <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                           )}
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-foreground truncate">{apt.client?.name}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{apt.service?.name}</p>
-                          </div>
+                          <span className="text-[11px] font-semibold text-foreground truncate">{apt.client?.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {apt.service?.name}</span>
+                          {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-[11px] font-medium text-foreground">R$ {apt.service?.price.toFixed(2)}</p>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-[10px] font-medium text-foreground">R$ {apt.service?.price.toFixed(0)}</span>
                           <Badge 
                             variant={apt.payment_status === 'paid' ? 'default' : apt.payment_status === 'partial' ? 'secondary' : 'outline'} 
-                            className="text-[9px] h-4 px-1"
+                            className="text-[8px] h-3.5 px-1"
                           >
-                            {apt.payment_status === 'paid' ? 'Pago' : apt.payment_status === 'partial' ? 'Parcial' : 'Pend.'}
+                            {apt.payment_status === 'paid' ? '✓' : apt.payment_status === 'partial' ? '½' : '○'}
                           </Badge>
                         </div>
                       </div>
-                      {prof && (
-                        <p className="text-[10px] mt-1 text-muted-foreground truncate">{prof.name}</p>
-                      )}
                     </div>
                   )}
                   {isAbsenceStart && absence && !apt && (
                     <div 
-                      className="h-full rounded-lg p-2.5 bg-amber-50 dark:bg-amber-900/20 border-l-3 border-amber-500 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-                      style={{ minHeight: `${absenceSlotsSpan * 42 - 6}px`, borderLeftWidth: '3px' }}
+                      className="h-full rounded px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                      style={{ minHeight: `${absenceSlotsSpan * 28 - 4}px` }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAbsenceClick(absence);
                       }}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <UserX className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Ausência</p>
-                          <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80 truncate">
-                            {absenceProf?.name || absence.professional?.name}
-                          </p>
-                          {absence.reason && (
-                            <p className="text-[10px] text-amber-600/70 dark:text-amber-300/70 mt-0.5 truncate">{absence.reason}</p>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-1">
+                        <UserX className="h-3 w-3 text-amber-600 flex-shrink-0" />
+                        <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">Ausência</span>
+                        <span className="text-[9px] text-amber-600/80 dark:text-amber-300/80 truncate">
+                          • {absenceProf?.name || absence.professional?.name}
+                        </span>
                       </div>
                     </div>
                   )}
                   {!apt && !absence && (
                     <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <Plus className="h-4 w-4 text-muted-foreground" />
+                      <Plus className="h-3 w-3 text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -898,8 +886,8 @@ const Agenda = () => {
   const renderWeekView = () => (
     <div className="space-y-4">
       {/* Week days header */}
-      <div className="grid grid-cols-8 gap-1">
-        <div className="w-16" /> {/* Empty space for time column */}
+      <div className="grid grid-cols-8 gap-0.5">
+        <div className="w-14" /> {/* Empty space for time column */}
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
@@ -957,8 +945,8 @@ const Agenda = () => {
       <ScrollArea className="h-[500px]">
         <div className="space-y-0.5">
           {timeSlots.map(time => (
-            <div key={time} className="grid grid-cols-8 gap-1 min-h-[40px]">
-              <div className="w-16 flex items-center justify-center text-xs font-medium text-muted-foreground">
+            <div key={time} className="grid grid-cols-8 gap-0.5 min-h-[26px]">
+              <div className="w-14 flex items-center justify-center text-[10px] font-medium text-muted-foreground">
                 {time}
               </div>
               {weekDays.map(day => {
@@ -975,7 +963,7 @@ const Agenda = () => {
                   <div
                     key={day.toISOString()}
                     className={cn(
-                      'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
+                      'rounded border border-dashed border-border/30 min-h-[26px] cursor-pointer transition-all',
                       (apt && !isStart) && 'opacity-0 pointer-events-none',
                       (absence && !isAbsenceStart && !apt) && 'opacity-0 pointer-events-none',
                       !apt && !absence && 'hover:bg-muted/30 hover:border-primary/30',
@@ -988,7 +976,7 @@ const Agenda = () => {
                     {isStart && apt && (
                       <div 
                         className={cn(
-                          'h-full rounded p-1 text-white text-xs transition-all',
+                          'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
                           dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                           isDragging && 'opacity-50 ring-2 ring-primary'
                         )}
@@ -1001,21 +989,20 @@ const Agenda = () => {
                           handleAppointmentClick(apt);
                         }}
                       >
-                        <p className="font-medium truncate">{apt.client?.name}</p>
-                        <p className="truncate opacity-80">{apt.service?.name}</p>
+                        <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
                       </div>
                     )}
                     {isAbsenceStart && absence && !apt && (
                       <div 
-                        className="h-full rounded p-1 bg-amber-500/20 border border-amber-500/50 text-xs cursor-pointer hover:bg-amber-500/30"
+                        className="h-full rounded px-1 py-0.5 bg-amber-500/20 border border-amber-500/50 text-[10px] cursor-pointer hover:bg-amber-500/30"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAbsenceClick(absence);
                         }}
                       >
-                        <div className="flex items-center gap-1">
-                          <UserX className="h-3 w-3 text-amber-600" />
-                          <span className="text-amber-700 dark:text-amber-400 font-medium truncate">Ausência</span>
+                        <div className="flex items-center gap-0.5">
+                          <UserX className="h-2.5 w-2.5 text-amber-600" />
+                          <span className="text-amber-700 dark:text-amber-400 font-medium truncate">Aus.</span>
                         </div>
                       </div>
                     )}
@@ -1142,8 +1129,8 @@ const Agenda = () => {
         </div>
 
         {/* Professional columns header */}
-        <div className="grid gap-1" style={{ gridTemplateColumns: `64px repeat(${professionalsToShow.length}, 1fr)` }}>
-          <div className="w-16" />
+        <div className="grid gap-0.5" style={{ gridTemplateColumns: `56px repeat(${professionalsToShow.length}, 1fr)` }}>
+          <div className="w-14" />
           {professionalsToShow.map(prof => (
             <div 
               key={prof.id}
@@ -1161,10 +1148,10 @@ const Agenda = () => {
             {timeSlots.map(time => (
               <div 
                 key={time} 
-                className="grid gap-1" 
-                style={{ gridTemplateColumns: `64px repeat(${professionalsToShow.length}, 1fr)` }}
+                className="grid gap-0.5" 
+                style={{ gridTemplateColumns: `56px repeat(${professionalsToShow.length}, 1fr)` }}
               >
-                <div className="w-16 flex items-center justify-center text-xs font-medium text-muted-foreground">
+                <div className="w-14 flex items-center justify-center text-[10px] font-medium text-muted-foreground">
                   {time}
                 </div>
                 {professionalsToShow.map(prof => {
@@ -1198,7 +1185,7 @@ const Agenda = () => {
                     <div
                       key={prof.id}
                       className={cn(
-                        'rounded border border-dashed border-border/50 min-h-[40px] cursor-pointer transition-all',
+                        'rounded border border-dashed border-border/30 min-h-[26px] cursor-pointer transition-all',
                         isOccupied && 'opacity-0 pointer-events-none',
                         !occupyingApt && 'hover:bg-muted/30 hover:border-primary/30',
                         draggedAppointment && !apt && !isOccupied && 'bg-primary/5 border-primary/30'
@@ -1219,7 +1206,7 @@ const Agenda = () => {
                       {apt && (
                         <div 
                           className={cn(
-                            'h-full rounded p-1 text-white text-xs transition-all',
+                            'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
                             dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                             isDragging && 'opacity-50 ring-2 ring-primary'
                           )}
@@ -1232,8 +1219,7 @@ const Agenda = () => {
                             handleAppointmentClick(apt);
                           }}
                         >
-                          <p className="font-medium truncate">{apt.client?.name}</p>
-                          <p className="truncate opacity-80">{apt.service?.name}</p>
+                          <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
                         </div>
                       )}
                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat } from 'lucide-react';
@@ -126,13 +126,17 @@ export function NewAppointmentDialog({
   // State to track if using a paid service
   const [usingPaidServiceId, setUsingPaidServiceId] = useState<string | null>(null);
 
-  // Check if a date is a valid work day
-  const isWorkDay = (date: Date): boolean => {
+  // Memoized settings values to prevent re-renders
+  const workSundays = settings?.work_sundays ?? false;
+  const workSaturdays = settings?.work_saturdays ?? false;
+
+  // Check if a date is a valid work day - memoized to prevent infinite loops
+  const isWorkDay = useCallback((date: Date): boolean => {
     const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0 && !settings?.work_sundays) return false; // Sunday
-    if (dayOfWeek === 6 && !settings?.work_saturdays) return false; // Saturday
+    if (dayOfWeek === 0 && !workSundays) return false; // Sunday
+    if (dayOfWeek === 6 && !workSaturdays) return false; // Saturday
     return true;
-  };
+  }, [workSundays, workSaturdays]);
   const selectedServiceData = services.find(s => s.id === selectedService);
   // Look for package in both templates and client packages (paid packages)
   const selectedPackageData = packages.find(p => p.id === selectedService) 
@@ -182,7 +186,7 @@ export function NewAppointmentDialog({
       // Reset recurring service states
       setRepeatServiceEnabled(false);
       setRepeatCount(4);
-      setServiceIntervalDays(selectedServiceData?.return_days || 7);
+      setServiceIntervalDays(7); // Reset to default, will be updated when service is selected
       setServicePreviewDates([]);
       setEditableServiceDates([]);
       setEditingServiceDateIndex(null);

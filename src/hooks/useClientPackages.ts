@@ -254,22 +254,47 @@ export function useClientPackages(clientId: string | null) {
 
       if (updateSessionError) throw updateSessionError;
 
-      // Get the package to check if it was paid (has payment_methods)
+      // Get the package to check if it was paid (has payment_methods) and get total_sessions
       const { data: pkgData } = await supabase
         .from('service_packages')
-        .select('payment_methods')
+        .select('payment_methods, total_sessions, name')
         .eq('id', packageId)
         .single();
 
       // Package is paid only if payment_methods has values (set during sale)
       const isPackagePaid = pkgData?.payment_methods && pkgData.payment_methods.length > 0;
+      const totalSessions = pkgData?.total_sessions || 1;
+      const packageName = pkgData?.name || 'Pacote';
 
-      // Update the appointment to link to the package_appointment
+      // Get the current appointment notes to preserve any user notes
+      const { data: currentAppointment } = await supabase
+        .from('appointments')
+        .select('notes')
+        .eq('id', appointmentId)
+        .single();
+
+      // Build the session label with correct session number
+      const sessionLabel = `${packageName} - Sessão ${pendingSession.session_number} de ${totalSessions}`;
+      
+      // Extract user notes if any (everything after the package name that's not a session label)
+      let userNotes = '';
+      if (currentAppointment?.notes) {
+        // Remove any existing session label pattern to get only user notes
+        const existingNotes = currentAppointment.notes;
+        const sessionLabelPattern = new RegExp(`^${packageName}(\\s*-\\s*Sessão\\s*\\d+\\s*de\\s*\\d+)?\\s*(-\\s*)?`, 'i');
+        userNotes = existingNotes.replace(sessionLabelPattern, '').trim();
+      }
+
+      // Combine session label with user notes
+      const finalNotes = userNotes ? `${sessionLabel} - ${userNotes}` : sessionLabel;
+
+      // Update the appointment to link to the package_appointment and update notes with correct session number
       const { error: appointmentError } = await supabase
         .from('appointments')
         .update({
           package_appointment_id: pendingSession.id,
           payment_status: isPackagePaid ? 'paid' : 'pending',
+          notes: finalNotes,
         })
         .eq('id', appointmentId);
 
@@ -289,7 +314,7 @@ export function useClientPackages(clientId: string | null) {
         })
         .eq('id', packageId);
 
-      return pendingSession;
+      return { ...pendingSession, session_number: pendingSession.session_number, total_sessions: totalSessions };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });

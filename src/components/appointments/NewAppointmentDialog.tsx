@@ -660,7 +660,7 @@ export function NewAppointmentDialog({
           service_id: packageServiceId,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
-          notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`,
+          notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,
           payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -704,7 +704,7 @@ export function NewAppointmentDialog({
                 service_id: packageServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
-                notes: `${packageData?.name || selectedPackageData?.name} - Sessão ${i + 1} de ${totalSessions}`,
+                notes: `${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
                 professional_id: selectedProfessional || packageData?.professional_id || undefined,
                 room_id: selectedRoom || packageData?.room_id || undefined,
                 payment_status: isPackagePaid ? 'paid' : 'pending',

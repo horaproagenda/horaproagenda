@@ -79,22 +79,33 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
             };
           }
 
-          // Count based on actual appointment status, not just package_appointment status
-          const completedCount = (appointments || []).filter(a => 
-            a.appointment?.status === 'completed' || a.status === 'completed'
-          ).length;
+          // Count based on actual appointment status
+          // Completed = appointment linked AND (appointment status is 'completed' OR package_appointment status is 'completed')
+          const completedCount = (appointments || []).filter(a => {
+            const aptStatus = (a.appointment as { status?: string } | null)?.status;
+            return aptStatus === 'completed' || a.status === 'completed';
+          }).length;
           
-          const scheduledCount = (appointments || []).filter(a => 
-            a.appointment_id && 
-            a.appointment?.status !== 'completed' && 
-            a.appointment?.status !== 'cancelled' &&
-            a.appointment?.status !== 'missed' &&
-            (a.status === 'scheduled' || a.appointment?.status === 'scheduled' || a.appointment?.status === 'confirmed')
-          ).length;
+          // Scheduled = has appointment_id AND appointment is not completed/cancelled/missed
+          // AND the appointment is scheduled, confirmed, or the package_appointment is scheduled
+          const scheduledCount = (appointments || []).filter(a => {
+            const aptStatus = (a.appointment as { status?: string } | null)?.status;
+            // Must have an appointment linked
+            if (!a.appointment_id) return false;
+            // Must not be completed
+            if (aptStatus === 'completed' || a.status === 'completed') return false;
+            // Must not be cancelled or missed
+            if (aptStatus === 'cancelled' || aptStatus === 'missed') return false;
+            // Is scheduled or confirmed
+            return aptStatus === 'scheduled' || aptStatus === 'confirmed' || a.status === 'scheduled';
+          }).length;
           
-          const pendingCount = (appointments || []).filter(a => 
-            a.status === 'pending' && !a.appointment_id
-          ).length;
+          // Pending = no appointment linked AND package_appointment status is 'pending'
+          const pendingCount = (appointments || []).filter(a => {
+            return a.status === 'pending' && !a.appointment_id;
+          }).length;
+
+          console.log(`Package ${pkg.name}: completed=${completedCount}, scheduled=${scheduledCount}, pending=${pendingCount}, total=${pkg.total_sessions}`);
 
           return {
             ...pkg,
@@ -167,18 +178,20 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const selectedPackage = clientPackages.find(p => p.id === selectedPackageId);
 
   // Calculate session counts correctly from packageDetails
-  const completedSessions = packageDetails?.filter(s => 
-    s.appointment?.status === 'completed' || s.status === 'completed'
-  ).length || 0;
-  const scheduledSessions = packageDetails?.filter(s => 
-    s.appointment_id && 
-    s.appointment?.status !== 'completed' && 
-    s.appointment?.status !== 'cancelled' &&
-    (s.status === 'scheduled' || s.appointment?.status === 'scheduled' || s.appointment?.status === 'confirmed')
-  ).length || 0;
-  const pendingSessions = packageDetails?.filter(s => 
-    s.status === 'pending' && !s.appointment_id
-  ).length || 0;
+  const completedSessions = packageDetails?.filter(s => {
+    return s.appointment?.status === 'completed' || s.status === 'completed';
+  }).length || 0;
+  
+  const scheduledSessions = packageDetails?.filter(s => {
+    if (!s.appointment_id) return false;
+    if (s.appointment?.status === 'completed' || s.status === 'completed') return false;
+    if (s.appointment?.status === 'cancelled' || s.appointment?.status === 'missed') return false;
+    return s.appointment?.status === 'scheduled' || s.appointment?.status === 'confirmed' || s.status === 'scheduled';
+  }).length || 0;
+  
+  const pendingSessions = packageDetails?.filter(s => {
+    return s.status === 'pending' && !s.appointment_id;
+  }).length || 0;
 
   return (
     <div className="space-y-3 animate-fade-in">

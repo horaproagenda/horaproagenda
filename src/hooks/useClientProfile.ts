@@ -439,9 +439,10 @@ export function useClientProfile(clientId: string) {
         isCancelled ? 'cancelled' :
         sale.paid_at ? 'paid' : 'pending';
       
-      // Use sale_date (when the payment was made) as the payment date
-      // paid_at is the system timestamp, sale_date is the actual payment date entered by user
-      const displayDate = sale.sale_date;
+      // IMPORTANT: Use sale_date (user-entered date when the payment was made)
+      // NOT paid_at (which is the system timestamp when the record was created)
+      // This ensures historical payments show the correct date
+      const displayDate = sale.sale_date || sale.paid_at?.split('T')[0] || sale.created_at.split('T')[0];
       
       return {
         id: sale.id,

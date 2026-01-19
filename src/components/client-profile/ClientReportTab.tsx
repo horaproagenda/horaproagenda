@@ -56,7 +56,19 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   confirmed: { label: 'Confirmado', variant: 'default' },
   completed: { label: 'Realizado', variant: 'outline' },
   cancelled: { label: 'Cancelado', variant: 'destructive' },
+  missed: { label: 'Faltou', variant: 'destructive' },
+  rescheduled: { label: 'Reagendado', variant: 'secondary' },
 };
+
+const statusOptions = [
+  { value: 'all', label: 'Todos' },
+  { value: 'scheduled', label: 'Agendado' },
+  { value: 'confirmed', label: 'Confirmado' },
+  { value: 'completed', label: 'Realizado' },
+  { value: 'cancelled', label: 'Cancelado' },
+  { value: 'missed', label: 'Faltou' },
+  { value: 'rescheduled', label: 'Reagendado' },
+];
 
 // Generate month options for filtering
 const getMonthOptions = () => {
@@ -83,6 +95,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [penaltyAmount, setPenaltyAmount] = useState('0');
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
+  const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
@@ -105,8 +118,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   );
 
   const filteredAppointments = useMemo(() => 
-    appointments.filter(a => filterByMonth(a.start_time)),
-    [appointments, selectedMonth]
+    appointments.filter(a => {
+      const matchesMonth = filterByMonth(a.start_time);
+      const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
+      return matchesMonth && matchesStatus;
+    }),
+    [appointments, selectedMonth, selectedStatus]
   );
 
   // Fetch payment methods for mapping IDs to names
@@ -326,10 +343,10 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     <div className="space-y-3 animate-fade-in">
       {/* Filters Row */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectTrigger className="w-[160px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -340,6 +357,21 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               ))}
             </SelectContent>
           </Select>
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">
+            {filteredAppointments.length} agendamento(s)
+          </span>
         </div>
         <Button size="sm" variant="outline" onClick={exportToCSV} className="h-8 text-xs">
           <Download className="h-3.5 w-3.5 mr-1" />

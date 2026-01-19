@@ -3,10 +3,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Briefcase, CheckCircle, Clock, XCircle, Eye, Calendar, Hash, Target } from 'lucide-react';
+import { Package, Briefcase, CheckCircle, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useClientPackages } from '@/hooks/useClientPackages';
 import { useClientServices } from '@/hooks/useClientServices';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,11 +28,89 @@ interface PackageAppointmentDetail {
   } | null;
 }
 
+interface PackageWithCounts {
+  id: string;
+  name: string;
+  total_sessions: number;
+  total_price: number;
+  sessions_scheduled: number;
+  completedCount: number;
+  scheduledCount: number;
+  pendingCount: number;
+}
+
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const queryClient = useQueryClient();
-  const { clientPackages, isLoading: loadingPackages } = useClientPackages(clientId);
   const { clientServices, isLoading: loadingServices } = useClientServices(clientId);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+
+  // Fetch client packages with accurate session counts from package_appointments
+  const { data: clientPackages = [], isLoading: loadingPackages } = useQuery({
+    queryKey: ['client_packages_with_counts', clientId],
+    queryFn: async () => {
+      if (!clientId) return [];
+      
+      // First get the packages
+      const { data: packages, error: packagesError } = await supabase
+        .from('service_packages')
+        .select('id, name, total_sessions, total_price, sessions_scheduled')
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (packagesError) throw packagesError;
+      if (!packages || packages.length === 0) return [];
+
+      // For each package, get the actual counts from package_appointments
+      const packagesWithCounts: PackageWithCounts[] = await Promise.all(
+        packages.map(async (pkg) => {
+          const { data: appointments, error: appError } = await supabase
+            .from('package_appointments')
+            .select('id, status, appointment_id, appointment:appointments!package_appointments_appointment_id_fkey(status)')
+            .eq('package_id', pkg.id);
+
+          if (appError) {
+            console.error('Error fetching package appointments:', appError);
+            return {
+              ...pkg,
+              completedCount: 0,
+              scheduledCount: 0,
+              pendingCount: pkg.total_sessions,
+            };
+          }
+
+          // Count based on actual appointment status, not just package_appointment status
+          const completedCount = (appointments || []).filter(a => 
+            a.appointment?.status === 'completed' || a.status === 'completed'
+          ).length;
+          
+          const scheduledCount = (appointments || []).filter(a => 
+            a.appointment_id && 
+            a.appointment?.status !== 'completed' && 
+            a.appointment?.status !== 'cancelled' &&
+            a.appointment?.status !== 'missed' &&
+            (a.status === 'scheduled' || a.appointment?.status === 'scheduled' || a.appointment?.status === 'confirmed')
+          ).length;
+          
+          const pendingCount = (appointments || []).filter(a => 
+            a.status === 'pending' && !a.appointment_id
+          ).length;
+
+          return {
+            ...pkg,
+            completedCount,
+            scheduledCount,
+            pendingCount,
+          };
+        })
+      );
+
+      return packagesWithCounts;
+    },
+    enabled: !!clientId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
 
   useEffect(() => {
     if (!clientId) return;
@@ -42,11 +119,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       .channel(`package-appointments-credits-${clientId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_appointments' }, () => {
         queryClient.invalidateQueries({ queryKey: ['package_details'] });
-        queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
         queryClient.invalidateQueries({ queryKey: ['package_details'] });
-        queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+        queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
       })
       .subscribe();
 
@@ -84,7 +161,8 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     );
   }
 
-  const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + Math.max(0, pkg.total_sessions - pkg.sessions_scheduled), 0);
+  // Calculate totals from actual package_appointment counts (pending = available)
+  const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + pkg.pendingCount, 0);
   const availableServicesCount = clientServices.filter(s => s.status === 'available').length;
   const selectedPackage = clientPackages.find(p => p.id === selectedPackageId);
 
@@ -93,7 +171,10 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     s.appointment?.status === 'completed' || s.status === 'completed'
   ).length || 0;
   const scheduledSessions = packageDetails?.filter(s => 
-    s.appointment_id && s.status === 'scheduled' && s.appointment?.status !== 'completed' && s.appointment?.status !== 'cancelled'
+    s.appointment_id && 
+    s.appointment?.status !== 'completed' && 
+    s.appointment?.status !== 'cancelled' &&
+    (s.status === 'scheduled' || s.appointment?.status === 'scheduled' || s.appointment?.status === 'confirmed')
   ).length || 0;
   const pendingSessions = packageDetails?.filter(s => 
     s.status === 'pending' && !s.appointment_id
@@ -109,7 +190,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
               <Package className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-xl font-bold text-primary">{totalPackageSessions}</p>
-                <p className="text-[10px] text-muted-foreground">Sessões Pacotes</p>
+                <p className="text-[10px] text-muted-foreground">Sessões Disponíveis</p>
               </div>
             </div>
           </CardContent>
@@ -139,9 +220,10 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           ) : (
             <div className="space-y-2">
               {clientPackages.map(pkg => {
-                const remaining = pkg.total_sessions - pkg.sessions_scheduled;
-                const isComplete = remaining === 0;
-                const progress = (pkg.sessions_scheduled / pkg.total_sessions) * 100;
+                // Use actual counts: completed + scheduled = used, pendingCount = available
+                const usedCount = pkg.completedCount + pkg.scheduledCount;
+                const isComplete = pkg.pendingCount === 0;
+                const progress = (usedCount / pkg.total_sessions) * 100;
                 
                 return (
                   <div
@@ -152,7 +234,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                       <div className="min-w-0 flex-1">
                         <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
                         <p className="text-[10px] text-muted-foreground">
-                          {pkg.sessions_scheduled}/{pkg.total_sessions} • R$ {Number(pkg.total_price).toFixed(0)}
+                          {pkg.completedCount} realizadas • {pkg.scheduledCount} agendadas • {pkg.pendingCount} disponíveis
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -162,7 +244,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                           </Badge>
                         ) : (
                           <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0">
-                            {remaining} disp.
+                            {pkg.pendingCount} disp.
                           </Badge>
                         )}
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedPackageId(pkg.id)}>

@@ -3,6 +3,7 @@ import { Calendar, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, UserX } 
 interface ClientStatsSectionProps {
   stats: {
     totalAppointments: number;
+    scheduledAppointments?: number;
     completedAppointments: number;
     cancelledAppointments: number;
     missedAppointments: number;
@@ -18,7 +19,7 @@ export function ClientStatsSection({ stats }: ClientStatsSectionProps) {
     : 0;
 
   const statItems = [
-    { icon: Calendar, value: stats.totalAppointments, label: 'Total', color: 'text-info' },
+    { icon: Calendar, value: stats.totalAppointments, label: 'Agendados', color: 'text-blue-500' },
     { icon: CheckCircle, value: stats.completedAppointments, label: 'Realizados', color: 'text-success' },
     { icon: XCircle, value: stats.cancelledAppointments, label: 'Cancelados', color: 'text-destructive' },
     { icon: UserX, value: stats.missedAppointments, label: 'Faltou', color: 'text-warning' },
@@ -26,7 +27,7 @@ export function ClientStatsSection({ stats }: ClientStatsSectionProps) {
     { 
       icon: DollarSign, 
       value: `R$ ${stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, 
-      label: 'Total', 
+      label: 'Recebido', 
       color: 'text-success' 
     },
     { 

@@ -28,13 +28,17 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 const statusOptions = [
-  { value: 'all', label: 'Todos os status' },
+  { value: 'all', label: 'Todos' },
   { value: 'scheduled', label: 'Agendado' },
   { value: 'confirmed', label: 'Confirmado' },
   { value: 'completed', label: 'Realizado' },
   { value: 'cancelled', label: 'Cancelado' },
   { value: 'missed', label: 'Faltou' },
   { value: 'rescheduled', label: 'Reagendado' },
+];
+
+const monthFilterOptions = [
+  { value: 'all', label: 'Todos os meses' },
 ];
 
 const generateColor = (str: string): string => {
@@ -47,9 +51,11 @@ const generateColor = (str: string): string => {
 };
 
 const getMonthOptions = () => {
-  const options = [];
+  const options = [
+    { value: 'all', label: 'Todos os meses' }
+  ];
   const now = new Date();
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 24; i++) { // Extended to 24 months
     const date = subMonths(now, i);
     options.push({
       value: format(date, 'yyyy-MM'),
@@ -60,7 +66,7 @@ const getMonthOptions = () => {
 };
 
 export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '' }: ClientAppointmentsTabProps) {
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -68,16 +74,21 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const filteredAppointments = useMemo(() => {
-    const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
-    const monthEnd = endOfMonth(monthStart);
-    
     return appointments
       .filter(a => {
         try {
-          const date = parseISO(a.start_time);
-          const inMonth = isWithinInterval(date, { start: monthStart, end: monthEnd });
+          // Month filter - 'all' shows everything
+          if (selectedMonth !== 'all') {
+            const date = parseISO(a.start_time);
+            const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
+            const monthEnd = endOfMonth(monthStart);
+            if (!isWithinInterval(date, { start: monthStart, end: monthEnd })) {
+              return false;
+            }
+          }
+          // Status filter
           const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
-          return inMonth && matchesStatus;
+          return matchesStatus;
         } catch {
           return false;
         }

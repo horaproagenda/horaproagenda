@@ -84,15 +84,20 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     );
   }
 
-  const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + (pkg.total_sessions - pkg.sessions_scheduled), 0);
+  const totalPackageSessions = clientPackages.reduce((sum, pkg) => sum + Math.max(0, pkg.total_sessions - pkg.sessions_scheduled), 0);
   const availableServicesCount = clientServices.filter(s => s.status === 'available').length;
   const selectedPackage = clientPackages.find(p => p.id === selectedPackageId);
 
-  const completedSessions = packageDetails?.filter(s => s.appointment?.status === 'completed').length || 0;
-  const scheduledSessions = packageDetails?.filter(s => 
-    s.appointment_id && s.appointment?.status !== 'completed' && s.appointment?.status !== 'cancelled'
+  // Calculate session counts correctly from packageDetails
+  const completedSessions = packageDetails?.filter(s => 
+    s.appointment?.status === 'completed' || s.status === 'completed'
   ).length || 0;
-  const pendingSessions = packageDetails?.filter(s => !s.appointment_id || s.status === 'pending').length || 0;
+  const scheduledSessions = packageDetails?.filter(s => 
+    s.appointment_id && s.status === 'scheduled' && s.appointment?.status !== 'completed' && s.appointment?.status !== 'cancelled'
+  ).length || 0;
+  const pendingSessions = packageDetails?.filter(s => 
+    s.status === 'pending' && !s.appointment_id
+  ).length || 0;
 
   return (
     <div className="space-y-3 animate-fade-in">

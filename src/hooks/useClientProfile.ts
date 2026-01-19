@@ -463,9 +463,13 @@ export function useClientProfile(clientId: string) {
         isCancelled ? 'cancelled' :
         sale.paid_at ? 'paid' : 'pending';
       
+      // Use paid_at (actual payment date) for display, not sale_date
+      // This ensures the payment date shown is when payment was actually recorded
+      const displayDate = sale.paid_at || sale.sale_date;
+      
       return {
         id: sale.id,
-        date: sale.paid_at || sale.sale_date,
+        date: displayDate,
         description: isCancelled ? `${sale.description || sale.service?.name || sale.package?.name || 'Venda'} (CANCELADO)` : sale.description || sale.service?.name || sale.package?.name || 'Venda',
         serviceName: sale.service?.name || sale.package?.name || '-',
         amount: amountPaid,
@@ -481,7 +485,8 @@ export function useClientProfile(clientId: string) {
     }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Calculate detailed stats
+  // Calculate detailed stats - include confirmed in scheduled count
+  const scheduledAppointments = appointments.filter(a => a.status === 'scheduled' || a.status === 'confirmed');
   const completedAppointments = appointments.filter(a => a.status === 'completed');
   const cancelledAppointments = appointments.filter(a => a.status === 'cancelled');
   const missedAppointments = appointments.filter(a => a.status === 'missed');
@@ -489,7 +494,7 @@ export function useClientProfile(clientId: string) {
   
   const proceduresCount = completedAppointments.length;
 
-  // Manual refetch function
+  // Manual refetch function - comprehensive refresh
   const refetchAll = () => {
     queryClient.invalidateQueries({ queryKey: ['client', clientId] });
     queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
@@ -497,6 +502,9 @@ export function useClientProfile(clientId: string) {
     queryClient.invalidateQueries({ queryKey: ['client-documents', clientId] });
     queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
     queryClient.invalidateQueries({ queryKey: ['client-quotes', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['client_services', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['package_details'] });
   };
 
   return {
@@ -516,6 +524,7 @@ export function useClientProfile(clientId: string) {
     refetchAll,
     stats: {
       totalAppointments: appointments.length,
+      scheduledAppointments: scheduledAppointments.length,
       completedAppointments: completedAppointments.length,
       cancelledAppointments: cancelledAppointments.length,
       missedAppointments: missedAppointments.length,

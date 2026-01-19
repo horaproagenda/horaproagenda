@@ -60,9 +60,11 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 
 // Generate month options for filtering
 const getMonthOptions = () => {
-  const options = [];
+  const options = [
+    { value: 'all', label: 'Todos os meses' }
+  ];
   const now = new Date();
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 24; i++) {
     const date = subMonths(now, i);
     options.push({
       value: format(date, 'yyyy-MM'),
@@ -80,12 +82,13 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [usedSessionsValue, setUsedSessionsValue] = useState('0');
   const [penaltyAmount, setPenaltyAmount] = useState('0');
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
-  // Filter data by selected month
+  // Filter data by selected month (or show all if 'all' selected)
   const filterByMonth = (dateStr: string) => {
+    if (selectedMonth === 'all') return true;
     try {
       const date = parseISO(dateStr);
       const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
@@ -132,12 +135,19 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     return methodIdOrName;
   };
 
-  // Calculate summary for filtered month
+  // Calculate summary for filtered month (or all if 'all' selected)
   const summary = useMemo(() => {
     const completed = filteredAppointments.filter(a => a.status === 'completed');
-    const totalValue = completed.reduce((sum, a) => sum + (a.amount_paid || a.service?.price || 0), 0);
+    // Calculate total received from paid payments in the payment history
+    const totalReceived = filteredPaymentHistory
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + p.amount, 0);
+    // Also account for completed appointments with payments
+    const appointmentValue = completed.reduce((sum, a) => sum + (a.amount_paid || 0), 0);
+    // Use the greater of the two to avoid double counting
+    const totalValue = Math.max(totalReceived, appointmentValue);
     const totalPending = filteredPaymentHistory
-      .filter(p => p.status !== 'paid')
+      .filter(p => p.status !== 'paid' && p.status !== 'cancelled')
       .reduce((sum, p) => sum + p.pendingAmount, 0);
     
     return {

@@ -425,35 +425,11 @@ export function useClientProfile(clientId: string) {
     return methodIdOrName;
   };
 
-  // Build payment history from both sources - show all with proper status
+  // Build payment history from sales only (packages and services purchased through caixa)
+  // For packages: show ONE entry with the package payment, not per appointment session
+  // This prevents duplicate entries where each session appears as a separate payment
   const paymentHistory: PaymentHistoryItem[] = [
-    // From appointments - show all that have service or package
-    ...appointments
-      .filter(a => a.service || a.package_appointment?.package)
-      .map(a => {
-        const totalPrice = a.service?.price || a.package_appointment?.package?.total_price || 0;
-        const amountPaid = a.amount_paid || 0;
-        const pendingAmount = Math.max(0, totalPrice - amountPaid);
-        const status: 'paid' | 'partial' | 'pending' = 
-          a.payment_status === 'paid' ? 'paid' : 
-          a.payment_status === 'partial' || amountPaid > 0 ? 'partial' : 'pending';
-        
-        return {
-          id: a.id,
-          date: a.start_time,
-          description: a.service?.name || a.package_appointment?.package?.name || 'Serviço',
-          serviceName: a.service?.name || a.package_appointment?.package?.name || '-',
-          amount: amountPaid,
-          totalPrice,
-          pendingAmount,
-          paymentMethod: a.payment_methods?.map(pm => getPaymentMethodName(pm)).join(', ') || '-',
-          source: 'appointment' as const,
-          status,
-          serviceId: a.service_id || undefined,
-          packageId: a.package_appointment?.package?.id || undefined,
-        };
-      }),
-    // From sales (purchases through caixa)
+    // From sales (purchases through caixa) - this is the source of truth for payments
     ...clientSales.map(sale => {
       const isCancelled = sale.notes?.includes('CANCELADO') || sale.final_amount === 0;
       const totalPrice = sale.original_amount || sale.final_amount || 0;
@@ -463,15 +439,15 @@ export function useClientProfile(clientId: string) {
         isCancelled ? 'cancelled' :
         sale.paid_at ? 'paid' : 'pending';
       
-      // Use paid_at (actual payment date) for display, not sale_date
-      // This ensures the payment date shown is when payment was actually recorded
-      const displayDate = sale.paid_at || sale.sale_date;
+      // Use sale_date (when the payment was made) as the payment date
+      // paid_at is the system timestamp, sale_date is the actual payment date entered by user
+      const displayDate = sale.sale_date;
       
       return {
         id: sale.id,
         date: displayDate,
         description: isCancelled ? `${sale.description || sale.service?.name || sale.package?.name || 'Venda'} (CANCELADO)` : sale.description || sale.service?.name || sale.package?.name || 'Venda',
-        serviceName: sale.service?.name || sale.package?.name || '-',
+        serviceName: sale.service?.name || sale.package?.name || sale.description || '-',
         amount: amountPaid,
         totalPrice,
         pendingAmount,

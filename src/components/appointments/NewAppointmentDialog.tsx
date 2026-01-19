@@ -288,16 +288,19 @@ export function NewAppointmentDialog({
   }, [calculatePreviewDates]);
 
   // Calculate preview dates for recurring service appointments
+  // Memoize the interval to prevent recalculation loops
+  const effectiveIntervalDays = useMemo(() => {
+    return serviceIntervalDays || selectedServiceData?.return_days || 7;
+  }, [serviceIntervalDays, selectedServiceData?.return_days]);
+
   const calculateServicePreviewDates = useMemo(() => {
     if (!appointmentTimes || !repeatServiceEnabled || serviceType !== 'service') return [];
     if (repeatCount < 2) return [];
 
-    // Use service's return_days if available, otherwise use user-selected interval
-    const intervalDays = serviceIntervalDays || selectedServiceData?.return_days || 7;
     const dates: Date[] = [appointmentTimes.startTime];
 
     for (let i = 1; i < repeatCount; i++) {
-      let futureDate = addDays(appointmentTimes.startTime, intervalDays * i);
+      let futureDate = addDays(appointmentTimes.startTime, effectiveIntervalDays * i);
       
       // Skip non-work days
       while (!isWorkDay(futureDate)) {
@@ -314,7 +317,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, serviceIntervalDays, selectedServiceData, serviceType, preferredTime, isWorkDay]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {
@@ -324,11 +327,14 @@ export function NewAppointmentDialog({
   }, [calculateServicePreviewDates]);
 
   // When service is selected, update interval from service's return_days
+  // Using selectedServiceData?.id to avoid loop when object reference changes
+  const selectedServiceId = selectedServiceData?.id;
+  const selectedServiceReturnDays = selectedServiceData?.return_days;
   useEffect(() => {
-    if (selectedServiceData?.return_days) {
-      setServiceIntervalDays(selectedServiceData.return_days);
+    if (selectedServiceReturnDays && selectedServiceId) {
+      setServiceIntervalDays(selectedServiceReturnDays);
     }
-  }, [selectedServiceData]);
+  }, [selectedServiceId, selectedServiceReturnDays]);
 
   // Update a specific date in the editable preview
   const updateEditableDate = (index: number, newDate: Date) => {

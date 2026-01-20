@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Clock, DollarSign, Users, Home, User, Package, Layers, Timer, Pencil, Trash2 } from 'lucide-react';
+import { Clock, DollarSign, Users, Home, User, Package, Layers, Timer, Pencil, Trash2, Wrench } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -52,6 +53,7 @@ const packageSchema = z.object({
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   room_id: z.string().optional(),
   professional_id: z.string().optional(),
+  equipment: z.array(z.string()).optional(),
   is_active: z.boolean(),
 });
 
@@ -89,6 +91,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       interval_days: pkg.interval_days || 7,
       room_id: pkg.room_id || '',
       professional_id: pkg.professional_id || '',
+      equipment: pkg.equipment || [],
       is_active: pkg.is_active,
     },
   });
@@ -105,6 +108,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         interval_days: pkg.interval_days || 7,
         room_id: pkg.room_id || '',
         professional_id: pkg.professional_id || '',
+        equipment: pkg.equipment || [],
         is_active: pkg.is_active,
       });
       setIsEditing(false);
@@ -174,6 +178,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           interval_days: data.interval_days,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
+          equipment: data.equipment || [],
           is_active: data.is_active,
         })
         .eq('id', pkg.id);
@@ -498,6 +503,35 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     )}
                   />
                 </div>
+
+                {/* Equipment Selection */}
+                {equipment.filter(e => e.is_active).length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Equipamentos</Label>
+                    <div className="border rounded-md p-3 max-h-32 overflow-y-auto">
+                      <div className="flex flex-wrap gap-3">
+                        {equipment.filter(e => e.is_active).map((eq) => (
+                          <label key={eq.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.watch('equipment')?.includes(eq.id) || false}
+                              onChange={(e) => {
+                                const current = form.getValues('equipment') || [];
+                                if (e.target.checked) {
+                                  form.setValue('equipment', [...current, eq.id]);
+                                } else {
+                                  form.setValue('equipment', current.filter(id => id !== eq.id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded"
+                            />
+                            {eq.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}

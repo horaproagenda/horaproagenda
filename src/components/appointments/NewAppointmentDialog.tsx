@@ -212,6 +212,7 @@ export function NewAppointmentDialog({
     }
   }, [selectedClient, availablePackages]);
   // Auto-fill professional and room from service or package data
+  // Auto-fill professional, room, and equipment from service or package data
   useEffect(() => {
     if (serviceType === 'service' && selectedServiceData) {
       if (selectedServiceData.professional_id) {
@@ -220,12 +221,20 @@ export function NewAppointmentDialog({
       if (selectedServiceData.room_id) {
         setSelectedRoom(selectedServiceData.room_id);
       }
+      // Auto-fill equipment from service
+      if (selectedServiceData.equipment && selectedServiceData.equipment.length > 0) {
+        setSelectedEquipment(selectedServiceData.equipment);
+      }
     } else if (serviceType === 'package' && selectedPackageData) {
       if (selectedPackageData.professional_id) {
         setSelectedProfessional(selectedPackageData.professional_id);
       }
       if (selectedPackageData.room_id) {
         setSelectedRoom(selectedPackageData.room_id);
+      }
+      // Auto-fill equipment from package
+      if (selectedPackageData.equipment && selectedPackageData.equipment.length > 0) {
+        setSelectedEquipment(selectedPackageData.equipment);
       }
     }
   }, [selectedServiceData, selectedPackageData, serviceType]);

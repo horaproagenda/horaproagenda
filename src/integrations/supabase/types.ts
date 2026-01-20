@@ -1850,6 +1850,7 @@ export type Database = {
           created_at: string
           description: string | null
           duration: number
+          equipment: string[] | null
           id: string
           is_active: boolean
           name: string
@@ -1865,6 +1866,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number
+          equipment?: string[] | null
           id?: string
           is_active?: boolean
           name: string
@@ -1880,6 +1882,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number
+          equipment?: string[] | null
           id?: string
           is_active?: boolean
           name?: string

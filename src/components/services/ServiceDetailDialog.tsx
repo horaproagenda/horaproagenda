@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import {
   Collapsible,
   CollapsibleContent,
@@ -49,6 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCategoryColor } from '@/lib/categoryColors';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
 
 interface ServiceAppointment {
@@ -66,6 +68,7 @@ const serviceSchema = z.object({
   category: z.string().trim().min(1, 'Selecione uma categoria'),
   room_id: z.string().optional(),
   professional_id: z.string().optional(),
+  equipment: z.array(z.string()).optional(),
   return_days: z.coerce.number().min(0).max(365).optional().nullable(),
   is_active: z.boolean(),
 });
@@ -85,6 +88,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const [clientsCount, setClientsCount] = useState(0);
   const [roomName, setRoomName] = useState<string | null>(null);
   const [professionalName, setProfessionalName] = useState<string | null>(null);
+  const [equipmentNames, setEquipmentNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,6 +100,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
+  const { equipment: allEquipment } = useEquipment();
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -107,6 +112,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       category: service.category,
       room_id: service.room_id || '',
       professional_id: service.professional_id || '',
+      equipment: service.equipment || [],
       return_days: service.return_days,
       is_active: service.is_active,
     },
@@ -123,6 +129,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         category: service.category,
         room_id: service.room_id || '',
         professional_id: service.professional_id || '',
+        equipment: service.equipment || [],
         return_days: service.return_days,
         is_active: service.is_active,
       });
@@ -189,6 +196,17 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         setProfessionalName(null);
       }
 
+      // Fetch equipment names
+      if (service.equipment && service.equipment.length > 0) {
+        const { data: equipmentData } = await supabase
+          .from('equipment')
+          .select('name')
+          .in('id', service.equipment);
+        setEquipmentNames(equipmentData?.map(e => e.name) || []);
+      } else {
+        setEquipmentNames([]);
+      }
+
       setAppointmentsCount(apptCount || 0);
       setClientsCount(uniqueClients.size);
     } catch (error) {
@@ -227,6 +245,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           category: data.category,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
+          equipment: data.equipment || [],
           return_days: data.return_days || null,
           is_active: data.is_active,
         })
@@ -444,6 +463,20 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       </div>
                     </div>
                   )}
+
+                  {equipmentNames.length > 0 && (
+                    <div className="rounded-lg bg-muted/50 p-3 col-span-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Wrench className="h-5 w-5 text-orange-500" />
+                        <p className="text-xs text-muted-foreground">Equipamentos</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {equipmentNames.map((name, idx) => (
+                          <Badge key={idx} variant="outline">{name}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -622,6 +655,35 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     </FormItem>
                   )}
                 />
+
+                {/* Equipment Selection */}
+                {allEquipment.filter(e => e.is_active).length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Equipamentos</Label>
+                    <div className="border rounded-md p-3 max-h-32 overflow-y-auto">
+                      <div className="flex flex-wrap gap-3">
+                        {allEquipment.filter(e => e.is_active).map((eq) => (
+                          <label key={eq.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.watch('equipment')?.includes(eq.id) || false}
+                              onChange={(e) => {
+                                const current = form.getValues('equipment') || [];
+                                if (e.target.checked) {
+                                  form.setValue('equipment', [...current, eq.id]);
+                                } else {
+                                  form.setValue('equipment', current.filter(id => id !== eq.id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded"
+                            />
+                            {eq.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}

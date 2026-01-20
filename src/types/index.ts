@@ -76,6 +76,7 @@ export interface Service {
   is_active: boolean;
   room_id: string | null;
   professional_id: string | null;
+  equipment: string[];
   created_at: string;
   updated_at: string;
   room?: Room;

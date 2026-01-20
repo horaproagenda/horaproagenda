@@ -84,7 +84,7 @@ export function DurationSelect({
   };
 
   return (
-    <div className={cn('flex gap-2', className)}>
+    <div className={cn('relative', className)}>
       <Select
         value={isStandardDuration ? value.toString() : 'custom'}
         onValueChange={(val) => {
@@ -95,19 +95,19 @@ export function DurationSelect({
           }
         }}
       >
-        <SelectTrigger className="flex-1">
-          <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+        <SelectTrigger className="w-full h-8 text-sm">
+          <Clock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground shrink-0" />
           <SelectValue placeholder={placeholder}>
             {displayValue}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {DURATION_OPTIONS.filter(opt => opt.value >= minDuration && opt.value <= maxDuration).map((option) => (
-            <SelectItem key={option.value} value={option.value.toString()}>
+            <SelectItem key={option.value} value={option.value.toString()} className="text-sm">
               {option.label}
             </SelectItem>
           ))}
-          <SelectItem value="custom">
+          <SelectItem value="custom" className="text-sm">
             <span className="flex items-center gap-2">
               <Edit2 className="h-3 w-3" />
               Personalizado...
@@ -118,19 +118,11 @@ export function DurationSelect({
 
       <Popover open={isCustomOpen} onOpenChange={setIsCustomOpen}>
         <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0"
-            title="Editar duração personalizada"
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
+          <span />
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-3" align="end">
-          <div className="space-y-3">
-            <p className="text-sm font-medium">Duração personalizada</p>
+        <PopoverContent className="w-56 p-3" align="start" side="bottom">
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Duração personalizada</p>
             <div className="flex gap-2">
               <Input
                 type="number"
@@ -139,7 +131,7 @@ export function DurationSelect({
                 value={customValue}
                 onChange={(e) => setCustomValue(e.target.value)}
                 placeholder="Minutos"
-                className="flex-1"
+                className="flex-1 h-8 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -150,13 +142,14 @@ export function DurationSelect({
               <Button
                 type="button"
                 size="sm"
+                className="h-8"
                 onClick={handleCustomSubmit}
               >
                 OK
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Entre {minDuration} e {maxDuration} minutos
+            <p className="text-[10px] text-muted-foreground">
+              {minDuration} a {maxDuration} min
             </p>
           </div>
         </PopoverContent>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Shield, Filter, Download, Eye, X } from 'lucide-react';
+import { Shield, Filter, Download, Eye, X, FileText } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuditLogs, AuditLog } from '@/hooks/useAuditLogs';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
 
 const tableNameMap: Record<string, string> = {
   clients: 'Clientes',
@@ -35,6 +39,11 @@ const actionMap: Record<string, { label: string; variant: 'default' | 'secondary
   DELETE: { label: 'Exclusão', variant: 'destructive' },
 };
 
+// Normalize text for PDF (remove accents)
+function normalizeText(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export default function Auditoria() {
   const [filters, setFilters] = useLocalStorage('auditoria-filters', {
     tableName: '',
@@ -53,19 +62,67 @@ export default function Auditoria() {
 
   const activeFiltersCount = [filters.tableName, filters.action, filters.startDate, filters.endDate].filter(Boolean).length;
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     exportToCSV({
       filename: 'audit_logs',
-      headers: ['Data/Hora', 'Tabela', 'Ação', 'Usuário', 'ID do Registro'],
+      headers: ['Data/Hora', 'Tabela', 'Ação', 'Usuário', 'Descrição'],
       rows: auditLogs.map(log => [
         format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
         tableNameMap[log.table_name] || log.table_name,
         actionMap[log.action]?.label || log.action,
         log.user_email || 'Sistema',
-        log.record_id || '-',
+        getHumanReadableDescription(log),
       ]),
-      successMessage: 'Logs exportados com sucesso!',
+      successMessage: 'Logs exportados em CSV!',
     });
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text(normalizeText('Relatório de Auditoria'), 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(normalizeText(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, 28);
+    
+    if (activeFiltersCount > 0) {
+      const filterTexts: string[] = [];
+      if (filters.tableName) filterTexts.push(`Tabela: ${tableNameMap[filters.tableName] || filters.tableName}`);
+      if (filters.action) filterTexts.push(`Acao: ${actionMap[filters.action]?.label || filters.action}`);
+      if (filters.startDate) filterTexts.push(`De: ${format(new Date(filters.startDate), 'dd/MM/yyyy')}`);
+      if (filters.endDate) filterTexts.push(`Ate: ${format(new Date(filters.endDate), 'dd/MM/yyyy')}`);
+      doc.text(normalizeText(`Filtros: ${filterTexts.join(' | ')}`), 14, 34);
+    }
+    
+    // Table
+    const tableData = auditLogs.map(log => [
+      format(new Date(log.created_at), 'dd/MM/yy HH:mm'),
+      normalizeText(tableNameMap[log.table_name] || log.table_name),
+      normalizeText(actionMap[log.action]?.label || log.action),
+      log.user_email?.split('@')[0] || 'Sistema',
+      normalizeText(getHumanReadableDescription(log).substring(0, 80)),
+    ]);
+
+    autoTable(doc, {
+      startY: activeFiltersCount > 0 ? 40 : 34,
+      head: [['Data/Hora', 'Tabela', 'Acao', 'Usuario', 'Descricao']],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 'auto' },
+      },
+    });
+
+    doc.save(`auditoria_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Relatório PDF exportado com sucesso!');
   };
 
   const clearFilters = () => {
@@ -165,10 +222,24 @@ export default function Auditoria() {
               </PopoverContent>
             </Popover>
             
-            <Button onClick={handleExport} variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-              <Download className="h-3.5 w-3.5" />
-              Exportar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV} className="gap-2 text-xs">
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF} className="gap-2 text-xs">
+                  <FileText className="h-3.5 w-3.5" />
+                  Exportar PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -379,35 +450,121 @@ function formatValue(key: string, value: unknown): string {
   return String(value);
 }
 
-function getChangeSummary(log: AuditLog): string {
+// Generate a human-readable description of the log entry
+function getHumanReadableDescription(log: AuditLog): string {
   const tableName = tableNameMap[log.table_name] || log.table_name;
-  const actionLabel = actionMap[log.action]?.label || log.action;
-  
-  // Get identifier from data
   const data = log.new_data || log.old_data;
-  const name = data?.name || data?.email || data?.description || '';
-  
+  const name = data?.name || data?.email || '';
+
+  // For products - show stock changes
+  if (log.table_name === 'products') {
+    if (log.action === 'DELETE') {
+      const oldStock = log.old_data?.current_stock ?? 0;
+      return `Produto "${log.old_data?.name || 'sem nome'}" excluído. Estoque: ${oldStock} unidades removidas do sistema.`;
+    }
+    if (log.action === 'INSERT') {
+      const newStock = log.new_data?.current_stock ?? 0;
+      return `Produto "${log.new_data?.name}" cadastrado com estoque inicial de ${newStock} unidades.`;
+    }
+    if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+      const oldStock = Number(log.old_data.current_stock ?? 0);
+      const newStock = Number(log.new_data.current_stock ?? 0);
+      if (oldStock !== newStock) {
+        const diff = newStock - oldStock;
+        return `Estoque do produto "${log.new_data.name}" alterado: ${oldStock} → ${newStock} (${diff > 0 ? '+' : ''}${diff} unidades).`;
+      }
+      return `Produto "${log.new_data.name}" atualizado.`;
+    }
+  }
+
+  // For appointments - show client, service, status
+  if (log.table_name === 'appointments') {
+    if (log.action === 'DELETE') {
+      return `Agendamento excluído.`;
+    }
+    if (log.action === 'INSERT') {
+      const statusKey = String(log.new_data?.status || '');
+      const status = statusLabels[statusKey] || statusKey;
+      return `Novo agendamento criado (${status}).`;
+    }
+    if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+      const changes: string[] = [];
+      const oldStatus = String(log.old_data.status || '');
+      const newStatus = String(log.new_data.status || '');
+      if (oldStatus !== newStatus) {
+        changes.push(`Status: ${statusLabels[oldStatus] || oldStatus} → ${statusLabels[newStatus] || newStatus}`);
+      }
+      const oldPayment = String(log.old_data.payment_status || '');
+      const newPayment = String(log.new_data.payment_status || '');
+      if (oldPayment !== newPayment) {
+        changes.push(`Pagamento: ${statusLabels[oldPayment] || oldPayment} → ${statusLabels[newPayment] || newPayment}`);
+      }
+      if (log.old_data.start_time !== log.new_data.start_time) {
+        changes.push(`Horário alterado`);
+      }
+      return changes.length > 0 ? `Agendamento atualizado: ${changes.join('; ')}` : 'Agendamento atualizado.';
+    }
+  }
+
+  // For services
+  if (log.table_name === 'services') {
+    if (log.action === 'DELETE') {
+      return `Serviço "${log.old_data?.name}" excluído.`;
+    }
+    if (log.action === 'INSERT') {
+      const price = log.new_data?.price ? `R$ ${Number(log.new_data.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+      return `Serviço "${log.new_data?.name}" cadastrado${price ? ` (${price})` : ''}.`;
+    }
+    if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+      const changes: string[] = [];
+      if (log.old_data.price !== log.new_data.price) {
+        changes.push(`Preço: R$ ${Number(log.old_data.price).toFixed(2)} → R$ ${Number(log.new_data.price).toFixed(2)}`);
+      }
+      if (log.old_data.duration !== log.new_data.duration) {
+        changes.push(`Duração: ${log.old_data.duration}min → ${log.new_data.duration}min`);
+      }
+      if (log.old_data.is_active !== log.new_data.is_active) {
+        changes.push(`Status: ${log.new_data.is_active ? 'Ativado' : 'Desativado'}`);
+      }
+      return changes.length > 0 ? `Serviço "${log.new_data.name}" atualizado: ${changes.join('; ')}` : `Serviço "${log.new_data.name}" atualizado.`;
+    }
+  }
+
+  // For clients
+  if (log.table_name === 'clients') {
+    if (log.action === 'DELETE') {
+      return `Cliente "${log.old_data?.name}" excluído do sistema.`;
+    }
+    if (log.action === 'INSERT') {
+      return `Cliente "${log.new_data?.name}" cadastrado.`;
+    }
+    if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+      const changes: string[] = [];
+      if (log.old_data.credit_balance !== log.new_data.credit_balance) {
+        changes.push(`Crédito: R$ ${Number(log.old_data.credit_balance || 0).toFixed(2)} → R$ ${Number(log.new_data.credit_balance || 0).toFixed(2)}`);
+      }
+      if (log.old_data.is_active !== log.new_data.is_active) {
+        changes.push(`Status: ${log.new_data.is_active ? 'Ativado' : 'Desativado'}`);
+      }
+      return changes.length > 0 ? `Cliente "${log.new_data.name}" atualizado: ${changes.join('; ')}` : `Cliente "${log.new_data.name}" atualizado.`;
+    }
+  }
+
+  // Default fallback
   if (log.action === 'INSERT') {
-    return `${actionLabel} de ${tableName}${name ? `: "${name}"` : ''}`;
+    return `${tableName} "${name}" criado.`;
   }
   if (log.action === 'DELETE') {
-    return `${actionLabel} de ${tableName}${name ? `: "${name}"` : ''}`;
+    return `${tableName} "${name}" excluído.`;
   }
   if (log.action === 'UPDATE') {
-    const changes: string[] = [];
-    if (log.old_data && log.new_data) {
-      for (const key of Object.keys(log.new_data)) {
-        if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) {
-          const label = fieldLabels[key] || key;
-          changes.push(label);
-        }
-      }
-    }
-    const changedFields = changes.length > 0 ? changes.slice(0, 3).join(', ') : '';
-    const more = changes.length > 3 ? ` (+${changes.length - 3})` : '';
-    return `${actionLabel} de ${tableName}${name ? ` "${name}"` : ''}${changedFields ? `: ${changedFields}${more}` : ''}`;
+    return `${tableName} "${name}" atualizado.`;
   }
-  return `${actionLabel} em ${tableName}`;
+  return `Ação em ${tableName}`;
+}
+
+function getChangeSummary(log: AuditLog): string {
+  return getHumanReadableDescription(log);
 }
 
 function AuditDetailDialog({ log }: { log: AuditLog }) {

@@ -246,9 +246,9 @@ export function useAppointments() {
         }
       }
 
-      // If status changed to cancelled/missed and this is a package appointment,
+      // If status changed to cancelled/missed/rescheduled and this is a package appointment,
       // reset the package session so it can be rescheduled
-      if ((updates.status === 'cancelled' || updates.status === 'missed') && data.package_appointment_id) {
+      if ((updates.status === 'cancelled' || updates.status === 'missed' || updates.status === 'rescheduled') && data.package_appointment_id) {
         // Get current package info
         const { data: pkgAppointment } = await supabase
           .from('package_appointments')
@@ -286,7 +286,7 @@ export function useAppointments() {
           }
         }
 
-        // Remove the link from the cancelled appointment
+        // Remove the link from the rescheduled/cancelled appointment
         await supabase
           .from('appointments')
           .update({ package_appointment_id: null })
@@ -308,8 +308,13 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       
       if (data.sessionReleased) {
-        const statusLabel = data.status === 'cancelled' ? 'cancelado' : 'marcado como falta';
-        toast.success(`Agendamento ${statusLabel}! A sessão do pacote foi liberada para reagendamento.`);
+        const statusLabels: Record<string, string> = {
+          'cancelled': 'cancelado',
+          'missed': 'marcado como falta',
+          'rescheduled': 'reagendado'
+        };
+        const statusLabel = statusLabels[data.status] || 'atualizado';
+        toast.success(`Agendamento ${statusLabel}! O horário foi liberado para outro agendamento.`);
       } else {
         toast.success('Agendamento atualizado!');
       }

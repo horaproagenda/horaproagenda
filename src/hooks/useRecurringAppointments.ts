@@ -82,6 +82,9 @@ export function useRecurringAppointments() {
       const createdAppointments: any[] = [];
       const failedAppointments: number[] = [];
 
+      // Calculate the total number of sessions based on actual appointments count
+      const totalSessions = appointments.length;
+      
       // Create appointments sequentially to avoid conflicts
       for (let i = 0; i < appointments.length; i++) {
         const apt = appointments[i];
@@ -99,7 +102,8 @@ export function useRecurringAppointments() {
               room_id: params.room_id,
               start_time: apt.start.toISOString(),
               end_time: apt.end.toISOString(),
-              notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${params.repeat_count}` : `Sessão ${i + 1} de ${params.repeat_count}`,
+              // Use totalSessions (actual count) instead of params.repeat_count
+              notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
               status: 'scheduled',
             }),
           });

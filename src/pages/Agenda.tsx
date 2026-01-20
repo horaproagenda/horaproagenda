@@ -146,7 +146,7 @@ const Agenda = () => {
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
-  const { settings, generateTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
+  const { settings, generateTimeSlots, generateDetailedTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
@@ -165,7 +165,33 @@ const Agenda = () => {
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
-  const timeSlots = generateTimeSlots();
+  const baseTimeSlots = generateTimeSlots();
+  const detailedTimeSlots = generateDetailedTimeSlots();
+  
+  // Merge base slots with any appointment times that fall outside the base slots
+  const timeSlots = useMemo(() => {
+    const allSlots = new Set(baseTimeSlots);
+    
+    // Add all appointment start times that might not be in base slots
+    appointments.forEach(apt => {
+      const aptTime = format(new Date(apt.start_time), 'HH:mm');
+      // Check if this time is within business hours
+      if (detailedTimeSlots.includes(aptTime)) {
+        allSlots.add(aptTime);
+      }
+    });
+    
+    // Add all absence start times
+    absences.forEach(absence => {
+      const absenceTime = format(new Date(absence.start_time), 'HH:mm');
+      if (detailedTimeSlots.includes(absenceTime)) {
+        allSlots.add(absenceTime);
+      }
+    });
+    
+    // Sort chronologically
+    return Array.from(allSlots).sort((a, b) => a.localeCompare(b));
+  }, [baseTimeSlots, detailedTimeSlots, appointments, absences]);
 
   // Hide Sunday toggle state
   const [hideSunday, setHideSunday] = useState(() => {

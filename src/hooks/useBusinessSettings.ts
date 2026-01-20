@@ -104,11 +104,20 @@ export function useBusinessSettings() {
     return generateSlotsFromRange(settings.opening_time, settings.closing_time, settings.slot_interval);
   };
 
+  // Generate fine-grained slots (always 15min) for appointment matching
+  const generateDetailedTimeSlots = () => {
+    if (!settings) {
+      return generateSlotsFromRange('08:00', '20:00', 15);
+    }
+    return generateSlotsFromRange(settings.opening_time, settings.closing_time, 15);
+  };
+
   return {
     settings,
     isLoading,
     updateSettings,
     generateTimeSlots,
+    generateDetailedTimeSlots,
   };
 }
 

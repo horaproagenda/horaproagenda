@@ -362,7 +362,7 @@ export function CashRegisterPanel() {
             </CardTitle>
             <Badge variant="secondary" className="bg-green-100 text-green-800 px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />
-              Aberto desde {format(parseISO(currentOpenRegister.opened_at), "HH:mm", { locale: ptBR })}
+              Aberto desde {format(parseISO(currentOpenRegister.opened_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </Badge>
           </div>
         </CardHeader>

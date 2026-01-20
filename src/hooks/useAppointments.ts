@@ -246,8 +246,32 @@ export function useAppointments() {
         }
       }
 
-      // If status changed to cancelled/missed/rescheduled and this is a package appointment,
-      // reset the package session so it can be rescheduled
+      // If status changed to cancelled/missed/rescheduled, clean up financial entries
+      // and reset package session if applicable
+      if (updates.status === 'cancelled' || updates.status === 'missed' || updates.status === 'rescheduled') {
+        // Delete related financial entries for this appointment (same as delete does)
+        const { error: finEntryDeleteError } = await supabase
+          .from('financial_entries')
+          .delete()
+          .eq('appointment_id', id);
+
+        if (finEntryDeleteError) {
+          console.error('Error deleting financial entries on status change:', finEntryDeleteError);
+        }
+
+        // Delete related cash transactions for this appointment
+        const { error: cashDeleteError } = await supabase
+          .from('cash_transactions')
+          .delete()
+          .eq('reference_id', id)
+          .eq('reference_type', 'appointment');
+
+        if (cashDeleteError) {
+          console.error('Error deleting cash transactions on status change:', cashDeleteError);
+        }
+      }
+      
+      // If this is a package appointment, reset the session so it can be rescheduled
       if ((updates.status === 'cancelled' || updates.status === 'missed' || updates.status === 'rescheduled') && data.package_appointment_id) {
         // Get current package info
         const { data: pkgAppointment } = await supabase
@@ -306,6 +330,11 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      // Invalidate financial queries when status changes (cancelled/missed/rescheduled)
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       
       if (data.sessionReleased) {
         const statusLabels: Record<string, string> = {

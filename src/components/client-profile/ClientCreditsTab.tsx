@@ -10,6 +10,7 @@ import { useClientServices } from '@/hooks/useClientServices';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatCurrency } from '@/lib/utils';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -305,7 +306,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium truncate">{service.service?.name || 'Serviço'}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-muted-foreground">R$ {Number(service.amount_paid).toFixed(0)}</span>
+                        <span className="text-muted-foreground">{formatCurrency(Number(service.amount_paid))}</span>
                         {isCancelled ? (
                           <Badge variant="destructive" className="text-[10px] px-1 py-0">Canc.</Badge>
                         ) : isAwaitingSchedule ? (

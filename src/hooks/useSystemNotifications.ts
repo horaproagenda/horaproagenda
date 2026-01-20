@@ -14,8 +14,22 @@ export interface SystemNotification {
   link?: string;
 }
 
+// Get today's date as string for localStorage key
+const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
+
+// Check if notifications were already shown today
+const wasShownToday = () => {
+  const lastShown = localStorage.getItem('notifications_last_shown');
+  return lastShown === getTodayKey();
+};
+
+// Mark notifications as shown today
+const markAsShownToday = () => {
+  localStorage.setItem('notifications_last_shown', getTodayKey());
+};
+
 export function useSystemNotifications() {
-  const hasShownToasts = useRef(false);
+  const hasShownToasts = useRef(wasShownToday());
 
   // Fetch boletos vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
@@ -132,7 +146,7 @@ export function useSystemNotifications() {
     return result;
   }, [boletosVencendoHoje, packageLowSessions, lowStockProducts]);
 
-  // Show toasts for critical notifications (only once per session)
+  // Show toasts for critical notifications (only once per day)
   useEffect(() => {
     if (hasShownToasts.current || notifications.length === 0) return;
 
@@ -140,6 +154,7 @@ export function useSystemNotifications() {
     
     if (criticalNotifications.length > 0) {
       hasShownToasts.current = true;
+      markAsShownToday();
 
       // Show first 3 critical notifications as toasts
       criticalNotifications.slice(0, 3).forEach((notification, index) => {

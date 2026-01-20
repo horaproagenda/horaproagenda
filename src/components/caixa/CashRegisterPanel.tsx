@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ export function CashRegisterPanel() {
   const queryClient = useQueryClient();
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
-  const { pendingReceivables, entries } = useFinancialEntries();
+  const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
 
   const [openingBalance, setOpeningBalance] = useState('');
@@ -122,9 +122,10 @@ export function CashRegisterPanel() {
       return isWithinInterval(date, { start, end });
     });
     
-    // Appointments with pending payment status
+    // Appointments with pending payment status - exclude cancelled, missed and rescheduled
     const pendingAppointments = appointments.filter(apt => {
       if (apt.payment_status !== 'pending') return false;
+      if (apt.status === 'cancelled' || apt.status === 'missed' || apt.status === 'rescheduled') return false;
       const aptDate = parseISO(apt.start_time);
       return isWithinInterval(aptDate, { start, end });
     });

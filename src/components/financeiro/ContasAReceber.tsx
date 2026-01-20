@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { format, parseISO, isAfter } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Pencil, Trash2, Check, Calendar } from 'lucide-react';
+import { Trash2, Check, Calendar } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
 
@@ -37,9 +37,10 @@ export function ContasAReceber() {
         originalEntry: e,
       }));
 
-    // Get appointments with pending or partial payment
+    // Get appointments with pending or partial payment - exclude cancelled, missed and rescheduled
     const pendingAppointments = appointments
-      .filter(apt => (apt.payment_status === 'pending' || apt.payment_status === 'partial') && apt.status !== 'cancelled')
+      .filter(apt => (apt.payment_status === 'pending' || apt.payment_status === 'partial') && 
+        apt.status !== 'cancelled' && apt.status !== 'missed' && apt.status !== 'rescheduled')
       .map(apt => {
         const isPackageAppointment = !!apt.package_appointment;
         const packageData = apt.package_appointment?.package;

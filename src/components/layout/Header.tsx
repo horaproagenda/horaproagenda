@@ -1,5 +1,3 @@
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationsPanel } from './NotificationsPanel';
 
@@ -21,15 +19,6 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar clientes, serviços..."
-            className="w-64 pl-9"
-          />
-        </div>
 
         {/* Notifications */}
         <NotificationsPanel />

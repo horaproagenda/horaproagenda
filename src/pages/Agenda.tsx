@@ -98,6 +98,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
+import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -153,6 +155,9 @@ const Agenda = () => {
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
+  
+  // Enable WhatsApp reminders when automation is enabled
+  useAppointmentReminders();
 
   // Get unique client IDs from appointments and fetch their credits
   const clientIds = useMemo(() => {
@@ -1279,11 +1284,26 @@ const Agenda = () => {
     );
   };
 
+  // Check if any automation is enabled to show panel
+  const showAutomationPanel = settings?.automation_occupancy_dashboard || 
+    settings?.automation_gap_finder || 
+    settings?.automation_waitlist || 
+    settings?.automation_smart_recurrence;
+
+  const handleOpenNewAppointmentFromAutomation = (date?: Date, time?: string) => {
+    setPrefilledDate(date);
+    setPrefilledTime(time);
+    setNewAppointmentDialogOpen(true);
+  };
+
   return (
     <AppLayout 
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
+      <div className="flex h-full">
+        {/* Main Agenda Content */}
+        <div className="flex-1 min-w-0">
       {/* Clean Header Layout */}
       <div className="space-y-2 mb-3">
         {/* Row 1: Search + Filter + Absence */}
@@ -1740,6 +1760,16 @@ const Agenda = () => {
               </div>
             )}
           </motion.div>
+        )}
+      </div>
+        </div>
+
+        {/* Automation Panel - Side Panel */}
+        {showAutomationPanel && (
+          <AgendaAutomationPanel
+            selectedDate={selectedDate}
+            onOpenNewAppointment={handleOpenNewAppointmentFromAutomation}
+          />
         )}
       </div>
 

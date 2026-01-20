@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAppointments } from './useAppointments';
 import { useWhatsapp } from './useWhatsapp';
+import { useBusinessSettings } from './useBusinessSettings';
 import { format, isWithinInterval, subHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -13,6 +14,10 @@ interface ReminderLog {
 export function useAppointmentReminders() {
   const { appointments } = useAppointments();
   const { sendMessage, checkConnection } = useWhatsapp();
+  const { settings } = useBusinessSettings();
+  
+  // Check if automation is enabled
+  const isEnabled = settings?.automation_whatsapp_reminders ?? true;
 
   const getSentReminders = useCallback(async (): Promise<ReminderLog[]> => {
     const stored = localStorage.getItem('appointment-reminders-sent');
@@ -40,6 +45,9 @@ export function useAppointmentReminders() {
   }, []);
 
   const sendAutomaticReminders = useCallback(async () => {
+    // Skip if automation is disabled
+    if (!isEnabled) return;
+    
     const status = await checkConnection();
     if (!status?.connected) return;
 
@@ -93,7 +101,7 @@ Estamos te esperando! ✨`;
         }
       }
     }
-  }, [appointments, sendMessage, checkConnection, getSentReminders, markReminderSent]);
+  }, [appointments, sendMessage, checkConnection, getSentReminders, markReminderSent, isEnabled]);
 
   useEffect(() => {
     sendAutomaticReminders();

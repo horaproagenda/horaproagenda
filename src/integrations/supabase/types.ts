@@ -242,6 +242,11 @@ export type Database = {
       business_settings: {
         Row: {
           auto_complete_appointments: boolean
+          automation_gap_finder: boolean | null
+          automation_occupancy_dashboard: boolean | null
+          automation_smart_recurrence: boolean | null
+          automation_waitlist: boolean | null
+          automation_whatsapp_reminders: boolean | null
           closing_time: string
           created_at: string
           drag_and_drop_enabled: boolean
@@ -255,6 +260,11 @@ export type Database = {
         }
         Insert: {
           auto_complete_appointments?: boolean
+          automation_gap_finder?: boolean | null
+          automation_occupancy_dashboard?: boolean | null
+          automation_smart_recurrence?: boolean | null
+          automation_waitlist?: boolean | null
+          automation_whatsapp_reminders?: boolean | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -268,6 +278,11 @@ export type Database = {
         }
         Update: {
           auto_complete_appointments?: boolean
+          automation_gap_finder?: boolean | null
+          automation_occupancy_dashboard?: boolean | null
+          automation_smart_recurrence?: boolean | null
+          automation_waitlist?: boolean | null
+          automation_whatsapp_reminders?: boolean | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean

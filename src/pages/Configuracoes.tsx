@@ -14,6 +14,7 @@ import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
+import AutomationSettings from '@/components/settings/AutomationSettings';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -63,6 +64,9 @@ const Configuracoes = () => {
 
           {/* WhatsApp Templates */}
           <WhatsappTemplatesSettings />
+
+          {/* Automation Settings */}
+          <AutomationSettings />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">

@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -220,7 +221,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total Recebido</p>
                               <p className="font-bold text-success">
-                                R$ {Number(register.total_received || 0).toFixed(2)}
+                                {formatCurrency(Number(register.total_received || 0))}
                               </p>
                             </div>
                             {register.difference !== null && (
@@ -234,7 +235,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                                   <AlertTriangle className="h-3 w-3" />
                                 )}
                                 {Number(register.difference) >= 0 ? '+' : ''}
-                                R$ {Number(register.difference).toFixed(2)}
+                                {formatCurrency(Number(register.difference))}
                               </Badge>
                             )}
                           </div>
@@ -274,7 +275,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                               Valor Inicial
                             </p>
                             <p className="font-semibold">
-                              R$ {Number(register.opening_balance).toFixed(2)}
+                              {formatCurrency(Number(register.opening_balance))}
                             </p>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/50">
@@ -283,19 +284,19 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                               Recebido
                             </p>
                             <p className="font-semibold text-success">
-                              R$ {Number(register.total_received || 0).toFixed(2)}
+                              {formatCurrency(Number(register.total_received || 0))}
                             </p>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-xs text-muted-foreground">Saldo Esperado</p>
                             <p className="font-semibold">
-                              R$ {Number(register.expected_balance || 0).toFixed(2)}
+                              {formatCurrency(Number(register.expected_balance || 0))}
                             </p>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-xs text-muted-foreground">Saldo Final</p>
                             <p className="font-semibold">
-                              R$ {Number(register.closing_balance || 0).toFixed(2)}
+                              {formatCurrency(Number(register.closing_balance || 0))}
                             </p>
                           </div>
                         </div>
@@ -309,7 +310,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                           <div className="p-3 rounded-lg bg-muted/30">
                             <p className="text-xs text-muted-foreground">A Receber (na época)</p>
                             <p className="font-semibold text-warning">
-                              R$ {Number(register.total_receivables || 0).toFixed(2)}
+                              {formatCurrency(Number(register.total_receivables || 0))}
                             </p>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/30">
@@ -323,7 +324,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                             </p>
                             <p className={`font-semibold ${Number(register.difference || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
                               {Number(register.difference || 0) >= 0 ? '+' : ''}
-                              R$ {Number(register.difference || 0).toFixed(2)}
+                              {formatCurrency(Number(register.difference || 0))}
                             </p>
                           </div>
                         </div>
@@ -335,7 +336,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                             <div className="flex flex-wrap gap-2">
                               {Object.entries(register.payment_breakdown).map(([method, amount]) => (
                                 <Badge key={method} variant="outline" className="text-xs">
-                                  {PAYMENT_LABELS[method] || method}: R$ {Number(amount).toFixed(2)}
+                                  {PAYMENT_LABELS[method] || method}: {formatCurrency(Number(amount))}
                                 </Badge>
                               ))}
                             </div>

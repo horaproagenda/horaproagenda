@@ -182,6 +182,7 @@ export default function Produtos() {
     purchase_date: format(new Date(), 'yyyy-MM-dd'),
     started_using_at: '',
     notes: '',
+    skip_cash_transaction: false, // Para produtos já pagos antes de usar o sistema
   });
 
   // Product Detail Dialog
@@ -303,6 +304,7 @@ export default function Produtos() {
       purchase_date: format(new Date(), 'yyyy-MM-dd'),
       started_using_at: '',
       notes: '',
+      skip_cash_transaction: false,
     });
   };
 
@@ -337,11 +339,17 @@ export default function Produtos() {
     if (!purchaseForm.product_id) return;
 
     const purchaseData = {
-      ...purchaseForm,
+      product_id: purchaseForm.product_id,
+      quantity: purchaseForm.quantity,
+      unit_price: purchaseForm.unit_price,
+      total_price: purchaseForm.total_price,
       supplier: purchaseForm.supplier || null,
       supplier_id: purchaseForm.supplier_id || null,
+      purchase_date: purchaseForm.purchase_date,
       started_using_at: purchaseForm.started_using_at || null,
       finished_at: null,
+      notes: purchaseForm.notes || null,
+      skip_cash_transaction: purchaseForm.skip_cash_transaction,
     };
 
     // Create purchase - stock is updated automatically via trigger/hook
@@ -674,6 +682,19 @@ export default function Produtos() {
                           value={purchaseForm.started_using_at}
                           onChange={(e) => setPurchaseForm({ ...purchaseForm, started_using_at: e.target.value })}
                           className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
+                        <div>
+                          <Label className="text-xs font-medium">Produto já pago</Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            Não gerar saída no caixa (para produtos comprados antes de usar o sistema)
+                          </p>
+                        </div>
+                        <Switch
+                          checked={purchaseForm.skip_cash_transaction}
+                          onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, skip_cash_transaction: v })}
                         />
                       </div>
 

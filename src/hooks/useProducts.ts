@@ -173,14 +173,15 @@ export function useProductPurchases(productId?: string) {
   });
 
   const createPurchase = useMutation({
-    mutationFn: async (purchase: Omit<ProductPurchase, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'duration_days' | 'product'>) => {
+    mutationFn: async (purchase: Omit<ProductPurchase, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'duration_days' | 'product'> & { skip_cash_transaction?: boolean }) => {
       const { data: { user } } = await supabase.auth.getUser();
+      const { skip_cash_transaction, ...purchaseData } = purchase;
       
       // Create the purchase
       const { data, error } = await supabase
         .from('product_purchases')
         .insert({
-          ...purchase,
+          ...purchaseData,
           created_by: user?.id,
         })
         .select('*, product:products(*)')
@@ -188,27 +189,30 @@ export function useProductPurchases(productId?: string) {
 
       if (error) throw error;
 
-      // Get current open cash register
-      const { data: openRegister } = await supabase
-        .from('cash_registers')
-        .select('id')
-        .eq('status', 'open')
-        .maybeSingle();
+      // Only create cash transaction if not skipped (for products already paid before using the system)
+      if (!skip_cash_transaction) {
+        // Get current open cash register
+        const { data: openRegister } = await supabase
+          .from('cash_registers')
+          .select('id')
+          .eq('status', 'open')
+          .maybeSingle();
 
-      // If there's an open register, create a cash transaction (expense)
-      if (openRegister) {
-        await supabase
-          .from('cash_transactions')
-          .insert({
-            cash_register_id: openRegister.id,
-            type: 'expense',
-            category: 'product_purchase',
-            description: `Compra: ${data.product?.name || 'Produto'}`,
-            amount: purchase.total_price,
-            reference_id: data.id,
-            reference_type: 'product_purchase',
-            created_by: user?.id,
-          });
+        // If there's an open register, create a cash transaction (expense)
+        if (openRegister) {
+          await supabase
+            .from('cash_transactions')
+            .insert({
+              cash_register_id: openRegister.id,
+              type: 'expense',
+              category: 'product_purchase',
+              description: `Compra: ${data.product?.name || 'Produto'}`,
+              amount: purchaseData.total_price,
+              reference_id: data.id,
+              reference_type: 'product_purchase',
+              created_by: user?.id,
+            });
+        }
       }
 
       return data;

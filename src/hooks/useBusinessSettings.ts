@@ -12,6 +12,12 @@ export interface BusinessSettings {
   drag_and_drop_enabled: boolean;
   auto_complete_appointments: boolean;
   timezone: string;
+  // Automation settings
+  automation_whatsapp_reminders: boolean;
+  automation_waitlist: boolean;
+  automation_gap_finder: boolean;
+  automation_occupancy_dashboard: boolean;
+  automation_smart_recurrence: boolean;
   created_at: string;
   updated_at: string;
 }

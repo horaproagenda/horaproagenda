@@ -20,6 +20,9 @@ interface CreateRecurringAppointmentsParams {
   client_phone?: string;
   client_name?: string;
   service_name?: string;
+  // Optional: use custom dates instead of calculating from interval
+  custom_dates?: Date[];
+  duration_minutes?: number;
 }
 
 interface RescheduleSeriesParams {
@@ -57,13 +60,23 @@ export function useRecurringAppointments() {
       const recurringGroupId = crypto.randomUUID();
       
       const appointments: Array<{ start: Date; end: Date }> = [];
-      const duration = params.end_time.getTime() - params.start_time.getTime();
+      const duration = params.duration_minutes 
+        ? params.duration_minutes * 60 * 1000 
+        : params.end_time.getTime() - params.start_time.getTime();
       
-      // Create all appointment dates
-      for (let i = 0; i < params.repeat_count; i++) {
-        const startDate = addDays(params.start_time, params.interval_days * i);
-        const endDate = new Date(startDate.getTime() + duration);
-        appointments.push({ start: startDate, end: endDate });
+      // If custom dates are provided, use them directly instead of calculating
+      if (params.custom_dates && params.custom_dates.length > 0) {
+        for (const startDate of params.custom_dates) {
+          const endDate = new Date(startDate.getTime() + duration);
+          appointments.push({ start: startDate, end: endDate });
+        }
+      } else {
+        // Create all appointment dates based on interval
+        for (let i = 0; i < params.repeat_count; i++) {
+          const startDate = addDays(params.start_time, params.interval_days * i);
+          const endDate = new Date(startDate.getTime() + duration);
+          appointments.push({ start: startDate, end: endDate });
+        }
       }
 
       const createdAppointments: any[] = [];

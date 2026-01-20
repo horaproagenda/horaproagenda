@@ -197,10 +197,35 @@ export function useAppointments() {
         throw new Error(result.error || 'Erro ao processar pagamento');
       }
 
-      return result.data;
+      return { ...result.data, appointmentId: id, payment };
     },
-    onSuccess: (data) => {
-      console.log('Payment mutation success, invalidating queries');
+    onMutate: async ({ id, payment }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['appointments'] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData(['appointments']);
+
+      // Optimistically update the appointment with payment info
+      queryClient.setQueryData(['appointments'], (old: Appointment[] | undefined) => {
+        if (!old) return old;
+        return old.map(apt => {
+          if (apt.id === id) {
+            return {
+              ...apt,
+              amount_paid: (apt.amount_paid || 0) + payment.amount_paid,
+              payment_status: payment.payment_status,
+              payment_methods: payment.payment_methods,
+            };
+          }
+          return apt;
+        });
+      });
+
+      return { previousAppointments };
+    },
+    onSuccess: () => {
+      // Refetch all related queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -213,7 +238,11 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success('Pagamento registrado com sucesso!');
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      // Rollback on error
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(['appointments'], context.previousAppointments);
+      }
       console.error('Payment mutation error:', error);
       toast.error('Erro ao registrar pagamento: ' + error.message);
     },

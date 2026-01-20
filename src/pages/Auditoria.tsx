@@ -259,7 +259,170 @@ export default function Auditoria() {
   );
 }
 
+// Field labels for human-readable display
+const fieldLabels: Record<string, string> = {
+  id: 'ID',
+  name: 'Nome',
+  email: 'E-mail',
+  phone: 'Telefone',
+  cpf: 'CPF',
+  address: 'Endereço',
+  notes: 'Observações',
+  is_active: 'Ativo',
+  created_at: 'Criado em',
+  updated_at: 'Atualizado em',
+  created_by: 'Criado por',
+  updated_by: 'Atualizado por',
+  start_time: 'Horário Início',
+  end_time: 'Horário Fim',
+  status: 'Status',
+  payment_status: 'Status Pagamento',
+  amount_paid: 'Valor Pago',
+  price: 'Preço',
+  duration: 'Duração',
+  category: 'Categoria',
+  description: 'Descrição',
+  client_id: 'Cliente',
+  service_id: 'Serviço',
+  professional_id: 'Profissional',
+  room_id: 'Sala',
+  package_appointment_id: 'Sessão do Pacote',
+  total_sessions: 'Total de Sessões',
+  sessions_scheduled: 'Sessões Agendadas',
+  total_price: 'Preço Total',
+  credit_balance: 'Saldo de Crédito',
+  commission_rate: 'Taxa de Comissão',
+  specialties: 'Especialidades',
+  bio: 'Biografia',
+  user_id: 'ID do Usuário',
+  role: 'Função',
+  type: 'Tipo',
+  amount: 'Valor',
+  due_date: 'Data de Vencimento',
+  paid_date: 'Data de Pagamento',
+  quantity: 'Quantidade',
+  current_stock: 'Estoque Atual',
+  min_stock: 'Estoque Mínimo',
+  cost_price: 'Preço de Custo',
+  sale_price: 'Preço de Venda',
+  payment_methods: 'Formas de Pagamento',
+  card_fee_amount: 'Taxa do Cartão',
+  installments: 'Parcelas',
+  template_id: 'Template',
+  interval_days: 'Intervalo (dias)',
+  equipment: 'Equipamentos',
+  return_days: 'Retorno (dias)',
+};
+
+const statusLabels: Record<string, string> = {
+  scheduled: 'Agendado',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+  missed: 'Falta',
+  rescheduled: 'Reagendado',
+  pending: 'Pendente',
+  paid: 'Pago',
+  partial: 'Parcial',
+  active: 'Ativo',
+  inactive: 'Inativo',
+  admin: 'Administrador',
+  receptionist: 'Recepcionista',
+  professional: 'Profissional',
+};
+
+function formatValue(key: string, value: unknown): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  if (key === 'is_active') return value ? 'Sim' : 'Não';
+  
+  // Format status fields
+  if (key === 'status' || key === 'payment_status' || key === 'role') {
+    return statusLabels[String(value)] || String(value);
+  }
+  
+  // Format money
+  if (['price', 'amount_paid', 'total_price', 'amount', 'credit_balance', 'cost_price', 'sale_price', 'card_fee_amount'].includes(key)) {
+    const num = Number(value);
+    return isNaN(num) ? String(value) : `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  }
+  
+  // Format percentages
+  if (key === 'commission_rate') {
+    return `${value}%`;
+  }
+  
+  // Format duration
+  if (key === 'duration' || key === 'interval_days' || key === 'return_days') {
+    return `${value} ${key === 'duration' ? 'min' : 'dias'}`;
+  }
+  
+  // Format dates
+  if (key.includes('_at') || key.includes('_date') || key === 'start_time' || key === 'end_time') {
+    try {
+      return format(new Date(String(value)), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // Format arrays
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 'Nenhum';
+    return value.join(', ');
+  }
+  
+  // Format objects
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  
+  return String(value);
+}
+
+function getChangeSummary(log: AuditLog): string {
+  const tableName = tableNameMap[log.table_name] || log.table_name;
+  const actionLabel = actionMap[log.action]?.label || log.action;
+  
+  // Get identifier from data
+  const data = log.new_data || log.old_data;
+  const name = data?.name || data?.email || data?.description || '';
+  
+  if (log.action === 'INSERT') {
+    return `${actionLabel} de ${tableName}${name ? `: "${name}"` : ''}`;
+  }
+  if (log.action === 'DELETE') {
+    return `${actionLabel} de ${tableName}${name ? `: "${name}"` : ''}`;
+  }
+  if (log.action === 'UPDATE') {
+    const changes: string[] = [];
+    if (log.old_data && log.new_data) {
+      for (const key of Object.keys(log.new_data)) {
+        if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) {
+          const label = fieldLabels[key] || key;
+          changes.push(label);
+        }
+      }
+    }
+    const changedFields = changes.length > 0 ? changes.slice(0, 3).join(', ') : '';
+    const more = changes.length > 3 ? ` (+${changes.length - 3})` : '';
+    return `${actionLabel} de ${tableName}${name ? ` "${name}"` : ''}${changedFields ? `: ${changedFields}${more}` : ''}`;
+  }
+  return `${actionLabel} em ${tableName}`;
+}
+
 function AuditDetailDialog({ log }: { log: AuditLog }) {
+  const summary = getChangeSummary(log);
+  
+  // Get changed fields for UPDATE
+  const changedFields: string[] = [];
+  if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+    for (const key of Object.keys(log.new_data)) {
+      if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) {
+        changedFields.push(key);
+      }
+    }
+  }
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -272,45 +435,76 @@ function AuditDetailDialog({ log }: { log: AuditLog }) {
           <DialogTitle className="text-base">Detalhes da Alteração</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Tabela</Label>
-              <p className="font-medium text-sm">{tableNameMap[log.table_name] || log.table_name}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Ação</Label>
-              <p className="font-medium text-sm">{actionMap[log.action]?.label || log.action}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Usuário</Label>
-              <p className="font-medium text-sm">{log.user_email || 'Sistema'}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Data/Hora</Label>
-              <p className="font-medium text-sm">
-                {format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
-              </p>
-            </div>
+          {/* Summary */}
+          <div className="p-3 bg-muted rounded-lg">
+            <p className="text-sm font-medium">{summary}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Por {log.user_email || 'Sistema'} em {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}
+            </p>
           </div>
 
-          {log.old_data && (
+          {/* For INSERT - show new data */}
+          {log.action === 'INSERT' && log.new_data && (
             <div>
-              <Label className="text-xs text-muted-foreground">Dados Anteriores</Label>
-              <ScrollArea className="h-32 mt-2">
-                <pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
-                  {JSON.stringify(log.old_data, null, 2)}
-                </pre>
+              <Label className="text-xs text-muted-foreground mb-2 block">Dados Criados</Label>
+              <ScrollArea className="h-48">
+                <div className="space-y-1.5">
+                  {Object.entries(log.new_data)
+                    .filter(([key]) => !['id', 'created_at', 'updated_at', 'created_by', 'updated_by'].includes(key))
+                    .map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">{fieldLabels[key] || key}</span>
+                        <span className="font-medium text-right max-w-[60%] truncate">{formatValue(key, value)}</span>
+                      </div>
+                    ))}
+                </div>
               </ScrollArea>
             </div>
           )}
 
-          {log.new_data && (
+          {/* For DELETE - show deleted data */}
+          {log.action === 'DELETE' && log.old_data && (
             <div>
-              <Label className="text-xs text-muted-foreground">Dados Novos</Label>
-              <ScrollArea className="h-32 mt-2">
-                <pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
-                  {JSON.stringify(log.new_data, null, 2)}
-                </pre>
+              <Label className="text-xs text-muted-foreground mb-2 block">Dados Excluídos</Label>
+              <ScrollArea className="h-48">
+                <div className="space-y-1.5">
+                  {Object.entries(log.old_data)
+                    .filter(([key]) => !['id', 'created_at', 'updated_at', 'created_by', 'updated_by'].includes(key))
+                    .map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">{fieldLabels[key] || key}</span>
+                        <span className="font-medium text-right max-w-[60%] truncate line-through text-destructive/70">{formatValue(key, value)}</span>
+                      </div>
+                    ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* For UPDATE - show changes side by side */}
+          {log.action === 'UPDATE' && log.old_data && log.new_data && (
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Alterações Realizadas</Label>
+              <ScrollArea className="h-48">
+                <div className="space-y-2">
+                  {changedFields.length > 0 ? (
+                    changedFields.map((key) => (
+                      <div key={key} className="p-2 bg-muted/50 rounded-md">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{fieldLabels[key] || key}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="text-sm">
+                            <span className="text-destructive/70 line-through">{formatValue(key, log.old_data?.[key])}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-success font-medium">{formatValue(key, log.new_data?.[key])}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma alteração detectada</p>
+                  )}
+                </div>
               </ScrollArea>
             </div>
           )}

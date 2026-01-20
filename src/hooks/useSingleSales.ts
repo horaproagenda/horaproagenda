@@ -218,11 +218,34 @@ export function useSingleSales() {
         created_by: user?.id,
       });
 
-      return saleData;
+      return { saleData, clientId: sale.client_id };
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (newSale) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['single_sales'] });
+      await queryClient.cancelQueries({ queryKey: ['cash_transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['client_services'] });
+
+      // Snapshot the previous value
+      const previousSales = queryClient.getQueryData(['single_sales']);
+
+      // Optimistically add the sale
+      const optimisticSale = {
+        id: `temp-${Date.now()}`,
+        ...newSale,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(['single_sales'], (old: SingleSale[] | undefined) => {
+        return [optimisticSale, ...(old || [])];
+      });
+
+      return { previousSales };
+    },
+    onSuccess: (result) => {
       // Invalidate all related queries immediately
-      const clientId = variables.client_id;
+      const clientId = result.clientId;
       
       // Force immediate refetch of all related data
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
@@ -249,7 +272,11 @@ export function useSingleSales() {
       
       toast.success('Venda registrada com sucesso!');
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context) => {
+      // Rollback on error
+      if (context?.previousSales) {
+        queryClient.setQueryData(['single_sales'], context.previousSales);
+      }
       toast.error('Erro ao registrar venda: ' + error.message);
     },
   });

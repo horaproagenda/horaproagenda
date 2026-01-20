@@ -53,56 +53,27 @@ export function useAppointments() {
         .from('appointments')
         .select(`
           *,
-          client:clients(*),
+          client:clients(id, name, phone, email),
           service:services(
-            *,
-            room:rooms(*),
-            professional:professionals(*)
+            id, name, price, duration, category,
+            room:rooms(id, name),
+            professional:professionals(id, name)
           ),
-          room:rooms(*),
+          room:rooms(id, name),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
-            *,
-            package:service_packages(*)
+            id, session_number, status,
+            package:service_packages(id, name, total_sessions)
           )
         `)
         .order('start_time', { ascending: true });
 
       if (error) throw error;
       
-      // Fetch profile info for created_by and updated_by separately
-      const appointmentsWithProfiles = await Promise.all(
-        (data || []).map(async (apt) => {
-          let created_by_profile = null;
-          let updated_by_profile = null;
-          
-          if (apt.created_by) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', apt.created_by)
-              .single();
-            created_by_profile = profile;
-          }
-          
-          if (apt.updated_by) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', apt.updated_by)
-              .single();
-            updated_by_profile = profile;
-          }
-          
-          return {
-            ...apt,
-            created_by_profile,
-            updated_by_profile,
-          };
-        })
-      );
-      
-      return appointmentsWithProfiles as Appointment[];
+      // Return directly without additional profile fetches for performance
+      return (data || []) as Appointment[];
     },
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: false,
   });
 
   const createAppointment = useMutation({
@@ -144,14 +115,45 @@ export function useAppointments() {
 
       return result.data;
     },
+    onMutate: async (newAppointment) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['appointments'] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData(['appointments']);
+
+      // Optimistically update with a temporary appointment
+      const optimisticAppointment = {
+        id: `temp-${Date.now()}`,
+        ...newAppointment,
+        status: 'scheduled' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        client: null,
+        service: null,
+        room: null,
+        package_appointment: null,
+      };
+
+      queryClient.setQueryData(['appointments'], (old: Appointment[] | undefined) => {
+        return [...(old || []), optimisticAppointment];
+      });
+
+      return { previousAppointments };
+    },
     onSuccess: () => {
+      // Refetch to get the real data with relationships
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       toast.success('Agendamento criado com sucesso!');
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      // Rollback on error
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(['appointments'], context.previousAppointments);
+      }
       toast.error('Erro ao criar agendamento: ' + error.message);
     },
   });

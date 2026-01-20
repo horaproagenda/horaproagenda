@@ -48,6 +48,138 @@ interface DeleteSeriesParams {
 export function useRecurringAppointments() {
   const queryClient = useQueryClient();
 
+  // Background creation function - runs independently of UI
+  const createAppointmentsInBackground = async (
+    params: CreateRecurringAppointmentsParams,
+    session: { access_token: string },
+    recurringGroupId: string
+  ) => {
+    const appointments: Array<{ start: Date; end: Date }> = [];
+    const duration = params.duration_minutes 
+      ? params.duration_minutes * 60 * 1000 
+      : params.end_time.getTime() - params.start_time.getTime();
+    
+    // If custom dates are provided, use them directly instead of calculating
+    if (params.custom_dates && params.custom_dates.length > 0) {
+      for (const startDate of params.custom_dates) {
+        const endDate = new Date(startDate.getTime() + duration);
+        appointments.push({ start: startDate, end: endDate });
+      }
+    } else {
+      // Create all appointment dates based on interval
+      for (let i = 0; i < params.repeat_count; i++) {
+        const startDate = addDays(params.start_time, params.interval_days * i);
+        const endDate = new Date(startDate.getTime() + duration);
+        appointments.push({ start: startDate, end: endDate });
+      }
+    }
+
+    const createdAppointments: any[] = [];
+    const failedAppointments: number[] = [];
+    const totalSessions = appointments.length;
+    
+    // Create appointments sequentially to avoid conflicts
+    for (let i = 0; i < appointments.length; i++) {
+      const apt = appointments[i];
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            client_id: params.client_id,
+            service_id: params.service_id,
+            professional_id: params.professional_id,
+            room_id: params.room_id,
+            start_time: apt.start.toISOString(),
+            end_time: apt.end.toISOString(),
+            notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
+            status: 'scheduled',
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // Update the appointment with the recurring group ID
+          const { data: updatedApt, error: updateError } = await supabase
+            .from('appointments')
+            .update({ recurring_group_id: recurringGroupId })
+            .eq('id', result.data.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('Error updating recurring group:', updateError);
+          }
+
+          createdAppointments.push(updatedApt || result.data);
+          
+          // Invalidate queries after each creation for real-time updates
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        } else {
+          failedAppointments.push(i + 1);
+        }
+      } catch (error) {
+        console.error(`Error creating appointment ${i + 1}:`, error);
+        failedAppointments.push(i + 1);
+      }
+    }
+
+    // Send WhatsApp notification if requested
+    if (params.send_whatsapp && params.client_phone && createdAppointments.length > 0) {
+      try {
+        const sessionsList = createdAppointments.map((apt, i) => 
+          `📅 Sessão ${i + 1}: ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+        ).join('\n');
+
+        const message = `Olá ${params.client_name || 'Cliente'}! 👋
+
+Seus ${createdAppointments.length} agendamentos de *${params.service_name || 'serviço'}* foram criados com sucesso! 🎉
+
+${sessionsList}
+
+Se precisar reagendar alguma sessão, entre em contato conosco.
+
+Até breve! ✨`;
+
+        await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            phone: params.client_phone,
+            message,
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending WhatsApp notification:', error);
+      }
+    }
+
+    // Final invalidation to ensure all data is fresh
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+
+    // Show final result toast
+    if (failedAppointments.length > 0) {
+      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} tiveram conflitos.`);
+    } else if (createdAppointments.length > 0) {
+      toast.success(`✅ Todos os ${createdAppointments.length} agendamentos foram registrados com sucesso!`);
+    }
+
+    return {
+      recurringGroupId,
+      created: createdAppointments.length,
+      failed: failedAppointments,
+      appointments: createdAppointments,
+    };
+  };
+
   const createRecurringAppointments = useMutation({
     mutationFn: async (params: CreateRecurringAppointmentsParams) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -59,132 +191,27 @@ export function useRecurringAppointments() {
       // Generate a unique group ID for this recurring series
       const recurringGroupId = crypto.randomUUID();
       
-      const appointments: Array<{ start: Date; end: Date }> = [];
-      const duration = params.duration_minutes 
-        ? params.duration_minutes * 60 * 1000 
-        : params.end_time.getTime() - params.start_time.getTime();
-      
-      // If custom dates are provided, use them directly instead of calculating
-      if (params.custom_dates && params.custom_dates.length > 0) {
-        for (const startDate of params.custom_dates) {
-          const endDate = new Date(startDate.getTime() + duration);
-          appointments.push({ start: startDate, end: endDate });
-        }
-      } else {
-        // Create all appointment dates based on interval
-        for (let i = 0; i < params.repeat_count; i++) {
-          const startDate = addDays(params.start_time, params.interval_days * i);
-          const endDate = new Date(startDate.getTime() + duration);
-          appointments.push({ start: startDate, end: endDate });
-        }
-      }
+      // Start background creation - this will continue even if dialog is closed
+      // We use setTimeout to allow the mutation to return immediately
+      setTimeout(() => {
+        createAppointmentsInBackground(params, session, recurringGroupId);
+      }, 0);
 
-      const createdAppointments: any[] = [];
-      const failedAppointments: number[] = [];
-
-      // Calculate the total number of sessions based on actual appointments count
-      const totalSessions = appointments.length;
-      
-      // Create appointments sequentially to avoid conflicts
-      for (let i = 0; i < appointments.length; i++) {
-        const apt = appointments[i];
-        try {
-          const response = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              client_id: params.client_id,
-              service_id: params.service_id,
-              professional_id: params.professional_id,
-              room_id: params.room_id,
-              start_time: apt.start.toISOString(),
-              end_time: apt.end.toISOString(),
-              // Use totalSessions (actual count) instead of params.repeat_count
-              notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
-              status: 'scheduled',
-            }),
-          });
-
-          const result = await response.json();
-
-          if (result.success && result.data) {
-            // Update the appointment with the recurring group ID
-            const { data: updatedApt, error: updateError } = await supabase
-              .from('appointments')
-              .update({ recurring_group_id: recurringGroupId })
-              .eq('id', result.data.id)
-              .select()
-              .single();
-
-            if (updateError) {
-              console.error('Error updating recurring group:', updateError);
-            }
-
-            createdAppointments.push(updatedApt || result.data);
-          } else {
-            failedAppointments.push(i + 1);
-          }
-        } catch (error) {
-          console.error(`Error creating appointment ${i + 1}:`, error);
-          failedAppointments.push(i + 1);
-        }
-      }
-
-      // Send WhatsApp notification if requested
-      if (params.send_whatsapp && params.client_phone && createdAppointments.length > 0) {
-        try {
-          const sessionsList = createdAppointments.map((apt, i) => 
-            `📅 Sessão ${i + 1}: ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-          ).join('\n');
-
-          const message = `Olá ${params.client_name || 'Cliente'}! 👋
-
-Seus ${createdAppointments.length} agendamentos de *${params.service_name || 'serviço'}* foram criados com sucesso! 🎉
-
-${sessionsList}
-
-Se precisar reagendar alguma sessão, entre em contato conosco.
-
-Até breve! ✨`;
-
-          await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              phone: params.client_phone,
-              message,
-            }),
-          });
-        } catch (error) {
-          console.error('Error sending WhatsApp notification:', error);
-        }
-      }
-
+      // Return immediately with pending status
       return {
         recurringGroupId,
-        created: createdAppointments.length,
-        failed: failedAppointments,
-        appointments: createdAppointments,
+        created: 0, // Will be updated by background process
+        failed: [],
+        appointments: [],
+        pending: true,
       };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      
-      if (result.failed.length > 0) {
-        toast.warning(`${result.created} agendamentos criados. Sessões ${result.failed.join(', ')} tiveram conflitos.`);
-      } else {
-        toast.success(`${result.created} agendamentos recorrentes criados com sucesso!`);
-      }
+      // Show immediate feedback - actual creation happens in background
+      toast.info('⏳ Criando agendamentos em segundo plano. Você pode fechar este formulário.');
     },
     onError: (error) => {
-      toast.error('Erro ao criar agendamentos recorrentes: ' + error.message);
+      toast.error('Erro ao iniciar criação de agendamentos: ' + error.message);
     },
   });
 

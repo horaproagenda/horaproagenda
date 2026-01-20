@@ -775,7 +775,9 @@ Até breve! ✨`;
         
         // Check if recurring appointments are enabled for this service
         if (repeatServiceEnabled && editableServiceDates.length > 1 && !usingPaidServiceId) {
-          // Create recurring appointments using the hook
+          // Create recurring appointments using the hook with custom dates
+          const duration = selectedServiceData?.duration || 60;
+          
           await createRecurringAppointments.mutateAsync({
             client_id: selectedClient,
             service_id: selectedService,
@@ -790,6 +792,9 @@ Até breve! ✨`;
             client_phone: clientData?.phone,
             client_name: clientData?.name,
             service_name: selectedServiceData?.name,
+            // Pass the custom edited dates so they are used exactly as the user configured
+            custom_dates: editableServiceDates,
+            duration_minutes: duration,
           });
         } else {
           // Single appointment

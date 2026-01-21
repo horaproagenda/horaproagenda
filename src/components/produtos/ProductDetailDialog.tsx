@@ -730,21 +730,41 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="number"
-                                value={purchaseEditForm.unit_price}
-                                onChange={(e) => {
-                                  const price = parseFloat(e.target.value) || 0;
-                                  setPurchaseEditForm({ 
-                                    ...purchaseEditForm, 
-                                    unit_price: price,
-                                    total_price: purchaseEditForm.quantity * price
-                                  });
-                                }}
-                                className="h-8 text-xs w-24"
-                                min="0"
-                                step="0.01"
-                              />
+                              <div className="flex flex-col gap-1">
+                                <Input
+                                  type="number"
+                                  value={purchaseEditForm.unit_price}
+                                  onChange={(e) => {
+                                    const price = parseFloat(e.target.value) || 0;
+                                    setPurchaseEditForm({ 
+                                      ...purchaseEditForm, 
+                                      unit_price: price,
+                                      total_price: purchaseEditForm.quantity * price
+                                    });
+                                  }}
+                                  className="h-8 text-xs w-24"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Unit."
+                                />
+                                <Input
+                                  type="number"
+                                  value={purchaseEditForm.total_price}
+                                  onChange={(e) => {
+                                    const total = parseFloat(e.target.value) || 0;
+                                    const unitPrice = purchaseEditForm.quantity > 0 ? total / purchaseEditForm.quantity : 0;
+                                    setPurchaseEditForm({ 
+                                      ...purchaseEditForm, 
+                                      total_price: total,
+                                      unit_price: unitPrice
+                                    });
+                                  }}
+                                  className="h-8 text-xs w-24"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Total"
+                                />
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input

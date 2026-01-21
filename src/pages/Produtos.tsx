@@ -1018,7 +1018,7 @@ export default function Produtos() {
                     className="border-warning/50 text-warning text-[10px] cursor-pointer hover:bg-warning/10"
                     onClick={() => openProductDetail(p)}
                   >
-                    {p.name} ({p.current_stock})
+                    {p.name} ({p.current_stock} {getUnitLabel(p.unit)} / alerta: {p.min_stock_alert || 0})
                   </Badge>
                 ))}
                 {lowStockProducts.length > 5 && (
@@ -1081,12 +1081,19 @@ export default function Produtos() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className={cn(
-                              "font-medium",
-                              isLowStock && !isFinished && "text-amber-600"
-                            )}>
-                              {product.current_stock} {getUnitLabel(product.unit)}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className={cn(
+                                "font-medium",
+                                isLowStock && !isFinished && "text-amber-600"
+                              )}>
+                                {product.current_stock} {getUnitLabel(product.unit)}
+                              </span>
+                              {product.min_stock_alert !== null && product.min_stock_alert > 0 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  Alerta: ≤ {product.min_stock_alert} {getUnitLabel(product.unit)}
+                                </span>
+                              )}
+                            </div>
                             {isLowStock && !isFinished && (
                               <Badge variant="outline" className="ml-2 text-xs border-amber-500 text-amber-600">
                                 Baixo

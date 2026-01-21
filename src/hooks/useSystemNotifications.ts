@@ -13,6 +13,9 @@ export interface SystemNotification {
   severity: 'warning' | 'critical' | 'info';
   date?: string;
   link?: string;
+  referenceId?: string;
+  referenceType?: 'financial_entry' | 'package' | 'product' | 'client';
+  clientId?: string;
 }
 
 // Get today's date as string for localStorage key
@@ -119,11 +122,13 @@ export function useSystemNotifications() {
         description: `${boleto.description} - R$ ${Number(boleto.amount).toFixed(2)}`,
         severity: 'critical',
         date: boleto.due_date,
-        link: '/financeiro',
+        link: `/financeiro?tab=pagar&entry=${boleto.id}`,
+        referenceId: boleto.id,
+        referenceType: 'financial_entry',
       });
     });
 
-    // Pacotes com poucas sessões
+    // Pacotes com poucas sessões - link to client profile
     packageLowSessions.forEach(pkg => {
       result.push({
         id: `package-${pkg.id}`,
@@ -131,11 +136,14 @@ export function useSystemNotifications() {
         title: 'Pacote com poucas sessões',
         description: `${pkg.client?.name}: ${pkg.name} - ${pkg.remaining} sessão(ões) restante(s)`,
         severity: pkg.remaining === 1 ? 'critical' : 'warning',
-        link: '/servicos',
+        link: `/cliente/${pkg.client_id}?tab=agendamentos`,
+        referenceId: pkg.id,
+        referenceType: 'package',
+        clientId: pkg.client_id,
       });
     });
 
-    // Produtos com estoque baixo (from DB)
+    // Produtos com estoque baixo (from DB) - link to product detail
     lowStockProducts.forEach(product => {
       result.push({
         id: `stock-${product.id}`,
@@ -143,7 +151,9 @@ export function useSystemNotifications() {
         title: 'Estoque baixo',
         description: `${product.name}: ${product.current_stock} ${product.unit} restante(s)`,
         severity: product.current_stock === 0 ? 'critical' : 'warning',
-        link: '/produtos',
+        link: `/produtos?product=${product.id}`,
+        referenceId: product.id,
+        referenceType: 'product',
       });
     });
 
@@ -158,7 +168,9 @@ export function useSystemNotifications() {
           title: 'Produto próximo de acabar',
           description: product.alert_message || `${product.product_name}: ~${Math.round(product.predicted_remaining_appointments)} atendimentos`,
           severity: 'critical',
-          link: '/produtos',
+          link: `/produtos?product=${product.product_id}`,
+          referenceId: product.product_id,
+          referenceType: 'product',
         });
       }
     });
@@ -171,7 +183,9 @@ export function useSystemNotifications() {
           title: 'Atenção: produto',
           description: product.alert_message || `${product.product_name}: uso elevado`,
           severity: 'warning',
-          link: '/produtos',
+          link: `/produtos?product=${product.product_id}`,
+          referenceId: product.product_id,
+          referenceType: 'product',
         });
       }
     });

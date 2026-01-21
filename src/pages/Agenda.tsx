@@ -45,6 +45,7 @@ import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDe
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
 import { ImportAppointmentsDialog } from '@/components/appointments/ImportAppointmentsDialog';
+import { AbsenceManagementPanel } from '@/components/agenda/AbsenceManagementPanel';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -431,6 +432,32 @@ const Agenda = () => {
     return absences.filter(absence => {
       const absenceStart = new Date(absence.start_time);
       return isSameDay(absenceStart, day);
+    });
+  };
+
+  // Check if any professional has a full-day absence for a specific day
+  const hasFullDayAbsence = (day: Date) => {
+    const dayAbsences = getAbsencesForDay(day);
+    return dayAbsences.some(absence => {
+      const start = new Date(absence.start_time);
+      const end = new Date(absence.end_time);
+      // Consider full day if 8+ hours
+      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      return hours >= 8;
+    });
+  };
+
+  // Get professionals with full-day absences for a specific day
+  const getFullDayAbsenceProfessionals = (day: Date) => {
+    const dayAbsences = getAbsencesForDay(day);
+    return dayAbsences.filter(absence => {
+      const start = new Date(absence.start_time);
+      const end = new Date(absence.end_time);
+      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      return hours >= 8;
+    }).map(absence => {
+      const prof = professionals.find(p => p.id === absence.professional_id);
+      return prof?.name || 'Profissional';
     });
   };
 
@@ -1086,6 +1113,8 @@ const Agenda = () => {
           const isCurrentMonth = isSameMonth(day, monthStart);
           const dayAppointments = getAppointmentsForDay(day);
           const holiday = getHolidayForDate(day);
+          const hasAbsence = hasFullDayAbsence(day);
+          const absenceProfessionals = hasAbsence ? getFullDayAbsenceProfessionals(day) : [];
 
           return (
             <TooltipProvider key={day.toISOString()}>
@@ -1102,13 +1131,20 @@ const Agenda = () => {
                         ? 'bg-primary text-primary-foreground shadow-glow' 
                         : holiday && isCurrentMonth
                           ? 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                          : 'hover:bg-secondary',
+                          : hasAbsence && isCurrentMonth
+                            ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800'
+                            : 'hover:bg-secondary',
                       isToday && !isSelected && 'ring-2 ring-primary/30',
                       !isCurrentMonth && 'opacity-40'
                     )}
                   >
+                    {/* Holiday indicator */}
                     {holiday && !isSelected && isCurrentMonth && (
                       <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                    )}
+                    {/* Absence indicator */}
+                    {hasAbsence && !holiday && !isSelected && isCurrentMonth && (
+                      <UserX className="absolute top-1 right-1 h-2.5 w-2.5 text-orange-500" />
                     )}
                     <span className={cn(
                       'text-sm font-medium',
@@ -1116,7 +1152,9 @@ const Agenda = () => {
                         ? 'text-primary-foreground' 
                         : holiday && isCurrentMonth 
                           ? 'text-amber-700 dark:text-amber-300' 
-                          : 'text-foreground'
+                          : hasAbsence && isCurrentMonth
+                            ? 'text-orange-700 dark:text-orange-300'
+                            : 'text-foreground'
                     )}>
                       {format(day, 'd')}
                     </span>
@@ -1149,10 +1187,25 @@ const Agenda = () => {
                     )}
                   </button>
                 </TooltipTrigger>
-                {holiday && (
+                {(holiday || hasAbsence) && (
                   <TooltipContent>
-                    <p className="font-medium">{holiday.name}</p>
-                    <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                    {holiday && (
+                      <>
+                        <p className="font-medium">{holiday.name}</p>
+                        <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                      </>
+                    )}
+                    {hasAbsence && !holiday && (
+                      <>
+                        <p className="font-medium flex items-center gap-1">
+                          <UserX className="h-3 w-3" />
+                          Ausência de Profissional
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {absenceProfessionals.join(', ')}
+                        </p>
+                      </>
+                    )}
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -1764,13 +1817,26 @@ const Agenda = () => {
       </div>
         </div>
 
-        {/* Automation Panel - Side Panel */}
-        {showAutomationPanel && (
-          <AgendaAutomationPanel
-            selectedDate={selectedDate}
-            onOpenNewAppointment={handleOpenNewAppointmentFromAutomation}
+        {/* Side Panel - Automation + Absences */}
+        <div className="hidden lg:flex flex-col gap-3 w-80 flex-shrink-0">
+          {/* Absence Management Panel */}
+          <AbsenceManagementPanel
+            professionals={professionals}
+            onEditAbsence={(absence) => {
+              setEditingAbsence(absence);
+              setAbsenceDialogOpen(true);
+            }}
+            onNewAbsence={handleOpenNewAbsence}
           />
-        )}
+
+          {/* Automation Panel */}
+          {showAutomationPanel && (
+            <AgendaAutomationPanel
+              selectedDate={selectedDate}
+              onOpenNewAppointment={handleOpenNewAppointmentFromAutomation}
+            />
+          )}
+        </div>
       </div>
 
       {/* Appointment Detail Dialog */}

@@ -12,9 +12,11 @@ interface StockAlert {
   product_unit: string;
   current_stock: number;
   min_stock_alert: number;
-  alert_type: 'low_stock' | 'near_depletion';
+  alert_type: 'low_stock' | 'near_depletion' | 'expiring_today' | 'expiring_soon' | 'expired';
   predicted_remaining_appointments?: number;
   predicted_remaining_days?: number;
+  expiry_date?: string;
+  days_until_expiry?: number;
 }
 
 serve(async (req) => {
@@ -48,10 +50,48 @@ serve(async (req) => {
     };
 
     // Build notification message
-    let message = `🚨 *ALERTA DE ESTOQUE*\n\n`;
+    let message = `🚨 *ALERTA DE PRODUTOS*\n\n`;
     
+    const expiredAlerts = alerts.filter(a => a.alert_type === 'expired');
+    const expiringTodayAlerts = alerts.filter(a => a.alert_type === 'expiring_today');
+    const expiringSoonAlerts = alerts.filter(a => a.alert_type === 'expiring_soon');
     const criticalAlerts = alerts.filter(a => a.alert_type === 'low_stock');
     const warningAlerts = alerts.filter(a => a.alert_type === 'near_depletion');
+
+    // Expired products - most critical
+    if (expiredAlerts.length > 0) {
+      message += `🚫 *PRODUTOS VENCIDOS - DESCARTAR:*\n`;
+      expiredAlerts.forEach(alert => {
+        message += `• ${alert.product_name}`;
+        if (alert.expiry_date) {
+          message += ` (venceu em ${new Date(alert.expiry_date).toLocaleDateString('pt-BR')})`;
+        }
+        message += `\n`;
+      });
+      message += `\n`;
+    }
+
+    // Expiring today
+    if (expiringTodayAlerts.length > 0) {
+      message += `⏰ *VENCEM HOJE - DESCARTAR:*\n`;
+      expiringTodayAlerts.forEach(alert => {
+        message += `• ${alert.product_name}\n`;
+      });
+      message += `\n`;
+    }
+
+    // Expiring soon
+    if (expiringSoonAlerts.length > 0) {
+      message += `📅 *Próximos do Vencimento:*\n`;
+      expiringSoonAlerts.forEach(alert => {
+        message += `• ${alert.product_name}`;
+        if (alert.days_until_expiry !== undefined && alert.days_until_expiry >= 0) {
+          message += `: ${alert.days_until_expiry} dia(s)`;
+        }
+        message += `\n`;
+      });
+      message += `\n`;
+    }
 
     if (criticalAlerts.length > 0) {
       message += `❌ *Estoque Crítico:*\n`;

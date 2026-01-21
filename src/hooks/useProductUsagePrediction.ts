@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
 
 export interface ProductUsageHistory {
   product_id: string;
@@ -13,12 +13,25 @@ export interface ProductUsageHistory {
   appointments_count: number;
 }
 
+export interface ProductExpiryInfo {
+  product_id: string;
+  product_name: string;
+  expiry_date: string;
+  days_until_expiry: number;
+  is_expired: boolean;
+  is_expiring_today: boolean;
+  is_expiring_soon: boolean; // Within 7 days
+  expiry_alert_level: 'ok' | 'warning' | 'critical';
+  expiry_message: string | null;
+}
+
 export interface ProductUsagePrediction {
   product_id: string;
   product_name: string;
   product_unit: string;
   current_stock: number;
   min_stock_alert: number;
+  expiry_date: string | null;
   
   // Historical data
   avg_appointments_per_unit: number;
@@ -41,6 +54,14 @@ export interface ProductUsagePrediction {
   is_near_depletion_by_time: boolean;
   alert_level: 'ok' | 'warning' | 'critical';
   alert_message: string | null;
+  
+  // Expiry info
+  days_until_expiry: number | null;
+  is_expired: boolean;
+  is_expiring_today: boolean;
+  is_expiring_soon: boolean;
+  expiry_alert_level: 'ok' | 'warning' | 'critical';
+  expiry_message: string | null;
 }
 
 export function useProductUsagePrediction() {
@@ -193,12 +214,42 @@ export function useProductUsagePrediction() {
         }
       }
       
+      // Calculate expiry information
+      let daysUntilExpiry: number | null = null;
+      let isExpired = false;
+      let isExpiringToday = false;
+      let isExpiringSoon = false;
+      let expiryAlertLevel: 'ok' | 'warning' | 'critical' = 'ok';
+      let expiryMessage: string | null = null;
+      
+      if (product.expiry_date) {
+        const expiryDate = startOfDay(parseISO(product.expiry_date));
+        const today = startOfDay(new Date());
+        daysUntilExpiry = differenceInDays(expiryDate, today);
+        
+        isExpired = isBefore(expiryDate, today);
+        isExpiringToday = isToday(expiryDate);
+        isExpiringSoon = daysUntilExpiry > 0 && daysUntilExpiry <= 7;
+        
+        if (isExpired) {
+          expiryAlertLevel = 'critical';
+          expiryMessage = `Produto VENCIDO! Lembre-se de descartá-lo`;
+        } else if (isExpiringToday) {
+          expiryAlertLevel = 'critical';
+          expiryMessage = `Produto vence HOJE! Lembre-se de descartá-lo`;
+        } else if (isExpiringSoon) {
+          expiryAlertLevel = 'warning';
+          expiryMessage = `Produto vence em ${daysUntilExpiry} dia(s)`;
+        }
+      }
+      
       return {
         product_id: product.id,
         product_name: product.name,
         product_unit: product.unit,
         current_stock: product.current_stock,
         min_stock_alert: product.min_stock_alert || 0,
+        expiry_date: product.expiry_date,
         
         avg_appointments_per_unit: avgAppointmentsPerUnit,
         avg_days_per_unit: avgDaysPerUnit,
@@ -217,17 +268,35 @@ export function useProductUsagePrediction() {
         is_near_depletion_by_time: isNearDepletionByTime,
         alert_level: alertLevel,
         alert_message: alertMessage,
+        
+        // Expiry info
+        days_until_expiry: daysUntilExpiry,
+        is_expired: isExpired,
+        is_expiring_today: isExpiringToday,
+        is_expiring_soon: isExpiringSoon,
+        expiry_alert_level: expiryAlertLevel,
+        expiry_message: expiryMessage,
       };
     });
   }, [products, purchaseHistory, consumptionRecords]);
 
   const criticalProducts = predictions.filter(p => p.alert_level === 'critical');
   const warningProducts = predictions.filter(p => p.alert_level === 'warning');
+  
+  // Expiry alerts
+  const expiringProducts = predictions.filter(p => p.expiry_alert_level !== 'ok');
+  const expiredProducts = predictions.filter(p => p.is_expired);
+  const expiringTodayProducts = predictions.filter(p => p.is_expiring_today);
+  const expiringSoonProducts = predictions.filter(p => p.is_expiring_soon);
 
   return {
     predictions,
     criticalProducts,
     warningProducts,
-    totalAlerts: criticalProducts.length + warningProducts.length,
+    expiringProducts,
+    expiredProducts,
+    expiringTodayProducts,
+    expiringSoonProducts,
+    totalAlerts: criticalProducts.length + warningProducts.length + expiringProducts.length,
   };
 }

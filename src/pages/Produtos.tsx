@@ -433,13 +433,61 @@ export default function Produtos() {
     setDetailDialogOpen(true);
   };
 
-  const updatePurchaseTotal = (qty: number, price: number) => {
+  // Bidirectional price calculation for purchase form
+  const updatePurchaseFromQuantity = (qty: number) => {
     setPurchaseForm(prev => ({
       ...prev,
       quantity: qty,
-      unit_price: price,
-      total_price: qty * price,
+      total_price: qty * prev.unit_price,
     }));
+  };
+
+  const updatePurchaseFromUnitPrice = (price: number) => {
+    setPurchaseForm(prev => ({
+      ...prev,
+      unit_price: price,
+      total_price: prev.quantity * price,
+    }));
+  };
+
+  const updatePurchaseFromTotalPrice = (total: number) => {
+    setPurchaseForm(prev => {
+      const unitPrice = prev.quantity > 0 ? total / prev.quantity : 0;
+      return {
+        ...prev,
+        total_price: total,
+        unit_price: unitPrice,
+      };
+    });
+  };
+
+  // Bidirectional price calculation for product form (initial stock)
+  const updateProductFromQuantity = (qty: number) => {
+    setProductForm(prev => ({
+      ...prev,
+      current_stock: qty,
+      quantity_purchased: qty,
+      total_price: qty * prev.unit_price,
+    }));
+  };
+
+  const updateProductFromUnitPrice = (price: number) => {
+    setProductForm(prev => ({
+      ...prev,
+      unit_price: price,
+      total_price: prev.current_stock * price,
+    }));
+  };
+
+  const updateProductFromTotalPrice = (total: number) => {
+    setProductForm(prev => {
+      const unitPrice = prev.current_stock > 0 ? total / prev.current_stock : 0;
+      return {
+        ...prev,
+        total_price: total,
+        unit_price: unitPrice,
+      };
+    });
   };
 
   if (isLoading) {
@@ -614,7 +662,7 @@ export default function Produtos() {
                           <Input
                             type="number"
                             value={purchaseForm.quantity}
-                            onChange={(e) => updatePurchaseTotal(parseFloat(e.target.value) || 0, purchaseForm.unit_price)}
+                            onChange={(e) => updatePurchaseFromQuantity(parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
                             className="h-8 text-sm"
@@ -625,10 +673,11 @@ export default function Produtos() {
                           <Input
                             type="number"
                             value={purchaseForm.unit_price}
-                            onChange={(e) => updatePurchaseTotal(purchaseForm.quantity, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updatePurchaseFromUnitPrice(parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
                             className="h-8 text-sm"
+                            placeholder="0.00"
                           />
                         </div>
                         <div>
@@ -636,8 +685,11 @@ export default function Produtos() {
                           <Input
                             type="number"
                             value={purchaseForm.total_price}
-                            readOnly
-                            className="bg-muted h-8 text-sm"
+                            onChange={(e) => updatePurchaseFromTotalPrice(parseFloat(e.target.value) || 0)}
+                            min="0"
+                            step="0.01"
+                            className="h-8 text-sm"
+                            placeholder="0.00"
                           />
                         </div>
                       </div>
@@ -838,20 +890,13 @@ export default function Produtos() {
                           <p className="text-[10px] text-muted-foreground">
                             Use para produtos adquiridos antes de usar o sistema
                           </p>
-                          <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                               <Label className="text-xs">Quantidade</Label>
                               <Input
                                 type="number"
                                 value={productForm.current_stock}
-                                onChange={(e) => {
-                                  const qty = parseFloat(e.target.value) || 0;
-                                  setProductForm({ 
-                                    ...productForm, 
-                                    current_stock: qty,
-                                    quantity_purchased: qty
-                                  });
-                                }}
+                                onChange={(e) => updateProductFromQuantity(parseFloat(e.target.value) || 0)}
                                 min="0"
                                 step="0.01"
                                 className="h-8 text-sm"
@@ -863,14 +908,7 @@ export default function Produtos() {
                               <Input
                                 type="number"
                                 value={productForm.unit_price}
-                                onChange={(e) => {
-                                  const price = parseFloat(e.target.value) || 0;
-                                  setProductForm({ 
-                                    ...productForm, 
-                                    unit_price: price,
-                                    total_price: productForm.current_stock * price
-                                  });
-                                }}
+                                onChange={(e) => updateProductFromUnitPrice(parseFloat(e.target.value) || 0)}
                                 min="0"
                                 step="0.01"
                                 className="h-8 text-sm"
@@ -882,8 +920,11 @@ export default function Produtos() {
                               <Input
                                 type="number"
                                 value={productForm.total_price}
-                                readOnly
-                                className="h-8 text-sm bg-muted"
+                                onChange={(e) => updateProductFromTotalPrice(parseFloat(e.target.value) || 0)}
+                                min="0"
+                                step="0.01"
+                                className="h-8 text-sm"
+                                placeholder="0.00"
                               />
                             </div>
                           </div>

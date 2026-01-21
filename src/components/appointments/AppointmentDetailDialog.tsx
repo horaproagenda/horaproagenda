@@ -57,10 +57,12 @@ import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -101,6 +103,7 @@ export function AppointmentDetailDialog({
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
+  const { deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
@@ -117,10 +120,13 @@ export function AppointmentDetailDialog({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
+  const [recurringDeleteType, setRecurringDeleteType] = useState<'single' | 'following' | 'all'>('single');
   const [showRescheduleOption, setShowRescheduleOption] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
+  const [seriesCount, setSeriesCount] = useState(0);
+  const [seriesIndex, setSeriesIndex] = useState(0);
   
   // Excess payment handling (when amount paid > amount owed)
   const [excessAction, setExcessAction] = useState<'credit' | 'change' | null>(null);
@@ -248,7 +254,31 @@ export function AppointmentDetailDialog({
 
   const packageSessionInfo = getPackageSessionInfo();
   
+  // Check if appointment is part of a recurring series
+  const isRecurringSeries = appointment.recurring_group_id != null;
+  
+  // Load series info
+  useEffect(() => {
+    if (open && appointment?.recurring_group_id) {
+      loadSeriesInfo();
+    }
+  }, [open, appointment?.recurring_group_id]);
+
+  const loadSeriesInfo = async () => {
+    if (!appointment?.recurring_group_id) return;
+    
+    try {
+      const seriesAppointments = await getSeriesAppointments(appointment.recurring_group_id);
+      setSeriesCount(seriesAppointments?.length || 0);
+      const index = seriesAppointments?.findIndex(a => a.id === appointment.id) ?? -1;
+      setSeriesIndex(index + 1);
+    } catch (error) {
+      console.error('Error loading series info:', error);
+    }
+  };
+  
   const handleDelete = async () => {
+    // Handle package appointments (delete all from package)
     if (deleteMode === 'all' && appointment.package_appointment?.package_id) {
       deletePackageAppointments.mutate(appointment.package_appointment.package_id, {
         onSuccess: () => {
@@ -256,7 +286,26 @@ export function AppointmentDetailDialog({
           onOpenChange(false);
         },
       });
-    } else {
+    } 
+    // Handle recurring appointments
+    else if (isRecurringSeries && recurringDeleteType !== 'single') {
+      try {
+        await deleteAppointmentSeries.mutateAsync({
+          recurring_group_id: appointment.recurring_group_id!,
+          appointment_id: appointment.id,
+          delete_type: recurringDeleteType,
+          send_whatsapp: false,
+          client_phone: appointment.client?.phone,
+          client_name: appointment.client?.name,
+        });
+        setShowDeleteDialog(false);
+        onOpenChange(false);
+      } catch (error) {
+        console.error('Error deleting recurring series:', error);
+      }
+    }
+    // Handle single appointment
+    else {
       deleteAppointment.mutate(appointment.id, {
         onSuccess: () => {
           setShowDeleteDialog(false);
@@ -1268,6 +1317,54 @@ export function AppointmentDetailDialog({
                       Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong>
                       {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
                     </p>
+                    
+                    {/* Recurring series options */}
+                    {isRecurringSeries && (
+                      <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <History className="h-4 w-4 text-primary" />
+                          <span>Este agendamento faz parte de uma série recorrente ({seriesIndex} de {seriesCount})</span>
+                        </div>
+                        <RadioGroup 
+                          value={recurringDeleteType} 
+                          onValueChange={(v) => setRecurringDeleteType(v as 'single' | 'following' | 'all')}
+                        >
+                          <div className="flex items-start space-x-3 p-2 rounded border hover:bg-muted/50 cursor-pointer">
+                            <RadioGroupItem value="single" id="rec-single" className="mt-1" />
+                            <div className="flex-1">
+                              <Label htmlFor="rec-single" className="font-medium cursor-pointer text-sm">
+                                Apenas este agendamento
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Os outros agendamentos da série serão mantidos
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-start space-x-3 p-2 rounded border hover:bg-muted/50 cursor-pointer">
+                            <RadioGroupItem value="following" id="rec-following" className="mt-1" />
+                            <div className="flex-1">
+                              <Label htmlFor="rec-following" className="font-medium cursor-pointer text-sm">
+                                Este e todos os seguintes
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                {seriesCount - seriesIndex + 1} agendamento(s) serão excluídos
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-start space-x-3 p-2 rounded border hover:bg-muted/50 cursor-pointer">
+                            <RadioGroupItem value="all" id="rec-all" className="mt-1" />
+                            <div className="flex-1">
+                              <Label htmlFor="rec-all" className="font-medium cursor-pointer text-sm text-destructive">
+                                Toda a série
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Todos os {seriesCount} agendamentos serão excluídos
+                              </p>
+                            </div>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
                     
                     {/* Payment warning - show when appointment has payments */}
                     {amountPaid > 0 && (

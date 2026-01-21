@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,7 +90,7 @@ export function ProfessionalAbsenceDialog({
   prefilledDate,
   editingAbsence,
 }: ProfessionalAbsenceDialogProps) {
-  const { createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
+  const { absences, createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
   const [professionalId, setProfessionalId] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('08:00');
@@ -98,6 +99,7 @@ export function ProfessionalAbsenceDialog({
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('pending');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteType, setDeleteType] = useState<'single' | 'following' | 'all'>('single');
   
   // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false);
@@ -243,15 +245,47 @@ export function ProfessionalAbsenceDialog({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (editingAbsence) {
-      deleteAbsence.mutate(editingAbsence.id, {
-        onSuccess: () => {
-          setShowDeleteConfirm(false);
-          onOpenChange(false);
-          resetForm();
-        },
-      });
+      if (deleteType === 'single') {
+        // Delete only this absence
+        deleteAbsence.mutate(editingAbsence.id, {
+          onSuccess: () => {
+            setShowDeleteConfirm(false);
+            onOpenChange(false);
+            resetForm();
+          },
+        });
+      } else {
+        // Delete absences with same pattern
+        const currentAbsenceDate = new Date(editingAbsence.start_time);
+        const absencesToDelete = absences.filter(a => {
+          if (a.professional_id !== editingAbsence.professional_id) return false;
+          if (a.reason !== editingAbsence.reason) return false;
+          const absenceDate = new Date(a.start_time);
+          if (deleteType === 'following') {
+            return absenceDate >= currentAbsenceDate;
+          }
+          return true; // 'all' - delete all with same reason and professional
+        });
+        
+        let successCount = 0;
+        for (const absence of absencesToDelete) {
+          try {
+            await deleteAbsence.mutateAsync(absence.id);
+            successCount++;
+          } catch (error) {
+            console.error('Error deleting absence:', error);
+          }
+        }
+        
+        if (successCount > 0) {
+          toast.success(`${successCount} ausência(s) excluída(s) com sucesso!`);
+        }
+        setShowDeleteConfirm(false);
+        onOpenChange(false);
+        resetForm();
+      }
     }
   };
 
@@ -514,11 +548,56 @@ export function ProfessionalAbsenceDialog({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Ausência</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Excluir Ausência
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir esta ausência? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <RadioGroup 
+              value={deleteType} 
+              onValueChange={(v) => setDeleteType(v as 'single' | 'following' | 'all')}
+            >
+              <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="single" id="del-single" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="del-single" className="font-medium cursor-pointer">
+                    Apenas esta ausência
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    As outras ausências deste profissional serão mantidas
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="following" id="del-following" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="del-following" className="font-medium cursor-pointer">
+                    Esta e todas as seguintes com mesmo motivo
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Remove esta ausência e todas as futuras do mesmo profissional com o mesmo motivo
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="all" id="del-all" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="del-all" className="font-medium cursor-pointer text-destructive">
+                    Todas as ausências com mesmo motivo
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Remove todas as ausências do profissional com o mesmo motivo (passadas e futuras)
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+          
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

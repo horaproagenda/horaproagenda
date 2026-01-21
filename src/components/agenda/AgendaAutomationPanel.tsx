@@ -30,7 +30,8 @@ export function AgendaAutomationPanel({
   onScheduleFromWaitlist,
   onScheduleFromRecurrence,
 }: AgendaAutomationPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Start collapsed by default to not obstruct agenda view
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState('occupancy');
 
   const handleGapSelect = (gap: { start: Date; professionalId: string }) => {

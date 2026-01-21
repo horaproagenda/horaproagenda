@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Receipt, Package, Box, AlertTriangle, ChevronRight, X } from 'lucide-react';
+import { Bell, Receipt, Package, Box, AlertTriangle, ChevronRight, X, Calendar, Clock, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,7 +20,16 @@ const getNotificationIcon = (type: SystemNotification['type']) => {
     case 'package':
       return <Package className="h-4 w-4" />;
     case 'stock':
+    case 'usage_prediction':
       return <Box className="h-4 w-4" />;
+    case 'expiry':
+      return <Clock className="h-4 w-4" />;
+    case 'reminder':
+      return <Calendar className="h-4 w-4" />;
+    case 'cash_register':
+      return <Wallet className="h-4 w-4" />;
+    default:
+      return <Bell className="h-4 w-4" />;
   }
 };
 

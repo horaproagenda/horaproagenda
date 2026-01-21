@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { cn } from '@/lib/utils';
+import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -16,6 +17,9 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved === 'true';
   });
+
+  // Enable reminder and cash register close notifications
+  useReminderNotifications();
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isSidebarCollapsed));

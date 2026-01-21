@@ -2,6 +2,7 @@ import { useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, isToday, isBefore, startOfDay, differenceInDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useProductUsagePrediction } from './useProductUsagePrediction';
 import { useReminders } from './useReminders';
@@ -122,8 +123,18 @@ export function useSystemNotifications() {
   const { todayReminders } = useReminders();
 
   // Get cash register status
-  const { currentOpenRegister } = useCashRegisters();
+  const { currentOpenRegister, cashRegisters } = useCashRegisters();
   const { settings } = useBusinessSettings();
+
+  // Check for old open cash registers (from previous days)
+  const oldOpenRegisters = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    return cashRegisters.filter(register => {
+      if (register.status !== 'open') return false;
+      const openedAt = parseISO(register.opened_at);
+      return isBefore(openedAt, todayStart);
+    });
+  }, [cashRegisters]);
 
   // Generate notifications
   const notifications = useMemo((): SystemNotification[] => {
@@ -264,6 +275,21 @@ export function useSystemNotifications() {
       });
     });
 
+    // Old open cash registers (from previous days) - CRITICAL
+    oldOpenRegisters.forEach(register => {
+      const openedDate = format(parseISO(register.opened_at), "dd/MM/yyyy", { locale: ptBR });
+      result.push({
+        id: `old-cash-register-${register.id}`,
+        type: 'cash_register',
+        title: '⚠️ Caixa do dia anterior aberto!',
+        description: `Caixa aberto em ${openedDate} não foi fechado. Feche-o antes de continuar.`,
+        severity: 'critical',
+        link: '/caixa?tab=caixa',
+        referenceId: register.id,
+        referenceType: 'cash_register',
+      });
+    });
+
     // Cash register open reminder (at end of day)
     if (currentOpenRegister && settings?.closing_time) {
       const now = new Date();
@@ -288,7 +314,7 @@ export function useSystemNotifications() {
     }
 
     return result;
-  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, settings]);
+  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, oldOpenRegisters, settings]);
 
   // Show toasts for critical notifications (only once per day)
   useEffect(() => {

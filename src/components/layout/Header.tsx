@@ -1,5 +1,9 @@
+import { RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NotificationsPanel } from './NotificationsPanel';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 interface HeaderProps {
   title: string;
@@ -7,6 +11,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const { refreshAll, isRefreshing } = useGlobalRefresh();
+
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div>
@@ -19,6 +25,23 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Global Refresh Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={refreshAll}
+              disabled={isRefreshing}
+              className="relative"
+            >
+              <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Sincronizar todos os dados</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Notifications */}
         <NotificationsPanel />

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -10,37 +10,94 @@ import { toast } from 'sonner';
  * - Usa Supabase Realtime (WebSocket) para detectar mudanças no banco
  * - Invalida cache do React Query → dispara refetch automático
  * - Latência típica: 50-200ms
+ * - REFETCH AGRESSIVO: Invalida TODAS as queries relacionadas imediatamente
  * 
- * TABELAS MONITORADAS:
+ * TABELAS MONITORADAS (COMPLETAS):
  * - appointments, clients, services, service_packages, package_appointments
  * - single_sales, client_services, cash_registers, cash_transactions
  * - financial_entries, financial_categories, payment_methods
  * - products, product_purchases, service_products, suppliers
  * - professionals, professional_absences, rooms, equipment
- * - quotes, client_documents, treatment_photos
+ * - quotes, client_documents, treatment_photos, goals, reminders
  */
 export function useRealtimeSync() {
   const queryClient = useQueryClient();
+  const lastRefreshRef = useRef<number>(0);
+  
+  // Função para invalidar TUDO de forma agressiva
+  const invalidateAll = useCallback(() => {
+    const now = Date.now();
+    // Throttle para evitar múltiplos refreshes em sequência
+    if (now - lastRefreshRef.current < 500) return;
+    lastRefreshRef.current = now;
+    
+    queryClient.invalidateQueries({
+      predicate: () => true,
+      refetchType: 'all',
+    });
+  }, [queryClient]);
+
+  // Função helper para invalidar múltiplas queries específicas
+  const invalidateMultiple = useCallback((keys: string[]) => {
+    keys.forEach(key => {
+      queryClient.invalidateQueries({ 
+        queryKey: [key],
+        refetchType: 'all',
+      });
+    });
+  }, [queryClient]);
+
+  // Conjunto abrangente de queries para cada contexto
+  const CORE_QUERIES = [
+    'appointments', 'clients', 'services', 'professionals',
+    'service_packages', 'financial_entries', 'cash_transactions',
+    'dashboard-stats', 'single_sales', 'sales'
+  ];
+  
+  const FINANCIAL_QUERIES = [
+    'financial_entries', 'financial_categories', 'payment_methods',
+    'banks', 'cash_registers', 'cash_transactions', 'card_brands',
+    'card_brand_fees', 'dashboard-stats', 'goals'
+  ];
+  
+  const CLIENT_QUERIES = [
+    'clients', 'client', 'client_services', 'client_packages',
+    'clients_credits', 'client_credits', 'client-appointments',
+    'client-sales', 'quotes', 'client_documents', 'treatment_photos'
+  ];
+  
+  const APPOINTMENT_QUERIES = [
+    'appointments', 'client-appointments', 'package_appointments',
+    'service_packages', 'client_packages', 'professional_absences',
+    'waitlist', 'recurring_appointments'
+  ];
+  
+  const SERVICE_QUERIES = [
+    'services', 'service_packages', 'package_templates',
+    'service_products', 'package_template_products'
+  ];
+  
+  const PRODUCT_QUERIES = [
+    'products', 'product_purchases', 'suppliers',
+    'service_products', 'appointment_product_consumption'
+  ];
 
   useEffect(() => {
-    // Função helper para invalidar múltiplas queries
-    const invalidateMultiple = (keys: string[]) => {
-      keys.forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
-    };
-
     // Canal principal para TODAS as tabelas
     const mainChannel = supabase
-      .channel('realtime-sync-all')
+      .channel('realtime-sync-all-v2')
       
       // ============ APPOINTMENTS ============
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         (payload) => {
+          // Invalidar TUDO relacionado a agendamentos
           invalidateMultiple([
-            'appointments', 'client-appointments', 'clients', 'client',
-            'dashboard-stats', 'financial_entries', 'cash_transactions',
-            'service_packages', 'client_packages', 'package_appointments'
+            ...APPOINTMENT_QUERIES,
+            ...CLIENT_QUERIES,
+            ...FINANCIAL_QUERIES,
+            'dashboard-stats'
           ]);
           
           if (payload.eventType === 'INSERT') {
@@ -65,8 +122,8 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'clients' },
         (payload) => {
           invalidateMultiple([
-            'clients', 'client', 'appointments', 'client-appointments',
-            'client_services', 'client_packages', 'quotes', 'client-sales',
+            ...CLIENT_QUERIES,
+            ...APPOINTMENT_QUERIES,
             'dashboard-stats'
           ]);
           
@@ -82,8 +139,9 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'services' },
         () => {
           invalidateMultiple([
-            'services', 'appointments', 'service_packages', 
-            'service_products', 'package_templates'
+            ...SERVICE_QUERIES,
+            ...APPOINTMENT_QUERIES,
+            'dashboard-stats'
           ]);
         }
       )
@@ -94,8 +152,10 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'service_packages' },
         (payload) => {
           invalidateMultiple([
-            'service_packages', 'client_packages', 'appointments',
-            'package_appointments', 'clients', 'client', 'sales'
+            ...SERVICE_QUERIES,
+            ...APPOINTMENT_QUERIES,
+            ...CLIENT_QUERIES,
+            ...FINANCIAL_QUERIES
           ]);
           
           if (payload.eventType === 'INSERT') {
@@ -110,8 +170,9 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'package_appointments' },
         () => {
           invalidateMultiple([
-            'package_appointments', 'service_packages', 'client_packages',
-            'appointments'
+            ...APPOINTMENT_QUERIES,
+            ...SERVICE_QUERIES,
+            ...CLIENT_QUERIES
           ]);
         }
       )
@@ -121,11 +182,8 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'single_sales' },
         (payload) => {
-          invalidateMultiple([
-            'sales', 'single_sales', 'client-sales', 'appointments',
-            'client_services', 'clients', 'client', 'cash_transactions',
-            'cash_registers', 'financial_entries', 'dashboard-stats'
-          ]);
+          // Vendas afetam TUDO
+          invalidateAll();
           
           if (payload.eventType === 'INSERT') {
             toast.success('Nova venda registrada!', { duration: 3000 });
@@ -139,8 +197,9 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'client_services' },
         () => {
           invalidateMultiple([
-            'client_services', 'appointments', 'clients', 'client',
-            'client-appointments'
+            ...CLIENT_QUERIES,
+            ...APPOINTMENT_QUERIES,
+            'dashboard-stats'
           ]);
         }
       )
@@ -150,10 +209,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'cash_registers' },
         (payload) => {
-          invalidateMultiple([
-            'cash_registers', 'cash_transactions', 'financial_entries',
-            'dashboard-stats'
-          ]);
+          invalidateMultiple(FINANCIAL_QUERIES);
           
           if (payload.eventType === 'INSERT') {
             toast.success('Caixa aberto!', { duration: 3000 });
@@ -172,7 +228,7 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'cash_transactions' },
         () => {
           invalidateMultiple([
-            'cash_transactions', 'cash_registers', 'financial_entries',
+            ...FINANCIAL_QUERIES,
             'dashboard-stats'
           ]);
         }
@@ -184,12 +240,15 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'financial_entries' },
         (payload) => {
           invalidateMultiple([
-            'financial_entries', 'cash_registers', 'cash_transactions',
-            'dashboard-stats', 'clients', 'client'
+            ...FINANCIAL_QUERIES,
+            ...CLIENT_QUERIES,
+            'dashboard-stats'
           ]);
           
           if (payload.eventType === 'INSERT') {
             toast.info('Nova entrada financeira registrada', { duration: 2000 });
+          } else if (payload.eventType === 'DELETE') {
+            toast.info('Entrada financeira removida', { duration: 2000 });
           }
         }
       )
@@ -208,7 +267,10 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payment_methods' },
         () => {
-          invalidateMultiple(['payment_methods', 'appointments', 'single_sales']);
+          invalidateMultiple([
+            'payment_methods', 'appointments', 'single_sales',
+            'financial_entries', 'cash_transactions'
+          ]);
         }
       )
       
@@ -226,9 +288,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         () => {
-          invalidateMultiple([
-            'products', 'service_products', 'product_purchases'
-          ]);
+          invalidateMultiple(PRODUCT_QUERIES);
         }
       )
       
@@ -238,8 +298,8 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'product_purchases' },
         (payload) => {
           invalidateMultiple([
-            'product_purchases', 'products', 'cash_transactions',
-            'financial_entries', 'suppliers'
+            ...PRODUCT_QUERIES,
+            ...FINANCIAL_QUERIES
           ]);
           
           if (payload.eventType === 'INSERT') {
@@ -253,7 +313,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_products' },
         () => {
-          invalidateMultiple(['service_products', 'products', 'services']);
+          invalidateMultiple([...PRODUCT_QUERIES, ...SERVICE_QUERIES]);
         }
       )
       
@@ -272,8 +332,8 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'professionals' },
         () => {
           invalidateMultiple([
-            'professionals', 'appointments', 'services',
-            'service_packages', 'professional_absences', 'clients'
+            'professionals', ...APPOINTMENT_QUERIES,
+            ...SERVICE_QUERIES, ...CLIENT_QUERIES
           ]);
         }
       )
@@ -292,7 +352,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rooms' },
         () => {
-          invalidateMultiple(['rooms', 'appointments', 'services', 'service_packages']);
+          invalidateMultiple(['rooms', ...APPOINTMENT_QUERIES, ...SERVICE_QUERIES]);
         }
       )
       
@@ -310,7 +370,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'quotes' },
         (payload) => {
-          invalidateMultiple(['quotes', 'clients', 'client']);
+          invalidateMultiple(['quotes', ...CLIENT_QUERIES]);
           
           if (payload.eventType === 'INSERT') {
             toast.info('Novo orçamento criado', { duration: 2000 });
@@ -323,7 +383,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'client_documents' },
         () => {
-          invalidateMultiple(['client_documents', 'clients', 'client']);
+          invalidateMultiple(['client_documents', ...CLIENT_QUERIES]);
         }
       )
       
@@ -332,7 +392,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'treatment_photos' },
         () => {
-          invalidateMultiple(['treatment_photos', 'clients', 'client']);
+          invalidateMultiple(['treatment_photos', ...CLIENT_QUERIES]);
         }
       )
       
@@ -341,7 +401,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_templates' },
         () => {
-          invalidateMultiple(['package_templates', 'service_packages']);
+          invalidateMultiple(['package_templates', ...SERVICE_QUERIES]);
         }
       )
       
@@ -350,7 +410,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'card_brands' },
         () => {
-          invalidateMultiple(['card_brands', 'card_brand_fees']);
+          invalidateMultiple(['card_brands', 'card_brand_fees', 'payment_methods']);
         }
       )
       
@@ -400,15 +460,56 @@ export function useRealtimeSync() {
         }
       )
       
+      // ============ GOALS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'goals' },
+        () => {
+          invalidateMultiple(['goals', 'dashboard-stats']);
+        }
+      )
+      
+      // ============ REMINDERS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reminders' },
+        () => {
+          invalidateMultiple(['reminders']);
+        }
+      )
+      
+      // ============ WAITLIST ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'waitlist' },
+        () => {
+          invalidateMultiple(['waitlist']);
+        }
+      )
+      
+      // ============ PACKAGE TEMPLATE PRODUCTS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'package_template_products' },
+        () => {
+          invalidateMultiple(['package_template_products', ...SERVICE_QUERIES, ...PRODUCT_QUERIES]);
+        }
+      )
+      
+      // ============ APPOINTMENT PRODUCT CONSUMPTION ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointment_product_consumption' },
+        () => {
+          invalidateMultiple(['appointment_product_consumption', ...PRODUCT_QUERIES, ...APPOINTMENT_QUERIES]);
+        }
+      )
+      
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime sync: conectado a todas as tabelas');
+          console.log('✅ Realtime sync v2: conectado a todas as tabelas');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Realtime sync: erro de conexão', err);
-          // Only show error toast if it's a persistent error, not during initial connection
-          setTimeout(() => {
-            console.warn('Realtime channel error, will retry automatically');
-          }, 1000);
         } else if (status === 'TIMED_OUT') {
           console.warn('⏰ Realtime sync: timeout, reconectando...');
         } else if (status === 'CLOSED') {
@@ -419,5 +520,5 @@ export function useRealtimeSync() {
     return () => {
       supabase.removeChannel(mainChannel);
     };
-  }, [queryClient]);
+  }, [queryClient, invalidateMultiple, invalidateAll]);
 }

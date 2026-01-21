@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,78 +11,64 @@ import { toast } from 'sonner';
  * - Invalida cache do React Query → dispara refetch automático
  * - Latência típica: 50-200ms
  * - REFETCH AGRESSIVO: Invalida TODAS as queries relacionadas imediatamente
- * 
- * TABELAS MONITORADAS (COMPLETAS):
- * - appointments, clients, services, service_packages, package_appointments
- * - single_sales, client_services, cash_registers, cash_transactions
- * - financial_entries, financial_categories, payment_methods
- * - products, product_purchases, service_products, suppliers
- * - professionals, professional_absences, rooms, equipment
- * - quotes, client_documents, treatment_photos, goals, reminders
  */
 export function useRealtimeSync() {
   const queryClient = useQueryClient();
-  const lastRefreshRef = useRef<number>(0);
-  
-  // Função para invalidar TUDO de forma agressiva
-  const invalidateAll = useCallback(() => {
-    const now = Date.now();
-    // Throttle para evitar múltiplos refreshes em sequência
-    if (now - lastRefreshRef.current < 500) return;
-    lastRefreshRef.current = now;
-    
-    queryClient.invalidateQueries({
-      predicate: () => true,
-      refetchType: 'all',
-    });
-  }, [queryClient]);
-
-  // Função helper para invalidar múltiplas queries específicas
-  const invalidateMultiple = useCallback((keys: string[]) => {
-    keys.forEach(key => {
-      queryClient.invalidateQueries({ 
-        queryKey: [key],
-        refetchType: 'all',
-      });
-    });
-  }, [queryClient]);
-
-  // Conjunto abrangente de queries para cada contexto
-  const CORE_QUERIES = [
-    'appointments', 'clients', 'services', 'professionals',
-    'service_packages', 'financial_entries', 'cash_transactions',
-    'dashboard-stats', 'single_sales', 'sales'
-  ];
-  
-  const FINANCIAL_QUERIES = [
-    'financial_entries', 'financial_categories', 'payment_methods',
-    'banks', 'cash_registers', 'cash_transactions', 'card_brands',
-    'card_brand_fees', 'dashboard-stats', 'goals'
-  ];
-  
-  const CLIENT_QUERIES = [
-    'clients', 'client', 'client_services', 'client_packages',
-    'clients_credits', 'client_credits', 'client-appointments',
-    'client-sales', 'quotes', 'client_documents', 'treatment_photos'
-  ];
-  
-  const APPOINTMENT_QUERIES = [
-    'appointments', 'client-appointments', 'package_appointments',
-    'service_packages', 'client_packages', 'professional_absences',
-    'waitlist', 'recurring_appointments'
-  ];
-  
-  const SERVICE_QUERIES = [
-    'services', 'service_packages', 'package_templates',
-    'service_products', 'package_template_products'
-  ];
-  
-  const PRODUCT_QUERIES = [
-    'products', 'product_purchases', 'suppliers',
-    'service_products', 'appointment_product_consumption'
-  ];
 
   useEffect(() => {
+    let lastRefresh = 0;
+    
+    // Função para invalidar TUDO de forma agressiva (throttled)
+    const invalidateAll = () => {
+      const now = Date.now();
+      if (now - lastRefresh < 500) return;
+      lastRefresh = now;
+      
+      queryClient.invalidateQueries({
+        predicate: () => true,
+        refetchType: 'all',
+      });
+    };
+
+    // Função helper para invalidar múltiplas queries específicas
+    const invalidateMultiple = (keys: string[]) => {
+      keys.forEach(key => {
+        queryClient.invalidateQueries({ 
+          queryKey: [key],
+          refetchType: 'all',
+        });
+      });
+    };
+
+    // Conjuntos de queries por contexto
+    const FINANCIAL_QUERIES = [
+      'financial_entries', 'financial_categories', 'payment_methods',
+      'banks', 'cash_registers', 'cash_transactions', 'card_brands',
+      'card_brand_fees', 'dashboard-stats', 'goals'
+    ];
+    
+    const CLIENT_QUERIES = [
+      'clients', 'client', 'client_services', 'client_packages',
+      'clients_credits', 'client_credits', 'client-appointments',
+      'client-sales', 'quotes', 'client_documents', 'treatment_photos'
+    ];
+    
+    const APPOINTMENT_QUERIES = [
+      'appointments', 'client-appointments', 'package_appointments',
+      'service_packages', 'client_packages', 'professional_absences',
+      'waitlist', 'recurring_appointments'
+    ];
+    
+    const SERVICE_QUERIES = [
+      'services', 'service_packages', 'package_templates',
+      'service_products', 'package_template_products'
+    ];
+    
+    const PRODUCT_QUERIES = [
+      'products', 'product_purchases', 'suppliers',
+      'service_products', 'appointment_product_consumption'
+    ];
+
     // Canal principal para TODAS as tabelas
     const mainChannel = supabase
       .channel('realtime-sync-all-v2')
@@ -92,7 +78,6 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         (payload) => {
-          // Invalidar TUDO relacionado a agendamentos
           invalidateMultiple([
             ...APPOINTMENT_QUERIES,
             ...CLIENT_QUERIES,
@@ -182,7 +167,6 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'single_sales' },
         (payload) => {
-          // Vendas afetam TUDO
           invalidateAll();
           
           if (payload.eventType === 'INSERT') {
@@ -520,5 +504,5 @@ export function useRealtimeSync() {
     return () => {
       supabase.removeChannel(mainChannel);
     };
-  }, [queryClient, invalidateMultiple, invalidateAll]);
+  }, [queryClient]);
 }

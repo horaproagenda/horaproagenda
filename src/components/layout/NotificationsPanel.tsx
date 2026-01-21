@@ -105,9 +105,11 @@ export function NotificationsPanel() {
                 <div
                   key={notification.id}
                   className={cn(
-                    "p-3 flex items-start gap-3 hover:bg-muted/50 transition-colors",
-                    notification.severity === 'critical' && "bg-destructive/5"
+                    "p-3 flex items-start gap-3 transition-colors",
+                    notification.severity === 'critical' && "bg-destructive/5",
+                    notification.link && "cursor-pointer hover:bg-muted/50"
                   )}
+                  onClick={() => notification.link && handleNavigate(notification.link)}
                 >
                   <div className={cn(
                     "mt-0.5 p-2 rounded-lg",
@@ -123,24 +125,22 @@ export function NotificationsPanel() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 -mt-1 -mr-1 shrink-0"
-                        onClick={() => handleDismiss(notification.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDismiss(notification.id);
+                        }}
                       >
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-sm text-muted-foreground line-clamp-2">
                       {notification.description}
                     </p>
                     {notification.link && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs mt-1"
-                        onClick={() => handleNavigate(notification.link)}
-                      >
-                        Ver detalhes
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-primary">
+                        <span>Clique para ver detalhes</span>
+                        <ChevronRight className="h-3 w-3" />
+                      </div>
                     )}
                   </div>
                 </div>

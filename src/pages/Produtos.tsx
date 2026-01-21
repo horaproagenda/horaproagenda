@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -130,6 +131,7 @@ const defaultFilters: ProductFilters = {
 };
 
 export default function Produtos() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
@@ -189,6 +191,21 @@ export default function Produtos() {
   // Product Detail Dialog
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  // Open product from URL query param (for notifications)
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    if (productId && products.length > 0) {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        setSelectedProduct(product);
+        setDetailDialogOpen(true);
+        // Clear the query param after opening
+        searchParams.delete('product');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, products, setSearchParams]);
 
   // Filtered products based on search and filters
   const filteredProducts = useMemo(() => {

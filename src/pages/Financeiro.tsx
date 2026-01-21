@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,11 +34,39 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
 
 export default function Financeiro() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { totalReceivables, totalPayables } = useFinancialEntries();
   const { banks } = useBanks();
   const { appointments } = useAppointments();
   const { professionals } = useProfessionals();
   const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'contas-pagar');
+
+  // Handle URL query params for deep linking from notifications
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      // Map URL param to tab value
+      const tabMap: Record<string, string> = {
+        'pagar': 'contas-pagar',
+        'receber': 'contas-receber',
+        'extrato': 'extrato',
+        'caixas': 'caixas',
+        'categorias': 'categorias',
+        'formas': 'formas-pagamento',
+        'comissoes': 'comissoes',
+        'metas': 'metas',
+        'precificacao': 'precificacao',
+      };
+      const mappedTab = tabMap[tabParam] || tabParam;
+      if (mappedTab) {
+        setActiveTab(mappedTab);
+        // Clear query params after processing
+        searchParams.delete('tab');
+        searchParams.delete('entry');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, setActiveTab, setSearchParams]);
 
   const balance = totalReceivables - totalPayables;
 

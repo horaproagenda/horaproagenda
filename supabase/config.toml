@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.notify-overdue-bills]
 verify_jwt = false
 
+[functions.notify-stock-alerts]
+verify_jwt = false
+
 [functions.create-appointment]
 verify_jwt = false
 

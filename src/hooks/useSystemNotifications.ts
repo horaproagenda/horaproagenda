@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, isToday, isBefore, startOfDay, differenceInDays } from 'date-fns';
 import { toast } from 'sonner';
+import { useProductUsagePrediction } from './useProductUsagePrediction';
 
 export interface SystemNotification {
   id: string;
-  type: 'boleto' | 'package' | 'stock';
+  type: 'boleto' | 'package' | 'stock' | 'usage_prediction';
   title: string;
   description: string;
   severity: 'warning' | 'critical' | 'info';
@@ -102,6 +103,9 @@ export function useSystemNotifications() {
     refetchInterval: 300000, // Check every 5 minutes
   });
 
+  // Get usage predictions for additional alerts
+  const { criticalProducts: usageCritical, warningProducts: usageWarning } = useProductUsagePrediction();
+
   // Generate notifications
   const notifications = useMemo((): SystemNotification[] => {
     const result: SystemNotification[] = [];
@@ -131,7 +135,7 @@ export function useSystemNotifications() {
       });
     });
 
-    // Produtos com estoque baixo
+    // Produtos com estoque baixo (from DB)
     lowStockProducts.forEach(product => {
       result.push({
         id: `stock-${product.id}`,
@@ -143,8 +147,37 @@ export function useSystemNotifications() {
       });
     });
 
+    // Produtos próximos de acabar (from usage prediction) - only if not already in stock alerts
+    const stockProductIds = new Set(lowStockProducts.map(p => p.id));
+    
+    usageCritical.forEach(product => {
+      if (!stockProductIds.has(product.product_id) && product.is_near_depletion_by_usage) {
+        result.push({
+          id: `usage-${product.product_id}`,
+          type: 'usage_prediction',
+          title: 'Produto próximo de acabar',
+          description: product.alert_message || `${product.product_name}: ~${Math.round(product.predicted_remaining_appointments)} atendimentos`,
+          severity: 'critical',
+          link: '/produtos',
+        });
+      }
+    });
+
+    usageWarning.forEach(product => {
+      if (!stockProductIds.has(product.product_id)) {
+        result.push({
+          id: `usage-${product.product_id}`,
+          type: 'usage_prediction',
+          title: 'Atenção: produto',
+          description: product.alert_message || `${product.product_name}: uso elevado`,
+          severity: 'warning',
+          link: '/produtos',
+        });
+      }
+    });
+
     return result;
-  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts]);
+  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning]);
 
   // Show toasts for critical notifications (only once per day)
   useEffect(() => {
@@ -164,7 +197,7 @@ export function useSystemNotifications() {
               description: notification.description,
               duration: 10000,
             });
-          } else if (notification.type === 'stock') {
+          } else if (notification.type === 'stock' || notification.type === 'usage_prediction') {
             toast.warning(notification.title, {
               description: notification.description,
               duration: 8000,
@@ -197,7 +230,7 @@ export function useSystemNotifications() {
     notifications,
     boletosCount: boletosVencendoHoje.length,
     lowSessionsCount: packageLowSessions.length,
-    lowStockCount: lowStockProducts.length,
+    lowStockCount: lowStockProducts.length + usageCritical.length,
     totalCritical: notifications.filter(n => n.severity === 'critical').length,
   };
 }

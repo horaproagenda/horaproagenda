@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useReminders } from './useReminders';
 import { useCashRegisters } from './useCashRegisters';
 import { useBusinessSettings } from './useBusinessSettings';
-import { format, parseISO, isToday, isBefore, addMinutes } from 'date-fns';
+import { format, parseISO, isToday, isBefore, addMinutes, startOfDay, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,13 +54,54 @@ const markCashCloseNotifiedToday = () => {
   localStorage.setItem('cash_close_notification_sent', getTodayKey());
 };
 
+// Check if yesterday's open register notification was shown
+const wasYesterdayOpenNotifiedToday = (): boolean => {
+  const stored = localStorage.getItem('yesterday_cash_open_notification_sent');
+  return stored === getTodayKey();
+};
+
+// Mark yesterday's open register notification as sent
+const markYesterdayOpenNotifiedToday = () => {
+  localStorage.setItem('yesterday_cash_open_notification_sent', getTodayKey());
+};
+
 export function useReminderNotifications() {
   const { todayReminders, activeReminders } = useReminders();
-  const { currentOpenRegister } = useCashRegisters();
+  const { currentOpenRegister, cashRegisters } = useCashRegisters();
   const { settings } = useBusinessSettings();
   const navigate = useNavigate();
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const notifiedRemindersRef = useRef<Set<string>>(new Set());
+  const yesterdayCheckDoneRef = useRef(false);
+
+  // Check if there's an open cash register from yesterday
+  const checkYesterdayOpenRegister = useCallback(() => {
+    if (yesterdayCheckDoneRef.current) return;
+    
+    // Find any open register that was opened yesterday or earlier
+    const oldOpenRegister = cashRegisters.find(register => {
+      if (register.status !== 'open') return false;
+      const openedAt = parseISO(register.opened_at);
+      const todayStart = startOfDay(new Date());
+      return isBefore(openedAt, todayStart);
+    });
+    
+    if (oldOpenRegister && !wasYesterdayOpenNotifiedToday()) {
+      yesterdayCheckDoneRef.current = true;
+      markYesterdayOpenNotifiedToday();
+      
+      const openedDate = format(parseISO(oldOpenRegister.opened_at), 'dd/MM/yyyy');
+      
+      toast.error('⚠️ Caixa do dia anterior está aberto!', {
+        description: `O caixa aberto em ${openedDate} ainda não foi fechado. Feche-o antes de abrir um novo.`,
+        duration: 30000,
+        action: {
+          label: 'Ir para Caixa',
+          onClick: () => navigate('/caixa?tab=caixa'),
+        },
+      });
+    }
+  }, [cashRegisters, navigate]);
 
   // Check and notify for reminders at their scheduled time
   const checkReminders = useCallback(() => {
@@ -136,11 +177,13 @@ export function useReminderNotifications() {
     // Initial check
     checkReminders();
     checkCashRegisterClose();
+    checkYesterdayOpenRegister();
     
     // Check every 30 seconds for better accuracy
     checkIntervalRef.current = setInterval(() => {
       checkReminders();
       checkCashRegisterClose();
+      checkYesterdayOpenRegister();
     }, 30000);
     
     return () => {
@@ -148,7 +191,7 @@ export function useReminderNotifications() {
         clearInterval(checkIntervalRef.current);
       }
     };
-  }, [checkReminders, checkCashRegisterClose]);
+  }, [checkReminders, checkCashRegisterClose, checkYesterdayOpenRegister]);
 
   return {
     todayReminders,

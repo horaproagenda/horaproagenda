@@ -371,6 +371,12 @@ export function SaleForm() {
   };
 
   const handleFinalizeSale = async () => {
+    // Block sale if cash register is closed
+    if (!currentOpenRegister) {
+      toast.error('É necessário abrir o caixa antes de realizar vendas!');
+      return;
+    }
+
     if (!saleInfo || !selectedClientId) {
       toast.error('Selecione um cliente e adicione itens à venda');
       return;

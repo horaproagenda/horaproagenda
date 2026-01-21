@@ -57,6 +57,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';
 
 type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
@@ -532,55 +533,35 @@ export function CashRegisterPanel() {
               </AlertDialogContent>
             </AlertDialog>
 
-            <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Fechar Caixa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Fechar Caixa</DialogTitle>
-                  <DialogDescription>
-                    Informe o valor em caixa para conferência
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-sm text-muted-foreground">Saldo Esperado</div>
-                    <div className="text-2xl font-bold">R$ {balance.toFixed(2)}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor Contado (R$)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={closingBalance}
-                      onChange={(e) => setClosingBalance(e.target.value)}
-                    />
-                  </div>
-                  {closingBalance && (
-                    <div className={`p-3 rounded-lg ${
-                      parseFloat(closingBalance) === balance ? 'bg-green-100 text-green-800' :
-                      parseFloat(closingBalance) > balance ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      Diferença: R$ {(parseFloat(closingBalance) - balance).toFixed(2)}
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCloseCashRegister} disabled={isLoading}>
-                    Fechar Caixa
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button variant="default" onClick={() => setIsCloseDialogOpen(true)}>
+              <Lock className="h-4 w-4 mr-2" />
+              Fechar Caixa
+            </Button>
+            
+            <CashRegisterCloseDialog
+              open={isCloseDialogOpen}
+              onOpenChange={setIsCloseDialogOpen}
+              currentRegister={currentOpenRegister}
+              openingBalance={currentOpenRegister.opening_balance}
+              onClose={(data) => {
+                closeCashRegister.mutate({
+                  id: currentOpenRegister.id,
+                  closingBalance: data.closingBalance,
+                  expectedBalance: data.expectedBalance,
+                  totalReceived: data.totalReceived,
+                  totalReceivables: data.totalReceivables,
+                  paymentsCount: data.paymentsCount,
+                  paymentBreakdown: data.paymentBreakdown,
+                  notes: data.notes,
+                }, {
+                  onSuccess: () => {
+                    setIsCloseDialogOpen(false);
+                    setClosingBalance('');
+                  },
+                });
+              }}
+              isLoading={isLoading}
+            />
           </div>
         </CardContent>
       </Card>

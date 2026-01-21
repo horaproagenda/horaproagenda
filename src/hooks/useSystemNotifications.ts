@@ -4,17 +4,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, isToday, isBefore, startOfDay, differenceInDays } from 'date-fns';
 import { toast } from 'sonner';
 import { useProductUsagePrediction } from './useProductUsagePrediction';
+import { useReminders } from './useReminders';
+import { useCashRegisters } from './useCashRegisters';
+import { useBusinessSettings } from './useBusinessSettings';
 
 export interface SystemNotification {
   id: string;
-  type: 'boleto' | 'package' | 'stock' | 'usage_prediction' | 'expiry';
+  type: 'boleto' | 'package' | 'stock' | 'usage_prediction' | 'expiry' | 'reminder' | 'cash_register';
   title: string;
   description: string;
   severity: 'warning' | 'critical' | 'info';
   date?: string;
   link?: string;
   referenceId?: string;
-  referenceType?: 'financial_entry' | 'package' | 'product' | 'client';
+  referenceType?: 'financial_entry' | 'package' | 'product' | 'client' | 'reminder' | 'cash_register';
   clientId?: string;
 }
 
@@ -114,6 +117,13 @@ export function useSystemNotifications() {
     expiringTodayProducts,
     expiringSoonProducts,
   } = useProductUsagePrediction();
+
+  // Get reminders for today
+  const { todayReminders } = useReminders();
+
+  // Get cash register status
+  const { currentOpenRegister } = useCashRegisters();
+  const { settings } = useBusinessSettings();
 
   // Generate notifications
   const notifications = useMemo((): SystemNotification[] => {
@@ -238,8 +248,47 @@ export function useSystemNotifications() {
       });
     });
 
+    // Today's reminders
+    todayReminders.forEach(reminder => {
+      const timeStr = reminder.reminder_time ? ` às ${reminder.reminder_time.substring(0, 5)}` : '';
+      result.push({
+        id: `reminder-${reminder.id}`,
+        type: 'reminder',
+        title: `Lembrete: ${reminder.title}`,
+        description: `${reminder.description || 'Lembrete agendado para hoje'}${timeStr}`,
+        severity: reminder.priority === 'high' ? 'critical' : 'info',
+        date: reminder.reminder_date || undefined,
+        link: '/lembretes',
+        referenceId: reminder.id,
+        referenceType: 'reminder',
+      });
+    });
+
+    // Cash register open reminder (at end of day)
+    if (currentOpenRegister && settings?.closing_time) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const [closingHour] = settings.closing_time.split(':').map(Number);
+      
+      // Show warning if within 2 hours of closing time or past closing time
+      if (currentHour >= closingHour - 2) {
+        result.push({
+          id: `cash-register-${currentOpenRegister.id}`,
+          type: 'cash_register',
+          title: 'Caixa aberto',
+          description: currentHour >= closingHour 
+            ? 'O expediente terminou. Lembre-se de fechar o caixa!' 
+            : 'Lembre-se de fechar o caixa antes de encerrar o expediente',
+          severity: currentHour >= closingHour ? 'critical' : 'warning',
+          link: '/caixa',
+          referenceId: currentOpenRegister.id,
+          referenceType: 'cash_register',
+        });
+      }
+    }
+
     return result;
-  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts]);
+  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, settings]);
 
   // Show toasts for critical notifications (only once per day)
   useEffect(() => {

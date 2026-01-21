@@ -60,8 +60,8 @@ export function WaitlistPanel({ onScheduleFromWaitlist }: WaitlistPanelProps) {
 
     await addToWaitlist.mutateAsync({
       client_id: selectedClientId,
-      service_id: selectedServiceId || null,
-      professional_id: selectedProfessionalId || null,
+      service_id: selectedServiceId === 'any' ? null : selectedServiceId || null,
+      professional_id: selectedProfessionalId === 'any' ? null : selectedProfessionalId || null,
       preferred_date: null,
       preferred_time_start: null,
       preferred_time_end: null,
@@ -225,7 +225,7 @@ export function WaitlistPanel({ onScheduleFromWaitlist }: WaitlistPanelProps) {
                   <SelectValue placeholder="Qualquer serviço" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer serviço</SelectItem>
+                  <SelectItem value="any">Qualquer serviço</SelectItem>
                   {activeServices.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -240,7 +240,7 @@ export function WaitlistPanel({ onScheduleFromWaitlist }: WaitlistPanelProps) {
                   <SelectValue placeholder="Qualquer profissional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer profissional</SelectItem>
+                  <SelectItem value="any">Qualquer profissional</SelectItem>
                   {activeProfessionals.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}

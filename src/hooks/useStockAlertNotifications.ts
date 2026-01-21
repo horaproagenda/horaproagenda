@@ -52,13 +52,22 @@ interface StockAlert {
   product_unit: string;
   current_stock: number;
   min_stock_alert: number;
-  alert_type: 'low_stock' | 'near_depletion';
+  alert_type: 'low_stock' | 'near_depletion' | 'expiring_today' | 'expiring_soon' | 'expired';
   predicted_remaining_appointments?: number;
   predicted_remaining_days?: number;
+  expiry_date?: string;
+  days_until_expiry?: number;
 }
 
 export function useStockAlertNotifications(notifyPhone?: string) {
-  const { predictions, criticalProducts, warningProducts } = useProductUsagePrediction();
+  const { 
+    predictions, 
+    criticalProducts, 
+    warningProducts,
+    expiredProducts,
+    expiringTodayProducts,
+    expiringSoonProducts,
+  } = useProductUsagePrediction();
   const { settings } = useBusinessSettings();
   const hasNotifiedRef = useRef(false);
 
@@ -99,29 +108,37 @@ export function useStockAlertNotifications(notifyPhone?: string) {
 
   // Show in-app toasts for critical products (once per session)
   useEffect(() => {
-    if (hasNotifiedRef.current || criticalProducts.length === 0) return;
+    if (hasNotifiedRef.current) return;
+    
+    const allCritical = [
+      ...criticalProducts.map(p => ({ name: p.product_name, message: p.alert_message })),
+      ...expiredProducts.map(p => ({ name: p.product_name, message: p.expiry_message })),
+      ...expiringTodayProducts.map(p => ({ name: p.product_name, message: p.expiry_message })),
+    ];
+    
+    if (allCritical.length === 0) return;
     
     hasNotifiedRef.current = true;
 
     // Show first 3 critical alerts as toasts
-    criticalProducts.slice(0, 3).forEach((product, index) => {
+    allCritical.slice(0, 3).forEach((product, index) => {
       setTimeout(() => {
-        toast.warning(`Estoque baixo: ${product.product_name}`, {
-          description: product.alert_message || `${product.current_stock} ${product.product_unit} restante(s)`,
+        toast.warning(`Alerta: ${product.name}`, {
+          description: product.message || 'Verifique o produto',
           duration: 8000,
         });
       }, index * 1500);
     });
 
-    if (criticalProducts.length > 3) {
+    if (allCritical.length > 3) {
       setTimeout(() => {
-        toast.info(`E mais ${criticalProducts.length - 3} produto(s) com estoque baixo`, {
+        toast.info(`E mais ${allCritical.length - 3} produto(s) com alerta`, {
           description: 'Verifique a página de Produtos',
           duration: 5000,
         });
       }, 5000);
     }
-  }, [criticalProducts]);
+  }, [criticalProducts, expiredProducts, expiringTodayProducts]);
 
   // Prepare alerts for WhatsApp notification
   useEffect(() => {
@@ -157,15 +174,58 @@ export function useStockAlertNotifications(notifyPhone?: string) {
       }
     });
 
+    // Add expiry alerts
+    expiredProducts.forEach(p => {
+      alerts.push({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        product_unit: p.product_unit,
+        current_stock: p.current_stock,
+        min_stock_alert: p.min_stock_alert,
+        alert_type: 'expired',
+        expiry_date: p.expiry_date || undefined,
+        days_until_expiry: p.days_until_expiry || undefined,
+      });
+    });
+
+    expiringTodayProducts.forEach(p => {
+      alerts.push({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        product_unit: p.product_unit,
+        current_stock: p.current_stock,
+        min_stock_alert: p.min_stock_alert,
+        alert_type: 'expiring_today',
+        expiry_date: p.expiry_date || undefined,
+        days_until_expiry: p.days_until_expiry || undefined,
+      });
+    });
+
+    expiringSoonProducts.forEach(p => {
+      alerts.push({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        product_unit: p.product_unit,
+        current_stock: p.current_stock,
+        min_stock_alert: p.min_stock_alert,
+        alert_type: 'expiring_soon',
+        expiry_date: p.expiry_date || undefined,
+        days_until_expiry: p.days_until_expiry || undefined,
+      });
+    });
+
     if (alerts.length > 0) {
       sendNotifications(alerts);
     }
-  }, [criticalProducts, warningProducts, notifyPhone, sendNotifications]);
+  }, [criticalProducts, warningProducts, expiredProducts, expiringTodayProducts, expiringSoonProducts, notifyPhone, sendNotifications]);
 
   return {
     predictions,
     criticalProducts,
     warningProducts,
-    totalAlerts: criticalProducts.length + warningProducts.length,
+    expiredProducts,
+    expiringTodayProducts,
+    expiringSoonProducts,
+    totalAlerts: criticalProducts.length + warningProducts.length + expiredProducts.length + expiringTodayProducts.length + expiringSoonProducts.length,
   };
 }

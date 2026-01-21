@@ -7,7 +7,7 @@ import { useProductUsagePrediction } from './useProductUsagePrediction';
 
 export interface SystemNotification {
   id: string;
-  type: 'boleto' | 'package' | 'stock' | 'usage_prediction';
+  type: 'boleto' | 'package' | 'stock' | 'usage_prediction' | 'expiry';
   title: string;
   description: string;
   severity: 'warning' | 'critical' | 'info';
@@ -106,8 +106,14 @@ export function useSystemNotifications() {
     refetchInterval: 300000, // Check every 5 minutes
   });
 
-  // Get usage predictions for additional alerts
-  const { criticalProducts: usageCritical, warningProducts: usageWarning } = useProductUsagePrediction();
+  // Get usage predictions for additional alerts (including expiry)
+  const { 
+    criticalProducts: usageCritical, 
+    warningProducts: usageWarning,
+    expiredProducts,
+    expiringTodayProducts,
+    expiringSoonProducts,
+  } = useProductUsagePrediction();
 
   // Generate notifications
   const notifications = useMemo((): SystemNotification[] => {
@@ -190,8 +196,50 @@ export function useSystemNotifications() {
       }
     });
 
+    // Expired products - critical
+    expiredProducts.forEach(product => {
+      result.push({
+        id: `expiry-expired-${product.product_id}`,
+        type: 'expiry',
+        title: 'Produto VENCIDO',
+        description: `${product.product_name}: ${product.expiry_message || 'Vencido - descarte imediatamente'}`,
+        severity: 'critical',
+        link: `/produtos?product=${product.product_id}`,
+        referenceId: product.product_id,
+        referenceType: 'product',
+      });
+    });
+
+    // Products expiring today - critical
+    expiringTodayProducts.forEach(product => {
+      result.push({
+        id: `expiry-today-${product.product_id}`,
+        type: 'expiry',
+        title: 'Produto vence HOJE',
+        description: `${product.product_name}: ${product.expiry_message || 'Vence hoje - lembre-se de descartá-lo'}`,
+        severity: 'critical',
+        link: `/produtos?product=${product.product_id}`,
+        referenceId: product.product_id,
+        referenceType: 'product',
+      });
+    });
+
+    // Products expiring soon - warning
+    expiringSoonProducts.forEach(product => {
+      result.push({
+        id: `expiry-soon-${product.product_id}`,
+        type: 'expiry',
+        title: 'Produto próximo do vencimento',
+        description: `${product.product_name}: ${product.expiry_message || `Vence em ${product.days_until_expiry} dias`}`,
+        severity: 'warning',
+        link: `/produtos?product=${product.product_id}`,
+        referenceId: product.product_id,
+        referenceType: 'product',
+      });
+    });
+
     return result;
-  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning]);
+  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts]);
 
   // Show toasts for critical notifications (only once per day)
   useEffect(() => {
@@ -207,6 +255,11 @@ export function useSystemNotifications() {
       criticalNotifications.slice(0, 3).forEach((notification, index) => {
         setTimeout(() => {
           if (notification.type === 'boleto') {
+            toast.error(notification.title, {
+              description: notification.description,
+              duration: 10000,
+            });
+          } else if (notification.type === 'expiry') {
             toast.error(notification.title, {
               description: notification.description,
               duration: 10000,

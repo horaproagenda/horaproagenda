@@ -51,9 +51,11 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  FileText,
 } from 'lucide-react';
 import { CashRegister, BankDeposit, useCashRegisters } from '@/hooks/useCashRegisters';
 import { useBanks } from '@/hooks/useBanks';
+import { CashRegisterReportDialog } from './CashRegisterReportDialog';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -73,6 +75,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
   const [searchTerm, setSearchTerm] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedRegister, setSelectedRegister] = useState<CashRegister | null>(null);
   
   // Edit form state
@@ -108,6 +111,11 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
   const handleOpenDelete = (register: CashRegister) => {
     setSelectedRegister(register);
     setDeleteDialogOpen(true);
+  };
+
+  const handleOpenReport = (register: CashRegister) => {
+    setSelectedRegister(register);
+    setReportDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
@@ -250,6 +258,10 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenReport(register)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Relatório
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleOpenEdit(register)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar
@@ -462,6 +474,15 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Report Dialog */}
+      {selectedRegister && (
+        <CashRegisterReportDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          register={selectedRegister}
+        />
+      )}
     </>
   );
 }

@@ -163,7 +163,7 @@ export function useSystemNotifications() {
         title: 'Pacote com poucas sessões',
         description: `${pkg.client?.name}: ${pkg.name} - ${pkg.remaining} sessão(ões) restante(s)`,
         severity: pkg.remaining === 1 ? 'critical' : 'warning',
-        link: `/cliente/${pkg.client_id}?tab=agendamentos`,
+        link: `/clientes/${pkg.client_id}?tab=agendamentos`,
         referenceId: pkg.id,
         referenceType: 'package',
         clientId: pkg.client_id,

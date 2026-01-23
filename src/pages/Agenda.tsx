@@ -92,6 +92,12 @@ import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { exportToCSV } from '@/lib/exportUtils';
 import {
   DropdownMenu,
@@ -137,6 +143,7 @@ const Agenda = () => {
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<typeof absences[0] | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [showMobileAbsencePanel, setShowMobileAbsencePanel] = useState(false);
 
   // Track view changes for animation direction
   useEffect(() => {
@@ -807,24 +814,24 @@ const Agenda = () => {
     setDraggedAppointment(null);
   }, []);
 
-  // Render time slot grid for day view - Clean and compact
+  // Render time slot grid for day view - Clean, compact and mobile optimized
   const renderTimeSlotDayView = () => {
     const holiday = getHolidayForDate(selectedDate);
     
     return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-lg font-semibold text-foreground">
-            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-sm sm:text-lg font-semibold text-foreground leading-tight">
+            {format(selectedDate, "EEE, d 'de' MMM", { locale: ptBR })}
           </h2>
           {holiday && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
-                    <Star className="h-3 w-3 fill-current" />
-                    {holiday.name}
+                  <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                    <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current" />
+                    <span className="truncate max-w-[80px] sm:max-w-none">{holiday.name}</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -834,13 +841,13 @@ const Agenda = () => {
             </TooltipProvider>
           )}
         </div>
-        <Button onClick={handleNewAppointment} size="sm" className="h-7 text-xs">
+        <Button onClick={handleNewAppointment} size="sm" className="h-7 text-xs w-full sm:w-auto">
           <Plus className="h-3.5 w-3.5 mr-1" />
-          Novo
+          Novo Agendamento
         </Button>
       </div>
       
-      <ScrollArea className="h-[520px]">
+      <ScrollArea className="h-[calc(100vh-320px)] sm:h-[520px]">
         <div className="space-y-0.5">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
@@ -962,10 +969,10 @@ const Agenda = () => {
   };
 
   const renderWeekView = () => (
-    <div className="space-y-4">
-      {/* Week days header */}
-      <div className={cn("grid gap-0.5", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
-        <div className="w-14" /> {/* Empty space for time column */}
+    <div className="space-y-2 sm:space-y-4 overflow-x-auto">
+      {/* Week days header - Scrollable on mobile */}
+      <div className={cn("grid gap-0.5 min-w-[600px] sm:min-w-0", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
+        <div className="w-10 sm:w-14 flex-shrink-0" /> {/* Empty space for time column */}
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
@@ -1019,12 +1026,12 @@ const Agenda = () => {
         })}
       </div>
 
-      {/* Time slots grid */}
-      <ScrollArea className="h-[500px]">
-        <div className="space-y-0.5">
+      {/* Time slots grid - Scrollable on mobile */}
+      <ScrollArea className="h-[calc(100vh-360px)] sm:h-[500px]">
+        <div className="space-y-0.5 min-w-[600px] sm:min-w-0">
           {timeSlots.map(time => (
             <div key={time} className={cn("grid gap-0.5 min-h-[26px]", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
-              <div className="w-14 flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+              <div className="w-10 sm:w-14 flex items-center justify-center text-[9px] sm:text-[10px] font-medium text-muted-foreground flex-shrink-0">
                 {time}
               </div>
               {weekDays.map(day => {
@@ -1355,24 +1362,24 @@ const Agenda = () => {
       subtitle="Gerencie seus agendamentos"
     >
       <div className="flex h-full">
-        {/* Main Agenda Content */}
-        <div className="flex-1 min-w-0">
-      {/* Clean Header Layout */}
+      {/* Main Agenda Content */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+      {/* Clean Header Layout - Mobile Optimized */}
       <div className="space-y-2 mb-3">
-        {/* Row 1: Search + Filter + Absence */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-xs">
+        {/* Row 1: Search + Filter + Absence - Mobile Responsive */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="relative flex-1 min-w-[120px] max-w-xs">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar cliente, serviço..."
+              placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-7 pl-7 text-xs"
             />
           </div>
           
-          <div className="flex-1" />
+          <div className="flex-shrink-0 flex items-center gap-1.5">
 
           {/* Unified Filter Popover */}
           <Popover>
@@ -1505,16 +1512,32 @@ const Agenda = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Absence Button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleOpenNewAbsence}
-            className="h-7 px-2 gap-1"
-          >
-            <UserX className="h-3 w-3" />
-            <span className="text-[11px]">Ausência</span>
-          </Button>
+          {/* Absence Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-2 gap-1"
+              >
+                <UserX className="h-3 w-3" />
+                <span className="text-[11px] hidden sm:inline">Ausência</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-popover">
+              <DropdownMenuItem onClick={handleOpenNewAbsence} className="text-xs gap-2">
+                <Plus className="h-3.5 w-3.5" />
+                Registrar Ausência
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setShowMobileAbsencePanel(true)}
+                className="text-xs gap-2"
+              >
+                <List className="h-3.5 w-3.5" />
+                Ausências Registradas
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Import/Export Dropdown */}
           <DropdownMenu>
@@ -1538,51 +1561,54 @@ const Agenda = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
 
-        {/* Row 2: View Toggle */}
-        <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start gap-0.5">
-          <ToggleGroupItem value="day" aria-label="Ver dia" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-            <List className="h-3 w-3" />
-            <span>Dia</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="week" aria-label="Ver semana" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-            <LayoutGrid className="h-3 w-3" />
-            <span>Semana</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="month" aria-label="Ver mês" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-            <CalendarIcon className="h-3 w-3" />
-            <span>Mês</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="h-6 px-2.5 text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-            <User className="h-3 w-3" />
-            <span>Prof.</span>
-          </ToggleGroupItem>
-        </ToggleGroup>
+        {/* Row 2: View Toggle - Mobile Responsive */}
+        <div className="flex flex-wrap items-center gap-1">
+          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start gap-0.5">
+            <ToggleGroupItem value="day" aria-label="Ver dia" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <List className="h-3 w-3" />
+              <span className="hidden xs:inline">Dia</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="week" aria-label="Ver semana" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <LayoutGrid className="h-3 w-3" />
+              <span className="hidden xs:inline">Sem</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="month" aria-label="Ver mês" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <CalendarIcon className="h-3 w-3" />
+              <span className="hidden xs:inline">Mês</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="professional" aria-label="Ver por profissional" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <User className="h-3 w-3" />
+              <span className="hidden xs:inline">Prof.</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-7 w-7">
+      {/* Navigation - Mobile Optimized */}
+      <div className="rounded-xl border border-border/50 bg-card p-2 sm:p-3 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+          <div className="flex items-center gap-1 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-7 w-7 flex-shrink-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7">
+            <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7 flex-shrink-0">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <span className="ml-1.5 text-sm font-medium text-foreground capitalize">
+            <span className="ml-1 text-xs sm:text-sm font-medium text-foreground capitalize truncate">
               {getNavigationLabel()}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" onClick={goToToday} className="h-7 text-xs px-2.5">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-7 text-[10px] sm:text-xs px-2 sm:px-2.5">
               Hoje
             </Button>
             {(viewType === 'week' || viewType === 'month') && (
-              <Button size="sm" onClick={handleNewAppointment} className="h-7 text-xs px-2.5">
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Novo
+              <Button size="sm" onClick={handleNewAppointment} className="h-7 text-[10px] sm:text-xs px-2 sm:px-2.5">
+                <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5 sm:mr-1" />
+                <span className="hidden xs:inline">Novo</span>
               </Button>
             )}
           </div>
@@ -1899,6 +1925,32 @@ const Agenda = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
+
+      {/* Mobile Absence Panel Sheet */}
+      <Sheet open={showMobileAbsencePanel} onOpenChange={setShowMobileAbsencePanel}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+          <SheetHeader className="pb-3">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <UserX className="h-4 w-4 text-amber-600" />
+              Ausências Registradas
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
+            <AbsenceManagementPanel
+              professionals={professionals}
+              onEditAbsence={(absence) => {
+                setEditingAbsence(absence);
+                setShowMobileAbsencePanel(false);
+                setAbsenceDialogOpen(true);
+              }}
+              onNewAbsence={() => {
+                setShowMobileAbsencePanel(false);
+                handleOpenNewAbsence();
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 };

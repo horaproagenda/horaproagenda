@@ -108,6 +108,8 @@ export function AppointmentDetailDialog({
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
+  
+  // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -239,7 +241,14 @@ export function AppointmentDetailDialog({
     }, 0);
   }, [payments, activeCardBrands, appointment]);
 
-  if (!appointment) return null;
+  // Early return for null appointment - AFTER all hooks
+  if (!appointment) {
+    return null;
+  }
+  
+  // Safely access nested properties with fallbacks
+  const safeClient = appointment.client || { name: 'Cliente não encontrado', phone: '', credit_balance: 0 };
+  const safeService = appointment.service || { name: 'Serviço não disponível', price: 0, professional: null, room: null };
 
   // Get package session info
   const getPackageSessionInfo = () => {

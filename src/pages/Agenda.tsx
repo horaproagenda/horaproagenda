@@ -1364,33 +1364,30 @@ const Agenda = () => {
       <div className="flex h-full">
       {/* Main Agenda Content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-      {/* Clean Header Layout - Mobile Optimized */}
-      <div className="space-y-2 mb-3">
-        {/* Row 1: Search + Filter + Absence - Mobile Responsive */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <div className="relative flex-1 min-w-[120px] max-w-xs">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      {/* Clean Header Layout - Mobile First, Ultra Compact */}
+      <div className="space-y-1.5 mb-2">
+        {/* Row 1: Search + Actions - Single Line on Mobile */}
+        <div className="flex items-center gap-1">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-7 pl-7 text-xs"
+              className="h-7 pl-7 pr-2 text-xs"
             />
           </div>
           
-          <div className="flex-shrink-0 flex items-center gap-1.5">
-
-          {/* Unified Filter Popover */}
+          {/* Compact Action Buttons */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 px-2 gap-1">
-                <Filter className="h-3 w-3" />
-                <span className="text-[11px]">Filtros</span>
+              <Button variant="outline" size="icon" className="h-7 w-7 flex-shrink-0 relative">
+                <Filter className="h-3.5 w-3.5" />
                 {hasActiveFilters && (
-                  <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center">
                     {activeFiltersCount}
-                  </Badge>
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -1517,11 +1514,10 @@ const Agenda = () => {
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
-                size="sm" 
-                className="h-7 px-2 gap-1"
+                size="icon"
+                className="h-7 w-7 flex-shrink-0"
               >
-                <UserX className="h-3 w-3" />
-                <span className="text-[11px] hidden sm:inline">Ausência</span>
+                <UserX className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-popover">
@@ -1542,9 +1538,8 @@ const Agenda = () => {
           {/* Import/Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 px-2 gap-1">
-                <MoreHorizontal className="h-3 w-3" />
-                <span className="text-[11px]">Mais</span>
+              <Button variant="outline" size="icon" className="h-7 w-7 flex-shrink-0">
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44 bg-popover">
@@ -1561,7 +1556,6 @@ const Agenda = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          </div>
         </div>
 
         {/* Row 2: View Toggle - Mobile Responsive */}

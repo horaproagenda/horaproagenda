@@ -60,7 +60,7 @@ export function AbsenceManagementPanel({
   const [searchTerm, setSearchTerm] = useState('');
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('upcoming');
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false); // Recolhido por padrão
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const activeProfessionals = professionals.filter(p => p.is_active);

@@ -241,6 +241,37 @@ export function AppointmentDetailDialog({
     }, 0);
   }, [payments, activeCardBrands, appointment]);
 
+  // Load series info - MUST be before any early returns
+  const [localSeriesCount, setLocalSeriesCount] = useState(0);
+  const [localSeriesIndex, setLocalSeriesIndex] = useState(0);
+  
+  useEffect(() => {
+    const loadSeriesInfoAsync = async () => {
+      if (!open || !appointment?.recurring_group_id) {
+        setLocalSeriesCount(0);
+        setLocalSeriesIndex(0);
+        return;
+      }
+      
+      try {
+        const seriesAppointments = await getSeriesAppointments(appointment.recurring_group_id);
+        setLocalSeriesCount(seriesAppointments?.length || 0);
+        const index = seriesAppointments?.findIndex(a => a.id === appointment.id) ?? -1;
+        setLocalSeriesIndex(index + 1);
+      } catch (error) {
+        console.error('Error loading series info:', error);
+      }
+    };
+    
+    loadSeriesInfoAsync();
+  }, [open, appointment?.recurring_group_id, appointment?.id, getSeriesAppointments]);
+  
+  // Sync local series state to component state
+  useEffect(() => {
+    setSeriesCount(localSeriesCount);
+    setSeriesIndex(localSeriesIndex);
+  }, [localSeriesCount, localSeriesIndex]);
+
   // Early return for null appointment - AFTER all hooks
   if (!appointment) {
     return null;
@@ -265,27 +296,7 @@ export function AppointmentDetailDialog({
   
   // Check if appointment is part of a recurring series
   const isRecurringSeries = appointment.recurring_group_id != null;
-  
-  // Load series info
-  useEffect(() => {
-    if (open && appointment?.recurring_group_id) {
-      loadSeriesInfo();
-    }
-  }, [open, appointment?.recurring_group_id]);
 
-  const loadSeriesInfo = async () => {
-    if (!appointment?.recurring_group_id) return;
-    
-    try {
-      const seriesAppointments = await getSeriesAppointments(appointment.recurring_group_id);
-      setSeriesCount(seriesAppointments?.length || 0);
-      const index = seriesAppointments?.findIndex(a => a.id === appointment.id) ?? -1;
-      setSeriesIndex(index + 1);
-    } catch (error) {
-      console.error('Error loading series info:', error);
-    }
-  };
-  
   const handleDelete = async () => {
     // Handle package appointments (delete all from package)
     if (deleteMode === 'all' && appointment.package_appointment?.package_id) {

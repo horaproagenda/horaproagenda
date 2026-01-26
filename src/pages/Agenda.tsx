@@ -250,8 +250,15 @@ const Agenda = () => {
   }, [monthStart, hideSunday]);
 
   // Filter appointments by search, professional, room, status and payment
+  // CRITICAL: Always exclude 'rescheduled' status from display so time slots are freed
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
+      // ALWAYS exclude rescheduled appointments from the grid
+      // They should not occupy time slots
+      if (apt.status === 'rescheduled') {
+        return false;
+      }
+      
       // Search filter
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -1345,10 +1352,18 @@ const Agenda = () => {
   };
 
   // Check if any automation is enabled to show panel
-  const showAutomationPanel = settings?.automation_occupancy_dashboard || 
-    settings?.automation_gap_finder || 
-    settings?.automation_waitlist || 
-    settings?.automation_smart_recurrence;
+  // Default to showing the panel if settings haven't loaded yet or no automations configured
+  const showAutomationPanel = settings ? (
+    settings.automation_occupancy_dashboard || 
+    settings.automation_gap_finder || 
+    settings.automation_waitlist || 
+    settings.automation_smart_recurrence ||
+    // Show panel by default if none are explicitly disabled
+    (settings.automation_occupancy_dashboard === null && 
+     settings.automation_gap_finder === null && 
+     settings.automation_waitlist === null && 
+     settings.automation_smart_recurrence === null)
+  ) : true; // Show while loading
 
   const handleOpenNewAppointmentFromAutomation = (date?: Date, time?: string) => {
     setPrefilledDate(date);

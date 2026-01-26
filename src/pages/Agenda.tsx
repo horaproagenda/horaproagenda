@@ -46,6 +46,8 @@ import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDi
 import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';
 import { ImportAppointmentsDialog } from '@/components/appointments/ImportAppointmentsDialog';
 import { AbsenceManagementPanel } from '@/components/agenda/AbsenceManagementPanel';
+import { MobileAgendaList } from '@/components/agenda/MobileAgendaList';
+import { MobileAgendaHeader } from '@/components/agenda/MobileAgendaHeader';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -87,6 +89,7 @@ import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useAutoCompleteAppointments } from '@/hooks/useAutoCompleteAppointments';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
+import { useIsSmartphone } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -141,9 +144,13 @@ const Agenda = () => {
     newEndTime: Date;
   } | null>(null);
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
-  const [editingAbsence, setEditingAbsence] = useState<typeof absences[0] | null>(null);
+  const [editingAbsence, setEditingAbsence] = useState<any>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showMobileAbsencePanel, setShowMobileAbsencePanel] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  
+  // Detect true smartphone for optimized mobile layout
+  const isSmartphone = useIsSmartphone();
 
   // Track view changes for animation direction
   useEffect(() => {
@@ -1371,6 +1378,165 @@ const Agenda = () => {
     setNewAppointmentDialogOpen(true);
   };
 
+  // Mobile-specific day stats for the header
+  const mobileDayStats = useMemo(() => {
+    const dayApts = filteredByFilters.filter(apt => isSameDay(new Date(apt.start_time), selectedDate));
+    return {
+      total: dayApts.length,
+      confirmed: dayApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
+      pending: dayApts.filter(a => a.status === 'scheduled').length,
+    };
+  }, [filteredByFilters, selectedDate]);
+
+  // Render mobile-optimized smartphone view
+  const renderSmartphoneView = () => {
+    return (
+      <div className="flex flex-col h-full -mx-2 -mt-2">
+        {/* Mobile Header */}
+        <MobileAgendaHeader
+          selectedDate={selectedDate}
+          onDateChange={(date) => {
+            setSelectedDate(date);
+            setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
+            setMonthStart(startOfMonth(date));
+          }}
+          onNewAppointment={handleNewAppointment}
+          onFilterClick={() => setShowMobileFilters(true)}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          activeFiltersCount={activeFiltersCount}
+          dayStats={mobileDayStats}
+        />
+        
+        {/* Mobile Appointment List */}
+        <div className="flex-1 overflow-hidden">
+          <MobileAgendaList
+            appointments={filteredByFilters}
+            professionals={professionals}
+            selectedDate={selectedDate}
+            onAppointmentClick={handleAppointmentClick}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // If smartphone, render simplified mobile UI
+  if (isSmartphone) {
+    return (
+      <AppLayout 
+        title="Agenda" 
+        subtitle=""
+      >
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 space-y-3">
+            <div className="h-8 w-8 rounded-full border-4 border-muted animate-spin border-t-primary" />
+            <p className="text-xs text-muted-foreground">Carregando...</p>
+          </div>
+        ) : (
+          renderSmartphoneView()
+        )}
+        
+        {/* Mobile Filter Sheet */}
+        <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
+          <SheetContent side="bottom" className="h-auto max-h-[70vh]">
+            <SheetHeader>
+              <SheetTitle className="text-sm">Filtros</SheetTitle>
+            </SheetHeader>
+            <div className="py-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Profissional</label>
+                  <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {activeProfessionals.map((prof) => (
+                        <SelectItem key={prof.id} value={prof.id}>
+                          <span className="text-xs">{prof.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Status</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="scheduled">Agendado</SelectItem>
+                      <SelectItem value="confirmed">Confirmado</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Pagamento</label>
+                  <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="partial">Parcial</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Sala</label>
+                  <Select value={roomFilter} onValueChange={setRoomFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {activeRooms.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          <span className="text-xs">{room.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={clearFilters} className="w-full h-8 text-xs">
+                  <X className="h-3 w-3 mr-1" />
+                  Limpar Filtros
+                </Button>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+        
+        {/* Dialogs */}
+        <AppointmentDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          appointment={selectedAppointment}
+          professionals={professionals}
+          onPayment={handlePayment}
+        />
+        
+        <NewAppointmentDialog
+          open={newAppointmentDialogOpen}
+          onOpenChange={setNewAppointmentDialogOpen}
+          prefilledDate={prefilledDate}
+          prefilledTime={prefilledTime}
+        />
+      </AppLayout>
+    );
+  }
+
+  // Desktop/Tablet view (existing layout)
   return (
     <AppLayout 
       title="Agenda" 

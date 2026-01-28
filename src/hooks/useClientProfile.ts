@@ -514,14 +514,17 @@ export function useClientProfile(clientId: string) {
 
 export function useUploadFile() {
   const uploadFile = async (file: File, path: string) => {
+    // Use client-photos bucket for photos (public bucket)
+    const bucketName = path.includes('/photos/') ? 'client-photos' : 'client-documents';
+    
     const { data, error } = await supabase.storage
-      .from('client-documents')
+      .from(bucketName)
       .upload(path, file);
 
     if (error) throw error;
 
     const { data: urlData } = supabase.storage
-      .from('client-documents')
+      .from(bucketName)
       .getPublicUrl(data.path);
 
     return { path: data.path, url: urlData.publicUrl };

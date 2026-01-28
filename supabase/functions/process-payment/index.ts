@@ -68,7 +68,10 @@ serve(async (req) => {
       errors.push({ field: 'appointment_id', message: 'Appointment ID is required' });
     }
 
-    if (!Array.isArray(body.payment_methods) || body.payment_methods.length === 0) {
+    // Payment methods are required UNLESS this is a courtesy-only payment
+    const isCourtesyOnly = body.courtesy_credit && body.courtesy_credit > 0 && (!body.amount_paid || body.amount_paid === 0);
+    
+    if (!isCourtesyOnly && (!Array.isArray(body.payment_methods) || body.payment_methods.length === 0)) {
       errors.push({ field: 'payment_methods', message: 'At least one payment method is required' });
     }
 

@@ -138,6 +138,9 @@ export function AppointmentDetailDialog({
   const [useClientCredit, setUseClientCredit] = useState(false);
   const [clientCreditUsedAmount, setClientCreditUsedAmount] = useState('');
   
+  // Discount
+  const [discountAmount, setDiscountAmount] = useState('');
+  
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState('');
@@ -482,26 +485,33 @@ export function AppointmentDetailDialog({
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const courtesyCredit = parseFloat(courtesyCreditAmount) || 0; // Cortesia: brinde sem entrada financeira
+  const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
   
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
+  
+  // Remaining amount after discount
+  const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
+  
   const clientCreditUsed = useClientCredit 
-    ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAmount) 
+    ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAfterDiscount) 
     : 0;
   
   const totalWithCredit = totalPaymentAmount + courtesyCredit + clientCreditUsed;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;
-  const newRemainingAmount = remainingAmount - totalPaymentAmount - courtesyCredit - clientCreditUsed;
+  const newRemainingAmount = remainingAfterDiscount - totalPaymentAmount - courtesyCredit - clientCreditUsed;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
-
+  
+  // Check if this is a courtesy-only payment (no actual money, just courtesy credit)
+  const isCourtesyOnly = courtesyCredit > 0 && totalPaymentAmount === 0 && clientCreditUsed === 0;
   
   // Calculate excess payment (when paid more than owed)
-  const excessPaymentAmount = totalPaymentAmount > remainingAmount ? totalPaymentAmount - remainingAmount : 0;
+  const excessPaymentAmount = totalPaymentAmount > remainingAfterDiscount ? totalPaymentAmount - remainingAfterDiscount : 0;
   const hasExcessPayment = excessPaymentAmount > 0;
 
   const handleConfirmPayment = () => {
-    // Verificar se existe caixa aberto
-    if (!currentOpenRegister) {
+    // For courtesy-only, we don't need cash register (no financial impact)
+    if (!isCourtesyOnly && !currentOpenRegister) {
       toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
       return;
     }
@@ -518,7 +528,7 @@ export function AppointmentDetailDialog({
       return;
     }
     
-    if (hasPartialPayment) {
+    if (hasPartialPayment && !isCourtesyOnly) {
       setShowConfirmDialog(true);
     } else {
       submitPayment();
@@ -555,6 +565,7 @@ export function AppointmentDetailDialog({
       setPayments([{ method: '', amount: '' }]);
       setCourtesyCreditAmount('');
       setClientCreditUsedAmount('');
+      setDiscountAmount('');
       setUseClientCredit(false);
       setShowConfirmDialog(false);
       setExcessAction(null);
@@ -936,10 +947,32 @@ export function AppointmentDetailDialog({
                     </div>
                   )}
 
+                  {/* Discount Section */}
+                  <div className="p-3 rounded-lg border border-orange-500/30 bg-orange-500/5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="h-4 w-4 text-orange-500" />
+                      <Label className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                        Desconto
+                      </Label>
+                    </div>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(e.target.value)}
+                    />
+                    {discount > 0 && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Novo valor a pagar: R$ {remainingAfterDiscount.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                     <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                    <p className="text-xl font-bold text-primary">R$ {remainingAmount.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-primary">R$ {remainingAfterDiscount.toFixed(2)}</p>
                     {isPackageAppointment && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Valor total do pacote (pagamento integral obrigatório)
@@ -1238,7 +1271,7 @@ export function AppointmentDetailDialog({
                     <Button variant="outline" onClick={() => setShowPaymentForm(false)} className="flex-1">
                       Cancelar
                     </Button>
-                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalWithCredit <= 0}>
+                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalWithCredit <= 0 && !isCourtesyOnly}>
                       Confirmar Pagamento
                     </Button>
                   </div>

@@ -134,7 +134,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh]">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
@@ -144,9 +144,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[60vh] pr-4">
-              <div className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4 pb-2">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -333,28 +333,29 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                     </FormItem>
                   )}
                 />
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setOpen(false);
-                      resetForm();
-                      onClose?.();
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createSupplier.isPending || updateSupplier.isPending}
-                  >
-                    {createSupplier.isPending || updateSupplier.isPending ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </div>
               </div>
             </ScrollArea>
+            
+            {/* Buttons OUTSIDE ScrollArea - always visible */}
+            <div className="flex justify-end gap-2 pt-4 border-t mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpen(false);
+                  resetForm();
+                  onClose?.();
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={createSupplier.isPending || updateSupplier.isPending}
+              >
+                {createSupplier.isPending || updateSupplier.isPending ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>

@@ -79,46 +79,74 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     }, {} as Record<TreatmentStage, TreatmentPhoto[]>);
   }, [filteredPhotos]);
 
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(selectedFile);
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      // Support multiple files
+      setFiles(selectedFiles);
+      setFile(selectedFiles[0]); // Keep single file for backward compatibility
+      
+      // Generate previews for all files
+      const newPreviews: string[] = [];
+      selectedFiles.forEach((f, index) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews[index] = reader.result as string;
+          if (newPreviews.filter(Boolean).length === selectedFiles.length) {
+            setPreviews([...newPreviews]);
+          }
+        };
+        reader.readAsDataURL(f);
+      });
+      
+      // Set single preview for first file
+      const firstReader = new FileReader();
+      firstReader.onloadend = () => setPreview(firstReader.result as string);
+      firstReader.readAsDataURL(selectedFiles[0]);
     }
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      toast.error('Selecione uma foto');
+    if (files.length === 0 && !file) {
+      toast.error('Selecione pelo menos uma foto');
       return;
     }
 
     setLoading(true);
     try {
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const path = `${clientId}/photos/${timestamp}-${safeName}`;
-      const result = await uploadFile(file, path);
+      const filesToUpload = files.length > 0 ? files : (file ? [file] : []);
+      
+      for (const fileToUpload of filesToUpload) {
+        const timestamp = Date.now();
+        const safeName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const path = `${clientId}/photos/${timestamp}-${safeName}`;
+        const result = await uploadFile(fileToUpload, path);
 
-      await onAddPhoto({
-        client_id: clientId,
-        appointment_id: null,
-        stage,
-        file_path: result.path,
-        file_url: result.url,
-        notes: notes.trim() || null,
-        taken_at: new Date().toISOString(),
-      });
+        await onAddPhoto({
+          client_id: clientId,
+          appointment_id: null,
+          stage,
+          file_path: result.path,
+          file_url: result.url,
+          notes: notes.trim() || null,
+          taken_at: new Date().toISOString(),
+        });
+      }
 
+      toast.success(`${filesToUpload.length} foto(s) adicionada(s) com sucesso!`);
       setOpen(false);
       setNotes('');
       setFile(null);
+      setFiles([]);
       setPreview(null);
+      setPreviews([]);
       setStage('before');
     } catch (error) {
       console.error('Error adding photo:', error);
+      toast.error('Erro ao adicionar foto(s)');
     } finally {
       setLoading(false);
     }
@@ -171,20 +199,44 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Foto *</Label>
-                <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                {preview ? (
-                  <div className="relative">
-                    <img src={preview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
-                    <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 h-6 text-xs" onClick={() => { setFile(null); setPreview(null); }}>
-                      Remover
+                <Label className="text-xs">Fotos * (múltiplas permitidas)</Label>
+                <input 
+                  ref={fileInputRef} 
+                  type="file" 
+                  className="hidden" 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  multiple 
+                />
+                {previews.length > 0 || preview ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      {(previews.length > 0 ? previews : [preview]).filter(Boolean).map((p, idx) => (
+                        <div key={idx} className="relative">
+                          <img src={p!} alt={`Preview ${idx + 1}`} className="w-full h-16 object-cover rounded-lg" />
+                        </div>
+                      ))}
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full h-6 text-xs" 
+                      onClick={() => { 
+                        setFile(null); 
+                        setFiles([]); 
+                        setPreview(null); 
+                        setPreviews([]); 
+                      }}
+                    >
+                      Remover todas
                     </Button>
                   </div>
                 ) : (
                   <Button type="button" variant="outline" className="w-full h-24 text-xs" onClick={() => fileInputRef.current?.click()}>
                     <div className="flex flex-col items-center gap-1">
                       <Upload className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-muted-foreground">Clique para selecionar</span>
+                      <span className="text-muted-foreground">Clique para selecionar (várias fotos)</span>
                     </div>
                   </Button>
                 )}
@@ -195,8 +247,8 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações..." rows={2} className="text-xs" />
               </div>
 
-              <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading || !file}>
-                {loading ? 'Salvando...' : 'Salvar'}
+              <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading || (files.length === 0 && !file)}>
+                {loading ? 'Salvando...' : `Salvar ${files.length > 1 ? `(${files.length} fotos)` : ''}`}
               </Button>
             </div>
           </DialogContent>

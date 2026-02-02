@@ -134,6 +134,11 @@ export function ProductDetailDialog({
   const [containerAmount, setContainerAmount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Stock editing state
+  const [isEditingStock, setIsEditingStock] = useState(false);
+  const [newStockValue, setNewStockValue] = useState(0);
+  const [stockEditReason, setStockEditReason] = useState('');
+  
   // Purchase editing state
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [purchaseEditForm, setPurchaseEditForm] = useState({
@@ -499,7 +504,24 @@ export function ProductDetailDialog({
                   {/* Stock Info Card */}
                   <div className="grid grid-cols-3 gap-4">
                     <div className="p-4 rounded-lg border bg-card">
-                      <div className="text-sm text-muted-foreground">Estoque Atual</div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm text-muted-foreground">Estoque Atual</div>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              setNewStockValue(product.current_stock);
+                              setStockEditReason('');
+                              setIsEditingStock(true);
+                            }}
+                            title="Editar quantidade"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                       <div className={cn(
                         "text-2xl font-bold",
                         product.current_stock <= (product.min_stock_alert || 0) && "text-destructive"
@@ -531,6 +553,61 @@ export function ProductDetailDialog({
                       </div>
                     </div>
                   </div>
+
+                  {/* Stock Edit Dialog */}
+                  {isEditingStock && (
+                    <div className="p-4 rounded-lg border-2 border-primary/50 bg-primary/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Editar Quantidade em Estoque</h4>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditingStock(false)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs">Nova Quantidade</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={newStockValue}
+                            onChange={(e) => setNewStockValue(parseFloat(e.target.value) || 0)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Motivo (opcional)</Label>
+                          <Input
+                            value={stockEditReason}
+                            onChange={(e) => setStockEditReason(e.target.value)}
+                            placeholder="Ex: Correção de inventário"
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditingStock(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            const reason = stockEditReason ? ` (${stockEditReason})` : '';
+                            const noteEntry = `\n[${format(new Date(), 'dd/MM/yyyy HH:mm')}] Estoque ajustado de ${product.current_stock} para ${newStockValue}${reason}`;
+                            await onUpdateProduct({
+                              id: product.id,
+                              current_stock: newStockValue,
+                              notes: (product.notes || '') + noteEntry,
+                            });
+                            setIsEditingStock(false);
+                          }}
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   <Separator />
 

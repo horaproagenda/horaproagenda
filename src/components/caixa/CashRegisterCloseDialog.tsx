@@ -37,7 +37,13 @@ interface PaymentBreakdown {
   cash: number;
   boleto: number;
   check: number;
+  transfer: number;
   other: number;
+}
+
+interface CardFees {
+  total: number;
+  byBrand: Record<string, number>;
 }
 
 interface CashRegisterCloseDialogProps {
@@ -74,10 +80,6 @@ export function CashRegisterCloseDialog({
 
   // Calculate breakdown from transactions
   const breakdown = useMemo((): PaymentBreakdown => {
-    const today = new Date();
-    const todayStart = startOfDay(today);
-    const todayEnd = endOfDay(today);
-    
     const result: PaymentBreakdown = {
       credit: 0,
       debit: 0,
@@ -85,28 +87,31 @@ export function CashRegisterCloseDialog({
       cash: 0,
       boleto: 0,
       check: 0,
+      transfer: 0,
       other: 0,
     };
     
-    // Get sales transactions from today's cash register
+    // Get income transactions from cash register
     transactions
-      .filter(t => t.type === 'income' && t.category === 'sale')
+      .filter(t => t.type === 'income')
       .forEach(t => {
         const method = (t.payment_method || '').toLowerCase();
         const amount = Number(t.amount);
         
-        if (method.includes('crédito') || method.includes('credito')) {
+        if (method.includes('crédito') || method.includes('credito') || method.includes('credit')) {
           result.credit += amount;
-        } else if (method.includes('débito') || method.includes('debito')) {
+        } else if (method.includes('débito') || method.includes('debito') || method.includes('debit')) {
           result.debit += amount;
         } else if (method.includes('pix')) {
           result.pix += amount;
-        } else if (method.includes('dinheiro') || method.includes('espécie')) {
+        } else if (method.includes('dinheiro') || method.includes('espécie') || method.includes('cash')) {
           result.cash += amount;
         } else if (method.includes('boleto')) {
           result.boleto += amount;
-        } else if (method.includes('cheque')) {
+        } else if (method.includes('cheque') || method.includes('check')) {
           result.check += amount;
+        } else if (method.includes('transferência') || method.includes('transfer')) {
+          result.transfer += amount;
         } else {
           result.other += amount;
         }
@@ -114,6 +119,47 @@ export function CashRegisterCloseDialog({
     
     return result;
   }, [transactions]);
+
+  // Calculate card fees from transactions
+  const cardFees = useMemo((): CardFees => {
+    let total = 0;
+    const byBrand: Record<string, number> = {};
+    
+    transactions
+      .filter(t => t.type === 'income' && t.card_fee_amount && t.card_fee_amount > 0)
+      .forEach(t => {
+        const feeAmount = Number(t.card_fee_amount);
+        total += feeAmount;
+        
+        const method = t.payment_method || 'Cartão';
+        byBrand[method] = (byBrand[method] || 0) + feeAmount;
+      });
+    
+    return { total, byBrand };
+  }, [transactions]);
+
+  // Calculate expenses/withdrawals
+  const expenses = useMemo(() => {
+    return transactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, t) => {
+        const category = t.category || 'other';
+        if (!acc[category]) {
+          acc[category] = { total: 0, items: [] };
+        }
+        acc[category].total += Number(t.amount);
+        acc[category].items.push({
+          description: t.description || 'Saída',
+          amount: Number(t.amount),
+        });
+        return acc;
+      }, {} as Record<string, { total: number; items: { description: string; amount: number }[] }>);
+  }, [transactions]);
+
+  const totalExpenses = useMemo(() => 
+    Object.values(expenses).reduce((sum, cat) => sum + cat.total, 0),
+    [expenses]
+  );
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -240,6 +286,9 @@ export function CashRegisterCloseDialog({
               <PaymentRow icon={Banknote} label="Dinheiro" value={breakdown.cash} color="text-green-600" />
               <PaymentRow icon={FileText} label="Boleto" value={breakdown.boleto} color="text-amber-600" />
               <PaymentRow icon={FileText} label="Cheque" value={breakdown.check} color="text-orange-600" />
+              {breakdown.transfer > 0 && (
+                <PaymentRow icon={Receipt} label="Transferência" value={breakdown.transfer} color="text-cyan-600" />
+              )}
               {breakdown.other > 0 && (
                 <PaymentRow icon={Receipt} label="Outros" value={breakdown.other} />
               )}
@@ -251,6 +300,58 @@ export function CashRegisterCloseDialog({
                 <span className="text-green-600">{formatCurrency(totals.income)}</span>
               </div>
             </div>
+
+            {/* Card Fees Section */}
+            {cardFees.total > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                    <CreditCard className="h-4 w-4 text-orange-500" />
+                    Taxas de Cartão (Maquininha)
+                  </h4>
+                  {Object.entries(cardFees.byBrand).map(([brand, amount]) => (
+                    <div key={brand} className="flex items-center justify-between py-1 text-sm">
+                      <span className="text-muted-foreground">{brand}</span>
+                      <span className="text-orange-500">- {formatCurrency(amount)}</span>
+                    </div>
+                  ))}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between items-center py-2 font-semibold text-orange-600">
+                    <span>Total Taxas</span>
+                    <span>- {formatCurrency(cardFees.total)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Expenses/Withdrawals Section */}
+            {totalExpenses > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-3 text-red-600">
+                    <AlertTriangle className="h-4 w-4" />
+                    Saídas / Despesas
+                  </h4>
+                  {Object.entries(expenses).map(([category, data]) => (
+                    <div key={category} className="space-y-1">
+                      {data.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between py-1 text-sm">
+                          <span className="text-muted-foreground truncate max-w-[200px]">{item.description}</span>
+                          <span className="text-red-500">- {formatCurrency(item.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between items-center py-2 font-semibold text-red-600">
+                    <span>Total Saídas</span>
+                    <span>- {formatCurrency(totalExpenses)}</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 

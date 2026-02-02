@@ -25,19 +25,59 @@ export interface SystemNotification {
 // Get today's date as string for localStorage key
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
-// Check if notifications were already shown today
-const wasShownToday = () => {
-  const lastShown = localStorage.getItem('notifications_last_shown');
-  return lastShown === getTodayKey();
+// Get session key to track if toasts were shown in this browser session
+const getSessionKey = () => 'notifications_session_shown';
+
+// Check if notifications were already shown in this session (since app open)
+const wasShownThisSession = () => {
+  return sessionStorage.getItem(getSessionKey()) === 'true';
 };
 
-// Mark notifications as shown today
-const markAsShownToday = () => {
-  localStorage.setItem('notifications_last_shown', getTodayKey());
+// Mark notifications as shown in this session
+const markAsShownThisSession = () => {
+  sessionStorage.setItem(getSessionKey(), 'true');
+};
+
+// Check if a specific notification was dismissed (for persistent items like reminders)
+const wasNotificationDismissed = (notificationId: string): boolean => {
+  const stored = localStorage.getItem('dismissed_notifications');
+  if (!stored) return false;
+  
+  try {
+    const data = JSON.parse(stored);
+    if (data.date !== getTodayKey()) {
+      // Clear old dismissed notifications
+      localStorage.removeItem('dismissed_notifications');
+      return false;
+    }
+    return data.ids?.includes(notificationId) || false;
+  } catch {
+    return false;
+  }
+};
+
+// Mark a notification as dismissed for today
+const markNotificationDismissed = (notificationId: string) => {
+  const stored = localStorage.getItem('dismissed_notifications');
+  let existingIds: string[] = [];
+  
+  try {
+    const data = JSON.parse(stored || '{}');
+    if (data.date === getTodayKey()) {
+      existingIds = data.ids || [];
+    }
+  } catch {
+    // ignore
+  }
+  
+  localStorage.setItem('dismissed_notifications', JSON.stringify({
+    date: getTodayKey(),
+    ids: [...new Set([...existingIds, notificationId])],
+  }));
 };
 
 export function useSystemNotifications() {
-  const hasShownToasts = useRef(wasShownToday());
+  const hasShownToasts = useRef(wasShownThisSession());
 
   // Fetch boletos vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
@@ -316,19 +356,24 @@ export function useSystemNotifications() {
     return result;
   }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, oldOpenRegisters, settings]);
 
-  // Show toasts for critical notifications (only once per day)
+  // Show toasts for critical notifications (only once per session, when app opens)
   useEffect(() => {
     if (hasShownToasts.current || notifications.length === 0) return;
 
-    const criticalNotifications = notifications.filter(n => n.severity === 'critical');
+    const criticalNotifications = notifications.filter(n => 
+      n.severity === 'critical' && !wasNotificationDismissed(n.id)
+    );
     
     if (criticalNotifications.length > 0) {
       hasShownToasts.current = true;
-      markAsShownToday();
+      markAsShownThisSession();
 
       // Show first 3 critical notifications as toasts
       criticalNotifications.slice(0, 3).forEach((notification, index) => {
         setTimeout(() => {
+          // Mark this notification as shown so it won't appear again today
+          markNotificationDismissed(notification.id);
+          
           if (notification.type === 'boleto') {
             toast.error(notification.title, {
               description: notification.description,
@@ -338,6 +383,11 @@ export function useSystemNotifications() {
             toast.error(notification.title, {
               description: notification.description,
               duration: 10000,
+            });
+          } else if (notification.type === 'cash_register') {
+            toast.error(notification.title, {
+              description: notification.description,
+              duration: 15000,
             });
           } else if (notification.type === 'stock' || notification.type === 'usage_prediction') {
             toast.warning(notification.title, {

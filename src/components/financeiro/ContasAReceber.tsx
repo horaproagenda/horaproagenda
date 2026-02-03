@@ -38,9 +38,14 @@ export function ContasAReceber() {
       }));
 
     // Get appointments with pending or partial payment - exclude cancelled, missed and rescheduled
+    // CRITICAL: Filter by multiple possible status values for safety
+    const excludedStatuses = ['cancelled', 'missed', 'rescheduled', 'no_show'];
     const pendingAppointments = appointments
-      .filter(apt => (apt.payment_status === 'pending' || apt.payment_status === 'partial') && 
-        apt.status !== 'cancelled' && apt.status !== 'missed' && apt.status !== 'rescheduled')
+      .filter(apt => {
+        const paymentPending = apt.payment_status === 'pending' || apt.payment_status === 'partial';
+        const statusExcluded = excludedStatuses.includes(apt.status);
+        return paymentPending && !statusExcluded;
+      })
       .map(apt => {
         const isPackageAppointment = !!apt.package_appointment;
         const packageData = apt.package_appointment?.package;

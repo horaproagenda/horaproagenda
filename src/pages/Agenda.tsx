@@ -189,29 +189,30 @@ const Agenda = () => {
   const detailedTimeSlots = generateDetailedTimeSlots();
   
   // Merge base slots with any appointment times that fall outside the base slots
+  // CRITICAL: This ensures ALL appointments are visible regardless of their start time
   const timeSlots = useMemo(() => {
     const allSlots = new Set(baseTimeSlots);
     
-    // Add all appointment start times that might not be in base slots
+    // Add ALL appointment start times - don't filter by detailedTimeSlots
+    // This ensures appointments at any minute (e.g., 18:50) are always visible
     appointments.forEach(apt => {
+      // IMPORTANT: Exclude rescheduled appointments from slot generation too
+      if (apt.status === 'rescheduled') return;
+      
       const aptTime = format(new Date(apt.start_time), 'HH:mm');
-      // Check if this time is within business hours
-      if (detailedTimeSlots.includes(aptTime)) {
-        allSlots.add(aptTime);
-      }
+      // Always add the appointment time to ensure it's visible
+      allSlots.add(aptTime);
     });
     
     // Add all absence start times
     absences.forEach(absence => {
       const absenceTime = format(new Date(absence.start_time), 'HH:mm');
-      if (detailedTimeSlots.includes(absenceTime)) {
-        allSlots.add(absenceTime);
-      }
+      allSlots.add(absenceTime);
     });
     
     // Sort chronologically
     return Array.from(allSlots).sort((a, b) => a.localeCompare(b));
-  }, [baseTimeSlots, detailedTimeSlots, appointments, absences]);
+  }, [baseTimeSlots, appointments, absences]);
 
   // Hide Sunday toggle state
   const [hideSunday, setHideSunday] = useState(() => {

@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 
-const SUPABASE_URL = "https://nsgcllrbswodjoadybsj.supabase.co";
+// Use environment variable for URL - ensures consistency between preview and production
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 export interface AppointmentInsert {
   client_id: string;
@@ -73,7 +74,8 @@ export function useAppointments() {
       return (data || []) as Appointment[];
     },
     staleTime: 30000, // Cache for 30 seconds
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Refetch when user returns to window
+    refetchInterval: 60000, // Poll every 60 seconds as fallback
   });
 
   const createAppointment = useMutation({
@@ -473,29 +475,32 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       
-      if (result.hadPayment) {
-        toast.success(`Agendamento excluído! O valor de R$ ${result.amountDeleted.toFixed(2)} foi removido do caixa e financeiro.`);
-      } else if (result.hadPackageSession) {
-        toast.success('Agendamento excluído! A sessão do pacote foi liberada para reagendamento.');
-      } else {
-        toast.success('Agendamento excluído com sucesso!');
+      let message = 'Agendamento excluído!';
+      if (result.hadPackageSession) {
+        message = 'Agendamento excluído! A sessão do pacote foi liberada.';
       }
+      if (result.hadPayment) {
+        message += ` R$ ${result.amountDeleted.toFixed(2)} removido dos registros.`;
+      }
+      toast.success(message);
     },
     onError: (error) => {
       toast.error('Erro ao excluir agendamento: ' + error.message);
     },
   });
 
+  // Function to delete all appointments for a specific package
   const deletePackageAppointments = useMutation({
     mutationFn: async (packageId: string) => {
-      // Get all appointments linked to this package
-      const { data: packageAppointments, error: fetchError } = await supabase
+      // First, get all package_appointments for this package
+      const { data: pkgAppointments, error: fetchError } = await supabase
         .from('package_appointments')
         .select('appointment_id')
         .eq('package_id', packageId)
@@ -503,12 +508,23 @@ export function useAppointments() {
 
       if (fetchError) throw fetchError;
 
-      const appointmentIds = packageAppointments
-        ?.map(pa => pa.appointment_id)
-        .filter((id): id is string => id !== null) || [];
+      const appointmentIds = pkgAppointments?.map(p => p.appointment_id).filter(Boolean) || [];
 
       if (appointmentIds.length > 0) {
-        // Delete all appointments
+        // Delete related financial entries
+        await supabase
+          .from('financial_entries')
+          .delete()
+          .in('appointment_id', appointmentIds);
+
+        // Delete related cash transactions
+        await supabase
+          .from('cash_transactions')
+          .delete()
+          .in('reference_id', appointmentIds)
+          .eq('reference_type', 'appointment');
+
+        // Delete the appointments
         const { error: deleteError } = await supabase
           .from('appointments')
           .delete()
@@ -517,25 +533,25 @@ export function useAppointments() {
         if (deleteError) throw deleteError;
       }
 
-      // Reset package sessions to pending
+      // Reset all package_appointments for this package
       const { error: resetError } = await supabase
         .from('package_appointments')
         .update({ 
           appointment_id: null, 
-          status: 'pending',
-          scheduled_date: null 
+          scheduled_date: null, 
+          status: 'pending' 
         })
         .eq('package_id', packageId);
 
       if (resetError) throw resetError;
 
-      // Reset sessions_scheduled counter
-      const { error: packageError } = await supabase
+      // Reset sessions_scheduled counter on the package
+      const { error: pkgUpdateError } = await supabase
         .from('service_packages')
         .update({ sessions_scheduled: 0 })
         .eq('id', packageId);
 
-      if (packageError) throw packageError;
+      if (pkgUpdateError) throw pkgUpdateError;
 
       return appointmentIds.length;
     },
@@ -543,6 +559,7 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });

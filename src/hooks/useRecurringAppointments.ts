@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const SUPABASE_URL = "https://nsgcllrbswodjoadybsj.supabase.co";
+// Use environment variable for URL - ensures consistency between preview and production
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface CreateRecurringAppointmentsParams {
   client_id: string;

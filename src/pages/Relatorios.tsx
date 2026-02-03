@@ -466,9 +466,11 @@ const Relatorios = () => {
                               <Badge variant="outline" className="text-muted-foreground text-xs">
                                 Dia {format(person.birthDate, 'd')}
                               </Badge>
+                            ) : person.daysUntil === 0 ? (
+                              <Badge className="bg-primary text-xs">Hoje! 🎉</Badge>
                             ) : (
                               <Badge variant="secondary" className="text-xs">
-                                Em {person.daysUntil}d
+                                Em {person.daysUntil} {person.daysUntil === 1 ? 'dia' : 'dias'}
                               </Badge>
                             )}
                           </div>

@@ -29,6 +29,7 @@ import NotFound from "./pages/NotFound";
 import Assinatura from "./pages/Assinatura";
 import AssinaturaSucesso from "./pages/AssinaturaSucesso";
 import AssinaturaCancelado from "./pages/AssinaturaCancelado";
+import PreencherDocumento from "./pages/PreencherDocumento";
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({
@@ -62,6 +63,8 @@ const App = () => {
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                {/* Public route for client document filling */}
+                <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />

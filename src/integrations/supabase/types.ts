@@ -710,6 +710,73 @@ export type Database = {
           },
         ]
       }
+      document_fill_links: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          expires_at: string | null
+          filled_at: string | null
+          filled_content: string | null
+          filled_variables: Json | null
+          id: string
+          professional_id: string | null
+          status: string | null
+          template_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          filled_at?: string | null
+          filled_content?: string | null
+          filled_variables?: Json | null
+          id?: string
+          professional_id?: string | null
+          status?: string | null
+          template_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          filled_at?: string | null
+          filled_content?: string | null
+          filled_variables?: Json | null
+          id?: string
+          professional_id?: string | null
+          status?: string | null
+          template_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_fill_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_fill_links_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_fill_links_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           content: string

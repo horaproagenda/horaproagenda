@@ -15,7 +15,8 @@ import {
   Filter,
   MoreVertical,
   Download,
-  UserPlus
+  UserPlus,
+  Link2
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
@@ -37,6 +38,7 @@ import { DocumentTemplateDialog } from '@/components/documentos/DocumentTemplate
 import { DocumentPreviewDialog } from '@/components/documentos/DocumentPreviewDialog';
 import { PrebuiltTemplatesDialog } from '@/components/documentos/PrebuiltTemplatesDialog';
 import { FillDocumentDialog } from '@/components/documentos/FillDocumentDialog';
+import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -76,6 +78,7 @@ const Documentos = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [prebuiltOpen, setPrebuiltOpen] = useState(false);
   const [fillOpen, setFillOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   
   const { 
@@ -114,6 +117,11 @@ const Documentos = () => {
   const handleFill = (template: any) => {
     setSelectedTemplate(template);
     setFillOpen(true);
+  };
+
+  const handleGenerateLink = (template: any) => {
+    setSelectedTemplate(template);
+    setLinkDialogOpen(true);
   };
 
   const handleDuplicate = async (template: any) => {
@@ -247,10 +255,14 @@ const Documentos = () => {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleFill(template); }}>
                                     <UserPlus className="h-4 w-4 mr-2" />
                                     Preencher p/ Cliente
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleGenerateLink(template); }}>
+                                    <Link2 className="h-4 w-4 mr-2" />
+                                    Enviar Link p/ Cliente
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePreview(template); }}>
@@ -404,6 +416,12 @@ const Documentos = () => {
             setFillOpen(false);
             toast.success('Documento vinculado ao cliente!');
           }}
+        />
+
+        <GenerateLinkDialog
+          open={linkDialogOpen}
+          onOpenChange={setLinkDialogOpen}
+          template={selectedTemplate}
         />
       </PageTransition>
     </AppLayout>

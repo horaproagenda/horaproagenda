@@ -39,12 +39,18 @@ export function ContasAReceber() {
 
     // Get appointments with pending or partial payment - exclude cancelled, missed and rescheduled
     // CRITICAL: Filter by multiple possible status values for safety
+    // Also exclude zero-value services since client doesn't pay for them
     const excludedStatuses = ['cancelled', 'missed', 'rescheduled', 'no_show'];
     const pendingAppointments = appointments
       .filter(apt => {
         const paymentPending = apt.payment_status === 'pending' || apt.payment_status === 'partial';
         const statusExcluded = excludedStatuses.includes(apt.status);
-        return paymentPending && !statusExcluded;
+        
+        // Skip services with price = 0 (client doesn't pay)
+        const servicePrice = apt.service?.price || 0;
+        const isZeroValueService = servicePrice === 0;
+        
+        return paymentPending && !statusExcluded && !isZeroValueService;
       })
       .map(apt => {
         const isPackageAppointment = !!apt.package_appointment;
@@ -54,10 +60,16 @@ export function ContasAReceber() {
         const isPackagePaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
         if (isPackagePaid) return null; // Package already paid, don't show as pending
         
+        // Check if package has zero value
+        const packagePrice = packageData?.total_price || 0;
+        if (isPackageAppointment && packagePrice === 0) return null; // Zero value package
+        
         // IMPORTANT: For package appointments, use FULL package price, not per session
         const servicePrice = apt.service?.price || 0;
-        const packagePrice = packageData?.total_price || 0;
         const totalAmount = isPackageAppointment ? packagePrice : servicePrice;
+        
+        // Skip if total amount is zero
+        if (totalAmount === 0) return null;
         
         const amountPaid = apt.amount_paid || 0;
         const remainingAmount = Math.max(0, totalAmount - amountPaid);

@@ -35,10 +35,15 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
   const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  // Store original duration when appointment is loaded
+  const [originalDuration, setOriginalDuration] = useState<number>(0);
+
   useEffect(() => {
     if (appointment) {
       const start = parseISO(appointment.start_time);
       const end = parseISO(appointment.end_time);
+      const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+      setOriginalDuration(durationMinutes);
       setDate(format(start, 'yyyy-MM-dd'));
       setStartTime(format(start, 'HH:mm'));
       setEndTime(format(end, 'HH:mm'));
@@ -49,6 +54,21 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       setSelectedEquipment(room?.equipment || []);
     }
   }, [appointment, rooms]);
+
+  // Auto-update end time when start time changes (maintaining duration)
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    
+    if (originalDuration > 0 && date && newStartTime) {
+      try {
+        const newStart = new Date(`${date}T${newStartTime}`);
+        const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
+        setEndTime(format(newEnd, 'HH:mm'));
+      } catch (e) {
+        // Keep existing end time if calculation fails
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!appointment) return;
@@ -126,7 +146,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
                 <Input
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

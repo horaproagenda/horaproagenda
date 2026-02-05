@@ -653,93 +653,206 @@ export function PrecificacaoServicos() {
 
           {/* Results */}
           {hasSelectedItem && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Suggested Price */}
-              <Card className="border-primary/30 bg-primary/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-primary">
-                    <TrendingUp className="h-4 w-4" />
-                    Preço Sugerido
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="text-3xl font-bold text-primary">
-                      R$ {suggestedPrice.toFixed(2)}
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Suggested Price */}
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-primary">
+                      <TrendingUp className="h-4 w-4" />
+                      Preço Sugerido
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="text-3xl font-bold text-primary">
+                        R$ {suggestedPrice.toFixed(2)}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">Custo Total</span>
+                          <p className="font-medium">R$ {totalCostWithTime.toFixed(2)}</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">Lucro</span>
+                          <p className="font-medium text-green-600">R$ {actualProfit.toFixed(2)}</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">Margem</span>
+                          <p className="font-medium">{actualMargin.toFixed(1)}%</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">
+                            Lucro por {calculationType === 'service' ? 'Serviço' : 'Pacote'}
+                          </span>
+                          <p className="font-medium text-green-600">+{profitType === 'percentage' ? profitValue + '%' : 'R$ ' + profitValue.toFixed(2)}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Custo Total</span>
-                        <p className="font-medium">R$ {totalCostWithTime.toFixed(2)}</p>
-                      </div>
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Lucro</span>
-                        <p className="font-medium text-green-600">R$ {actualProfit.toFixed(2)}</p>
-                      </div>
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Margem</span>
-                        <p className="font-medium">{actualMargin.toFixed(1)}%</p>
-                      </div>
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">
-                          Lucro por {calculationType === 'service' ? 'Serviço' : 'Pacote'}
-                        </span>
-                        <p className="font-medium text-green-600">+{profitType === 'percentage' ? profitValue + '%' : 'R$ ' + profitValue.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Current Price Analysis */}
-              <Card className={cn(
-                "border",
-                isProfitable ? "border-green-500/30 bg-green-50/50 dark:bg-green-950/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
-              )}>
-                <CardHeader className="pb-2">
-                  <CardTitle className={cn(
-                    "text-sm flex items-center gap-2",
-                    isProfitable ? "text-green-600" : "text-red-600"
-                  )}>
-                    {isProfitable ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                    Preço Atual: R$ {currentPrice.toFixed(2)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className={cn(
-                      "text-3xl font-bold",
+                {/* Current Price Analysis */}
+                <Card className={cn(
+                  "border",
+                  isProfitable ? "border-green-500/30 bg-green-50/50 dark:bg-green-950/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
+                )}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className={cn(
+                      "text-sm flex items-center gap-2",
                       isProfitable ? "text-green-600" : "text-red-600"
                     )}>
-                      {isProfitable ? '+' : ''} R$ {currentProfit.toFixed(2)}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Custo Total</span>
-                        <p className="font-medium">R$ {totalCostWithTime.toFixed(2)}</p>
+                      {isProfitable ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                      Preço Atual: R$ {currentPrice.toFixed(2)}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className={cn(
+                        "text-3xl font-bold",
+                        isProfitable ? "text-green-600" : "text-red-600"
+                      )}>
+                        {isProfitable ? '+' : ''} R$ {currentProfit.toFixed(2)}
                       </div>
-                      <div className="p-2 bg-background rounded">
-                        <span className="text-muted-foreground">Margem Atual</span>
-                        <p className={cn("font-medium", currentMargin >= 0 ? "text-green-600" : "text-red-600")}>
-                          {currentMargin.toFixed(1)}%
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">Custo Total</span>
+                          <p className="font-medium">R$ {totalCostWithTime.toFixed(2)}</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <span className="text-muted-foreground">Margem Atual</span>
+                          <p className={cn("font-medium", currentMargin >= 0 ? "text-green-600" : "text-red-600")}>
+                            {currentMargin.toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className="p-2 bg-background rounded col-span-2">
+                          <span className="text-muted-foreground">Diagnóstico</span>
+                          <p className="font-medium text-xs">
+                            {currentProfit >= actualProfit 
+                              ? '✓ Acima do lucro desejado' 
+                              : currentProfit > 0 
+                                ? '⚠️ Abaixo do lucro desejado' 
+                                : '✗ Operando com prejuízo'}
+                          </p>
+                        </div>
+                      </div>
+                      {!isProfitable && (
+                        <p className="text-xs text-red-600">
+                          Aumente o preço em pelo menos R$ {Math.abs(currentProfit).toFixed(2)} para não ter prejuízo.
                         </p>
-                      </div>
-                      <div className="p-2 bg-background rounded col-span-2">
-                        <span className="text-muted-foreground">Diagnóstico</span>
-                        <p className="font-medium text-xs">
-                          {currentProfit >= actualProfit 
-                            ? '✓ Acima do lucro desejado' 
-                            : currentProfit > 0 
-                              ? '⚠️ Abaixo do lucro desejado' 
-                              : '✗ Operando com prejuízo'}
-                        </p>
-                      </div>
+                      )}
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Goal Suggestion Panel - How many appointments needed */}
+              <Card className="border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2 text-blue-600">
+                    <BarChart3 className="h-4 w-4" />
+                    Sugestão de Meta Mensal
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Quantos {calculationType === 'service' ? 'atendimentos' : 'pacotes'} você precisa realizar para cobrir despesas e ter lucro
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Break-even calculation */}
+                    {(() => {
+                      // Calculate appointments needed to cover monthly expenses
+                      const profitPerItem = currentProfit;
+                      const appointmentsToBreakEven = profitPerItem > 0 
+                        ? Math.ceil(monthlyFixedCosts / profitPerItem)
+                        : Infinity;
+                      
+                      // Appointments needed for different profit targets
+                      const targetProfit1000 = profitPerItem > 0 
+                        ? Math.ceil((monthlyFixedCosts + 1000) / profitPerItem)
+                        : Infinity;
+                      const targetProfit3000 = profitPerItem > 0 
+                        ? Math.ceil((monthlyFixedCosts + 3000) / profitPerItem)
+                        : Infinity;
+                      const targetProfit5000 = profitPerItem > 0 
+                        ? Math.ceil((monthlyFixedCosts + 5000) / profitPerItem)
+                        : Infinity;
+                        
+                      const itemLabel = calculationType === 'service' ? 'atendimentos' : 'pacotes';
+                      
+                      return (
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="p-3 bg-background rounded-lg border">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                              <span className="text-xs text-muted-foreground">Ponto de Equilíbrio</span>
+                            </div>
+                            <p className="text-lg font-bold">
+                              {profitPerItem > 0 ? appointmentsToBreakEven : '∞'}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {itemLabel}/mês para cobrir R$ {monthlyFixedCosts.toFixed(0)} em despesas
+                            </p>
+                          </div>
+                          
+                          <div className="p-3 bg-background rounded-lg border border-green-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="text-xs text-muted-foreground">Lucro R$ 1.000</span>
+                            </div>
+                            <p className="text-lg font-bold text-green-600">
+                              {profitPerItem > 0 ? targetProfit1000 : '∞'}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {itemLabel}/mês
+                            </p>
+                          </div>
+                          
+                          <div className="p-3 bg-background rounded-lg border border-green-300">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-2 h-2 rounded-full bg-green-600" />
+                              <span className="text-xs text-muted-foreground">Lucro R$ 3.000</span>
+                            </div>
+                            <p className="text-lg font-bold text-green-600">
+                              {profitPerItem > 0 ? targetProfit3000 : '∞'}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {itemLabel}/mês
+                            </p>
+                          </div>
+                          
+                          <div className="p-3 bg-background rounded-lg border border-green-400">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-2 h-2 rounded-full bg-green-700" />
+                              <span className="text-xs text-muted-foreground">Lucro R$ 5.000</span>
+                            </div>
+                            <p className="text-lg font-bold text-green-600">
+                              {profitPerItem > 0 ? targetProfit5000 : '∞'}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {itemLabel}/mês
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Warning if not profitable */}
                     {!isProfitable && (
-                      <p className="text-xs text-red-600">
-                        Aumente o preço em pelo menos R$ {Math.abs(currentProfit).toFixed(2)} para não ter prejuízo.
-                      </p>
+                      <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                        <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          Este {calculationType === 'service' ? 'serviço' : 'pacote'} opera com prejuízo. 
+                          Ajuste o preço para ver as sugestões de meta.
+                        </p>
+                      </div>
                     )}
+                    
+                    {/* Tips */}
+                    <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
+                      <strong>Dica:</strong> Os custos fixos (R$ {monthlyFixedCosts.toFixed(0)}/mês) são rateados entre todos os serviços e pacotes. 
+                      O lucro por {calculationType === 'service' ? 'serviço' : 'pacote'} atual é de R$ {currentProfit.toFixed(2)}.
+                    </div>
                   </div>
                 </CardContent>
               </Card>

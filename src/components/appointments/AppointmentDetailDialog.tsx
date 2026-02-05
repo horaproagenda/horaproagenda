@@ -118,7 +118,7 @@ export function AppointmentDetailDialog({
   const [payments, setPayments] = useState<{ method: string; methodId?: string; cardBrandId?: string; installments?: number; amount: string }[]>([
     { method: '', amount: '' },
   ]);
-  const [courtesyCreditAmount, setCourtesyCreditAmount] = useState(''); // Cortesia: brinde sem entrada financeira
+  // Removed courtesyCreditAmount - courtesy payment feature removed
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
@@ -484,7 +484,7 @@ export function AppointmentDetailDialog({
   };
 
   const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const courtesyCredit = parseFloat(courtesyCreditAmount) || 0; // Cortesia: brinde sem entrada financeira
+  const courtesyCredit = 0; // Cortesia removed
   const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
   
   // Calculate credit to be used from client's available balance
@@ -502,8 +502,8 @@ export function AppointmentDetailDialog({
   const newRemainingAmount = remainingAfterDiscount - totalPaymentAmount - courtesyCredit - clientCreditUsed;
   const hasPartialPayment = newRemainingAmount > 0 && totalWithCredit > 0;
   
-  // Check if this is a courtesy-only payment (no actual money, just courtesy credit)
-  const isCourtesyOnly = courtesyCredit > 0 && totalPaymentAmount === 0 && clientCreditUsed === 0;
+  // Courtesy-only check removed - courtesy feature removed
+  const isCourtesyOnly = false;
   
   // Calculate excess payment (when paid more than owed)
   const excessPaymentAmount = totalPaymentAmount > remainingAfterDiscount ? totalPaymentAmount - remainingAfterDiscount : 0;
@@ -549,8 +549,8 @@ export function AppointmentDetailDialog({
     // excessAction === 'credit' means the excess becomes saldo (real money stored as credit)
     const finalClientCredit = excessAction === 'credit' ? excessPaymentAmount : undefined;
     
-    // courtesyCredit is a gift/bonus WITHOUT financial entry
-    const finalCourtesyCredit = courtesyCredit > 0 ? courtesyCredit : undefined;
+    // Courtesy removed - no longer send courtesyCredit
+    const finalCourtesyCredit = undefined;
 
     if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0) {
       onPayment(
@@ -563,7 +563,7 @@ export function AppointmentDetailDialog({
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
-      setCourtesyCreditAmount('');
+      // courtesyCreditAmount removed
       setClientCreditUsedAmount('');
       setDiscountAmount('');
       setUseClientCredit(false);
@@ -583,11 +583,7 @@ export function AppointmentDetailDialog({
         const changeMethod = activePaymentMethods.find(m => m.id === changePaymentMethodId);
         toast.info(`Troco de R$ ${excessPaymentAmount.toFixed(2)} devolvido via ${changeMethod?.name || 'dinheiro'}`);
       }
-      
-      // Show toast about courtesy
-      if (courtesyCredit > 0) {
-        toast.success(`R$ ${courtesyCredit.toFixed(2)} de cortesia adicionado ao cliente`);
-      }
+      // Courtesy toast removed
     }
   };
 
@@ -1119,30 +1115,10 @@ export function AppointmentDetailDialog({
                     Adicionar forma de pagamento
                   </Button>
 
-                  {/* Courtesy Section - Admin Only - Gift/bonus WITHOUT financial entry */}
-                  {canAddClientCredit && (
-                    <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-500/5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Gift className="h-4 w-4 text-purple-500" />
-                        <Label className="text-sm font-medium text-purple-700 dark:text-purple-400">
-                          Cortesia ao Cliente
-                        </Label>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Brinde/presente: NÃO será contabilizado no caixa ou financeiro, apenas como crédito do cliente.
-                      </p>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={courtesyCreditAmount}
-                        onChange={(e) => setCourtesyCreditAmount(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  {/* Courtesy Section REMOVED - no longer needed */}
 
                   {/* Payment summary */}
-                  {(totalPaymentAmount > 0 || courtesyCredit > 0 || clientCreditUsed > 0) && (
+                  {(totalPaymentAmount > 0 || clientCreditUsed > 0) && (
                     <div className="p-3 rounded-lg bg-muted/50 space-y-1">
                       {clientCreditUsed > 0 && (
                         <div className="flex justify-between text-sm text-amber-600">
@@ -1160,12 +1136,6 @@ export function AppointmentDetailDialog({
                         <div className="flex justify-between text-sm text-amber-600">
                           <span>Taxa de cartão:</span>
                           <span className="font-semibold">+ R$ {totalFeesToAddToClient.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {courtesyCredit > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span>Cortesia ao cliente:</span>
-                          <span className="font-semibold text-purple-500">R$ {courtesyCredit.toFixed(2)}</span>
                         </div>
                       )}
                       <Separator className="my-1" />

@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, CheckCircle, AlertCircle, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInYears, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface DocumentLink {
@@ -39,6 +39,30 @@ interface Professional {
   name: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  birthdate: string | null;
+}
+
+// Helper to format date in full Portuguese
+const formatDateExtended = (date: Date): string => {
+  const day = date.getDate();
+  const month = format(date, 'MMMM', { locale: ptBR });
+  const year = date.getFullYear();
+  return `${day} de ${month} de ${year}`;
+};
+
+// Helper to calculate age from birthdate
+const calculateAge = (birthdate: string | null): number | null => {
+  if (!birthdate) return null;
+  try {
+    return differenceInYears(new Date(), parseISO(birthdate));
+  } catch {
+    return null;
+  }
+};
+
 export default function PreencherDocumento() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -48,6 +72,7 @@ export default function PreencherDocumento() {
   const [documentLink, setDocumentLink] = useState<DocumentLink | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [professional, setProfessional] = useState<Professional | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   
@@ -123,6 +148,34 @@ export default function PreencherDocumento() {
         }
       }
 
+      // Fetch client if assigned - to get birthdate for age calculation
+      if (linkData.client_id) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id, name, birthdate')
+          .eq('id', linkData.client_id)
+          .single();
+        
+        if (clientData) {
+          setClient(clientData);
+          setFormData(prev => ({ 
+            ...prev, 
+            cliente: clientData.name,
+            nome_cliente: clientData.name,
+          }));
+          
+          // Calculate and set age if birthdate exists
+          const age = calculateAge(clientData.birthdate);
+          if (age !== null) {
+            setFormData(prev => ({ 
+              ...prev, 
+              idade: age.toString(),
+              idade_cliente: age.toString()
+            }));
+          }
+        }
+      }
+
       // Parse template to find question types
       parseTemplateQuestions(templateData.content);
 
@@ -185,10 +238,30 @@ export default function PreencherDocumento() {
       if (formData.profissional) {
         filledContent = filledContent.replace(/\{profissional\}/gi, formData.profissional);
         filledContent = filledContent.replace(/\{professional\}/gi, formData.profissional);
+        filledContent = filledContent.replace(/\{nome_profissional\}/gi, formData.profissional);
       }
 
-      // Add current date
-      filledContent = filledContent.replace(/\{data\}/gi, format(new Date(), 'dd/MM/yyyy', { locale: ptBR }));
+      // Add current date in extended format (e.g., "6 de fevereiro de 2026")
+      const currentDateExtended = formatDateExtended(new Date());
+      filledContent = filledContent.replace(/\{data\}/gi, currentDateExtended);
+      filledContent = filledContent.replace(/\{date\}/gi, currentDateExtended);
+      filledContent = filledContent.replace(/\{data_atual\}/gi, currentDateExtended);
+
+      // Add client age if available
+      if (client?.birthdate) {
+        const age = calculateAge(client.birthdate);
+        if (age !== null) {
+          filledContent = filledContent.replace(/\{idade\}/gi, age.toString());
+          filledContent = filledContent.replace(/\{idade_cliente\}/gi, age.toString());
+        }
+      }
+
+      // Add client name if available
+      if (client?.name) {
+        filledContent = filledContent.replace(/\{cliente\}/gi, client.name);
+        filledContent = filledContent.replace(/\{nome_cliente\}/gi, client.name);
+        filledContent = filledContent.replace(/\{client\}/gi, client.name);
+      }
 
       // Update the document link
       const { error: updateError } = await supabase

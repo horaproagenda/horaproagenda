@@ -641,7 +641,7 @@ const Agenda = () => {
   const handlePayment = (
     appointmentId: string, 
     paymentMethods: { method: string; amount: number; cardBrandId?: string; installments?: number }[], 
-    clientCredit?: number, // Saldo: troco real registrado no caixa/financeiro
+    clientCredit?: number, // Saldo: troco real registrado no caixa/financeiro (excess becomes client credit)
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number
@@ -662,7 +662,27 @@ const Agenda = () => {
     const saldoToAdd = clientCredit || 0; // Saldo: real money as credit (registered in cash/financial)
     const courtesyToAdd = courtesyCredit || 0; // Cortesia: gift without financial entry
     const creditUsed = usedClientCredit || 0;
-    const totalPaid = (appointment.amount_paid || 0) + paymentTotal + saldoToAdd + courtesyToAdd + creditUsed;
+    
+    // CRITICAL FIX: Calculate the actual amount to record as paid
+    // If client pays more than owed AND selects "return change" (not credit), 
+    // we should only record the service value, not the total paid
+    // If saldoToAdd > 0, it means excess is being stored as credit (should record full amount)
+    // If saldoToAdd === 0 and paymentTotal > (totalPrice - creditUsed - existingPaid), it's change returned
+    
+    const existingPaid = appointment.amount_paid || 0;
+    const remainingToPay = Math.max(0, totalPrice - existingPaid);
+    
+    // Check if this is an overpayment with change return scenario
+    const effectivePayment = creditUsed + paymentTotal;
+    const isOverpaymentWithChange = effectivePayment > remainingToPay && saldoToAdd === 0;
+    
+    // The amount actually owed to the procedure
+    const actualAmountForProcedure = isOverpaymentWithChange
+      ? remainingToPay  // Only count what was actually owed
+      : Math.min(effectivePayment, remainingToPay);  // Normal case: count what was paid up to remaining
+    
+    const totalPaid = existingPaid + actualAmountForProcedure + saldoToAdd + courtesyToAdd;
+    
     const existingMethods = appointment.payment_methods || [];
     const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
     
@@ -699,11 +719,16 @@ const Agenda = () => {
       paymentStatus = 'partial';
     }
 
+    // For the edge function, send the actual procedure value, not excess
+    const amountToSendToBackend = isOverpaymentWithChange
+      ? existingPaid + actualAmountForProcedure // Send just procedure value
+      : totalPaid;
+
     updatePayment.mutate({
       id: appointmentId,
       payment: {
         payment_methods: newMethods,
-        amount_paid: totalPaid,
+        amount_paid: amountToSendToBackend,
         payment_status: paymentStatus,
         client_credit: saldoToAdd > 0 ? saldoToAdd : undefined, // Saldo: registered in cash/financial
         courtesy_credit: courtesyToAdd > 0 ? courtesyToAdd : undefined, // Cortesia: NOT registered in cash/financial

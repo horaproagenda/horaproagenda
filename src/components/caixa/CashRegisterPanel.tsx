@@ -601,6 +601,7 @@ export function CashRegisterPanel() {
                       <TableHead>Vencimento</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -614,6 +615,23 @@ export function CashRegisterPanel() {
                           <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}>
                             {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {entry.type === 'appointment' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                window.location.href = `/agenda?appointment=${entry.id}`;
+                              }}
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Pagar
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

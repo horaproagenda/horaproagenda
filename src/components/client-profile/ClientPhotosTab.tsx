@@ -4,14 +4,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Image, Upload, Filter } from 'lucide-react';
+import { Plus, Image, Upload, Filter, Trash2 } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ClientPhotosTabProps {
   photos: TreatmentPhoto[];
@@ -45,8 +49,10 @@ const getMonthOptions = () => {
 };
 
 export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTabProps) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [stage, setStage] = useState<TreatmentStage>('before');
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -55,6 +61,31 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
 
+  const handleDeletePhoto = async (photoId: string, filePath: string | null) => {
+    setDeletingId(photoId);
+    try {
+      // Delete from storage if path exists
+      if (filePath) {
+        await supabase.storage.from('client-photos').remove([filePath]);
+      }
+      
+      // Delete from database
+      const { error } = await supabase
+        .from('treatment_photos')
+        .delete()
+        .eq('id', photoId);
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+      toast.success('Foto excluída com sucesso!');
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error('Erro ao excluir foto');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const filteredPhotos = useMemo(() => {
@@ -179,74 +210,77 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
               Adicionar
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-sm">
+          <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-base">Adicionar Foto</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Etapa</Label>
-                <Select value={stage} onValueChange={(v) => setStage(v as TreatmentStage)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="before" className="text-xs">Antes</SelectItem>
-                    <SelectItem value="during" className="text-xs">Durante</SelectItem>
-                    <SelectItem value="after" className="text-xs">Depois</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <ScrollArea className="flex-1 max-h-[60vh]">
+              <div className="space-y-3 py-2 pr-4">
+                <div className="space-y-1">
+                  <Label className="text-xs">Etapa</Label>
+                  <Select value={stage} onValueChange={(v) => setStage(v as TreatmentStage)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="before" className="text-xs">Antes</SelectItem>
+                      <SelectItem value="during" className="text-xs">Durante</SelectItem>
+                      <SelectItem value="after" className="text-xs">Depois</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Fotos * (múltiplas permitidas)</Label>
-                <input 
-                  ref={fileInputRef} 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  multiple 
-                />
-                {previews.length > 0 || preview ? (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      {(previews.length > 0 ? previews : [preview]).filter(Boolean).map((p, idx) => (
-                        <div key={idx} className="relative">
-                          <img src={p!} alt={`Preview ${idx + 1}`} className="w-full h-16 object-cover rounded-lg" />
-                        </div>
-                      ))}
+                <div className="space-y-1">
+                  <Label className="text-xs">Fotos * (múltiplas permitidas)</Label>
+                  <input 
+                    ref={fileInputRef} 
+                    type="file" 
+                    className="hidden" 
+                    onChange={handleFileChange} 
+                    accept="image/*" 
+                    multiple 
+                  />
+                  {previews.length > 0 || preview ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {(previews.length > 0 ? previews : [preview]).filter(Boolean).map((p, idx) => (
+                          <div key={idx} className="relative">
+                            <img src={p!} alt={`Preview ${idx + 1}`} className="w-full h-16 object-cover rounded-lg" />
+                          </div>
+                        ))}
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full h-6 text-xs" 
+                        onClick={() => { 
+                          setFile(null); 
+                          setFiles([]); 
+                          setPreview(null); 
+                          setPreviews([]); 
+                        }}
+                      >
+                        Remover todas
+                      </Button>
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full h-6 text-xs" 
-                      onClick={() => { 
-                        setFile(null); 
-                        setFiles([]); 
-                        setPreview(null); 
-                        setPreviews([]); 
-                      }}
-                    >
-                      Remover todas
+                  ) : (
+                    <Button type="button" variant="outline" className="w-full h-24 text-xs" onClick={() => fileInputRef.current?.click()}>
+                      <div className="flex flex-col items-center gap-1">
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-muted-foreground">Clique para selecionar (várias fotos)</span>
+                      </div>
                     </Button>
-                  </div>
-                ) : (
-                  <Button type="button" variant="outline" className="w-full h-24 text-xs" onClick={() => fileInputRef.current?.click()}>
-                    <div className="flex flex-col items-center gap-1">
-                      <Upload className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-muted-foreground">Clique para selecionar (várias fotos)</span>
-                    </div>
-                  </Button>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Observações</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações..." rows={2} className="text-xs" />
+                <div className="space-y-1">
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações..." rows={2} className="text-xs" />
+                </div>
               </div>
-
+            </ScrollArea>
+            <div className="pt-3 border-t">
               <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading || (files.length === 0 && !file)}>
                 {loading ? 'Salvando...' : `Salvar ${files.length > 1 ? `(${files.length} fotos)` : ''}`}
               </Button>
@@ -287,9 +321,40 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             />
                           </a>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            {format(new Date(photo.taken_at), 'dd/MM', { locale: ptBR })}
-                          </p>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p className="text-[10px] text-muted-foreground">
+                              {format(new Date(photo.taken_at), 'dd/MM', { locale: ptBR })}
+                            </p>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  disabled={deletingId === photo.id}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeletePhoto(photo.id, photo.file_path)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       ))}
                     </div>

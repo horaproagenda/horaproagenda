@@ -17,6 +17,8 @@ interface PaymentRequest {
   cash_register_id?: string;
   card_fee_amount?: number;
   installments?: number;
+  discount_amount?: number; // Desconto aplicado pelo usuário
+  payment_method_name?: string; // Nome da forma de pagamento para registro
 }
 
 interface ValidationError {
@@ -369,6 +371,45 @@ serve(async (req) => {
     }
 
     // 8. Create financial entries and cash transactions for actual payments
+    // First, handle discount registration if any
+    const discountAmount = body.discount_amount || 0;
+    if (discountAmount > 0 && body.cash_register_id) {
+      // Register discount as a separate entry for auditing/reporting purposes
+      const { error: discountEntryError } = await supabase.from('financial_entries').insert({
+        type: 'expense',
+        description: `Desconto: ${serviceName} - ${clientName}`,
+        amount: discountAmount,
+        due_date: today,
+        paid_date: today,
+        status: 'paid',
+        client_id: appointment.client?.id,
+        appointment_id: body.appointment_id,
+        notes: 'Desconto concedido ao cliente',
+        created_by: userId,
+      });
+
+      if (discountEntryError) {
+        console.error('Error creating discount financial entry:', discountEntryError);
+      }
+
+      // Register discount as cash transaction for cash register tracking
+      const { error: discountCashError } = await supabase.from('cash_transactions').insert({
+        cash_register_id: body.cash_register_id,
+        type: 'expense',
+        category: 'discount',
+        description: `Desconto: ${serviceName} - ${clientName}`,
+        amount: discountAmount,
+        payment_method: null,
+        reference_id: body.appointment_id,
+        reference_type: 'appointment',
+        created_by: userId,
+      });
+
+      if (discountCashError) {
+        console.error('Error creating discount cash transaction:', discountCashError);
+      }
+    }
+
     if (newPaymentAmount > 0) {
       // Create financial entry
       const { error: entryError } = await supabase.from('financial_entries').insert({
@@ -388,7 +429,7 @@ serve(async (req) => {
         console.error('Error creating financial entry:', entryError);
       }
 
-      // Create cash transaction if register is open
+      // Create cash transaction if register is open - use payment_method_name for proper categorization
       if (body.cash_register_id) {
         const { error: cashError } = await supabase.from('cash_transactions').insert({
           cash_register_id: body.cash_register_id,

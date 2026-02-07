@@ -50,7 +50,11 @@ export function ContasAReceber() {
         const servicePrice = apt.service?.price || 0;
         const isZeroValueService = servicePrice === 0;
         
-        return paymentPending && !statusExcluded && !isZeroValueService;
+        // Skip package appointments with zero price
+        const packagePrice = apt.package_appointment?.package?.total_price || 0;
+        const isZeroValuePackage = !!apt.package_appointment && packagePrice === 0;
+        
+        return paymentPending && !statusExcluded && !isZeroValueService && !isZeroValuePackage;
       })
       .map(apt => {
         const isPackageAppointment = !!apt.package_appointment;

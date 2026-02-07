@@ -47,7 +47,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Gift,
   Edit,
   History,
   Save,
@@ -75,7 +74,8 @@ interface AppointmentDetailDialogProps {
     clientCredit?: number, // Saldo: troco real que fica no caixa
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
-    usedClientCredit?: number
+    usedClientCredit?: number,
+    discountApplied?: number // Desconto aplicado
   ) => void;
 }
 
@@ -103,7 +103,7 @@ export function AppointmentDetailDialog({
 }: AppointmentDetailDialogProps) {
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
-  const { deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
+  const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
@@ -149,6 +149,7 @@ export function AppointmentDetailDialog({
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
+  const [propagateDates, setPropagateDates] = useState(false); // New: propagate dates to following appointments
 
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
@@ -397,7 +398,32 @@ export function AppointmentDetailDialog({
       },
     }, {
       onSuccess: () => {
+        // Check if we need to propagate dates to following appointments
+        if (propagateDates) {
+          const isPackageApt = !!appointment.package_appointment;
+          const isRecurringApt = !!appointment.recurring_group_id;
+          
+          if (isRecurringApt) {
+            propagateSeriesDates.mutate({
+              appointment_id: appointment.id,
+              new_start_time: newStartTime,
+              new_end_time: newEndTime,
+              propagate_type: 'recurring',
+              recurring_group_id: appointment.recurring_group_id!,
+            });
+          } else if (isPackageApt && appointment.package_appointment?.package_id) {
+            propagateSeriesDates.mutate({
+              appointment_id: appointment.id,
+              new_start_time: newStartTime,
+              new_end_time: newEndTime,
+              propagate_type: 'package',
+              package_id: appointment.package_appointment.package_id,
+            });
+          }
+        }
+        
         setIsEditing(false);
+        setPropagateDates(false);
       },
     });
   };
@@ -552,14 +578,15 @@ export function AppointmentDetailDialog({
     // Courtesy removed - no longer send courtesyCredit
     const finalCourtesyCredit = undefined;
 
-    if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0) {
+    if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0 || discount > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
         finalClientCredit, // Saldo: troco real registrado no caixa/financeiro
         finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
         currentOpenRegister?.id,
-        clientCreditUsed > 0 ? clientCreditUsed : undefined
+        clientCreditUsed > 0 ? clientCreditUsed : undefined,
+        discount > 0 ? discount : undefined // Desconto aplicado
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
@@ -715,12 +742,28 @@ export function AppointmentDetailDialog({
                   />
                 </div>
 
+                {/* Propagate dates option for recurring/package appointments */}
+                {(appointment.recurring_group_id || appointment.package_appointment) && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-info/10 border border-info/20">
+                    <input
+                      type="checkbox"
+                      id="propagate-dates"
+                      checked={propagateDates}
+                      onChange={(e) => setPropagateDates(e.target.checked)}
+                      className="rounded border-info"
+                    />
+                    <label htmlFor="propagate-dates" className="text-sm text-info cursor-pointer">
+                      Ajustar datas dos próximos agendamentos automaticamente
+                    </label>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
                     <X className="h-4 w-4 mr-1" />
                     Cancelar
                   </Button>
-                  <Button onClick={handleSaveEdit} className="flex-1" disabled={updateAppointment.isPending}>
+                  <Button onClick={handleSaveEdit} className="flex-1" disabled={updateAppointment.isPending || propagateSeriesDates.isPending}>
                     <Save className="h-4 w-4 mr-1" />
                     Salvar
                   </Button>
@@ -822,7 +865,7 @@ export function AppointmentDetailDialog({
               {/* Prepaid Service Indicator */}
               {isPrepaidService && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
-                  <Gift className="h-4 w-4 text-success flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
                   <p className="text-sm text-success">
                     Serviço pré-pago via caixa
                   </p>
@@ -869,7 +912,7 @@ export function AppointmentDetailDialog({
                     <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Gift className="h-4 w-4 text-amber-500" />
+                          <DollarSign className="h-4 w-4 text-amber-500" />
                           <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
                             Crédito disponível do cliente
                           </span>
@@ -890,7 +933,7 @@ export function AppointmentDetailDialog({
                             setClientCreditUsedAmount(Math.min(availableClientCredit, remainingAmount).toFixed(2));
                           }}
                         >
-                          <Gift className="h-4 w-4 mr-2" />
+                          <DollarSign className="h-4 w-4 mr-2" />
                           Usar Crédito no Pagamento
                         </Button>
                       ) : (
@@ -1406,7 +1449,7 @@ export function AppointmentDetailDialog({
                     {isPackageAppointment && packageSessionInfo && (
                       <div className="p-3 rounded-lg bg-info/10 border border-info/20">
                         <div className="flex items-center gap-2 text-info font-medium mb-2">
-                          <Gift className="h-4 w-4" />
+                          <Package className="h-4 w-4" />
                           <span>Sessão de Pacote</span>
                         </div>
                         <p className="text-sm text-muted-foreground">

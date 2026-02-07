@@ -644,7 +644,8 @@ const Agenda = () => {
     clientCredit?: number, // Saldo: troco real registrado no caixa/financeiro (excess becomes client credit)
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
-    usedClientCredit?: number
+    usedClientCredit?: number,
+    discountApplied?: number // Desconto aplicado
   ) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
@@ -662,15 +663,13 @@ const Agenda = () => {
     const saldoToAdd = clientCredit || 0; // Saldo: real money as credit (registered in cash/financial)
     const courtesyToAdd = courtesyCredit || 0; // Cortesia: gift without financial entry
     const creditUsed = usedClientCredit || 0;
+    const discount = discountApplied || 0;
     
     // CRITICAL FIX: Calculate the actual amount to record as paid
-    // If client pays more than owed AND selects "return change" (not credit), 
-    // we should only record the service value, not the total paid
-    // If saldoToAdd > 0, it means excess is being stored as credit (should record full amount)
-    // If saldoToAdd === 0 and paymentTotal > (totalPrice - creditUsed - existingPaid), it's change returned
-    
+    // Apply discount first, then check for overpayment
+    const priceAfterDiscount = Math.max(0, totalPrice - discount);
     const existingPaid = appointment.amount_paid || 0;
-    const remainingToPay = Math.max(0, totalPrice - existingPaid);
+    const remainingToPay = Math.max(0, priceAfterDiscount - existingPaid);
     
     // Check if this is an overpayment with change return scenario
     const effectivePayment = creditUsed + paymentTotal;
@@ -689,7 +688,13 @@ const Agenda = () => {
     // Calculate total card fees from payments
     let totalCardFee = 0;
     let primaryInstallments = 1;
+    let primaryPaymentMethodName = '';
     paymentMethods.forEach(p => {
+      // Track the first payment method name
+      if (!primaryPaymentMethodName && p.method) {
+        primaryPaymentMethodName = p.method;
+      }
+      
       if (p.cardBrandId && p.amount > 0) {
         const cardBrand = activeCardBrands.find(b => b.id === p.cardBrandId);
         if (cardBrand) {
@@ -713,7 +718,8 @@ const Agenda = () => {
     });
     
     let paymentStatus: PaymentStatus = 'pending';
-    if (totalPaid >= totalPrice) {
+    // Use priceAfterDiscount for payment status check
+    if (totalPaid >= priceAfterDiscount) {
       paymentStatus = 'paid';
     } else if (totalPaid > 0) {
       paymentStatus = 'partial';
@@ -737,6 +743,8 @@ const Agenda = () => {
         cash_register_id: cashRegisterId,
         card_fee_amount: totalCardFee > 0 ? totalCardFee : undefined,
         installments: primaryInstallments > 1 ? primaryInstallments : undefined,
+        discount_amount: discount > 0 ? discount : undefined,
+        payment_method_name: primaryPaymentMethodName || undefined,
       },
     });
   };

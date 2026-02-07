@@ -46,6 +46,16 @@ interface DeleteSeriesParams {
   client_name?: string;
 }
 
+interface PropagateSeriesDatesParams {
+  appointment_id: string;
+  new_start_time: Date;
+  new_end_time: Date;
+  propagate_type: 'recurring' | 'package';
+  recurring_group_id?: string;
+  package_id?: string;
+  interval_days?: number;
+}
+
 export function useRecurringAppointments() {
   const queryClient = useQueryClient();
 
@@ -451,10 +461,140 @@ Até breve! ✨`;
     return data;
   };
 
+  // New: Propagate date changes to following appointments in a series
+  const propagateSeriesDates = useMutation({
+    mutationFn: async (params: PropagateSeriesDatesParams) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Não autenticado');
+      }
+
+      let appointmentsToUpdate: any[] = [];
+      let intervalDays = params.interval_days || 7;
+
+      if (params.propagate_type === 'recurring' && params.recurring_group_id) {
+        // Get all appointments in the recurring series
+        const { data: seriesAppointments, error: fetchError } = await supabase
+          .from('appointments')
+          .select('*, service:services(return_days)')
+          .eq('recurring_group_id', params.recurring_group_id)
+          .order('start_time', { ascending: true });
+
+        if (fetchError) throw fetchError;
+
+        // Find the original appointment index
+        const originalIndex = seriesAppointments?.findIndex(apt => apt.id === params.appointment_id) ?? -1;
+        
+        if (originalIndex === -1 || !seriesAppointments) {
+          throw new Error('Agendamento não encontrado na série');
+        }
+
+        // Use service return_days if available
+        if (seriesAppointments[originalIndex]?.service?.return_days) {
+          intervalDays = seriesAppointments[originalIndex].service.return_days;
+        }
+
+        // Get following appointments (excluding the current one which will be updated separately)
+        appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
+      } else if (params.propagate_type === 'package' && params.package_id) {
+        // Get all appointments linked to this package
+        const { data: packageAppointments, error: fetchError } = await supabase
+          .from('package_appointments')
+          .select(`
+            *,
+            appointment:appointments(*),
+            package:service_packages(interval_days)
+          `)
+          .eq('package_id', params.package_id)
+          .order('session_number', { ascending: true });
+
+        if (fetchError) throw fetchError;
+
+        // Find the current session
+        const currentPackageApt = packageAppointments?.find(
+          pa => pa.appointment?.id === params.appointment_id
+        );
+
+        if (!currentPackageApt || !packageAppointments) {
+          throw new Error('Sessão do pacote não encontrada');
+        }
+
+        // Use package interval_days if available
+        if (currentPackageApt.package?.interval_days) {
+          intervalDays = currentPackageApt.package.interval_days;
+        }
+
+        // Get following sessions that have scheduled appointments
+        appointmentsToUpdate = packageAppointments
+          .filter(pa => pa.session_number > currentPackageApt.session_number && pa.appointment)
+          .map(pa => pa.appointment);
+      }
+
+      if (appointmentsToUpdate.length === 0) {
+        return { updated: 0, appointments: [] };
+      }
+
+      const updatedAppointments: any[] = [];
+      let currentDate = params.new_start_time;
+
+      for (const apt of appointmentsToUpdate) {
+        // Calculate next date based on interval
+        const nextDate = addDays(currentDate, intervalDays);
+        
+        // Preserve original time from the new start time
+        const originalAptStart = new Date(apt.start_time);
+        const originalAptEnd = new Date(apt.end_time);
+        const duration = originalAptEnd.getTime() - originalAptStart.getTime();
+
+        const newAptStart = new Date(nextDate);
+        newAptStart.setHours(
+          params.new_start_time.getHours(),
+          params.new_start_time.getMinutes(),
+          0, 0
+        );
+        const newAptEnd = new Date(newAptStart.getTime() + duration);
+
+        const { data: updated, error: updateError } = await supabase
+          .from('appointments')
+          .update({
+            start_time: newAptStart.toISOString(),
+            end_time: newAptEnd.toISOString(),
+            updated_by: user.id,
+          })
+          .eq('id', apt.id)
+          .select()
+          .single();
+
+        if (!updateError && updated) {
+          updatedAppointments.push(updated);
+          currentDate = newAptStart; // Use this as base for next calculation
+        }
+      }
+
+      return {
+        updated: updatedAppointments.length,
+        appointments: updatedAppointments,
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      if (result.updated > 0) {
+        toast.success(`${result.updated} agendamento(s) seguinte(s) atualizado(s) automaticamente!`);
+      }
+    },
+    onError: (error) => {
+      toast.error('Erro ao propagar datas: ' + error.message);
+    },
+  });
+
   return {
     createRecurringAppointments,
     rescheduleAppointmentSeries,
     deleteAppointmentSeries,
     getSeriesAppointments,
+    propagateSeriesDates,
   };
 }

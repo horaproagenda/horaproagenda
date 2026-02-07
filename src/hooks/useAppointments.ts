@@ -28,6 +28,8 @@ export interface PaymentUpdate {
   cash_register_id?: string;
   card_fee_amount?: number;
   installments?: number;
+  discount_amount?: number; // Desconto aplicado
+  payment_method_name?: string; // Nome da forma de pagamento principal
 }
 
 export interface AppointmentUpdate {
@@ -186,6 +188,8 @@ export function useAppointments() {
           cash_register_id: payment.cash_register_id,
           card_fee_amount: payment.card_fee_amount,
           installments: payment.installments,
+          discount_amount: payment.discount_amount,
+          payment_method_name: payment.payment_method_name,
         }),
       });
 

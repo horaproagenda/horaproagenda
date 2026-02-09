@@ -153,10 +153,11 @@ export function PrecificacaoServicos() {
     }).reduce((sum, entry) => sum + Number(entry.amount), 0);
   }, [payables]);
 
-  // Fixed cost per item (distributed) - use appropriate monthly count
+  // Fixed cost per item (distributed across ALL registered services + packages)
+  const totalRegisteredItems = activeServices.length + templates.filter(t => t.is_active !== false).length;
   const itemsPerMonth = calculationType === 'service' ? servicesPerMonth : packagesPerMonth;
-  const fixedCostPerItem = itemsPerMonth > 0 
-    ? monthlyFixedCosts / itemsPerMonth 
+  const fixedCostPerItem = totalRegisteredItems > 0 
+    ? monthlyFixedCosts / totalRegisteredItems 
     : 0;
 
   // Manual additional costs
@@ -259,7 +260,7 @@ export function PrecificacaoServicos() {
         return sum + (product.unit_price * sp.quantity_per_use);
       }, 0);
 
-      const fixedCostShare = servicesPerMonth > 0 ? monthlyFixedCosts / servicesPerMonth : 0;
+      const fixedCostShare = totalRegisteredItems > 0 ? monthlyFixedCosts / totalRegisteredItems : 0;
       const serviceTimeCost = workingHoursPerMonth > 0 
         ? ((service.duration / 60) * (monthlyFixedCosts / workingHoursPerMonth))
         : 0;
@@ -850,7 +851,7 @@ export function PrecificacaoServicos() {
                     
                     {/* Tips */}
                     <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
-                      <strong>Dica:</strong> Os custos fixos (R$ {monthlyFixedCosts.toFixed(0)}/mês) são rateados entre todos os serviços e pacotes. 
+                       <strong>Dica:</strong> Os custos fixos (R$ {monthlyFixedCosts.toFixed(0)}/mês) são rateados entre {totalRegisteredItems} itens cadastrados ({activeServices.length} serviços + {templates.filter(t => t.is_active !== false).length} pacotes). 
                       O lucro por {calculationType === 'service' ? 'serviço' : 'pacote'} atual é de R$ {currentProfit.toFixed(2)}.
                     </div>
                   </div>

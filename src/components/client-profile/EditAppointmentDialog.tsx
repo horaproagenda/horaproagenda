@@ -5,11 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Appointment } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
@@ -25,6 +27,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
+  const { propagateSeriesDates } = useRecurringAppointments();
 
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -34,9 +37,12 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [propagateDates, setPropagateDates] = useState(false);
 
   // Store original duration when appointment is loaded
   const [originalDuration, setOriginalDuration] = useState<number>(0);
+
+  const isRecurringOrPackage = !!(appointment?.recurring_group_id || appointment?.package_appointment);
 
   useEffect(() => {
     if (appointment) {
@@ -49,9 +55,9 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       setEndTime(format(end, 'HH:mm'));
       setProfessionalId(appointment.professional_id || 'none');
       setRoomId(appointment.room_id || 'none');
-      // Get equipment from room if available
       const room = rooms.find(r => r.id === appointment.room_id);
       setSelectedEquipment(room?.equipment || []);
+      setPropagateDates(false);
     }
   }, [appointment, rooms]);
 
@@ -87,6 +93,32 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
           room_id: roomId === 'none' ? null : roomId,
         },
       });
+
+      // Propagate dates to following appointments if checked
+      if (propagateDates && isRecurringOrPackage) {
+        const newStartTime = new Date(`${date}T${startTime}`);
+        const newEndTime = new Date(`${date}T${endTime}`);
+        
+        if (appointment.recurring_group_id) {
+          await propagateSeriesDates.mutateAsync({
+            appointment_id: appointment.id,
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            propagate_type: 'recurring',
+            recurring_group_id: appointment.recurring_group_id,
+          });
+        } else if (appointment.package_appointment?.package_id) {
+          await propagateSeriesDates.mutateAsync({
+            appointment_id: appointment.id,
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            propagate_type: 'package',
+            package_id: appointment.package_appointment.package_id,
+          });
+        }
+        
+        toast.success('Datas dos próximos agendamentos ajustadas!');
+      }
 
       onOpenChange(false);
     } catch (error) {
@@ -214,6 +246,20 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
                     </Button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Propagate dates option for recurring/package appointments */}
+            {isRecurringOrPackage && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <Checkbox
+                  id="propagate-dates-edit"
+                  checked={propagateDates}
+                  onCheckedChange={(checked) => setPropagateDates(!!checked)}
+                />
+                <label htmlFor="propagate-dates-edit" className="text-sm text-blue-700 dark:text-blue-300 cursor-pointer">
+                  Ajustar datas dos próximos agendamentos automaticamente
+                </label>
               </div>
             )}
 

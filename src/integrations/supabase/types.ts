@@ -2310,6 +2310,75 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_logs: {
+        Row: {
+          created_at: string | null
+          detail: Json | null
+          event: string | null
+          id: number
+          queue_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          detail?: Json | null
+          event?: string | null
+          id?: number
+          queue_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          detail?: Json | null
+          event?: string | null
+          id?: number
+          queue_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_queue: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          document_path: string | null
+          id: string
+          last_error: string | null
+          payload: Json | null
+          phone: string
+          scheduled_at: string | null
+          status: string
+          template: string | null
+          tries: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          document_path?: string | null
+          id?: string
+          last_error?: string | null
+          payload?: Json | null
+          phone: string
+          scheduled_at?: string | null
+          status?: string
+          template?: string | null
+          tries?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          document_path?: string | null
+          id?: string
+          last_error?: string | null
+          payload?: Json | null
+          phone?: string
+          scheduled_at?: string | null
+          status?: string
+          template?: string | null
+          tries?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_templates: {
         Row: {
           created_at: string
@@ -2354,6 +2423,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attach_document_trigger: { Args: { table_name: string }; Returns: string }
+      attach_document_trigger_2: {
+        Args: { schema_name: string; table_name: string }
+        Returns: string
+      }
       check_trial_eligibility: {
         Args: { p_cnpj?: string; p_email: string; p_phone?: string }
         Returns: Json

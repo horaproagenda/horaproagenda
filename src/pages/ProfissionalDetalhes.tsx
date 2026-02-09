@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, subDays, parseISO } from 'date-fns';
+import { escapeHtml } from '@/lib/htmlSanitizer';
 import { ptBR } from 'date-fns/locale';
 import { 
   ArrowLeft, 
@@ -224,8 +225,8 @@ export default function ProfissionalDetalhes() {
     const appointmentsRows = recentAppointments.map(apt => `
       <tr>
         <td>${format(new Date(apt.start_time), 'dd/MM/yyyy HH:mm')}</td>
-        <td>${(apt as any).clients?.name || '-'}</td>
-        <td>${(apt as any).services?.name || '-'}</td>
+        <td>${escapeHtml((apt as any).clients?.name) || '-'}</td>
+        <td>${escapeHtml((apt as any).services?.name) || '-'}</td>
         <td>${getStatusLabel(apt.status)}</td>
         <td style="text-align: right">${apt.amount_paid ? formatCurrency(apt.amount_paid) : '-'}</td>
       </tr>
@@ -255,7 +256,7 @@ export default function ProfissionalDetalhes() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Relatório - ${professional?.name}</title>
+        <title>Relatório - ${escapeHtml(professional?.name)}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; color: #333; font-size: 12px; }
           h1 { color: #1a1a1a; font-size: 20px; margin-bottom: 5px; }
@@ -280,11 +281,11 @@ export default function ProfissionalDetalhes() {
       <body>
         <div class="header">
           <div>
-            <h1>${professional?.name}</h1>
+            <h1>${escapeHtml(professional?.name)}</h1>
             <p style="color: #666; margin: 0;">
               ${professional?.app_role === 'admin' ? 'Administrador' : 
                 professional?.app_role === 'receptionist' ? 'Recepcionista' : 'Profissional'}
-              ${professional?.specialties?.length ? ' • ' + professional.specialties.join(', ') : ''}
+              ${professional?.specialties?.length ? ' • ' + escapeHtml(professional.specialties.join(', ')) : ''}
             </p>
           </div>
           <div class="header-info">
@@ -320,15 +321,15 @@ export default function ProfissionalDetalhes() {
           <div class="info-grid">
             <div class="info-item">
               <div class="info-label">Email</div>
-              <div class="info-value">${professional?.email || '-'}</div>
+              <div class="info-value">${escapeHtml(professional?.email) || '-'}</div>
             </div>
             <div class="info-item">
               <div class="info-label">Telefone</div>
-              <div class="info-value">${professional?.phone || '-'}</div>
+              <div class="info-value">${escapeHtml(professional?.phone) || '-'}</div>
             </div>
             <div class="info-item">
               <div class="info-label">CPF</div>
-              <div class="info-value">${professional?.cpf || '-'}</div>
+              <div class="info-value">${escapeHtml(professional?.cpf) || '-'}</div>
             </div>
             <div class="info-item">
               <div class="info-label">Nascimento</div>

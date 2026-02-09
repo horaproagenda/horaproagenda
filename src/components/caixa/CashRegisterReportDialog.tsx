@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { escapeHtml } from '@/lib/htmlSanitizer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -239,7 +240,7 @@ export function CashRegisterReportDialog({
                 ${transactions.map(t => `
                   <tr>
                     <td>${format(parseISO(t.created_at), 'HH:mm')}</td>
-                    <td>${t.description || t.category}</td>
+                    <td>${escapeHtml(t.description || t.category)}</td>
                     <td>${t.type === 'income' ? 'Entrada' : 'Saída'}</td>
                     <td class="amount" style="color: ${t.type === 'income' ? '#16a34a' : '#dc2626'}">
                       ${t.type === 'income' ? '+' : '-'}${formatCurrency(Number(t.amount))}
@@ -258,7 +259,7 @@ export function CashRegisterReportDialog({
           ${register.notes ? `
             <div class="section" style="margin-top: 15px;">
               <div class="section-title">Observações</div>
-              <p>${register.notes}</p>
+              <p>${escapeHtml(register.notes)}</p>
             </div>
           ` : ''}
 

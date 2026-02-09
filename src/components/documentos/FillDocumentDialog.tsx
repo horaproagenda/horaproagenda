@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { escapeHtml, sanitizeDocumentContent } from '@/lib/htmlSanitizer';
 import { 
   Select, 
   SelectContent, 
@@ -131,7 +132,7 @@ export function FillDocumentDialog({
       <div class="signature-image">
         <p style="margin-bottom: 5px; font-size: 11px;">Assinatura Digital:</p>
         <img src="${signatureData}" alt="Assinatura" style="max-width: 250px; border: 1px solid #ccc; border-radius: 4px;" />
-        <p style="font-size: 10px; color: #666; margin-top: 5px;">Assinado por: ${signedBy}</p>
+        <p style="font-size: 10px; color: #666; margin-top: 5px;">Assinado por: ${escapeHtml(signedBy)}</p>
         <p style="font-size: 10px; color: #666;">Data: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
       </div>
     ` : `
@@ -145,7 +146,7 @@ export function FillDocumentDialog({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${template.title}</title>
+          <title>${escapeHtml(template.title)}</title>
           <style>
             @page { margin: 2cm; }
             body { 
@@ -194,8 +195,8 @@ export function FillDocumentDialog({
           </style>
         </head>
         <body>
-          <h1>${template.title}</h1>
-          <div class="content">${filledContent.replace(/\n/g, '<br>')}</div>
+          <h1>${escapeHtml(template.title)}</h1>
+          <div class="content">${sanitizeDocumentContent(filledContent)}</div>
           ${signatureHtml}
           <div class="footer">
             Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}

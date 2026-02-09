@@ -8,6 +8,18 @@
     <meta name="author" content="Lume Agenda" />
     <meta name="keywords" content="clínica estética, agendamento, gestão, beleza, spa, bem-estar, alto padrão" />
 
+    <!-- Critical inline styles to prevent FOUC and improve FCP -->
+    <style>
+      :root{--background:0 0% 100%;--foreground:240 10% 3.9%}
+      *,::after,::before{box-sizing:border-box;border:0 solid}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif}
+      body{margin:0;line-height:inherit;background-color:hsl(var(--background));color:hsl(var(--foreground))}
+      #root{min-height:100vh;display:flex;flex-direction:column}
+      .loading-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,hsl(240 10% 3.9%),hsl(240 5% 15%))}
+      .loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#d4af37;border-radius:50%;animation:spin 1s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a2e" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -44,7 +56,19 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Initial loading state to prevent blank screen during CSS load -->
+      <div class="loading-screen" id="initial-loader">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Remove initial loader once app is ready
+      window.addEventListener('load', function() {
+        var loader = document.getElementById('initial-loader');
+        if (loader) loader.remove();
+      });
+    </script>
   </body>
 </html>

@@ -10,6 +10,19 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    // Optimize CSS to reduce render blocking
+    cssCodeSplit: true,
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        // Optimize chunk splitting for better loading
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),

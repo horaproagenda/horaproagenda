@@ -3,7 +3,13 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Render React app first
+// Remove initial loader before React renders
+const initialLoader = document.getElementById("initial-loader");
+if (initialLoader) {
+  initialLoader.remove();
+}
+
+// Render React app
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { escapeHtml, sanitizeDocumentContent } from '@/lib/htmlSanitizer';
 import {
   Popover,
   PopoverContent,
@@ -127,8 +128,8 @@ export function ClientDocumentViewDialog({
           </style>
         </head>
         <body>
-          <h1>${document.title}</h1>
-          <div class="content">${(document.content || '').replace(/\n/g, '<br>')}</div>
+          <h1>${escapeHtml(document.title)}</h1>
+          <div class="content">${sanitizeDocumentContent(document.content || '')}</div>
           <div class="signature-area">
             <div class="signature-line">Assinatura do Cliente</div>
             <div class="signature-line">Assinatura do Responsável</div>

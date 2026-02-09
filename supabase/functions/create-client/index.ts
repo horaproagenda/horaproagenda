@@ -61,6 +61,25 @@ function validatePhone(phone: string): boolean {
   return cleanPhone.length >= 10 && cleanPhone.length <= 11;
 }
 
+// Helper function to check user role
+async function checkUserRole(supabase: ReturnType<typeof createClient>, userId: string): Promise<{ hasPermission: boolean; roles: string[] }> {
+  const { data: userRoles, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error fetching user roles:', error);
+    return { hasPermission: false, roles: [] };
+  }
+
+  const roles = userRoles?.map(r => r.role) || [];
+  // Admin, receptionist, and professional can create clients
+  const hasPermission = roles.includes('admin') || roles.includes('receptionist') || roles.includes('professional');
+  
+  return { hasPermission, roles };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -70,7 +89,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        JSON.stringify({ success: false, error: 'Unauthorized - Missing token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -86,10 +105,24 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
     if (claimsError || !claimsData?.user) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid token' }),
+        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const userId = claimsData.user.id;
+
+    // SECURITY: Check role-based authorization
+    const { hasPermission, roles } = await checkUserRole(supabase, userId);
+    if (!hasPermission) {
+      console.log(`User ${userId} with roles [${roles.join(', ')}] attempted client creation without permission`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden - Insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`User ${userId} with roles [${roles.join(', ')}] authorized for client creation`);
 
     const body = await req.json() as ClientRequest;
     const errors: ValidationError[] = [];

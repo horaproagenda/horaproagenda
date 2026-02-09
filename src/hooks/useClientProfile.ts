@@ -514,7 +514,7 @@ export function useClientProfile(clientId: string) {
 
 export function useUploadFile() {
   const uploadFile = async (file: File, path: string) => {
-    // Use client-photos bucket for photos (public bucket)
+    // Use client-photos bucket for photos (private bucket with signed URLs)
     const bucketName = path.includes('/photos/') ? 'client-photos' : 'client-documents';
     
     const { data, error } = await supabase.storage
@@ -523,11 +523,15 @@ export function useUploadFile() {
 
     if (error) throw error;
 
-    const { data: urlData } = supabase.storage
+    // For private buckets, use signed URLs instead of public URLs
+    // Signed URL valid for 30 minutes (1800 seconds)
+    const { data: urlData, error: urlError } = await supabase.storage
       .from(bucketName)
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 1800);
 
-    return { path: data.path, url: urlData.publicUrl };
+    if (urlError) throw urlError;
+
+    return { path: data.path, url: urlData.signedUrl };
   };
 
   return { uploadFile };

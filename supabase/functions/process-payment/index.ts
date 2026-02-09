@@ -26,6 +26,25 @@ interface ValidationError {
   message: string;
 }
 
+// Helper function to check user role
+async function checkUserRole(supabase: ReturnType<typeof createClient>, userId: string): Promise<{ hasPermission: boolean; roles: string[] }> {
+  const { data: userRoles, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error fetching user roles:', error);
+    return { hasPermission: false, roles: [] };
+  }
+
+  const roles = userRoles?.map(r => r.role) || [];
+  // Only admin and receptionist can process payments
+  const hasPermission = roles.includes('admin') || roles.includes('receptionist');
+  
+  return { hasPermission, roles };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -35,7 +54,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        JSON.stringify({ success: false, error: 'Unauthorized - Missing token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -53,15 +72,28 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await authClient.auth.getUser(token);
     if (claimsError || !claimsData?.user) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid token' }),
+        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
+    const userId = claimsData.user.id;
+
+    // SECURITY: Check role-based authorization
+    const { hasPermission, roles } = await checkUserRole(authClient, userId);
+    if (!hasPermission) {
+      console.log(`User ${userId} with roles [${roles.join(', ')}] attempted payment processing without permission`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden - Insufficient permissions. Only admin or receptionist can process payments.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`User ${userId} with roles [${roles.join(', ')}] authorized for payment processing`);
+
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const userId = claimsData.user.id;
     const body = await req.json() as PaymentRequest;
     const errors: ValidationError[] = [];
 
@@ -114,7 +146,6 @@ serve(async (req) => {
 
     // 2. Verify appointment exists and get details including package info
     console.log('Looking for appointment:', body.appointment_id);
-    console.log('Using service role key:', supabaseServiceKey ? 'present' : 'missing');
     
     const { data: appointment, error: aptError } = await supabase
       .from('appointments')
@@ -482,6 +513,21 @@ serve(async (req) => {
         }
       }
     }
+
+    // Log audit entry for payment processing
+    await supabase.from('audit_logs').insert({
+      action: 'payment_processed',
+      table_name: 'appointments',
+      record_id: body.appointment_id,
+      user_id: userId,
+      new_data: {
+        amount_paid: body.amount_paid,
+        payment_status: body.payment_status,
+        payment_methods: body.payment_methods,
+        discount_amount: discountAmount,
+        user_roles: roles,
+      },
+    });
 
     return new Response(
       JSON.stringify({ 

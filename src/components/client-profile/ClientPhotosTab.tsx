@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { TreatmentPhoto, TreatmentStage } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO
 import { ptBR } from 'date-fns/locale';
 import { Plus, Image, Upload, Filter, Trash2 } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
+import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -60,6 +61,41 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
+  
+  // State for signed URLs - use signed URLs for private bucket access
+  const [signedUrls, setSignedUrls] = useState<Map<string, string>>(new Map());
+  const [urlsLoading, setUrlsLoading] = useState(false);
+
+  // Fetch signed URLs for all photos when photos change
+  useEffect(() => {
+    const fetchSignedUrls = async () => {
+      if (photos.length === 0) {
+        setSignedUrls(new Map());
+        return;
+      }
+      
+      setUrlsLoading(true);
+      try {
+        const urls = await getSignedPhotoUrls(photos);
+        setSignedUrls(urls);
+      } catch (error) {
+        console.error('Error fetching signed URLs:', error);
+      } finally {
+        setUrlsLoading(false);
+      }
+    };
+
+    fetchSignedUrls();
+  }, [photos]);
+
+  // Helper to get the display URL for a photo
+  const getPhotoUrl = (photo: TreatmentPhoto): string => {
+    if (photo.file_path && signedUrls.has(photo.file_path)) {
+      return signedUrls.get(photo.file_path)!;
+    }
+    // Fallback to stored URL (may not work if bucket is private)
+    return photo.file_url || '/placeholder.svg';
+  };
 
   const handleDeletePhoto = async (photoId: string, filePath: string | null) => {
     setDeletingId(photoId);
@@ -314,9 +350,9 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                       {stagePhotos.map((photo) => (
                         <div key={photo.id} className="group relative">
-                          <a href={photo.file_url || '#'} target="_blank" rel="noopener noreferrer">
+                          <a href={getPhotoUrl(photo)} target="_blank" rel="noopener noreferrer">
                             <img
-                              src={photo.file_url || '/placeholder.svg'}
+                              src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(photo)}
                               alt={`Foto ${stageLabels[photo.stage]}`}
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             />

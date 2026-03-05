@@ -3,62 +3,78 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+function createJsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: jsonHeaders,
+  });
+}
+
+function getValidatedEvolutionUrl(rawUrl: string | undefined) {
+  if (!rawUrl) {
+    return { error: 'Evolution API URL not configured' } as const;
   }
 
   try {
-    // Authentication check
+    const normalizedUrl = rawUrl.trim();
+    const parsedUrl = new URL(normalizedUrl);
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return { error: 'Evolution API URL must start with http:// or https://' } as const;
+    }
+
+    return { url: parsedUrl.origin } as const;
+  } catch {
+    return {
+      error: 'Evolution API URL inválida. Atualize o secret EVOLUTION_API_URL com uma URL pública válida, por exemplo: https://seu-dominio.com',
+    } as const;
+  }
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Missing authorization header' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return createJsonResponse({ error: 'Unauthorized - Missing authorization header' }, 401);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return createJsonResponse({ error: 'Unauthorized - Invalid token' }, 401);
     }
 
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    const validatedUrl = getValidatedEvolutionUrl(Deno.env.get('EVOLUTION_API_URL'));
 
-    if (!evolutionApiUrl || !evolutionApiKey) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          configured: false,
-          error: 'Evolution API not configured' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if ('error' in validatedUrl || !evolutionApiKey) {
+      return createJsonResponse({
+        success: false,
+        configured: false,
+        connected: false,
+        error: validatedUrl.error ?? 'Evolution API key not configured',
+      });
     }
 
-    // Check instance connection status
-    const response = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
+    const connectionUrl = new URL(`/instance/connectionState/${encodeURIComponent(evolutionInstance)}`, validatedUrl.url);
+
+    const response = await fetch(connectionUrl.toString(), {
       method: 'GET',
       headers: {
         'apikey': evolutionApiKey,
@@ -67,45 +83,32 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          configured: true,
-          connected: false,
-          error: errorText 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createJsonResponse({
+        success: false,
+        configured: true,
+        connected: false,
+        error: errorText,
+      });
     }
 
     const result = await response.json();
     const isConnected = result.instance?.state === 'open';
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        configured: true,
-        connected: isConnected,
-        state: result.instance?.state,
-        instance: evolutionInstance
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+    return createJsonResponse({
+      success: true,
+      configured: true,
+      connected: isConnected,
+      state: result.instance?.state,
+      instance: evolutionInstance,
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('WhatsApp connection check error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        configured: true,
-        connected: false,
-        error: errorMessage 
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    return createJsonResponse({
+      success: false,
+      configured: true,
+      connected: false,
+      error: errorMessage,
+    }, 500);
   }
 });

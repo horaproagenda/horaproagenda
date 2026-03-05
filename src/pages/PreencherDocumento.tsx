@@ -14,12 +14,29 @@ import { toast } from 'sonner';
 import { format, differenceInYears, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface DocumentLinkPayload {
+  id: string;
+  template_id: string;
+  client_id: string | null;
+  professional_id: string | null;
+  status: string;
+  expires_at: string | null;
+  filled_at: string | null;
+  filled_content: string | null;
+  filled_variables: Record<string, string> | null;
+  template_title: string;
+  template_content: string;
+  template_variables: string[] | null;
+  professional_name: string | null;
+  client_name: string | null;
+  client_birthdate: string | null;
+}
+
 interface DocumentLink {
   id: string;
   template_id: string;
   client_id: string | null;
   professional_id: string | null;
-  token: string;
   status: string;
   expires_at: string | null;
   filled_at: string | null;
@@ -92,93 +109,96 @@ export default function PreencherDocumento() {
 
   const loadDocument = async () => {
     try {
-      // Fetch the document link by token
-      const { data: linkData, error: linkError } = await supabase
-        .from('document_fill_links')
-        .select('*')
-        .eq('token', token)
-        .maybeSingle();
+      const { data, error: rpcError } = await supabase.rpc('get_document_fill_link_by_token', {
+        p_token: token,
+      });
 
-      if (linkError) throw linkError;
-      
+      if (rpcError) throw rpcError;
+
+      const linkData = (data?.[0] ?? null) as DocumentLinkPayload | null;
+
       if (!linkData) {
         setError('Link não encontrado ou expirado.');
         setLoading(false);
         return;
       }
 
-      // Check if already filled
       if (linkData.status === 'filled') {
         setSubmitted(true);
-        setDocumentLink(linkData as DocumentLink);
+        setDocumentLink({
+          id: linkData.id,
+          template_id: linkData.template_id,
+          client_id: linkData.client_id,
+          professional_id: linkData.professional_id,
+          status: linkData.status,
+          expires_at: linkData.expires_at,
+          filled_at: linkData.filled_at,
+          filled_content: linkData.filled_content,
+          filled_variables: linkData.filled_variables || {},
+        });
         setLoading(false);
         return;
       }
 
-      // Check if expired
       if (linkData.expires_at && new Date(linkData.expires_at) < new Date()) {
         setError('Este link expirou.');
         setLoading(false);
         return;
       }
 
-      setDocumentLink(linkData as DocumentLink);
+      setDocumentLink({
+        id: linkData.id,
+        template_id: linkData.template_id,
+        client_id: linkData.client_id,
+        professional_id: linkData.professional_id,
+        status: linkData.status,
+        expires_at: linkData.expires_at,
+        filled_at: linkData.filled_at,
+        filled_content: linkData.filled_content,
+        filled_variables: linkData.filled_variables || {},
+      });
 
-      // Fetch template
-      const { data: templateData, error: templateError } = await supabase
-        .from('document_templates')
-        .select('id, title, content, variables')
-        .eq('id', linkData.template_id)
-        .single();
+      const templateData: Template = {
+        id: linkData.template_id,
+        title: linkData.template_title,
+        content: linkData.template_content,
+        variables: linkData.template_variables || [],
+      };
+      setTemplate(templateData);
 
-      if (templateError) throw templateError;
-      setTemplate(templateData as Template);
-
-      // Fetch professional if assigned
-      if (linkData.professional_id) {
-        const { data: profData } = await supabase
-          .from('professionals')
-          .select('id, name')
-          .eq('id', linkData.professional_id)
-          .single();
-        
-        if (profData) {
-          setProfessional(profData);
-          setFormData(prev => ({ ...prev, profissional: profData.name }));
-        }
+      if (linkData.professional_id && linkData.professional_name) {
+        const professionalData: Professional = {
+          id: linkData.professional_id,
+          name: linkData.professional_name,
+        };
+        setProfessional(professionalData);
+        setFormData(prev => ({ ...prev, profissional: professionalData.name }));
       }
 
-      // Fetch client if assigned - to get birthdate for age calculation
-      if (linkData.client_id) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('id, name, birthdate')
-          .eq('id', linkData.client_id)
-          .single();
-        
-        if (clientData) {
-          setClient(clientData);
-          setFormData(prev => ({ 
-            ...prev, 
-            cliente: clientData.name,
-            nome_cliente: clientData.name,
+      if (linkData.client_id && linkData.client_name) {
+        const clientData: Client = {
+          id: linkData.client_id,
+          name: linkData.client_name,
+          birthdate: linkData.client_birthdate,
+        };
+        setClient(clientData);
+        setFormData(prev => ({
+          ...prev,
+          cliente: clientData.name,
+          nome_cliente: clientData.name,
+        }));
+
+        const age = calculateAge(clientData.birthdate);
+        if (age !== null) {
+          setFormData(prev => ({
+            ...prev,
+            idade: age.toString(),
+            idade_cliente: age.toString(),
           }));
-          
-          // Calculate and set age if birthdate exists
-          const age = calculateAge(clientData.birthdate);
-          if (age !== null) {
-            setFormData(prev => ({ 
-              ...prev, 
-              idade: age.toString(),
-              idade_cliente: age.toString()
-            }));
-          }
         }
       }
 
-      // Parse template to find question types
       parseTemplateQuestions(templateData.content);
-
     } catch (err) {
       console.error('Error loading document:', err);
       setError('Erro ao carregar documento.');
@@ -263,42 +283,19 @@ export default function PreencherDocumento() {
         filledContent = filledContent.replace(/\{client\}/gi, client.name);
       }
 
-      // Update the document link
-      const { error: updateError } = await supabase
-        .from('document_fill_links')
-        .update({
-          status: 'filled',
-          filled_at: new Date().toISOString(),
-          filled_content: filledContent,
-          filled_variables: {
-            ...formData,
-            ...additionalInfo,
-            yesNoAnswers
-          }
-        })
-        .eq('id', documentLink.id);
+      const payload = {
+        ...formData,
+        ...additionalInfo,
+        yesNoAnswers,
+      };
 
-      if (updateError) throw updateError;
+      const { error: submitError } = await supabase.rpc('submit_document_fill_by_token', {
+        p_token: token,
+        p_filled_content: filledContent,
+        p_filled_variables: payload,
+      });
 
-      // If client is linked, save to client_documents
-      if (documentLink.client_id) {
-        await supabase
-          .from('client_documents')
-          .insert({
-            client_id: documentLink.client_id,
-            template_id: template.id,
-            title: `${template.title} - Preenchido pelo Cliente`,
-            description: `Preenchido via link em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
-            type: template.title.toLowerCase().includes('anamnese') ? 'anamnese' : 
-                  template.title.toLowerCase().includes('contrato') ? 'contract' : 'other',
-            content: filledContent,
-            filled_variables: {
-              ...formData,
-              ...additionalInfo,
-              yesNoAnswers
-            }
-          });
-      }
+      if (submitError) throw submitError;
 
       setSubmitted(true);
       toast.success('Documento enviado com sucesso!');

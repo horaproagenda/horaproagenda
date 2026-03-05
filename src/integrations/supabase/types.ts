@@ -367,6 +367,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_register_entries: {
+        Row: {
+          affects_cash: boolean | null
+          amount: number | null
+          client_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          payment_method: string | null
+          single_sale_id: string | null
+        }
+        Insert: {
+          affects_cash?: boolean | null
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          payment_method?: string | null
+          single_sale_id?: string | null
+        }
+        Update: {
+          affects_cash?: boolean | null
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          payment_method?: string | null
+          single_sale_id?: string | null
+        }
+        Relationships: []
+      }
       cash_registers: {
         Row: {
           bank_deposits: Json | null
@@ -1071,6 +1104,105 @@ export type Database = {
           },
         ]
       }
+      index_audit_candidates: {
+        Row: {
+          detected_at: string | null
+          id: number
+          idx_scan: number | null
+          idx_tup_fetch: number | null
+          idx_tup_read: number | null
+          index_name: string
+          schema_name: string
+          table_name: string
+        }
+        Insert: {
+          detected_at?: string | null
+          id?: number
+          idx_scan?: number | null
+          idx_tup_fetch?: number | null
+          idx_tup_read?: number | null
+          index_name: string
+          schema_name: string
+          table_name: string
+        }
+        Update: {
+          detected_at?: string | null
+          id?: number
+          idx_scan?: number | null
+          idx_tup_fetch?: number | null
+          idx_tup_read?: number | null
+          index_name?: string
+          schema_name?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          direction: string
+          error: string | null
+          id: string
+          provider: string | null
+          provider_message_id: string | null
+          room_id: string
+          sender_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          direction?: string
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          room_id: string
+          sender_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          direction?: string
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          room_id?: string
+          sender_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      monitor_jobs: {
+        Row: {
+          created_at: string | null
+          id: number
+          job_name: string
+          schedule_interval: string
+          target_table: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          job_name: string
+          schedule_interval: string
+          target_table: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          job_name?: string
+          schedule_interval?: string
+          target_table?: string
+        }
+        Relationships: []
+      }
       package_appointments: {
         Row: {
           appointment_id: string | null
@@ -1287,6 +1419,99 @@ export type Database = {
           name?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      payments_audit: {
+        Row: {
+          amount: number | null
+          client_id: string | null
+          created_at: string | null
+          id: string
+          note: string | null
+          payment_method: string | null
+          payment_type: string | null
+          processed_by: string | null
+          single_sale_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          processed_by?: string | null
+          single_sale_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          processed_by?: string | null
+          single_sale_id?: string | null
+        }
+        Relationships: []
+      }
+      phone_contacts: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string
+          phone: string
+          room_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          phone: string
+          room_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          phone?: string
+          room_id?: string
+        }
+        Relationships: []
+      }
+      policies_backup: {
+        Row: {
+          dumped_at: string | null
+          id: number
+          policy_cmd: string | null
+          policy_name: string | null
+          table_name: string | null
+          table_schema: string | null
+          using_expr: string | null
+          with_check: string | null
+        }
+        Insert: {
+          dumped_at?: string | null
+          id?: number
+          policy_cmd?: string | null
+          policy_name?: string | null
+          table_name?: string | null
+          table_schema?: string | null
+          using_expr?: string | null
+          with_check?: string | null
+        }
+        Update: {
+          dumped_at?: string | null
+          id?: number
+          policy_cmd?: string | null
+          policy_name?: string | null
+          table_name?: string | null
+          table_schema?: string | null
+          using_expr?: string | null
+          with_check?: string | null
         }
         Relationships: []
       }
@@ -1710,6 +1935,30 @@ export type Database = {
         }
         Relationships: []
       }
+      room_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rooms: {
         Row: {
           capacity: number | null
@@ -2100,6 +2349,30 @@ export type Database = {
           },
         ]
       }
+      supabase_migrations: {
+        Row: {
+          applied_by: string | null
+          created_at: string | null
+          name: string
+          status: string
+          version: string
+        }
+        Insert: {
+          applied_by?: string | null
+          created_at?: string | null
+          name: string
+          status: string
+          version: string
+        }
+        Update: {
+          applied_by?: string | null
+          created_at?: string | null
+          name?: string
+          status?: string
+          version?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -2334,6 +2607,45 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          direction: string | null
+          from_number: string | null
+          id: string
+          provider_message_id: string | null
+          provider_payload: Json | null
+          status: string | null
+          to_number: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          direction?: string | null
+          from_number?: string | null
+          id?: string
+          provider_message_id?: string | null
+          provider_payload?: Json | null
+          status?: string | null
+          to_number?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          direction?: string | null
+          from_number?: string | null
+          id?: string
+          provider_message_id?: string | null
+          provider_payload?: Json | null
+          status?: string | null
+          to_number?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_queue: {
         Row: {
           client_id: string | null
@@ -2432,6 +2744,30 @@ export type Database = {
         Args: { p_cnpj?: string; p_email: string; p_phone?: string }
         Returns: Json
       }
+      close_cash_register: {
+        Args: { p_cash_register_id: string; p_closed_by: string }
+        Returns: undefined
+      }
+      get_document_fill_link_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          client_birthdate: string
+          client_id: string
+          client_name: string
+          expires_at: string
+          filled_at: string
+          filled_content: string
+          filled_variables: Json
+          id: string
+          professional_id: string
+          professional_name: string
+          status: string
+          template_content: string
+          template_id: string
+          template_title: string
+          template_variables: string[]
+        }[]
+      }
       get_professional_id_for_user: {
         Args: { _user_id: string }
         Returns: string
@@ -2442,6 +2778,49 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      process_payment_low:
+        | {
+            Args: {
+              p_amount: number
+              p_client_id: string
+              p_note?: string
+              p_payment_method: string
+              p_payment_type: string
+              p_processed_by: string
+              p_single_sale_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_change_amount?: number
+              p_client_id: string
+              p_note?: string
+              p_payment_method: string
+              p_payment_type: string
+              p_processed_by: string
+              p_single_sale_id: string
+            }
+            Returns: undefined
+          }
+      record_migration: {
+        Args: {
+          p_applied_by?: string
+          p_name: string
+          p_status: string
+          p_version: string
+        }
+        Returns: undefined
+      }
+      submit_document_fill_by_token: {
+        Args: {
+          p_filled_content: string
+          p_filled_variables?: Json
+          p_token: string
+        }
+        Returns: string
       }
     }
     Enums: {

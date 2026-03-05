@@ -2748,6 +2748,26 @@ export type Database = {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
       }
+      get_document_fill_link_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          client_birthdate: string
+          client_id: string
+          client_name: string
+          expires_at: string
+          filled_at: string
+          filled_content: string
+          filled_variables: Json
+          id: string
+          professional_id: string
+          professional_name: string
+          status: string
+          template_content: string
+          template_id: string
+          template_title: string
+          template_variables: string[]
+        }[]
+      }
       get_professional_id_for_user: {
         Args: { _user_id: string }
         Returns: string
@@ -2793,6 +2813,14 @@ export type Database = {
           p_version: string
         }
         Returns: undefined
+      }
+      submit_document_fill_by_token: {
+        Args: {
+          p_filled_content: string
+          p_filled_variables?: Json
+          p_token: string
+        }
+        Returns: string
       }
     }
     Enums: {

@@ -44,6 +44,24 @@ interface DocumentLink {
   filled_variables: Record<string, string>;
 }
 
+interface Template {
+  id: string;
+  title: string;
+  content: string;
+  variables: string[];
+}
+
+interface Professional {
+  id: string;
+  name: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  birthdate: string | null;
+}
+
 // Helper to format date in full Portuguese
 const formatDateExtended = (date: Date): string => {
   const day = date.getDate();

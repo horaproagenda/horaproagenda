@@ -1,4 +1,4 @@
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   ChevronLeft, 
@@ -10,9 +10,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+
+export type MobileViewType = 'day' | 'week' | 'month';
 
 interface MobileAgendaHeaderProps {
   selectedDate: Date;
@@ -27,6 +28,8 @@ interface MobileAgendaHeaderProps {
     confirmed: number;
     pending: number;
   };
+  mobileView: MobileViewType;
+  onMobileViewChange: (view: MobileViewType) => void;
 }
 
 export function MobileAgendaHeader({
@@ -38,52 +41,62 @@ export function MobileAgendaHeader({
   onSearchChange,
   activeFiltersCount,
   dayStats,
+  mobileView,
+  onMobileViewChange,
 }: MobileAgendaHeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   
-  const goToPrev = () => onDateChange(subDays(selectedDate, 1));
-  const goToNext = () => onDateChange(addDays(selectedDate, 1));
+  const goToPrev = () => {
+    if (mobileView === 'day') onDateChange(subDays(selectedDate, 1));
+    else if (mobileView === 'week') onDateChange(subWeeks(selectedDate, 1));
+    else onDateChange(subMonths(selectedDate, 1));
+  };
+  
+  const goToNext = () => {
+    if (mobileView === 'day') onDateChange(addDays(selectedDate, 1));
+    else if (mobileView === 'week') onDateChange(addWeeks(selectedDate, 1));
+    else onDateChange(addMonths(selectedDate, 1));
+  };
+  
   const goToToday = () => onDateChange(new Date());
   
   const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
+  const getDateLabel = () => {
+    if (mobileView === 'day') {
+      return format(selectedDate, "d MMM, EEE", { locale: ptBR });
+    } else if (mobileView === 'week') {
+      const ws = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const we = endOfWeek(selectedDate, { weekStartsOn: 1 });
+      return `${format(ws, "d", { locale: ptBR })} - ${format(we, "d MMM", { locale: ptBR })}`;
+    } else {
+      return format(selectedDate, "MMM yyyy", { locale: ptBR });
+    }
+  };
   
   return (
-    <div className="space-y-2 px-2 py-2 bg-card border-b border-border/50">
-      {/* Row 1: Navigation and actions */}
+    <div className="space-y-1.5 px-2 pt-1.5 pb-1 bg-card border-b border-border/50">
+      {/* Row 1: View tabs */}
       <div className="flex items-center justify-between gap-1">
-        {/* Date navigation */}
-        <div className="flex items-center gap-0.5">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={goToPrev}
-            className="h-7 w-7"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <button
-            onClick={goToToday}
-            className={cn(
-              "text-xs font-medium px-2 py-1 rounded-md transition-colors min-w-[90px] text-center",
-              isToday ? "bg-primary/10 text-primary" : "text-foreground"
-            )}
-          >
-            {format(selectedDate, "d MMM", { locale: ptBR })}
-          </button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={goToNext}
-            className="h-7 w-7"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex bg-muted/60 rounded-md p-0.5 gap-0.5">
+          {(['day', 'week', 'month'] as MobileViewType[]).map(v => (
+            <button
+              key={v}
+              onClick={() => onMobileViewChange(v)}
+              className={cn(
+                "px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
+                mobileView === v
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {v === 'day' ? 'Dia' : v === 'week' ? 'Semana' : 'Mês'}
+            </button>
+          ))}
         </div>
         
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
@@ -101,7 +114,7 @@ export function MobileAgendaHeader({
           >
             <Filter className="h-3.5 w-3.5" />
             {activeFiltersCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center font-bold">
                 {activeFiltersCount}
               </span>
             )}
@@ -110,12 +123,33 @@ export function MobileAgendaHeader({
           <Button
             size="sm"
             onClick={onNewAppointment}
-            className="h-7 px-2 text-[10px]"
+            className="h-7 px-2 text-[11px] gap-0.5"
           >
-            <Plus className="h-3 w-3 mr-0.5" />
+            <Plus className="h-3.5 w-3.5" />
             Novo
           </Button>
         </div>
+      </div>
+
+      {/* Row 2: Date nav */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={goToPrev} className="h-7 w-7">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <button
+          onClick={goToToday}
+          className={cn(
+            "text-[12px] font-semibold px-3 py-0.5 rounded-md transition-colors capitalize",
+            isToday ? "bg-primary/10 text-primary" : "text-foreground"
+          )}
+        >
+          {getDateLabel()}
+        </button>
+        
+        <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
       
       {/* Search input - collapsible */}
@@ -133,8 +167,8 @@ export function MobileAgendaHeader({
         </div>
       )}
       
-      {/* Stats row - ultra compact */}
-      <div className="flex items-center justify-center gap-3 text-[10px]">
+      {/* Stats row */}
+      <div className="flex items-center justify-center gap-3 text-[10px] pb-0.5">
         <span className="text-muted-foreground">
           <span className="font-semibold text-foreground">{dayStats.total}</span> agend.
         </span>

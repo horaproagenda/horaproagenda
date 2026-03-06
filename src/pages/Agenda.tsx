@@ -47,7 +47,7 @@ import { ProfessionalAbsenceDialog } from '@/components/appointments/Professiona
 import { ImportAppointmentsDialog } from '@/components/appointments/ImportAppointmentsDialog';
 import { AbsenceManagementPanel } from '@/components/agenda/AbsenceManagementPanel';
 import { MobileAgendaList } from '@/components/agenda/MobileAgendaList';
-import { MobileAgendaHeader } from '@/components/agenda/MobileAgendaHeader';
+import { MobileAgendaHeader, type MobileViewType } from '@/components/agenda/MobileAgendaHeader';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -148,6 +148,7 @@ const Agenda = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showMobileAbsencePanel, setShowMobileAbsencePanel] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileViewType>('day');
   
   // Detect true smartphone for optimized mobile layout
   const isSmartphone = useIsSmartphone();
@@ -1422,6 +1423,17 @@ const Agenda = () => {
     };
   }, [filteredByFilters, selectedDate]);
 
+  // Handle mobile date selection (from month/week tapping a day)
+  const handleMobileDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
+    setMonthStart(startOfMonth(date));
+    // When tapping a day in month view, switch to day view
+    if (mobileView === 'month') {
+      setMobileView('day');
+    }
+  };
+
   // Render mobile-optimized smartphone view
   const renderSmartphoneView = () => {
     return (
@@ -1440,6 +1452,8 @@ const Agenda = () => {
           onSearchChange={setSearchTerm}
           activeFiltersCount={activeFiltersCount}
           dayStats={mobileDayStats}
+          mobileView={mobileView}
+          onMobileViewChange={setMobileView}
         />
         
         {/* Mobile Appointment List */}
@@ -1449,6 +1463,8 @@ const Agenda = () => {
             professionals={professionals}
             selectedDate={selectedDate}
             onAppointmentClick={handleAppointmentClick}
+            mobileView={mobileView}
+            onDateSelect={handleMobileDateSelect}
           />
         </div>
       </div>

@@ -168,6 +168,19 @@ export function useSingleSales() {
             itemName = packageData.name;
           }
         }
+
+        // Resolve payment method name from ID for proper categorization
+        let paymentMethodName: string | null = null;
+        if (sale.payment_method_id) {
+          const { data: pmData } = await supabase
+            .from('payment_methods')
+            .select('name')
+            .eq('id', sale.payment_method_id)
+            .single();
+          if (pmData?.name) {
+            paymentMethodName = pmData.name;
+          }
+        }
         
         await supabase.from('cash_transactions').insert({
           cash_register_id: openCashRegister.id,
@@ -175,7 +188,7 @@ export function useSingleSales() {
           category: sale.item_type === 'package' ? 'Venda de Pacote' : 'Venda de Serviço',
           description: `Venda: ${itemName}`,
           amount: sale.final_amount,
-          payment_method: sale.payment_method_id,
+          payment_method: paymentMethodName || sale.payment_method_id,
           reference_id: saleData.id,
           reference_type: 'single_sale',
           created_by: user?.id,

@@ -265,6 +265,19 @@ serve(async (req) => {
     const today = new Date().toISOString().split('T')[0];
     const primaryPaymentMethodId = body.payment_methods[0] || null;
 
+    // Resolve payment method name from ID for proper categorization in cash register
+    let primaryPaymentMethodName = body.payment_method_name || null;
+    if (primaryPaymentMethodId && !primaryPaymentMethodName) {
+      const { data: pmData } = await supabase
+        .from('payment_methods')
+        .select('name')
+        .eq('id', primaryPaymentMethodId)
+        .single();
+      if (pmData?.name) {
+        primaryPaymentMethodName = pmData.name;
+      }
+    }
+
     // If this is a package payment and package exists, update its payment_methods
     if (isPackageAppointment && packageData?.id && body.payment_status === 'paid' && !isPackageAlreadyPaid) {
       const { error: updatePackageError } = await supabase
@@ -468,7 +481,7 @@ serve(async (req) => {
           category: 'sale',
           description: `${serviceName} - ${clientName}`,
           amount: newPaymentAmount,
-          payment_method: primaryPaymentMethodId,
+          payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
           reference_type: 'appointment',
           card_fee_amount: body.card_fee_amount || 0,

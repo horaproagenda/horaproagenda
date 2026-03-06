@@ -29,6 +29,7 @@ import { CashRegister } from '@/hooks/useCashRegisters';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 interface PaymentBreakdown {
   credit: number;
@@ -74,9 +75,29 @@ export function CashRegisterCloseDialog({
   const { transactions } = useCashTransactions(currentRegister?.id);
   const { appointments } = useAppointments();
   const { entries } = useFinancialEntries();
+  const { paymentMethods } = usePaymentMethods();
   
   const [closingBalance, setClosingBalance] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Build a UUID-to-name map for payment methods to resolve stored IDs
+  const paymentMethodNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    paymentMethods.forEach(pm => {
+      map[pm.id] = pm.name;
+    });
+    return map;
+  }, [paymentMethods]);
+
+  // Resolve payment_method field: could be a name or a UUID
+  const resolvePaymentMethodName = (raw: string | null): string => {
+    if (!raw) return '';
+    // If it looks like a UUID and we have a matching payment method, resolve it
+    if (raw.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return paymentMethodNameMap[raw] || raw;
+    }
+    return raw;
+  };
 
   // Calculate breakdown from transactions
   const breakdown = useMemo((): PaymentBreakdown => {
@@ -95,7 +116,8 @@ export function CashRegisterCloseDialog({
     transactions
       .filter(t => t.type === 'income')
       .forEach(t => {
-        const method = (t.payment_method || '').toLowerCase();
+        const resolvedName = resolvePaymentMethodName(t.payment_method || '');
+        const method = resolvedName.toLowerCase();
         const amount = Number(t.amount);
         
         if (method.includes('crédito') || method.includes('credito') || method.includes('credit')) {
@@ -118,7 +140,7 @@ export function CashRegisterCloseDialog({
       });
     
     return result;
-  }, [transactions]);
+  }, [transactions, paymentMethodNameMap]);
 
   // Calculate card fees from transactions
   const cardFees = useMemo((): CardFees => {

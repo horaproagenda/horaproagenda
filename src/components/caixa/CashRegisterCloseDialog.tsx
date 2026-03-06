@@ -29,6 +29,7 @@ import { CashRegister } from '@/hooks/useCashRegisters';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 interface PaymentBreakdown {
   credit: number;

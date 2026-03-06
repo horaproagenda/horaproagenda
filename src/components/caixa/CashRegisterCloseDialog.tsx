@@ -75,6 +75,7 @@ export function CashRegisterCloseDialog({
   const { transactions } = useCashTransactions(currentRegister?.id);
   const { appointments } = useAppointments();
   const { entries } = useFinancialEntries();
+  const { paymentMethods } = usePaymentMethods();
   
   const [closingBalance, setClosingBalance] = useState('');
   const [notes, setNotes] = useState('');

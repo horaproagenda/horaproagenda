@@ -22,8 +22,8 @@ export function WhatsappSettings() {
   
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const qrExpiryRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qrExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     checkConnection();

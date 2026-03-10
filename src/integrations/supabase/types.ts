@@ -2752,8 +2752,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           client_birthdate: string
+          client_cpf: string
           client_id: string
           client_name: string
+          client_phone: string
           expires_at: string
           filled_at: string
           filled_content: string

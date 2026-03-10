@@ -70,7 +70,7 @@ export function useReminderNotifications() {
   const { currentOpenRegister, cashRegisters } = useCashRegisters();
   const { settings } = useBusinessSettings();
   const navigate = useNavigate();
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notifiedRemindersRef = useRef<Set<string>>(new Set());
   const yesterdayCheckDoneRef = useRef(false);
 

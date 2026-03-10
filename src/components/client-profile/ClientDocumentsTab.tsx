@@ -20,12 +20,15 @@ import {
   FileSignature, 
   Eye, 
   Trash2,
-  Printer
+  Link2,
+  CheckCircle
 } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
+import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
 import { FillDocumentDialog } from '@/components/documentos/FillDocumentDialog';
 import { ClientDocumentViewDialog } from '@/components/documentos/ClientDocumentViewDialog';
+import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -65,6 +68,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const [fillDialogOpen, setFillDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<ClientDocument | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkTemplate, setLinkTemplate] = useState<{ id: string; title: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
   const { templates, refetch: refetchTemplates } = useDocumentTemplates();
@@ -135,6 +140,27 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Erro ao excluir documento');
+    }
+  };
+
+  const handleSendByLink = (doc: ClientDocument) => {
+    // Find the template for this document
+    const templateId = (doc as any).template_id;
+    if (templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        setLinkTemplate({ id: template.id, title: template.title });
+        setLinkDialogOpen(true);
+        return;
+      }
+    }
+    // Fallback: if no template, try finding by title
+    const matchingTemplate = templates.find(t => t.title === doc.title);
+    if (matchingTemplate) {
+      setLinkTemplate({ id: matchingTemplate.id, title: matchingTemplate.title });
+      setLinkDialogOpen(true);
+    } else {
+      toast.error('Este documento não está vinculado a um modelo. Crie um modelo primeiro.');
     }
   };
 
@@ -290,65 +316,88 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
           ) : (
             <ScrollArea className="h-[300px]">
               <div className="space-y-1.5 pr-2">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors group"
-                  >
-                    <div 
-                      className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
-                      onClick={() => handleViewDocument(doc)}
+                {documents.map((doc) => {
+                  const isSigned = !!(doc as any).signed_at;
+                  
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors group"
                     >
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-sm truncate">{doc.title}</span>
-                          <Badge className={`${documentTypeColors[doc.type]} text-[10px] px-1.5 py-0`} variant="secondary">
-                            {documentTypeLabels[doc.type]}
-                          </Badge>
-                          {(doc as any).content && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0">
-                              Preenchido
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 shrink-0"
+                      <div 
+                        className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
                         onClick={() => handleViewDocument(doc)}
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      {doc.file_url && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
-                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-sm truncate">{doc.title}</span>
+                            <Badge className={`${documentTypeColors[doc.type]} text-[10px] px-1.5 py-0`} variant="secondary">
+                              {documentTypeLabels[doc.type]}
+                            </Badge>
+                            {(doc as any).content && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                Preenchido
+                              </Badge>
+                            )}
+                            {isSigned && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-green-500 text-green-600">
+                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                                Assinado
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            {isSigned && (doc as any).signed_at && (
+                              <span> · Assinado em {format(new Date((doc as any).signed_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Send by Link button */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => handleSendByLink(doc)}
+                          title="Enviar por Link"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                        onClick={() => {
-                          if (window.confirm('Excluir este documento?')) {
-                            handleDeleteDocument(doc.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => handleViewDocument(doc)}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        {doc.file_url && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
+                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (window.confirm('Excluir este documento?')) {
+                              handleDeleteDocument(doc.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           )}
@@ -384,6 +433,14 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
           handleDeleteDocument(id);
           setViewDialogOpen(false);
         }}
+      />
+
+      {/* Generate Link Dialog - pre-filled with client */}
+      <GenerateLinkDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        template={linkTemplate}
+        preSelectedClientId={clientId}
       />
     </div>
   );

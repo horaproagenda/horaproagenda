@@ -792,236 +792,118 @@ export default function Produtos() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="text-base">Novo Produto</DialogTitle>
+                      <DialogTitle className="text-base">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[65vh] pr-4">
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Nome *</Label>
-                            <Input
-                              value={productForm.name}
-                              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                              placeholder="Nome do produto"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Marca</Label>
-                            <Input
-                              value={productForm.brand}
-                              onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                              placeholder="Marca"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <Label className="text-xs">Categoria</Label>
-                            <Input
-                              value={productForm.category}
-                              onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                              placeholder="Categoria"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Tipo</Label>
-                            <Select
-                              value={productForm.product_type}
-                              onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
-                            >
-                              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_TYPES.map(type => (
-                                  <SelectItem key={type.value} value={type.value} className="text-sm">
-                                    <div className="flex items-center gap-2">
-                                      {type.icon}
-                                      {type.label}
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Unidade</Label>
-                            <Select
-                              value={productForm.unit}
-                              onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}
-                            >
-                              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_UNITS.map(unit => (
-                                  <SelectItem key={unit.value} value={unit.value} className="text-sm">{unit.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Fornecedor</Label>
-                            <Select
-                              value={productForm.supplier_id || "none"}
-                              onValueChange={(v) => {
-                                const supplier = activeSuppliers.find(s => s.id === v);
-                                setProductForm({ 
-                                  ...productForm, 
-                                  supplier_id: v === "none" ? "" : v,
-                                  supplier: supplier?.name || "" 
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
-                                {activeSuppliers.map(s => (
-                                  <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Alerta Estoque Mín.</Label>
-                            <Input
-                              type="number"
-                              value={productForm.min_stock_alert}
-                              onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
-                              min="0"
-                              step="0.01"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Estoque Inicial Section */}
-                        <div className="rounded-md border p-3 space-y-3 bg-muted/30">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                            <Label className="text-sm font-medium">Estoque Inicial (sem registrar compra)</Label>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            Use para produtos adquiridos antes de usar o sistema
-                          </p>
-                        <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <Label className="text-xs">Quantidade</Label>
-                              <Input
-                                type="number"
-                                value={productForm.current_stock}
-                                onChange={(e) => updateProductFromQuantity(parseFloat(e.target.value) || 0)}
-                                min="0"
-                                step="0.01"
-                                className="h-8 text-sm"
-                                placeholder="0"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Preço Unit. (R$)</Label>
-                              <Input
-                                type="number"
-                                value={productForm.unit_price}
-                                onChange={(e) => updateProductFromUnitPrice(parseFloat(e.target.value) || 0)}
-                                min="0"
-                                step="0.01"
-                                className="h-8 text-sm"
-                                placeholder="0.00"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Total (R$)</Label>
-                              <Input
-                                type="number"
-                                value={productForm.total_price}
-                                onChange={(e) => updateProductFromTotalPrice(parseFloat(e.target.value) || 0)}
-                                min="0"
-                                step="0.01"
-                                className="h-8 text-sm"
-                                placeholder="0.00"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs">Data da Compra</Label>
-                              <Input
-                                type="date"
-                                value={productForm.purchase_date}
-                                onChange={(e) => setProductForm({ ...productForm, purchase_date: e.target.value })}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Data Validade</Label>
-                              <Input
-                                type="date"
-                                value={productForm.expiry_date}
-                                onChange={(e) => setProductForm({ ...productForm, expiry_date: e.target.value })}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Data Início de Uso</Label>
-                            <Input
-                              type="date"
-                              value={productForm.started_using_at}
-                              onChange={(e) => setProductForm({ ...productForm, started_using_at: e.target.value })}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between rounded-md border p-2">
-                          <div>
-                            <Label className="text-xs">Para Venda</Label>
-                            <p className="text-[10px] text-muted-foreground">Produto disponível para venda</p>
-                          </div>
-                          <Switch
-                            checked={productForm.is_for_sale}
-                            onCheckedChange={(v) => setProductForm({ ...productForm, is_for_sale: v })}
-                          />
-                        </div>
-                        
-                        {productForm.is_for_sale && (
-                          <div>
-                            <Label className="text-xs">Preço de Venda (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={productForm.sale_price}
-                              onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        )}
-
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-xs">Descrição</Label>
-                          <Textarea
-                            value={productForm.description}
-                            onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                            placeholder="Descrição do produto"
-                            rows={2}
-                            className="text-sm resize-none"
+                          <Label className="text-xs">Nome *</Label>
+                          <Input
+                            value={productForm.name}
+                            onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                            placeholder="Nome do produto"
+                            className="h-8 text-sm"
                           />
                         </div>
-
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Button variant="outline" size="sm" onClick={() => { setProductDialogOpen(false); resetProductForm(); }}>
-                            Cancelar
-                          </Button>
-                          <Button size="sm" className="btn-vibrant" onClick={handleProductSubmit} disabled={!productForm.name.trim() || createProduct.isPending}>
-                            {createProduct.isPending ? 'Salvando...' : 'Cadastrar'}
-                          </Button>
+                        <div>
+                          <Label className="text-xs">Marca</Label>
+                          <Input
+                            value={productForm.brand}
+                            onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                            placeholder="Marca"
+                            className="h-8 text-sm"
+                          />
                         </div>
                       </div>
-                    </ScrollArea>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Categoria</Label>
+                          <Input
+                            value={productForm.category}
+                            onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                            placeholder="Categoria"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Tipo</Label>
+                          <Select
+                            value={productForm.product_type}
+                            onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}
+                          >
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_TYPES.map(type => (
+                                <SelectItem key={type.value} value={type.value} className="text-sm">
+                                  <div className="flex items-center gap-2">
+                                    {type.icon}
+                                    {type.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Fornecedor</Label>
+                        <Select
+                          value={productForm.supplier_id || "none"}
+                          onValueChange={(v) => {
+                            const supplier = activeSuppliers.find(s => s.id === v);
+                            setProductForm({ 
+                              ...productForm, 
+                              supplier_id: v === "none" ? "" : v,
+                              supplier: supplier?.name || "" 
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
+                            {activeSuppliers.map(s => (
+                              <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-md border p-2">
+                        <div>
+                          <Label className="text-xs">Para Venda</Label>
+                          <p className="text-[10px] text-muted-foreground">Produto disponível para venda</p>
+                        </div>
+                        <Switch
+                          checked={productForm.is_for_sale}
+                          onCheckedChange={(v) => setProductForm({ ...productForm, is_for_sale: v })}
+                        />
+                      </div>
+                      
+                      {productForm.is_for_sale && (
+                        <div>
+                          <Label className="text-xs">Preço de Venda (R$)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={productForm.sale_price}
+                            onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => { setProductDialogOpen(false); resetProductForm(); }}>
+                          Cancelar
+                        </Button>
+                        <Button size="sm" className="btn-vibrant" onClick={handleProductSubmit} disabled={!productForm.name.trim() || createProduct.isPending}>
+                          {createProduct.isPending ? 'Salvando...' : editingProduct ? 'Atualizar' : 'Cadastrar'}
+                        </Button>
+                      </div>
+                    </div>
                   </DialogContent>
                 </Dialog>
               </>

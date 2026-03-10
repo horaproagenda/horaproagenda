@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -37,9 +37,10 @@ interface GenerateLinkDialogProps {
     id: string;
     title: string;
   } | null;
+  preSelectedClientId?: string;
 }
 
-export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLinkDialogProps) {
+export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedClientId }: GenerateLinkDialogProps) {
   const { clients } = useClients();
   const { professionals } = useProfessionals();
   const { createLink } = useDocumentFillLinks();
@@ -53,6 +54,13 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
 
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
+
+  // Pre-select client when provided
+  useEffect(() => {
+    if (open && preSelectedClientId) {
+      setSelectedClientId(preSelectedClientId);
+    }
+  }, [open, preSelectedClientId]);
 
   const handleGenerate = async () => {
     if (!template) return;
@@ -101,13 +109,14 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
 
   const handleReset = () => {
     setGeneratedUrl('');
-    setSelectedClientId('');
+    setSelectedClientId(preSelectedClientId || '');
     setSelectedProfessionalId('');
     setExpiresInDays('7');
   };
 
   const handleClose = () => {
     handleReset();
+    setGeneratedUrl('');
     onOpenChange(false);
   };
 
@@ -119,10 +128,10 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
-            Gerar Link para Preenchimento
+            Enviar por Link
           </DialogTitle>
           <DialogDescription>
-            Gere um link para o cliente preencher o documento "{template.title}" online.
+            Gere um link para o cliente preencher o documento "{template.title}" online. Copie o link e envie manualmente por SMS, e-mail ou mensagem.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,7 +140,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
             <>
               {/* Client selection */}
               <div className="space-y-2">
-                <Label className="text-sm">Cliente (opcional)</Label>
+                <Label className="text-sm">Cliente</Label>
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Selecione o cliente..." />
@@ -146,7 +155,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Se selecionado, o documento será salvo no perfil do cliente.
+                  Dados do cliente (nome, CPF, data de nascimento) serão preenchidos automaticamente.
                 </p>
               </div>
 
@@ -166,9 +175,6 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  O nome do profissional será preenchido automaticamente.
-                </p>
               </div>
 
               {/* Expiration */}
@@ -223,6 +229,9 @@ export function GenerateLinkDialog({ open, onOpenChange, template }: GenerateLin
                     {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Copie o link acima e envie manualmente para o cliente por SMS, e-mail, WhatsApp ou qualquer outra forma.
+                </p>
               </div>
 
               <Separator />

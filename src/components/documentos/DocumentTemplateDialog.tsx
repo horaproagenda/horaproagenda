@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Form,
   FormControl,
@@ -24,7 +25,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Info } from 'lucide-react';
+import { Info, CheckSquare, Type } from 'lucide-react';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
 
 const templateSchema = z.object({
@@ -52,9 +53,15 @@ const commonVariables = [
   { name: 'data', description: 'Data atual' },
   { name: 'endereco', description: 'Endereço do cliente' },
   { name: 'nascimento', description: 'Data de nascimento' },
+  { name: 'idade', description: 'Idade do cliente' },
   { name: 'profissional', description: 'Nome do profissional' },
   { name: 'servico', description: 'Nome do serviço' },
   { name: 'valor', description: 'Valor do serviço' },
+];
+
+const interactivePatterns = [
+  { pattern: '( ) Sim ( ) Não', description: 'Pergunta Sim/Não - o cliente marca com X', icon: <CheckSquare className="h-3.5 w-3.5" /> },
+  { pattern: '[TEXTO_LIVRE]', description: 'Caixa de texto - espaço para o cliente escrever', icon: <Type className="h-3.5 w-3.5" /> },
 ];
 
 export function DocumentTemplateDialog({ 
@@ -126,6 +133,11 @@ export function DocumentTemplateDialog({
       varsArray.push(varName);
       form.setValue('variables', varsArray.join(', '));
     }
+  };
+
+  const insertPattern = (pattern: string) => {
+    const currentContent = form.getValues('content');
+    form.setValue('content', currentContent + '\n' + pattern);
   };
 
   return (
@@ -202,6 +214,9 @@ export function DocumentTemplateDialog({
                     <Info className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium">Variáveis disponíveis</span>
                   </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Clique para inserir. Dados do cliente (nome, CPF, idade, nascimento) são preenchidos automaticamente.
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {commonVariables.map(v => (
                       <Button
@@ -214,6 +229,35 @@ export function DocumentTemplateDialog({
                         title={v.description}
                       >
                         {'{' + v.name + '}'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Interactive Patterns Helper */}
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium">Campos interativos</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Use estes padrões para criar campos que o cliente preencherá ao acessar o link.
+                  </p>
+                  <div className="space-y-1.5">
+                    {interactivePatterns.map(p => (
+                      <Button
+                        key={p.pattern}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-auto py-1.5 px-3 text-left w-full justify-start gap-2"
+                        onClick={() => insertPattern(p.pattern)}
+                      >
+                        {p.icon}
+                        <div>
+                          <span className="font-mono text-[10px]">{p.pattern}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">— {p.description}</span>
+                        </div>
                       </Button>
                     ))}
                   </div>
@@ -246,7 +290,7 @@ export function DocumentTemplateDialog({
                       <FormControl>
                         <Textarea 
                           {...field}
-                          placeholder="Digite o conteúdo do documento aqui. Use {nome}, {cpf}, {data}, etc. para campos que serão preenchidos automaticamente..."
+                          placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
                           className="min-h-[300px] font-mono text-sm"
                         />
                       </FormControl>

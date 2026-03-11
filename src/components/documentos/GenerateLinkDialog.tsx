@@ -1,34 +1,35 @@
-import { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Link2, 
-  Copy, 
-  Check, 
-  MessageCircle, 
+import {
+  Link2,
+  Copy,
+  Check,
+  MessageCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
+import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 
 interface GenerateLinkDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const { clients } = useClients();
   const { professionals } = useProfessionals();
   const { createLink } = useDocumentFillLinks();
-  
+
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [expiresInDays, setExpiresInDays] = useState<string>('7');
@@ -52,27 +53,54 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const activeProfessionals = professionals.filter(p => p.is_active);
-  const activeClients = clients.filter(c => c.is_active);
+  const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);
+  const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
+  const selectedClient = activeClients.find(c => c.id === selectedClientId);
+  const selectedProfessional = activeProfessionals.find(p => p.id === selectedProfessionalId);
 
-  // Pre-select client when provided
   useEffect(() => {
     if (open && preSelectedClientId) {
       setSelectedClientId(preSelectedClientId);
     }
   }, [open, preSelectedClientId]);
 
+  const buildPrefillSnapshot = (): DocumentPrefillSnapshot => ({
+    client: selectedClient
+      ? {
+          id: selectedClient.id,
+          name: selectedClient.name,
+          birthdate: selectedClient.birthdate,
+          cpf: selectedClient.cpf,
+          phone: selectedClient.phone,
+        }
+      : undefined,
+    professional: selectedProfessional
+      ? {
+          id: selectedProfessional.id,
+          name: selectedProfessional.name,
+        }
+      : undefined,
+    formData: {
+      ...(selectedClient?.name ? { cliente: selectedClient.name, nome_cliente: selectedClient.name, nome: selectedClient.name } : {}),
+      ...(selectedClient?.cpf ? { cpf: selectedClient.cpf } : {}),
+      ...(selectedClient?.phone ? { telefone: selectedClient.phone } : {}),
+      ...(selectedProfessional?.name ? { profissional: selectedProfessional.name, nome_profissional: selectedProfessional.name } : {}),
+    },
+  });
+
   const handleGenerate = async () => {
     if (!template) return;
-    
+
     setLoading(true);
     try {
+      const normalizedExpiresInDays = expiresInDays === 'none' ? undefined : parseInt(expiresInDays, 10);
       const result = await createLink(template.id, {
         clientId: selectedClientId || undefined,
         professionalId: selectedProfessionalId || undefined,
-        expiresInDays: expiresInDays ? parseInt(expiresInDays) : undefined
+        expiresInDays: Number.isFinite(normalizedExpiresInDays) ? normalizedExpiresInDays : undefined,
+        prefillSnapshot: buildPrefillSnapshot(),
       });
-      
+
       if (result) {
         setGeneratedUrl(result.url);
       }
@@ -93,12 +121,11 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   };
 
   const handleWhatsApp = () => {
-    const selectedClient = activeClients.find(c => c.id === selectedClientId);
     const message = encodeURIComponent(
       `Olá${selectedClient ? ` ${selectedClient.name.split(' ')[0]}` : ''}! ` +
       `Por favor, preencha o documento "${template?.title}" através deste link: ${generatedUrl}`
     );
-    
+
     if (selectedClient?.phone) {
       const phone = selectedClient.phone.replace(/\D/g, '');
       window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
@@ -112,11 +139,11 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
     setSelectedClientId(preSelectedClientId || '');
     setSelectedProfessionalId('');
     setExpiresInDays('7');
+    setCopied(false);
   };
 
   const handleClose = () => {
     handleReset();
-    setGeneratedUrl('');
     onOpenChange(false);
   };
 
@@ -138,10 +165,9 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
         <div className="space-y-4 py-4">
           {!generatedUrl ? (
             <>
-              {/* Client selection */}
               <div className="space-y-2">
                 <Label className="text-sm">Cliente</Label>
-                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <Select value={selectedClientId || 'none'} onValueChange={(value) => setSelectedClientId(value === 'none' ? '' : value)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Selecione o cliente..." />
                   </SelectTrigger>
@@ -155,14 +181,13 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Dados do cliente (nome, CPF, data de nascimento) serão preenchidos automaticamente.
+                  Dados do cliente serão preservados no link para evitar tela branca e garantir o preenchimento automático.
                 </p>
               </div>
 
-              {/* Professional selection */}
               <div className="space-y-2">
                 <Label className="text-sm">Profissional Responsável (opcional)</Label>
-                <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
+                <Select value={selectedProfessionalId || 'none'} onValueChange={(value) => setSelectedProfessionalId(value === 'none' ? '' : value)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Selecione o profissional..." />
                   </SelectTrigger>
@@ -177,7 +202,6 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
                 </Select>
               </div>
 
-              {/* Expiration */}
               <div className="space-y-2">
                 <Label className="text-sm">Validade do Link</Label>
                 <Select value={expiresInDays} onValueChange={setExpiresInDays}>
@@ -189,43 +213,25 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
                     <SelectItem value="3">3 dias</SelectItem>
                     <SelectItem value="7">7 dias</SelectItem>
                     <SelectItem value="30">30 dias</SelectItem>
-                    <SelectItem value="">Sem validade</SelectItem>
+                    <SelectItem value="none">Sem validade</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <Separator />
 
-              <Button 
-                className="w-full gap-2" 
-                onClick={handleGenerate}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4" />
-                )}
+              <Button className="w-full gap-2" onClick={handleGenerate} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                 {loading ? 'Gerando...' : 'Gerar Link'}
               </Button>
             </>
           ) : (
             <>
-              {/* Generated URL display */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-primary">Link Gerado ✓</Label>
                 <div className="flex gap-2">
-                  <Input 
-                    value={generatedUrl} 
-                    readOnly 
-                    className="text-xs font-mono bg-muted"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={handleCopy}
-                    className="shrink-0"
-                  >
+                  <Input value={generatedUrl} readOnly className="text-xs font-mono bg-muted" />
+                  <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
                     {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -236,42 +242,25 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
 
               <Separator />
 
-              {/* Action buttons */}
               <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={handleCopy}
-                >
+                <Button variant="outline" className="gap-2" onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                   Copiar Link
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={handleWhatsApp}
-                >
+                <Button variant="outline" className="gap-2" onClick={handleWhatsApp}>
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
                 </Button>
               </div>
 
-              <Button 
-                variant="ghost" 
-                className="w-full gap-2"
-                onClick={() => window.open(generatedUrl, '_blank')}
-              >
+              <Button variant="ghost" className="w-full gap-2" onClick={() => window.open(generatedUrl, '_blank')}>
                 <ExternalLink className="h-4 w-4" />
                 Abrir Link
               </Button>
 
               <Separator />
 
-              <Button 
-                variant="secondary" 
-                className="w-full"
-                onClick={handleReset}
-              >
+              <Button variant="secondary" className="w-full" onClick={handleReset}>
                 Gerar Novo Link
               </Button>
             </>

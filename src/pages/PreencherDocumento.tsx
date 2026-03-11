@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { differenceInYears, format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,11 +22,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileText, CheckCircle, AlertCircle, Loader2, Send, Download, ShieldCheck } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  FileText,
+  Loader2,
+  Send,
+  ShieldCheck,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { format, differenceInYears, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import jsPDF from 'jspdf';
+import {
+  buildFilledDocumentContent,
+  extractDocumentPrefillSnapshot,
+  isAutoFilledVariable,
+  normalizeDocumentLinkPayload,
+  tokenizeDocumentLine,
+  type DocumentFieldToken,
+} from '@/lib/documentTemplateFields';
 
 interface DocumentLinkPayload {
   id: string;
@@ -34,15 +49,7 @@ interface DocumentLinkPayload {
   expires_at: string | null;
   filled_at: string | null;
   filled_content: string | null;
-  filled_variables: Record<string, string> | null;
-  template_title: string;
-  template_content: string;
-  template_variables: string[] | null;
-  professional_name: string | null;
-  client_name: string | null;
-  client_birthdate: string | null;
-  client_cpf: string | null;
-  client_phone: string | null;
+  filled_variables: Record<string, unknown> | null;
 }
 
 interface DocumentLink {
@@ -54,7 +61,7 @@ interface DocumentLink {
   expires_at: string | null;
   filled_at: string | null;
   filled_content: string | null;
-  filled_variables: Record<string, string>;
+  filled_variables: Record<string, unknown>;
 }
 
 interface Template {
@@ -65,19 +72,18 @@ interface Template {
 }
 
 interface Professional {
-  id: string;
-  name: string;
+  id: string | null;
+  name: string | null;
 }
 
 interface ClientData {
-  id: string;
-  name: string;
+  id: string | null;
+  name: string | null;
   birthdate: string | null;
   cpf: string | null;
   phone: string | null;
 }
 
-// Helper to format date in full Portuguese
 const formatDateExtended = (date: Date): string => {
   const day = date.getDate();
   const month = format(date, 'MMMM', { locale: ptBR });
@@ -85,7 +91,6 @@ const formatDateExtended = (date: Date): string => {
   return `${day} de ${month} de ${year}`;
 };
 
-// Helper to calculate age from birthdate
 const calculateAge = (birthdate: string | null): number | null => {
   if (!birthdate) return null;
   try {
@@ -95,7 +100,6 @@ const calculateAge = (birthdate: string | null): number | null => {
   }
 };
 
-// Format birthdate for display
 const formatBirthdate = (birthdate: string | null): string => {
   if (!birthdate) return '';
   try {
@@ -105,10 +109,15 @@ const formatBirthdate = (birthdate: string | null): string => {
   }
 };
 
+const formatNumber = (value: string) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric.toString() : value;
+};
+
 export default function PreencherDocumento() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [documentLink, setDocumentLink] = useState<DocumentLink | null>(null);
@@ -120,58 +129,100 @@ export default function PreencherDocumento() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPdfDownload, setShowPdfDownload] = useState(false);
   const [filledContentForPdf, setFilledContentForPdf] = useState('');
-  
-  // Form state
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [yesNoAnswers, setYesNoAnswers] = useState<Record<string, 'sim' | 'nao' | ''>>({});
   const [additionalInfo, setAdditionalInfo] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (token) {
-      loadDocument();
-    } else {
+    if (!token) {
       setError('Link inválido. Token não encontrado.');
       setLoading(false);
+      return;
     }
+
+    void loadDocument();
   }, [token]);
 
   const loadDocument = async () => {
     try {
-      const { data, error: rpcError } = await supabase.rpc('get_document_fill_link_by_token', {
-        p_token: token,
-      });
-
+      const { data, error: rpcError } = await supabase.rpc('get_document_fill_link_by_token', { p_token: token });
       if (rpcError) throw rpcError;
 
-      const linkData = (data?.[0] ?? null) as DocumentLinkPayload | null;
-
+      const linkData = normalizeDocumentLinkPayload<DocumentLinkPayload>(data);
       if (!linkData) {
         setError('Link não encontrado ou expirado.');
-        setLoading(false);
-        return;
-      }
-
-      if (linkData.status === 'filled') {
-        setSubmitted(true);
-        setDocumentLink({
-          id: linkData.id,
-          template_id: linkData.template_id,
-          client_id: linkData.client_id,
-          professional_id: linkData.professional_id,
-          status: linkData.status,
-          expires_at: linkData.expires_at,
-          filled_at: linkData.filled_at,
-          filled_content: linkData.filled_content,
-          filled_variables: linkData.filled_variables || {},
-        });
-        setLoading(false);
         return;
       }
 
       if (linkData.expires_at && new Date(linkData.expires_at) < new Date()) {
         setError('Este link expirou.');
-        setLoading(false);
         return;
+      }
+
+      const { data: templateData, error: templateError } = await supabase
+        .from('document_templates')
+        .select('id, title, content, variables')
+        .eq('id', linkData.template_id)
+        .maybeSingle();
+
+      if (templateError) throw templateError;
+      if (!templateData) {
+        setError('O modelo deste documento não foi encontrado.');
+        return;
+      }
+
+      const snapshot = extractDocumentPrefillSnapshot(linkData.filled_variables);
+      const clientSnapshot: ClientData | null = snapshot.client
+        ? {
+            id: snapshot.client.id ?? null,
+            name: snapshot.client.name ?? null,
+            birthdate: snapshot.client.birthdate ?? null,
+            cpf: snapshot.client.cpf ?? null,
+            phone: snapshot.client.phone ?? null,
+          }
+        : null;
+      const professionalSnapshot: Professional | null = snapshot.professional
+        ? {
+            id: snapshot.professional.id ?? null,
+            name: snapshot.professional.name ?? null,
+          }
+        : null;
+
+      const currentDate = new Date();
+      const initialFormData: Record<string, string> = {
+        ...(snapshot.formData || {}),
+        data: formatDateExtended(currentDate),
+        date: formatDateExtended(currentDate),
+        data_atual: formatDateExtended(currentDate),
+        hora: format(currentDate, 'HH:mm'),
+        data_extenso: formatDateExtended(currentDate),
+      };
+
+      if (clientSnapshot?.name) {
+        initialFormData.cliente = clientSnapshot.name;
+        initialFormData.nome_cliente = clientSnapshot.name;
+        initialFormData.nome = clientSnapshot.name;
+      }
+      if (clientSnapshot?.cpf) {
+        initialFormData.cpf = clientSnapshot.cpf;
+      }
+      if (clientSnapshot?.phone) {
+        initialFormData.telefone = clientSnapshot.phone;
+      }
+      if (clientSnapshot?.birthdate) {
+        const formattedBirthdate = formatBirthdate(clientSnapshot.birthdate);
+        initialFormData.data_nascimento = formattedBirthdate;
+        initialFormData.nascimento = formattedBirthdate;
+        const age = calculateAge(clientSnapshot.birthdate);
+        if (age !== null) {
+          initialFormData.idade = formatNumber(String(age));
+          initialFormData.idade_cliente = formatNumber(String(age));
+        }
+      }
+      if (professionalSnapshot?.name) {
+        initialFormData.profissional = professionalSnapshot.name;
+        initialFormData.professional = professionalSnapshot.name;
+        initialFormData.nome_profissional = professionalSnapshot.name;
       }
 
       setDocumentLink({
@@ -185,59 +236,19 @@ export default function PreencherDocumento() {
         filled_content: linkData.filled_content,
         filled_variables: linkData.filled_variables || {},
       });
+      setTemplate({
+        id: templateData.id,
+        title: templateData.title,
+        content: templateData.content,
+        variables: templateData.variables || [],
+      });
+      setClient(clientSnapshot);
+      setProfessional(professionalSnapshot);
+      setFormData(initialFormData);
 
-      const templateData: Template = {
-        id: linkData.template_id,
-        title: linkData.template_title,
-        content: linkData.template_content,
-        variables: linkData.template_variables || [],
-      };
-      setTemplate(templateData);
-
-      if (linkData.professional_id && linkData.professional_name) {
-        setProfessional({ id: linkData.professional_id, name: linkData.professional_name });
-        setFormData(prev => ({ ...prev, profissional: linkData.professional_name! }));
+      if (linkData.status === 'filled') {
+        setSubmitted(true);
       }
-
-      if (linkData.client_id && linkData.client_name) {
-        const clientData: ClientData = {
-          id: linkData.client_id,
-          name: linkData.client_name,
-          birthdate: linkData.client_birthdate,
-          cpf: linkData.client_cpf,
-          phone: linkData.client_phone,
-        };
-        setClient(clientData);
-        
-        // Auto-fill client data
-        const autoFillData: Record<string, string> = {
-          cliente: clientData.name,
-          nome_cliente: clientData.name,
-          nome: clientData.name,
-        };
-        
-        if (clientData.cpf) {
-          autoFillData.cpf = clientData.cpf;
-        }
-        
-        if (clientData.birthdate) {
-          autoFillData.data_nascimento = formatBirthdate(clientData.birthdate);
-          autoFillData.nascimento = formatBirthdate(clientData.birthdate);
-          const age = calculateAge(clientData.birthdate);
-          if (age !== null) {
-            autoFillData.idade = age.toString();
-            autoFillData.idade_cliente = age.toString();
-          }
-        }
-        
-        if (clientData.phone) {
-          autoFillData.telefone = clientData.phone;
-        }
-        
-        setFormData(prev => ({ ...prev, ...autoFillData }));
-      }
-
-      parseTemplateQuestions(templateData.content);
     } catch (err) {
       console.error('Error loading document:', err);
       setError('Erro ao carregar documento.');
@@ -246,110 +257,30 @@ export default function PreencherDocumento() {
     }
   };
 
-  const parseTemplateQuestions = (content: string) => {
-    const yesNoPattern = /\(\s*\)\s*(Sim|sim)\s*\(\s*\)\s*(Não|nao|Nao)/g;
-    const lines = content.split('\n');
-    
-    const initialYesNo: Record<string, 'sim' | 'nao' | ''> = {};
-    const initialInfo: Record<string, string> = {};
-    
-    lines.forEach((line, index) => {
-      if (yesNoPattern.test(line)) {
-        initialYesNo[`question_${index}`] = '';
-      }
-      if (line.includes('_____') || line.includes(':')) {
-        initialInfo[`info_${index}`] = '';
-      }
-    });
-    
-    setYesNoAnswers(initialYesNo);
-    setAdditionalInfo(initialInfo);
-  };
-
   const buildFilledContent = (): string => {
     if (!template) return '';
-    
-    let filledContent = template.content;
-    
-    // Replace yes/no questions with X
-    Object.entries(yesNoAnswers).forEach(([key, value]) => {
-      if (value === 'sim') {
-        filledContent = filledContent.replace(/\(\s*\)\s*(Sim|sim)/g, '(X) $1');
-        filledContent = filledContent.replace(/\(\s*\)\s*(Não|nao|Nao)/g, '( ) $1');
-      } else if (value === 'nao') {
-        filledContent = filledContent.replace(/\(\s*\)\s*(Sim|sim)/g, '( ) $1');
-        filledContent = filledContent.replace(/\(\s*\)\s*(Não|nao|Nao)/g, '(X) $1');
-      }
+
+    let content = buildFilledDocumentContent({
+      content: template.content,
+      formData,
+      yesNoAnswers,
+      additionalInfo,
     });
 
-    // Apply form data variables
-    Object.entries(formData).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{${key}\\}`, 'gi');
-      filledContent = filledContent.replace(regex, value);
-    });
-
-    // Replace [TEXTO_LIVRE] placeholders with filled text
-    Object.entries(additionalInfo).forEach(([key, value]) => {
-      if (key.startsWith('texto_livre_') && value) {
-        // Replace the nth [TEXTO_LIVRE] placeholder
-        filledContent = filledContent.replace('[TEXTO_LIVRE]', value);
-      }
-    });
-
-    // Add professional name
-    if (formData.profissional) {
-      filledContent = filledContent.replace(/\{profissional\}/gi, formData.profissional);
-      filledContent = filledContent.replace(/\{professional\}/gi, formData.profissional);
-      filledContent = filledContent.replace(/\{nome_profissional\}/gi, formData.profissional);
+    if (additionalInfo.observacoes?.trim()) {
+      content = `${content}\n\nObservações adicionais: ${additionalInfo.observacoes.trim()}`;
     }
 
-    // Add current date in extended format
-    const currentDateExtended = formatDateExtended(new Date());
-    filledContent = filledContent.replace(/\{data\}/gi, currentDateExtended);
-    filledContent = filledContent.replace(/\{date\}/gi, currentDateExtended);
-    filledContent = filledContent.replace(/\{data_atual\}/gi, currentDateExtended);
-
-    // Add client data
-    if (client?.birthdate) {
-      const age = calculateAge(client.birthdate);
-      if (age !== null) {
-        filledContent = filledContent.replace(/\{idade\}/gi, age.toString());
-        filledContent = filledContent.replace(/\{idade_cliente\}/gi, age.toString());
-      }
-      filledContent = filledContent.replace(/\{data_nascimento\}/gi, formatBirthdate(client.birthdate));
-      filledContent = filledContent.replace(/\{nascimento\}/gi, formatBirthdate(client.birthdate));
-    }
-
-    if (client?.name) {
-      filledContent = filledContent.replace(/\{cliente\}/gi, client.name);
-      filledContent = filledContent.replace(/\{nome_cliente\}/gi, client.name);
-      filledContent = filledContent.replace(/\{client\}/gi, client.name);
-      filledContent = filledContent.replace(/\{nome\}/gi, client.name);
-    }
-
-    if (client?.cpf) {
-      filledContent = filledContent.replace(/\{cpf\}/gi, client.cpf);
-    }
-
-    if (client?.phone) {
-      filledContent = filledContent.replace(/\{telefone\}/gi, client.phone);
-    }
-
-    return filledContent;
-  };
-
-  const handleConfirmSubmit = () => {
-    setShowConfirmDialog(true);
+    return content;
   };
 
   const handleSubmit = async () => {
     if (!documentLink || !template) return;
     setShowConfirmDialog(false);
-
     setSaving(true);
+
     try {
       const filledContent = buildFilledContent();
-
       const payload = {
         ...formData,
         ...additionalInfo,
@@ -378,30 +309,24 @@ export default function PreencherDocumento() {
 
   const handleDownloadPdf = () => {
     if (!template) return;
-    
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     const maxWidth = pageWidth - margin * 2;
     let y = 20;
-    
-    // Remove accents for PDF compatibility
     const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // Title
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    const title = removeAccents(template.title);
-    doc.text(title, pageWidth / 2, y, { align: 'center' });
+    doc.text(removeAccents(template.title), pageWidth / 2, y, { align: 'center' });
     y += 12;
 
-    // Date
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(removeAccents(`Data de preenchimento: ${format(new Date(), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}`), margin, y);
+    doc.text(removeAccents(`Data de preenchimento: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
     y += 8;
 
-    // Client info
     if (client?.name) {
       doc.text(removeAccents(`Cliente: ${client.name}`), margin, y);
       y += 5;
@@ -412,16 +337,13 @@ export default function PreencherDocumento() {
     }
     y += 5;
 
-    // Separator
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageWidth - margin, y);
     y += 8;
 
-    // Content
-    doc.setFontSize(10);
     const content = filledContentForPdf || buildFilledContent();
     const lines = doc.splitTextToSize(removeAccents(content), maxWidth);
-    
+
     for (const line of lines) {
       if (y > doc.internal.pageSize.getHeight() - 30) {
         doc.addPage();
@@ -431,7 +353,6 @@ export default function PreencherDocumento() {
       y += 5;
     }
 
-    // Signature area
     y += 15;
     if (y > doc.internal.pageSize.getHeight() - 50) {
       doc.addPage();
@@ -442,9 +363,93 @@ export default function PreencherDocumento() {
     doc.setFontSize(9);
     doc.text(removeAccents('Assinatura'), margin, y);
     y += 10;
-    doc.text(removeAccents(`Data: ____/____/________`), margin, y);
+    doc.text(removeAccents('Data: ____/____/________'), margin, y);
 
     doc.save(removeAccents(`${template.title} - ${client?.name || 'Documento'}.pdf`));
+  };
+
+  const renderToken = (token: DocumentFieldToken, lineIndex: number, tokenIndex: number) => {
+    switch (token.type) {
+      case 'text':
+        return <span key={`${lineIndex}-${tokenIndex}`} className="whitespace-pre-wrap">{token.value}</span>;
+      case 'variable': {
+        const value = formData[token.fieldKey] || '';
+        if (isAutoFilledVariable(token.name)) {
+          return (
+            <span key={`${lineIndex}-${tokenIndex}`} className="inline-flex min-h-9 min-w-[120px] items-center rounded-md border bg-muted px-3 py-2 text-sm font-medium">
+              {value || '—'}
+            </span>
+          );
+        }
+        return (
+          <Input
+            key={`${lineIndex}-${tokenIndex}`}
+            value={value}
+            onChange={(event) => setFormData(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            placeholder={token.label || token.name}
+            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+          />
+        );
+      }
+      case 'yesno':
+        return (
+          <RadioGroup
+            key={`${lineIndex}-${tokenIndex}`}
+            value={yesNoAnswers[token.fieldKey] || ''}
+            onValueChange={(value) => setYesNoAnswers(prev => ({ ...prev, [token.fieldKey]: value as 'sim' | 'nao' }))}
+            className="inline-flex flex-row items-center gap-4 align-middle"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="sim" id={`${token.fieldKey}-sim`} />
+              <Label htmlFor={`${token.fieldKey}-sim`} className="cursor-pointer">Sim</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="nao" id={`${token.fieldKey}-nao`} />
+              <Label htmlFor={`${token.fieldKey}-nao`} className="cursor-pointer">Não</Label>
+            </div>
+          </RadioGroup>
+        );
+      case 'freeText':
+        return (
+          <Textarea
+            key={`${lineIndex}-${tokenIndex}`}
+            value={additionalInfo[token.fieldKey] || ''}
+            onChange={(event) => setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            placeholder="Digite sua resposta aqui..."
+            rows={3}
+            className="mt-2 min-h-[96px] w-full resize-none"
+          />
+        );
+      case 'blankField':
+        return (
+          <Input
+            key={`${lineIndex}-${tokenIndex}`}
+            value={additionalInfo[token.fieldKey] || ''}
+            onChange={(event) => setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            placeholder="Digite sua resposta..."
+            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderInteractiveForm = () => {
+    if (!template) return null;
+
+    return template.content.split('\n').map((line, index) => {
+      const tokens = tokenizeDocumentLine(line, index);
+      const hasBlockField = tokens.some(token => token.type === 'freeText');
+
+      return (
+        <div key={`line-${index}`} className="space-y-2 rounded-lg border border-border/60 bg-card p-4">
+          <div className={`flex flex-wrap items-center gap-2 text-sm leading-7 ${hasBlockField ? 'flex-col items-stretch' : ''}`}>
+            {tokens.map((token, tokenIndex) => renderToken(token, index, tokenIndex))}
+          </div>
+        </div>
+      );
+    });
   };
 
   if (loading) {
@@ -479,12 +484,12 @@ export default function PreencherDocumento() {
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="py-8 text-center space-y-4">
-            <ShieldCheck className="h-16 w-16 mx-auto text-green-500 mb-2" />
+            <ShieldCheck className="h-16 w-16 mx-auto text-primary mb-2" />
             <h2 className="text-xl font-semibold">Documento Assinado!</h2>
             <p className="text-muted-foreground text-sm">
               Suas respostas foram salvas com sucesso. Este documento não pode mais ser alterado.
             </p>
-            
+
             {showPdfDownload && (
               <div className="space-y-3 pt-4 border-t">
                 <p className="text-sm font-medium">Próximo passo:</p>
@@ -499,7 +504,7 @@ export default function PreencherDocumento() {
                 </Button>
               </div>
             )}
-            
+
             <p className="text-xs text-muted-foreground pt-4">
               Se você acessar este link novamente, verá esta mensagem de confirmação.
             </p>
@@ -511,115 +516,9 @@ export default function PreencherDocumento() {
 
   if (!template) return null;
 
-  // Parse template to create interactive form
-  const renderInteractiveForm = () => {
-    const lines = template.content.split('\n');
-    const formElements: JSX.Element[] = [];
-    let questionIndex = 0;
-    let textoLivreIndex = 0;
-
-    lines.forEach((line, index) => {
-      const trimmedLine = line.trim();
-      
-      // Check if it's a [TEXTO_LIVRE] placeholder
-      if (trimmedLine.includes('[TEXTO_LIVRE]')) {
-        const labelText = trimmedLine.replace('[TEXTO_LIVRE]', '').replace(/:$/, '').trim();
-        const fieldKey = `texto_livre_${textoLivreIndex}`;
-        
-        formElements.push(
-          <div key={`tl_${index}`} className="py-3 border-b border-muted">
-            <Label className="text-sm font-medium mb-2 block">
-              {labelText || `Campo de texto ${textoLivreIndex + 1}`}
-            </Label>
-            <Textarea
-              value={additionalInfo[fieldKey] || ''}
-              onChange={(e) => setAdditionalInfo(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-              placeholder="Digite sua resposta aqui..."
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-        );
-        textoLivreIndex++;
-        return;
-      }
-
-      // Check if it's a yes/no question
-      if (/\(\s*\)\s*(Sim|sim)\s*\(\s*\)\s*(Não|nao|Nao)/i.test(line)) {
-        const questionKey = `question_${questionIndex}`;
-        const questionText = line.replace(/\(\s*\)\s*(Sim|sim)\s*\(\s*\)\s*(Não|nao|Nao)/gi, '').trim();
-        
-        formElements.push(
-          <div key={index} className="py-3 border-b border-muted">
-            <Label className="text-sm font-medium mb-2 block">{questionText || `Pergunta ${questionIndex + 1}`}</Label>
-            <RadioGroup
-              value={yesNoAnswers[questionKey] || ''}
-              onValueChange={(value) => setYesNoAnswers(prev => ({ ...prev, [questionKey]: value as 'sim' | 'nao' }))}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="sim" id={`${questionKey}-sim`} />
-                <Label htmlFor={`${questionKey}-sim`} className="cursor-pointer">Sim</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="nao" id={`${questionKey}-nao`} />
-                <Label htmlFor={`${questionKey}-nao`} className="cursor-pointer">Não</Label>
-              </div>
-            </RadioGroup>
-          </div>
-        );
-        questionIndex++;
-      }
-      // Check if line has a variable placeholder
-      else if (/{[^}]+}/.test(line)) {
-        const variables = line.match(/{([^}]+)}/g) || [];
-        variables.forEach((variable) => {
-          const varName = variable.slice(1, -1);
-          const autoFilled = ['data', 'hora', 'profissional', 'professional', 'data_atual', 'date'];
-          // Also skip if already auto-filled by client data
-          const clientAutoFilled = ['cliente', 'nome_cliente', 'nome', 'cpf', 'idade', 'idade_cliente', 'data_nascimento', 'nascimento', 'telefone'];
-          if (!autoFilled.includes(varName.toLowerCase()) && !clientAutoFilled.includes(varName.toLowerCase())) {
-            formElements.push(
-              <div key={`${index}-${varName}`} className="py-3 border-b border-muted">
-                <Label className="text-sm font-medium mb-2 block capitalize">{varName.replace(/_/g, ' ')}</Label>
-                <Input
-                  value={formData[varName] || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, [varName]: e.target.value }))}
-                  placeholder={`Digite ${varName.replace(/_/g, ' ')}...`}
-                  className="h-9"
-                />
-              </div>
-            );
-          }
-        });
-      }
-      // Check if it's a field that needs filling
-      else if (trimmedLine.includes('_____') || (trimmedLine.endsWith(':') && trimmedLine.length > 3)) {
-        const fieldKey = `field_${index}`;
-        const fieldLabel = trimmedLine.replace(/_+/g, '').replace(/:$/, '').trim();
-        
-        if (fieldLabel.length > 2) {
-          formElements.push(
-            <div key={index} className="py-3 border-b border-muted">
-              <Label className="text-sm font-medium mb-2 block">{fieldLabel}</Label>
-              <Input
-                value={additionalInfo[fieldKey] || ''}
-                onChange={(e) => setAdditionalInfo(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-                placeholder="Digite sua resposta..."
-                className="h-9"
-              />
-            </div>
-          );
-        }
-      }
-    });
-
-    return formElements;
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <Card className="shadow-xl">
           <CardHeader className="border-b bg-muted/30">
             <div className="flex items-center gap-3">
@@ -628,22 +527,19 @@ export default function PreencherDocumento() {
               </div>
               <div>
                 <CardTitle className="text-lg">{template.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Preencha o documento abaixo
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Preencha o documento abaixo</p>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="p-0">
-            <ScrollArea className="h-[60vh]">
+            <ScrollArea className="h-[70vh]">
               <div className="p-6 space-y-4">
-                {/* Auto-filled client data display */}
                 {client && (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Dados preenchidos automaticamente:</p>
-                    <div className="grid grid-cols-2 gap-1 text-sm">
-                      <span><strong>Nome:</strong> {client.name}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-sm">
+                      {client.name && <span><strong>Nome:</strong> {client.name}</span>}
                       {client.cpf && <span><strong>CPF:</strong> {client.cpf}</span>}
                       {client.birthdate && <span><strong>Nascimento:</strong> {formatBirthdate(client.birthdate)}</span>}
                       {client.birthdate && <span><strong>Idade:</strong> {calculateAge(client.birthdate)} anos</span>}
@@ -651,12 +547,11 @@ export default function PreencherDocumento() {
                   </div>
                 )}
 
-                {/* Professional name field */}
-                <div className="py-3 border-b border-muted">
-                  <Label className="text-sm font-medium mb-2 block">Nome do Profissional</Label>
+                <div className="space-y-2 rounded-lg border border-border/60 bg-card p-4">
+                  <Label className="text-sm font-medium">Nome do Profissional</Label>
                   <Input
                     value={formData.profissional || professional?.name || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, profissional: e.target.value }))}
+                    onChange={(event) => setFormData(prev => ({ ...prev, profissional: event.target.value, professional: event.target.value, nome_profissional: event.target.value }))}
                     placeholder="Nome do profissional responsável..."
                     className="h-9"
                   />
@@ -664,15 +559,13 @@ export default function PreencherDocumento() {
 
                 <Separator className="my-4" />
 
-                {/* Render interactive form fields */}
                 {renderInteractiveForm()}
 
-                {/* General observations */}
-                <div className="py-3">
-                  <Label className="text-sm font-medium mb-2 block">Observações Adicionais</Label>
+                <div className="space-y-2 rounded-lg border border-border/60 bg-card p-4">
+                  <Label className="text-sm font-medium">Observações Adicionais</Label>
                   <Textarea
                     value={additionalInfo.observacoes || ''}
-                    onChange={(e) => setAdditionalInfo(prev => ({ ...prev, observacoes: e.target.value }))}
+                    onChange={(event) => setAdditionalInfo(prev => ({ ...prev, observacoes: event.target.value }))}
                     placeholder="Adicione informações complementares se necessário..."
                     rows={4}
                     className="resize-none"
@@ -682,40 +575,28 @@ export default function PreencherDocumento() {
             </ScrollArea>
 
             <div className="border-t p-4 bg-muted/10">
-              <Button 
-                className="w-full gap-2" 
-                size="lg"
-                onClick={handleConfirmSubmit}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+              <Button className="w-full gap-2" size="lg" onClick={() => setShowConfirmDialog(true)} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {saving ? 'Enviando...' : 'Enviar Documento'}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-3">
-                Ao enviar, você concorda que as informações fornecidas são verdadeiras.
+                Ao enviar, você confirma que todas as informações foram revisadas e não poderão mais ser alteradas.
               </p>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Documento gerado em {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}
+          Documento gerado em {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}
         </p>
       </div>
 
-      {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar envio do documento</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>
-                Todas as informações foram preenchidas corretamente?
-              </p>
+              <p>Todas as informações foram preenchidas corretamente?</p>
               <p className="font-medium text-foreground">
                 Após confirmar, nenhuma alteração poderá ser feita neste documento.
               </p>
@@ -723,9 +604,7 @@ export default function PreencherDocumento() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Revisar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit}>
-              Confirmar e Enviar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSubmit}>Confirmar e Enviar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 
 export interface DocumentFillLink {
   id: string;
@@ -36,7 +37,7 @@ export function useDocumentFillLinks(templateId?: string) {
         .from('document_fill_links')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (templateId) {
         query = query.eq('template_id', templateId);
       }
@@ -49,18 +50,23 @@ export function useDocumentFillLinks(templateId?: string) {
   });
 
   const createLink = async (
-    templateId: string, 
+    templateId: string,
     options?: {
       clientId?: string;
       professionalId?: string;
       expiresInDays?: number;
+      prefillSnapshot?: DocumentPrefillSnapshot;
     }
   ): Promise<{ url: string; token: string } | null> => {
     try {
       const token = generateToken();
-      const expiresAt = options?.expiresInDays 
+      const expiresAt = options?.expiresInDays
         ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
+
+      const filledVariables = options?.prefillSnapshot
+        ? { __prefill: options.prefillSnapshot }
+        : {};
 
       const { error } = await supabase
         .from('document_fill_links')
@@ -70,16 +76,17 @@ export function useDocumentFillLinks(templateId?: string) {
           professional_id: options?.professionalId || null,
           token,
           expires_at: expiresAt,
-          status: 'pending'
+          status: 'pending',
+          filled_variables: filledVariables,
         });
 
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ['document_fill_links'] });
-      
+
       const baseUrl = window.location.origin;
       const url = `${baseUrl}/preencher-documento?token=${token}`;
-      
+
       toast.success('Link gerado com sucesso!');
       return { url, token };
     } catch (error) {
@@ -97,7 +104,7 @@ export function useDocumentFillLinks(templateId?: string) {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['document_fill_links'] });
       toast.success('Link removido');
     } catch (error) {
@@ -110,6 +117,6 @@ export function useDocumentFillLinks(templateId?: string) {
     links,
     isLoading,
     createLink,
-    deleteLink
+    deleteLink,
   };
 }

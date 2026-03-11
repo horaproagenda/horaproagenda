@@ -1,23 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
+import {
   Form,
   FormControl,
   FormField,
@@ -64,13 +61,9 @@ const interactivePatterns = [
   { pattern: '[TEXTO_LIVRE]', description: 'Caixa de texto - espaço para o cliente escrever', icon: <Type className="h-3.5 w-3.5" /> },
 ];
 
-export function DocumentTemplateDialog({ 
-  open, 
-  onOpenChange, 
-  template,
-  onSave 
-}: DocumentTemplateDialogProps) {
+export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }: DocumentTemplateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(templateSchema),
@@ -92,16 +85,17 @@ export function DocumentTemplateDialog({
         variables: template.variables?.join(', ') || '',
         is_active: template.is_active,
       });
-    } else {
-      form.reset({
-        title: '',
-        description: '',
-        content: '',
-        variables: '',
-        is_active: true,
-      });
+      return;
     }
-  }, [template, open]);
+
+    form.reset({
+      title: '',
+      description: '',
+      content: '',
+      variables: '',
+      is_active: true,
+    });
+  }, [template, open, form]);
 
   const handleSubmit = async (data: FormData) => {
     setIsLoading(true);
@@ -122,23 +116,35 @@ export function DocumentTemplateDialog({
     }
   };
 
-  const insertVariable = (varName: string) => {
-    const currentContent = form.getValues('content');
-    const currentVariables = form.getValues('variables');
-    
-    form.setValue('content', currentContent + `{${varName}}`);
-    
-    const varsArray = currentVariables ? currentVariables.split(',').map(v => v.trim()).filter(Boolean) : [];
-    if (!varsArray.includes(varName)) {
-      varsArray.push(varName);
-      form.setValue('variables', varsArray.join(', '));
+  const insertIntoContent = (value: string, autoRegisterVariable?: string) => {
+    const currentContent = form.getValues('content') || '';
+    const textarea = textareaRef.current;
+
+    const start = textarea?.selectionStart ?? currentContent.length;
+    const end = textarea?.selectionEnd ?? currentContent.length;
+
+    const nextContent = `${currentContent.slice(0, start)}${value}${currentContent.slice(end)}`;
+    form.setValue('content', nextContent, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+
+    if (autoRegisterVariable) {
+      const currentVariables = form.getValues('variables');
+      const varsArray = currentVariables ? currentVariables.split(',').map(v => v.trim()).filter(Boolean) : [];
+      if (!varsArray.includes(autoRegisterVariable)) {
+        varsArray.push(autoRegisterVariable);
+        form.setValue('variables', varsArray.join(', '), { shouldDirty: true });
+      }
     }
+
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      const cursorPosition = start + value.length;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
+    });
   };
 
-  const insertPattern = (pattern: string) => {
-    const currentContent = form.getValues('content');
-    form.setValue('content', currentContent + '\n' + pattern);
-  };
+  const insertVariable = (varName: string) => insertIntoContent(`{${varName}}`, varName);
+  const insertPattern = (pattern: string) => insertIntoContent(pattern);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,11 +168,7 @@ export function DocumentTemplateDialog({
                       <FormItem>
                         <FormLabel className="text-xs">Título *</FormLabel>
                         <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Ex: Anamnese Facial"
-                            className="h-9"
-                          />
+                          <Input {...field} placeholder="Ex: Anamnese Facial" className="h-9" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -180,10 +182,7 @@ export function DocumentTemplateDialog({
                       <FormItem className="flex items-center justify-between rounded-lg border p-3 h-9">
                         <FormLabel className="text-xs m-0">Ativo</FormLabel>
                         <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                       </FormItem>
                     )}
@@ -197,25 +196,20 @@ export function DocumentTemplateDialog({
                     <FormItem>
                       <FormLabel className="text-xs">Descrição</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="Breve descrição do modelo"
-                          className="h-9"
-                        />
+                        <Input {...field} placeholder="Breve descrição do modelo" className="h-9" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Variables Helper */}
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium">Variáveis disponíveis</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Clique para inserir. Dados do cliente (nome, CPF, idade, nascimento) são preenchidos automaticamente.
+                    Clique para inserir no ponto atual do cursor. Dados do cliente são preenchidos automaticamente.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {commonVariables.map(v => (
@@ -234,14 +228,13 @@ export function DocumentTemplateDialog({
                   </div>
                 </div>
 
-                {/* Interactive Patterns Helper */}
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <CheckSquare className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium">Campos interativos</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Use estes padrões para criar campos que o cliente preencherá ao acessar o link.
+                    Os padrões abaixo agora são inseridos exatamente na posição do cursor no documento.
                   </p>
                   <div className="space-y-1.5">
                     {interactivePatterns.map(p => (
@@ -270,11 +263,7 @@ export function DocumentTemplateDialog({
                     <FormItem>
                       <FormLabel className="text-xs">Variáveis usadas (separadas por vírgula)</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="nome, cpf, data, telefone"
-                          className="h-9"
-                        />
+                        <Input {...field} placeholder="nome, cpf, data, telefone" className="h-9" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -288,8 +277,12 @@ export function DocumentTemplateDialog({
                     <FormItem>
                       <FormLabel className="text-xs">Conteúdo do Documento *</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           {...field}
+                          ref={(element) => {
+                            field.ref(element);
+                            textareaRef.current = element;
+                          }}
                           placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
                           className="min-h-[300px] font-mono text-sm"
                         />
@@ -304,19 +297,10 @@ export function DocumentTemplateDialog({
         </ScrollArea>
 
         <div className="flex justify-end gap-3 p-4 border-t bg-muted/10 shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button 
-            size="sm"
-            onClick={form.handleSubmit(handleSubmit)} 
-            disabled={isLoading}
-          >
+          <Button size="sm" onClick={form.handleSubmit(handleSubmit)} disabled={isLoading}>
             {isLoading ? 'Salvando...' : template ? 'Atualizar' : 'Criar Modelo'}
           </Button>
         </div>

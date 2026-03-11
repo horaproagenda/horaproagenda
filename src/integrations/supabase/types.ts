@@ -2750,25 +2750,7 @@ export type Database = {
       }
       get_document_fill_link_by_token: {
         Args: { p_token: string }
-        Returns: {
-          client_birthdate: string
-          client_cpf: string
-          client_id: string
-          client_name: string
-          client_phone: string
-          expires_at: string
-          filled_at: string
-          filled_content: string
-          filled_variables: Json
-          id: string
-          professional_id: string
-          professional_name: string
-          status: string
-          template_content: string
-          template_id: string
-          template_title: string
-          template_variables: string[]
-        }[]
+        Returns: Json
       }
       get_professional_id_for_user: {
         Args: { _user_id: string }

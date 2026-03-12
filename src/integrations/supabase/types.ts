@@ -158,6 +158,45 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          command_tag: string | null
+          detail: Json | null
+          event_time: string | null
+          event_type: string | null
+          id: number
+          object_identity: string | null
+          object_type: string | null
+          role_name: string | null
+          sql_text: string | null
+          username: string | null
+        }
+        Insert: {
+          command_tag?: string | null
+          detail?: Json | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: number
+          object_identity?: string | null
+          object_type?: string | null
+          role_name?: string | null
+          sql_text?: string | null
+          username?: string | null
+        }
+        Update: {
+          command_tag?: string | null
+          detail?: Json | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: number
+          object_identity?: string | null
+          object_type?: string | null
+          role_name?: string | null
+          sql_text?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

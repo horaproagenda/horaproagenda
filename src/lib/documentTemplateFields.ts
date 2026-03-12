@@ -1,6 +1,6 @@
 export type DocumentFieldToken =
   | { type: 'text'; value: string }
-  | { type: 'variable'; name: string; fieldKey: string }
+  | { type: 'variable'; name: string; fieldKey: string; label?: string }
   | { type: 'yesno'; fieldKey: string; label: string }
   | { type: 'freeText'; fieldKey: string; label: string }
   | { type: 'blankField'; fieldKey: string; label: string };

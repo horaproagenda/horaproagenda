@@ -70,7 +70,7 @@ export function useDocumentFillLinks(templateId?: string) {
 
       const { error } = await supabase
         .from('document_fill_links')
-        .insert({
+        .insert([{
           template_id: templateId,
           client_id: options?.clientId || null,
           professional_id: options?.professionalId || null,
@@ -78,7 +78,7 @@ export function useDocumentFillLinks(templateId?: string) {
           expires_at: expiresAt,
           status: 'pending',
           filled_variables: filledVariables,
-        });
+        }]);
 
       if (error) throw error;
 

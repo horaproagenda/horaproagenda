@@ -892,9 +892,7 @@ export default function Produtos() {
           onUpdatePurchase={async (data) => { await updatePurchase.mutateAsync(data); }}
           onDeletePurchase={async (id) => { await deletePurchase.mutateAsync(id); }}
           onCreateServiceLink={async (data) => {
-            const { createServiceProduct } = useServiceProducts();
-            // This won't work as hooks can't be called here
-            // The service product creation is handled inside ProductDetailDialog
+            // Service product creation is handled inside ProductDetailDialog via its own hooks
           }}
           onUpdateServiceLink={async () => {}}
           onDeleteServiceLink={async () => {}}

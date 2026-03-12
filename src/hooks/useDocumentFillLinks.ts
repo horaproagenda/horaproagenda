@@ -64,7 +64,7 @@ export function useDocumentFillLinks(templateId?: string) {
         ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      const filledVariables = options?.prefillSnapshot
+      const filledVariables: Record<string, unknown> = options?.prefillSnapshot
         ? { __prefill: options.prefillSnapshot }
         : {};
 

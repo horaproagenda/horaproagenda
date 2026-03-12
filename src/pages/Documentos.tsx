@@ -379,13 +379,18 @@ const Documentos = () => {
           onOpenChange={setDialogOpen}
           template={selectedTemplate}
           onSave={async (data) => {
-            if (selectedTemplate) {
-              await updateTemplate(selectedTemplate.id, data);
-            } else {
-              await createTemplate(data);
+            try {
+              if (selectedTemplate) {
+                await updateTemplate(selectedTemplate.id, data);
+              } else {
+                await createTemplate(data);
+              }
+              setDialogOpen(false);
+              setSelectedTemplate(null);
+            } catch (err) {
+              // Error toast is already shown by the mutation's onError
+              console.error('Error saving template:', err);
             }
-            setDialogOpen(false);
-            setSelectedTemplate(null);
           }}
         />
 
@@ -403,8 +408,12 @@ const Documentos = () => {
           open={prebuiltOpen}
           onOpenChange={setPrebuiltOpen}
           onSelectTemplate={async (template) => {
-            await createTemplate(template);
-            setPrebuiltOpen(false);
+            try {
+              await createTemplate(template);
+              setPrebuiltOpen(false);
+            } catch (err) {
+              console.error('Error using prebuilt template:', err);
+            }
           }}
         />
 

@@ -77,7 +77,7 @@ export function useDocumentFillLinks(templateId?: string) {
           token,
           expires_at: expiresAt,
           status: 'pending',
-          filled_variables: filledVariables,
+          filled_variables: filledVariables as unknown as Record<string, never>,
         }]);
 
       if (error) throw error;

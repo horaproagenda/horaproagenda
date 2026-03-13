@@ -301,7 +301,7 @@ export function FillDocumentDialog({
 
   const unfilledVariables = variables.filter(v => {
     const lowerV = v.toLowerCase();
-    const autoFilled = ['nome', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso'];
+    const autoFilled = ['nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso', 'profissional', 'idade'];
     if (autoFilled.includes(lowerV)) return false;
     return !customVariables[v];
   });

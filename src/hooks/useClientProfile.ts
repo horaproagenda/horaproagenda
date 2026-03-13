@@ -427,10 +427,9 @@ export function useClientProfile(clientId: string) {
 
   // Build payment history from BOTH sales AND appointments
   // Sales are the primary source; appointments with direct payments (not linked to sales) are secondary
-  const salesAppointmentIds = new Set<string>();
+  const saleLinkedServiceIds = new Set<string>();
   clientSales.forEach(sale => {
-    // Track which appointments are covered by sales
-    if (sale.appointment_id) salesAppointmentIds.add(sale.appointment_id);
+    if (sale.service_id) saleLinkedServiceIds.add(sale.service_id);
   });
 
   const paymentHistory: PaymentHistoryItem[] = [

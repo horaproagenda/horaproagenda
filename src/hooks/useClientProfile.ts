@@ -464,8 +464,9 @@ export function useClientProfile(clientId: string) {
     // From appointments with direct payments (not already covered by a sale)
     ...appointments
       .filter(a => {
-        // Only include appointments that have payment info and aren't already in a sale
-        if (salesAppointmentIds.has(a.id)) return false;
+        // Only include appointments that have payment info and aren't already covered by a sale
+        // Skip if the appointment's service already has a sale entry for this client
+        if (a.service_id && saleLinkedServiceIds.has(a.service_id)) return false;
         // Include if has amount_paid > 0 or has a payment status
         return (a.amount_paid && a.amount_paid > 0) || a.payment_status === 'paid' || a.payment_status === 'partial';
       })

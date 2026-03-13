@@ -491,7 +491,7 @@ export function FillDocumentDialog({
                 disabled={saving || !selectedClientId}
               >
                 <Save className="h-4 w-4 mr-1.5" />
-                Salvar Rascunho
+                Adicionar sem assinar e preencher
               </Button>
               <Button 
                 size="sm" 

@@ -425,11 +425,15 @@ export function useClientProfile(clientId: string) {
     return methodIdOrName;
   };
 
-  // Build payment history from sales only (packages and services purchased through caixa)
-  // For packages: show ONE entry with the package payment, not per appointment session
-  // This prevents duplicate entries where each session appears as a separate payment
+  // Build payment history from BOTH sales AND appointments
+  // Sales are the primary source; appointments with direct payments (not linked to sales) are secondary
+  const saleLinkedServiceIds = new Set<string>();
+  clientSales.forEach(sale => {
+    if (sale.service_id) saleLinkedServiceIds.add(sale.service_id);
+  });
+
   const paymentHistory: PaymentHistoryItem[] = [
-    // From sales (purchases through caixa) - this is the source of truth for payments
+    // From sales (purchases through caixa)
     ...clientSales.map(sale => {
       const isCancelled = sale.notes?.includes('CANCELADO') || sale.final_amount === 0;
       const totalPrice = sale.original_amount || sale.final_amount || 0;
@@ -439,9 +443,6 @@ export function useClientProfile(clientId: string) {
         isCancelled ? 'cancelled' :
         sale.paid_at ? 'paid' : 'pending';
       
-      // IMPORTANT: Use sale_date (user-entered date when the payment was made)
-      // NOT paid_at (which is the system timestamp when the record was created)
-      // This ensures historical payments show the correct date
       const displayDate = sale.sale_date || sale.paid_at?.split('T')[0] || sale.created_at.split('T')[0];
       
       return {
@@ -455,11 +456,45 @@ export function useClientProfile(clientId: string) {
         paymentMethod: sale.payment_method?.name || '-',
         source: 'sale' as const,
         status,
-        saleId: isCancelled ? undefined : sale.id, // Don't allow cancelling already cancelled sales
+        saleId: isCancelled ? undefined : sale.id,
         serviceId: sale.service_id || undefined,
         packageId: sale.package_id || undefined,
       };
     }),
+    // From appointments with direct payments (not already covered by a sale)
+    ...appointments
+      .filter(a => {
+        // Only include appointments that have payment info and aren't already covered by a sale
+        // Skip if the appointment's service already has a sale entry for this client
+        if (a.service_id && saleLinkedServiceIds.has(a.service_id)) return false;
+        // Include if has amount_paid > 0 or has a payment status
+        return (a.amount_paid && a.amount_paid > 0) || a.payment_status === 'paid' || a.payment_status === 'partial';
+      })
+      .map(a => {
+        const servicePrice = a.service?.price || 0;
+        const amountPaid = a.amount_paid || 0;
+        const isPaid = a.payment_status === 'paid' || (amountPaid >= servicePrice && servicePrice > 0);
+        const isPartial = a.payment_status === 'partial' || (amountPaid > 0 && amountPaid < servicePrice);
+        const isCancelled = a.status === 'cancelled';
+        
+        const paymentMethodNames = (a.payment_methods || [])
+          .map(m => getPaymentMethodName(m))
+          .filter(Boolean)
+          .join(', ');
+        
+        return {
+          id: `apt-${a.id}`,
+          date: a.start_time.split('T')[0],
+          description: a.service?.name || 'Atendimento',
+          serviceName: a.service?.name || 'Atendimento',
+          amount: amountPaid,
+          totalPrice: servicePrice,
+          pendingAmount: Math.max(0, servicePrice - amountPaid),
+          paymentMethod: paymentMethodNames || '-',
+          source: 'appointment' as const,
+          status: isCancelled ? 'cancelled' as const : isPaid ? 'paid' as const : isPartial ? 'partial' as const : 'pending' as const,
+        };
+      }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate detailed stats - include confirmed in scheduled count

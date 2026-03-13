@@ -53,7 +53,22 @@ export function FillDocumentDialog({
   preSelectedClientId,
   onDocumentSaved
 }: FillDocumentDialogProps) {
-  const { clients } = useClients();
+  const { clients: rawClients } = useClients();
+  
+  // Fetch clients with assigned professional for auto-fill
+  const [clientsWithProfessional, setClientsWithProfessional] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchClientsWithProfessional = async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
+        .order('name');
+      if (data) setClientsWithProfessional(data);
+    };
+    if (open) fetchClientsWithProfessional();
+  }, [open]);
+  
+  const clients = clientsWithProfessional.length > 0 ? clientsWithProfessional : rawClients;
   const [selectedClientId, setSelectedClientId] = useState<string>(preSelectedClientId || '');
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
@@ -81,10 +96,26 @@ export function FillDocumentDialog({
     
     if (selectedClient) {
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');
+      content = content.replace(/\{nome_cliente\}/gi, selectedClient.name || '');
       content = content.replace(/\{email\}/gi, selectedClient.email || '');
       content = content.replace(/\{telefone\}/gi, selectedClient.phone || '');
       content = content.replace(/\{cpf\}/gi, selectedClient.cpf || '');
       content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate), 'dd/MM/yyyy') : '');
+      
+      // Auto-fill professional from assigned_professional
+      const professionalName = (selectedClient as any).assigned_professional?.name || '';
+      content = content.replace(/\{profissional\}/gi, professionalName);
+      
+      // Calculate age from birthdate
+      if (selectedClient.birthdate) {
+        const birth = new Date(selectedClient.birthdate);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        content = content.replace(/\{idade\}/gi, String(age));
+      }
+      
       setSignedBy(selectedClient.name);
     }
 
@@ -270,7 +301,7 @@ export function FillDocumentDialog({
 
   const unfilledVariables = variables.filter(v => {
     const lowerV = v.toLowerCase();
-    const autoFilled = ['nome', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso'];
+    const autoFilled = ['nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso', 'profissional', 'idade'];
     if (autoFilled.includes(lowerV)) return false;
     return !customVariables[v];
   });
@@ -491,7 +522,7 @@ export function FillDocumentDialog({
                 disabled={saving || !selectedClientId}
               >
                 <Save className="h-4 w-4 mr-1.5" />
-                Salvar Rascunho
+                Adicionar sem assinar e preencher
               </Button>
               <Button 
                 size="sm" 

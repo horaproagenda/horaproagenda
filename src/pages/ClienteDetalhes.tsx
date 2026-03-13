@@ -140,7 +140,7 @@ export default function ClienteDetalhes() {
             />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">
-            <ClientDocumentsTab documents={documents} clientId={client.id} onAddDocument={addDocument.mutateAsync} />
+            <ClientDocumentsTab documents={documents} clientId={client.id} client={client} onAddDocument={addDocument.mutateAsync} onRefresh={refetchAll} />
           </TabsContent>
           <TabsContent value="quotes" className="mt-3">
             <ClientQuotesTab quotes={quotes} clientId={client.id} clientPhone={client.phone} onAddQuote={addQuote.mutateAsync} onUpdateQuote={updateQuote.mutateAsync} />

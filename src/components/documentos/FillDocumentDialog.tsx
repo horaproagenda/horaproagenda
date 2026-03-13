@@ -53,7 +53,22 @@ export function FillDocumentDialog({
   preSelectedClientId,
   onDocumentSaved
 }: FillDocumentDialogProps) {
-  const { clients } = useClients();
+  const { clients: rawClients } = useClients();
+  
+  // Fetch clients with assigned professional for auto-fill
+  const [clientsWithProfessional, setClientsWithProfessional] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchClientsWithProfessional = async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
+        .order('name');
+      if (data) setClientsWithProfessional(data);
+    };
+    if (open) fetchClientsWithProfessional();
+  }, [open]);
+  
+  const clients = clientsWithProfessional.length > 0 ? clientsWithProfessional : rawClients;
   const [selectedClientId, setSelectedClientId] = useState<string>(preSelectedClientId || '');
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});

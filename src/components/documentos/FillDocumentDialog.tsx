@@ -81,10 +81,26 @@ export function FillDocumentDialog({
     
     if (selectedClient) {
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');
+      content = content.replace(/\{nome_cliente\}/gi, selectedClient.name || '');
       content = content.replace(/\{email\}/gi, selectedClient.email || '');
       content = content.replace(/\{telefone\}/gi, selectedClient.phone || '');
       content = content.replace(/\{cpf\}/gi, selectedClient.cpf || '');
       content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate), 'dd/MM/yyyy') : '');
+      
+      // Auto-fill professional from assigned_professional
+      const professionalName = (selectedClient as any).assigned_professional?.name || '';
+      content = content.replace(/\{profissional\}/gi, professionalName);
+      
+      // Calculate age from birthdate
+      if (selectedClient.birthdate) {
+        const birth = new Date(selectedClient.birthdate);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        content = content.replace(/\{idade\}/gi, String(age));
+      }
+      
       setSignedBy(selectedClient.name);
     }
 

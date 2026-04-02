@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, addWeeks, addMonths, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -34,9 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays } from 'lucide-react';
+import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays, AlertTriangle } from 'lucide-react';
 import { Professional } from '@/types';
 import { useProfessionalAbsences, ProfessionalAbsence } from '@/hooks/useProfessionalAbsences';
+import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 
 interface ProfessionalAbsenceDialogProps {
@@ -91,6 +92,7 @@ export function ProfessionalAbsenceDialog({
   editingAbsence,
 }: ProfessionalAbsenceDialogProps) {
   const { absences, createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
+  const { appointments } = useAppointments();
   const [professionalId, setProfessionalId] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('08:00');
@@ -139,11 +141,11 @@ export function ProfessionalAbsenceDialog({
 
   // Generate dates based on recurrence settings
   const generateRecurringDates = (): Date[] => {
-    if (!isRecurring || !repeatUntil) return [new Date(date)];
+    if (!isRecurring || !repeatUntil) return [new Date(date + 'T12:00:00')];
 
     const dates: Date[] = [];
-    const startDate = new Date(date);
-    const endDate = new Date(repeatUntil);
+    const startDate = new Date(date + 'T12:00:00');
+    const endDate = new Date(repeatUntil + 'T12:00:00');
 
     let currentDate = new Date(startDate);
 
@@ -152,7 +154,6 @@ export function ProfessionalAbsenceDialog({
         dates.push(new Date(currentDate));
         currentDate = addDays(currentDate, 1);
       } else if (frequency === 'weekly') {
-        // For weekly, check if the current day is in selectedWeekdays
         if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
           dates.push(new Date(currentDate));
         }
@@ -161,7 +162,6 @@ export function ProfessionalAbsenceDialog({
         if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
           dates.push(new Date(currentDate));
         }
-        // Move to next occurrence (every 2 weeks for the same weekday)
         if (dates.length > 0 && selectedWeekdays.includes(currentDate.getDay())) {
           currentDate = addWeeks(currentDate, 2);
         } else {
@@ -172,12 +172,45 @@ export function ProfessionalAbsenceDialog({
         currentDate = addMonths(currentDate, 1);
       }
 
-      // Safety limit to prevent infinite loops
       if (dates.length > 365) break;
     }
 
     return dates;
   };
+
+  // Check for conflicting appointments on the selected date/time range for the professional
+  const conflictingAppointments = useMemo(() => {
+    if (!professionalId || !date || !startTime || !endTime) return [];
+
+    const datesToCheck = generateRecurringDates();
+    const conflicts: { date: string; count: number; names: string[] }[] = [];
+
+    for (const absenceDate of datesToCheck) {
+      const dateStr = format(absenceDate, 'yyyy-MM-dd');
+      const absStart = new Date(`${dateStr}T${startTime}`);
+      const absEnd = new Date(`${dateStr}T${endTime}`);
+
+      const overlapping = appointments.filter(apt => {
+        if (apt.professional_id !== professionalId) return false;
+        if (apt.status === 'cancelled') return false;
+        const aptStart = new Date(apt.start_time);
+        const aptEnd = new Date(apt.end_time);
+        return aptStart < absEnd && aptEnd > absStart;
+      });
+
+      if (overlapping.length > 0) {
+        conflicts.push({
+          date: dateStr,
+          count: overlapping.length,
+          names: overlapping.map(a => a.client?.name || 'Cliente').slice(0, 3),
+        });
+      }
+    }
+
+    return conflicts;
+  }, [professionalId, date, startTime, endTime, appointments, isRecurring, repeatUntil, frequency, selectedWeekdays]);
+
+  const hasConflicts = conflictingAppointments.length > 0;
 
   const handleSubmit = async () => {
     if (!professionalId) return;
@@ -521,6 +554,26 @@ export function ProfessionalAbsenceDialog({
                 </Select>
               </div>
             </div>
+
+              {/* Conflict Warning */}
+              {hasConflicts && (
+                <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/10 space-y-2">
+                  <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+                    <AlertTriangle className="h-4 w-4" />
+                    Conflito com agendamentos existentes
+                  </div>
+                  <div className="space-y-1">
+                    {conflictingAppointments.map((c, i) => (
+                      <p key={i} className="text-xs text-destructive/80">
+                        {format(new Date(c.date + 'T12:00:00'), 'dd/MM/yyyy')}: {c.count} agendamento(s) — {c.names.join(', ')}
+                      </p>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Cancele ou reagende os agendamentos antes de registrar a ausência.
+                  </p>
+                </div>
+              )}
           </ScrollArea>
 
           <DialogFooter className="flex gap-2 px-6 py-4 border-t shrink-0">
@@ -538,7 +591,7 @@ export function ProfessionalAbsenceDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={!professionalId || isPending}>
+            <Button onClick={handleSubmit} disabled={!professionalId || isPending || hasConflicts}>
               {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Registrar Ausência'}
             </Button>
           </DialogFooter>

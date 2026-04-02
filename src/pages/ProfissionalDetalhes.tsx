@@ -333,7 +333,7 @@ export default function ProfissionalDetalhes() {
             </div>
             <div class="info-item">
               <div class="info-label">Nascimento</div>
-              <div class="info-value">${professional?.birthdate ? format(new Date(professional.birthdate), 'dd/MM/yyyy') : '-'}</div>
+              <div class="info-value">${professional?.birthdate ? format(new Date(professional.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '-'}</div>
             </div>
             <div class="info-item">
               <div class="info-label">Tipo de Pagamento</div>
@@ -591,7 +591,7 @@ export default function ProfissionalDetalhes() {
                       <div className="flex items-center justify-between py-2">
                         <span className="text-xs text-muted-foreground">Nascimento</span>
                         <span className="text-sm font-medium">
-                          {professional.birthdate ? format(new Date(professional.birthdate), 'dd/MM/yyyy') : '-'}
+                          {professional.birthdate ? format(new Date(professional.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                         </span>
                       </div>
                     </CardContent>

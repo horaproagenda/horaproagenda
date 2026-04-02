@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Link2, Plus, Trash2, Package, AlertTriangle, ShoppingCart, Edit, Droplets, Box, Layers } from 'lucide-react';
+import { Link2, Plus, Trash2, Package, AlertTriangle, ShoppingCart, Edit, Droplets, Box, Layers, Calendar, Info } from 'lucide-react';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { usePackageTemplates } from '@/hooks/usePackageTemplates';
@@ -49,6 +51,9 @@ import { useServices } from '@/hooks/useServices';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { convertQuantity } from '@/lib/productStock';
+import { differenceInDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Helper to check if product uses estimated tracking (liquid/gel/cream)
 const isEstimatedTracking = (type: ProductType) => 
@@ -60,6 +65,17 @@ const PRODUCT_UNITS: Record<string, string> = {
   'l': 'L',
   'g': 'g',
   'kg': 'kg',
+};
+
+// Units available per product type for linking
+const getAvailableUnits = (productType: ProductType, baseUnit: string) => {
+  if (['liquid', 'gel', 'cream'].includes(productType)) {
+    return ['ml', 'l'];
+  }
+  if (['powder'].includes(productType)) {
+    return ['g', 'kg'];
+  }
+  return [baseUnit || 'un'];
 };
 
 export function ServiceProductsDialog() {
@@ -78,12 +94,19 @@ export function ServiceProductsDialog() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
-  // For exact tracking (solids)
-  const [quantityPerUse, setQuantityPerUse] = useState<number>(1);
+  // "Do you know the quantity?" toggle
+  const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   
-  // For estimated tracking (liquids/gel/cream)
-  const [estimatedAppointments, setEstimatedAppointments] = useState<number>(30);
-  const [containerAmount, setContainerAmount] = useState<number>(1);
+  // For exact tracking (knows quantity = yes)
+  const [quantityPerUse, setQuantityPerUse] = useState<number>(1);
+  const [selectedUnit, setSelectedUnit] = useState<string>('');
+  
+  // For estimated tracking (knows quantity = no)
+  const [estimatedAppointments, setEstimatedAppointments] = useState<number>(0);
+  const [containerAmount, setContainerAmount] = useState<number>(0);
+  const [containerUnit, setContainerUnit] = useState<string>('');
+  const [usageStartDate, setUsageStartDate] = useState<string>('');
+  const [usageEndDate, setUsageEndDate] = useState<string>('');
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(1);
@@ -91,8 +114,21 @@ export function ServiceProductsDialog() {
 
   // Get selected product info
   const selectedProductData = useMemo(() => {
-    return products.find(p => p.id === selectedProduct);
+    const p = products.find(p => p.id === selectedProduct);
+    if (p && !selectedUnit) {
+      // auto-set unit based on product type
+    }
+    return p;
   }, [products, selectedProduct]);
+
+  // When product changes, auto-set unit
+  useMemo(() => {
+    if (selectedProductData) {
+      const units = getAvailableUnits(selectedProductData.product_type, selectedProductData.unit);
+      setSelectedUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
+      setContainerUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
+    }
+  }, [selectedProductData?.id]);
 
   // Calculate how many appointments were completed with each product
   const productUsageStats = useMemo(() => {
@@ -122,30 +158,55 @@ export function ServiceProductsDialog() {
     );
   }, [products]);
 
+  // Calculate usage per appointment from date-based tracking
+  const calculatedUsagePerAppointment = useMemo(() => {
+    if (knowsQuantity === 'yes' || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    return containerAmount / estimatedAppointments;
+  }, [knowsQuantity, containerAmount, estimatedAppointments]);
+
+  // Calculate total appointments possible with total stock
+  const totalAppointmentsPossible = useMemo(() => {
+    if (!selectedProductData || !containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    const totalStock = selectedProductData.current_stock;
+    // Convert container unit to stock unit if different
+    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+    if (normalizedContainer <= 0) return null;
+    const containersFromStock = totalStock / normalizedContainer;
+    return Math.floor(containersFromStock * estimatedAppointments);
+  }, [selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+
+  // Calculate days of usage from dates
+  const usageDays = useMemo(() => {
+    if (!usageStartDate || !usageEndDate) return null;
+    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00'));
+  }, [usageStartDate, usageEndDate]);
+
   const handleAddToService = async () => {
     if (!selectedService || !selectedProduct || !selectedProductData) return;
 
-    const useEstimated = isEstimatedTracking(selectedProductData.product_type);
-
-    if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
-        product_id: selectedProduct,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
+    if (knowsQuantity === 'yes') {
       await createServiceProduct.mutateAsync({
         service_id: selectedService,
         product_id: selectedProduct,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
         notes: null,
+      });
+    } else {
+      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
+        ? containerAmount / estimatedAppointments 
+        : 0;
+      await createServiceProduct.mutateAsync({
+        service_id: selectedService,
+        product_id: selectedProduct,
+        quantity_per_use: calcQty,
+        estimated_appointments: estimatedAppointments || null,
+        container_amount: containerAmount || null,
+        container_unit: containerUnit || selectedProductData.unit,
+        tracking_method: 'estimated',
+        notes: usageStartDate && usageEndDate 
+          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
+          : null,
       });
     }
 
@@ -155,27 +216,29 @@ export function ServiceProductsDialog() {
   const handleAddToTemplate = async () => {
     if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
 
-    const useEstimated = isEstimatedTracking(selectedProductData.product_type);
-
-    if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
-        product_id: selectedProduct,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
+    if (knowsQuantity === 'yes') {
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
         product_id: selectedProduct,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
         notes: null,
+      });
+    } else {
+      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
+        ? containerAmount / estimatedAppointments 
+        : 0;
+      await createTemplateProduct.mutateAsync({
+        template_id: selectedTemplate,
+        product_id: selectedProduct,
+        quantity_per_use: calcQty,
+        estimated_appointments: estimatedAppointments || null,
+        container_amount: containerAmount || null,
+        container_unit: containerUnit || selectedProductData.unit,
+        tracking_method: 'estimated',
+        notes: usageStartDate && usageEndDate 
+          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
+          : null,
       });
     }
 
@@ -185,8 +248,12 @@ export function ServiceProductsDialog() {
   const resetForm = () => {
     setSelectedProduct('');
     setQuantityPerUse(1);
-    setEstimatedAppointments(30);
-    setContainerAmount(1);
+    setEstimatedAppointments(0);
+    setContainerAmount(0);
+    setContainerUnit('');
+    setUsageStartDate('');
+    setUsageEndDate('');
+    setKnowsQuantity('yes');
   };
 
   const handleUpdateServiceQuantity = async (id: string, sp: any) => {
@@ -293,6 +360,9 @@ export function ServiceProductsDialog() {
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
     const isDisabled = isForTemplate ? !selectedTemplate : !selectedService;
+    const availableUnits = selectedProductData 
+      ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
+      : [];
 
     return (
       <div className="space-y-3">
@@ -310,7 +380,7 @@ export function ServiceProductsDialog() {
                   {packageTemplates.map(template => (
                     <SelectItem key={template.id} value={template.id}>
                       <div className="flex items-center gap-2">
-                        <Layers className="h-3 w-3 text-purple-500" />
+                        <Layers className="h-3 w-3" />
                         {template.name} ({template.total_sessions} sessões)
                       </div>
                     </SelectItem>
@@ -337,7 +407,10 @@ export function ServiceProductsDialog() {
             <Label className="text-xs text-muted-foreground">Produto</Label>
             <Select 
               value={selectedProduct} 
-              onValueChange={setSelectedProduct}
+              onValueChange={(v) => {
+                setSelectedProduct(v);
+                setKnowsQuantity('yes');
+              }}
               disabled={isDisabled}
             >
               <SelectTrigger>
@@ -348,9 +421,9 @@ export function ServiceProductsDialog() {
                   <SelectItem key={product.id} value={product.id}>
                     <div className="flex items-center gap-2">
                       {isEstimatedTracking(product.product_type) ? (
-                        <Droplets className="h-3 w-3 text-blue-500" />
+                        <Droplets className="h-3 w-3 text-primary" />
                       ) : (
-                        <Box className="h-3 w-3 text-amber-500" />
+                        <Box className="h-3 w-3 text-primary" />
                       )}
                       {product.name} ({product.current_stock} {PRODUCT_UNITS[product.unit] || product.unit})
                     </div>
@@ -362,71 +435,221 @@ export function ServiceProductsDialog() {
         </div>
 
         {selectedProductData && (
-          <div className="pt-2 border-t">
-            {isEstimatedTracking(selectedProductData.product_type) ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Droplets className="h-4 w-4 text-blue-500" />
-                  <span className="font-medium">Produto {selectedProductData.product_type === 'liquid' ? 'Líquido' : selectedProductData.product_type === 'gel' ? 'Gel' : 'Creme'}</span>
-                  <Badge variant="secondary" className="text-xs">Modo Estimado</Badge>
+          <div className="pt-3 border-t space-y-3">
+            {/* Expiry alert */}
+            {selectedProductData.expiry_date && (() => {
+              const daysToExpiry = differenceInDays(new Date(selectedProductData.expiry_date + 'T12:00:00'), new Date());
+              if (daysToExpiry <= 30) {
+                return (
+                  <Alert className="border-destructive bg-destructive/10">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <AlertDescription className="text-destructive text-xs">
+                      {daysToExpiry <= 0 
+                        ? `Produto VENCIDO desde ${format(new Date(selectedProductData.expiry_date + 'T12:00:00'), 'dd/MM/yyyy')}`
+                        : `Produto vence em ${daysToExpiry} dia(s) - ${format(new Date(selectedProductData.expiry_date + 'T12:00:00'), 'dd/MM/yyyy')}`
+                      }
+                    </AlertDescription>
+                  </Alert>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Product info summary */}
+            <div className="flex items-center gap-2 text-sm">
+              {isEstimatedTracking(selectedProductData.product_type) ? (
+                <Droplets className="h-4 w-4 text-primary" />
+              ) : (
+                <Box className="h-4 w-4 text-primary" />
+              )}
+              <span className="font-medium">
+                {selectedProductData.product_type === 'liquid' ? 'Líquido' : 
+                 selectedProductData.product_type === 'gel' ? 'Gel' : 
+                 selectedProductData.product_type === 'cream' ? 'Creme' :
+                 selectedProductData.product_type === 'solid' ? 'Sólido' :
+                 selectedProductData.product_type === 'powder' ? 'Pó' : 'Outro'}
+              </span>
+              <Badge variant="outline" className="text-xs">
+                Estoque: {selectedProductData.current_stock} {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
+              </Badge>
+            </div>
+
+            {/* Do you know the quantity per use? */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Você sabe a quantidade que gasta por atendimento?</Label>
+              <RadioGroup 
+                value={knowsQuantity} 
+                onValueChange={(v) => setKnowsQuantity(v as 'yes' | 'no')}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="knows-yes" />
+                  <Label htmlFor="knows-yes" className="text-sm cursor-pointer">Sim, eu sei</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="knows-no" />
+                  <Label htmlFor="knows-no" className="text-sm cursor-pointer">Não sei, quero calcular</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {knowsQuantity === 'yes' ? (
+              /* EXACT MODE - knows quantity */
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Quantidade por atendimento</Label>
+                  <Input
+                    type="number"
+                    value={quantityPerUse || ''}
+                    onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Ex: 50"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Unidade</Label>
+                  <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableUnits.map(u => (
+                        <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {quantityPerUse > 0 && (
+                  <div className="col-span-2 p-2 rounded-md bg-muted/50 text-xs space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Info className="h-3 w-3 text-primary" />
+                      <span className="font-medium">Projeção:</span>
+                    </div>
+                    <p>
+                      Com o estoque atual de {selectedProductData.current_stock} {PRODUCT_UNITS[selectedProductData.unit]}, 
+                      você consegue fazer aproximadamente{' '}
+                      <strong>{Math.floor(selectedProductData.current_stock / (convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse))} atendimentos</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ESTIMATED MODE - doesn't know quantity, will calculate */
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Quantidade no recipiente em uso</Label>
+                    <Label className="text-xs text-muted-foreground">Quantidade no recipiente</Label>
                     <div className="flex gap-2">
                       <Input
                         type="number"
-                        value={containerAmount}
-                        onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
+                        value={containerAmount || ''}
+                        onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
                         min="0.01"
                         step="0.01"
                         className="flex-1"
+                        placeholder="Ex: 500"
                       />
-                      <span className="flex items-center text-sm text-muted-foreground px-3 border rounded-md bg-muted">
-                        {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
-                      </span>
+                      <Select value={containerUnit} onValueChange={setContainerUnit}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableUnits.map(u => (
+                            <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Ex: 1L de um galão de 5L
+                      Ex: 500ml do recipiente que você usa
                     </p>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Quantos atendimentos dura?</Label>
+                    <Label className="text-xs text-muted-foreground">Atendimentos com esse recipiente</Label>
                     <Input
                       type="number"
-                      value={estimatedAppointments}
-                      onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                      min="1"
-                      placeholder="Ex: 30 atendimentos"
+                      value={estimatedAppointments || ''}
+                      onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 0)}
+                      min="0"
+                      placeholder="Deixe 0 se não souber"
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Média estimada de atendimentos
+                      Quantos atendimentos fez com essa quantidade
                     </p>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Box className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium">Produto Sólido/Unitário</span>
-                  <Badge variant="outline" className="text-xs">Modo Exato</Badge>
-                </div>
-                <div className="w-64">
-                  <Label className="text-xs text-muted-foreground">Quantidade usada por atendimento</Label>
-                  <div className="flex gap-2">
+
+                {/* Date range for tracking */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Data início de uso
+                    </Label>
                     <Input
-                      type="number"
-                      value={quantityPerUse}
-                      onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                      min="0.01"
-                      step="0.01"
+                      type="date"
+                      value={usageStartDate}
+                      onChange={(e) => setUsageStartDate(e.target.value)}
                     />
-                    <span className="flex items-center text-sm text-muted-foreground px-3 border rounded-md bg-muted">
-                      {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
-                    </span>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Data fim de uso
+                    </Label>
+                    <Input
+                      type="date"
+                      value={usageEndDate}
+                      onChange={(e) => setUsageEndDate(e.target.value)}
+                    />
                   </div>
                 </div>
+
+                {/* Auto-calculated projections */}
+                {(containerAmount > 0 && estimatedAppointments > 0) && (
+                  <div className="p-3 rounded-md bg-primary/5 border border-primary/20 text-xs space-y-2">
+                    <div className="flex items-center gap-1 font-medium text-primary">
+                      <Info className="h-3.5 w-3.5" />
+                      Cálculos automáticos
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-muted-foreground">Consumo por atendimento:</span>
+                        <p className="font-semibold">
+                          {(containerAmount / estimatedAppointments).toFixed(2)} {PRODUCT_UNITS[containerUnit] || containerUnit}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Atend. com estoque total:</span>
+                        <p className="font-semibold">
+                          {totalAppointmentsPossible ?? '—'} atendimentos
+                        </p>
+                      </div>
+                      {usageDays && usageDays > 0 && (
+                        <>
+                          <div>
+                            <span className="text-muted-foreground">Dias de uso:</span>
+                            <p className="font-semibold">{usageDays} dias</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Atend./dia (média):</span>
+                            <p className="font-semibold">
+                              {(estimatedAppointments / usageDays).toFixed(1)}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {estimatedAppointments === 0 && containerAmount > 0 && (
+                  <div className="p-2 rounded-md bg-muted/50 text-xs text-muted-foreground flex items-start gap-2">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <p>Preencha a data de início e fim de uso, e a quantidade de atendimentos realizados com esse recipiente. O sistema calculará automaticamente o consumo por atendimento.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -34,9 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays } from 'lucide-react';
+import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays, AlertTriangle } from 'lucide-react';
 import { Professional } from '@/types';
 import { useProfessionalAbsences, ProfessionalAbsence } from '@/hooks/useProfessionalAbsences';
+import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 
 interface ProfessionalAbsenceDialogProps {

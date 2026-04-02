@@ -158,30 +158,55 @@ export function ServiceProductsDialog() {
     );
   }, [products]);
 
+  // Calculate usage per appointment from date-based tracking
+  const calculatedUsagePerAppointment = useMemo(() => {
+    if (knowsQuantity === 'yes' || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    return containerAmount / estimatedAppointments;
+  }, [knowsQuantity, containerAmount, estimatedAppointments]);
+
+  // Calculate total appointments possible with total stock
+  const totalAppointmentsPossible = useMemo(() => {
+    if (!selectedProductData || !containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    const totalStock = selectedProductData.current_stock;
+    // Convert container unit to stock unit if different
+    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+    if (normalizedContainer <= 0) return null;
+    const containersFromStock = totalStock / normalizedContainer;
+    return Math.floor(containersFromStock * estimatedAppointments);
+  }, [selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+
+  // Calculate days of usage from dates
+  const usageDays = useMemo(() => {
+    if (!usageStartDate || !usageEndDate) return null;
+    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00'));
+  }, [usageStartDate, usageEndDate]);
+
   const handleAddToService = async () => {
     if (!selectedService || !selectedProduct || !selectedProductData) return;
 
-    const useEstimated = isEstimatedTracking(selectedProductData.product_type);
-
-    if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
-        product_id: selectedProduct,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
+    if (knowsQuantity === 'yes') {
       await createServiceProduct.mutateAsync({
         service_id: selectedService,
         product_id: selectedProduct,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
         notes: null,
+      });
+    } else {
+      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
+        ? containerAmount / estimatedAppointments 
+        : 0;
+      await createServiceProduct.mutateAsync({
+        service_id: selectedService,
+        product_id: selectedProduct,
+        quantity_per_use: calcQty,
+        estimated_appointments: estimatedAppointments || null,
+        container_amount: containerAmount || null,
+        container_unit: containerUnit || selectedProductData.unit,
+        tracking_method: 'estimated',
+        notes: usageStartDate && usageEndDate 
+          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
+          : null,
       });
     }
 
@@ -191,27 +216,29 @@ export function ServiceProductsDialog() {
   const handleAddToTemplate = async () => {
     if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
 
-    const useEstimated = isEstimatedTracking(selectedProductData.product_type);
-
-    if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
-        product_id: selectedProduct,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
+    if (knowsQuantity === 'yes') {
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
         product_id: selectedProduct,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
         notes: null,
+      });
+    } else {
+      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
+        ? containerAmount / estimatedAppointments 
+        : 0;
+      await createTemplateProduct.mutateAsync({
+        template_id: selectedTemplate,
+        product_id: selectedProduct,
+        quantity_per_use: calcQty,
+        estimated_appointments: estimatedAppointments || null,
+        container_amount: containerAmount || null,
+        container_unit: containerUnit || selectedProductData.unit,
+        tracking_method: 'estimated',
+        notes: usageStartDate && usageEndDate 
+          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
+          : null,
       });
     }
 
@@ -221,8 +248,12 @@ export function ServiceProductsDialog() {
   const resetForm = () => {
     setSelectedProduct('');
     setQuantityPerUse(1);
-    setEstimatedAppointments(30);
-    setContainerAmount(1);
+    setEstimatedAppointments(0);
+    setContainerAmount(0);
+    setContainerUnit('');
+    setUsageStartDate('');
+    setUsageEndDate('');
+    setKnowsQuantity('yes');
   };
 
   const handleUpdateServiceQuantity = async (id: string, sp: any) => {

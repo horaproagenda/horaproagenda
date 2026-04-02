@@ -92,6 +92,7 @@ export function ProfessionalAbsenceDialog({
   editingAbsence,
 }: ProfessionalAbsenceDialogProps) {
   const { absences, createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
+  const { appointments } = useAppointments();
   const [professionalId, setProfessionalId] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('08:00');

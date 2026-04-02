@@ -360,6 +360,9 @@ export function ServiceProductsDialog() {
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
     const isDisabled = isForTemplate ? !selectedTemplate : !selectedService;
+    const availableUnits = selectedProductData 
+      ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
+      : [];
 
     return (
       <div className="space-y-3">
@@ -377,7 +380,7 @@ export function ServiceProductsDialog() {
                   {packageTemplates.map(template => (
                     <SelectItem key={template.id} value={template.id}>
                       <div className="flex items-center gap-2">
-                        <Layers className="h-3 w-3 text-purple-500" />
+                        <Layers className="h-3 w-3" />
                         {template.name} ({template.total_sessions} sessões)
                       </div>
                     </SelectItem>
@@ -404,7 +407,10 @@ export function ServiceProductsDialog() {
             <Label className="text-xs text-muted-foreground">Produto</Label>
             <Select 
               value={selectedProduct} 
-              onValueChange={setSelectedProduct}
+              onValueChange={(v) => {
+                setSelectedProduct(v);
+                setKnowsQuantity('yes');
+              }}
               disabled={isDisabled}
             >
               <SelectTrigger>
@@ -415,9 +421,9 @@ export function ServiceProductsDialog() {
                   <SelectItem key={product.id} value={product.id}>
                     <div className="flex items-center gap-2">
                       {isEstimatedTracking(product.product_type) ? (
-                        <Droplets className="h-3 w-3 text-blue-500" />
+                        <Droplets className="h-3 w-3 text-primary" />
                       ) : (
-                        <Box className="h-3 w-3 text-amber-500" />
+                        <Box className="h-3 w-3 text-primary" />
                       )}
                       {product.name} ({product.current_stock} {PRODUCT_UNITS[product.unit] || product.unit})
                     </div>
@@ -429,71 +435,221 @@ export function ServiceProductsDialog() {
         </div>
 
         {selectedProductData && (
-          <div className="pt-2 border-t">
-            {isEstimatedTracking(selectedProductData.product_type) ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Droplets className="h-4 w-4 text-blue-500" />
-                  <span className="font-medium">Produto {selectedProductData.product_type === 'liquid' ? 'Líquido' : selectedProductData.product_type === 'gel' ? 'Gel' : 'Creme'}</span>
-                  <Badge variant="secondary" className="text-xs">Modo Estimado</Badge>
+          <div className="pt-3 border-t space-y-3">
+            {/* Expiry alert */}
+            {selectedProductData.expiry_date && (() => {
+              const daysToExpiry = differenceInDays(new Date(selectedProductData.expiry_date + 'T12:00:00'), new Date());
+              if (daysToExpiry <= 30) {
+                return (
+                  <Alert className="border-destructive bg-destructive/10">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <AlertDescription className="text-destructive text-xs">
+                      {daysToExpiry <= 0 
+                        ? `Produto VENCIDO desde ${format(new Date(selectedProductData.expiry_date + 'T12:00:00'), 'dd/MM/yyyy')}`
+                        : `Produto vence em ${daysToExpiry} dia(s) - ${format(new Date(selectedProductData.expiry_date + 'T12:00:00'), 'dd/MM/yyyy')}`
+                      }
+                    </AlertDescription>
+                  </Alert>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Product info summary */}
+            <div className="flex items-center gap-2 text-sm">
+              {isEstimatedTracking(selectedProductData.product_type) ? (
+                <Droplets className="h-4 w-4 text-primary" />
+              ) : (
+                <Box className="h-4 w-4 text-primary" />
+              )}
+              <span className="font-medium">
+                {selectedProductData.product_type === 'liquid' ? 'Líquido' : 
+                 selectedProductData.product_type === 'gel' ? 'Gel' : 
+                 selectedProductData.product_type === 'cream' ? 'Creme' :
+                 selectedProductData.product_type === 'solid' ? 'Sólido' :
+                 selectedProductData.product_type === 'powder' ? 'Pó' : 'Outro'}
+              </span>
+              <Badge variant="outline" className="text-xs">
+                Estoque: {selectedProductData.current_stock} {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
+              </Badge>
+            </div>
+
+            {/* Do you know the quantity per use? */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Você sabe a quantidade que gasta por atendimento?</Label>
+              <RadioGroup 
+                value={knowsQuantity} 
+                onValueChange={(v) => setKnowsQuantity(v as 'yes' | 'no')}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="knows-yes" />
+                  <Label htmlFor="knows-yes" className="text-sm cursor-pointer">Sim, eu sei</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="knows-no" />
+                  <Label htmlFor="knows-no" className="text-sm cursor-pointer">Não sei, quero calcular</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {knowsQuantity === 'yes' ? (
+              /* EXACT MODE - knows quantity */
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Quantidade por atendimento</Label>
+                  <Input
+                    type="number"
+                    value={quantityPerUse || ''}
+                    onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Ex: 50"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Unidade</Label>
+                  <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableUnits.map(u => (
+                        <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {quantityPerUse > 0 && (
+                  <div className="col-span-2 p-2 rounded-md bg-muted/50 text-xs space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Info className="h-3 w-3 text-primary" />
+                      <span className="font-medium">Projeção:</span>
+                    </div>
+                    <p>
+                      Com o estoque atual de {selectedProductData.current_stock} {PRODUCT_UNITS[selectedProductData.unit]}, 
+                      você consegue fazer aproximadamente{' '}
+                      <strong>{Math.floor(selectedProductData.current_stock / (convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse))} atendimentos</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ESTIMATED MODE - doesn't know quantity, will calculate */
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Quantidade no recipiente em uso</Label>
+                    <Label className="text-xs text-muted-foreground">Quantidade no recipiente</Label>
                     <div className="flex gap-2">
                       <Input
                         type="number"
-                        value={containerAmount}
-                        onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
+                        value={containerAmount || ''}
+                        onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
                         min="0.01"
                         step="0.01"
                         className="flex-1"
+                        placeholder="Ex: 500"
                       />
-                      <span className="flex items-center text-sm text-muted-foreground px-3 border rounded-md bg-muted">
-                        {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
-                      </span>
+                      <Select value={containerUnit} onValueChange={setContainerUnit}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableUnits.map(u => (
+                            <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Ex: 1L de um galão de 5L
+                      Ex: 500ml do recipiente que você usa
                     </p>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Quantos atendimentos dura?</Label>
+                    <Label className="text-xs text-muted-foreground">Atendimentos com esse recipiente</Label>
                     <Input
                       type="number"
-                      value={estimatedAppointments}
-                      onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                      min="1"
-                      placeholder="Ex: 30 atendimentos"
+                      value={estimatedAppointments || ''}
+                      onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 0)}
+                      min="0"
+                      placeholder="Deixe 0 se não souber"
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Média estimada de atendimentos
+                      Quantos atendimentos fez com essa quantidade
                     </p>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Box className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium">Produto Sólido/Unitário</span>
-                  <Badge variant="outline" className="text-xs">Modo Exato</Badge>
-                </div>
-                <div className="w-64">
-                  <Label className="text-xs text-muted-foreground">Quantidade usada por atendimento</Label>
-                  <div className="flex gap-2">
+
+                {/* Date range for tracking */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Data início de uso
+                    </Label>
                     <Input
-                      type="number"
-                      value={quantityPerUse}
-                      onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 1)}
-                      min="0.01"
-                      step="0.01"
+                      type="date"
+                      value={usageStartDate}
+                      onChange={(e) => setUsageStartDate(e.target.value)}
                     />
-                    <span className="flex items-center text-sm text-muted-foreground px-3 border rounded-md bg-muted">
-                      {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
-                    </span>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Data fim de uso
+                    </Label>
+                    <Input
+                      type="date"
+                      value={usageEndDate}
+                      onChange={(e) => setUsageEndDate(e.target.value)}
+                    />
                   </div>
                 </div>
+
+                {/* Auto-calculated projections */}
+                {(containerAmount > 0 && estimatedAppointments > 0) && (
+                  <div className="p-3 rounded-md bg-primary/5 border border-primary/20 text-xs space-y-2">
+                    <div className="flex items-center gap-1 font-medium text-primary">
+                      <Info className="h-3.5 w-3.5" />
+                      Cálculos automáticos
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-muted-foreground">Consumo por atendimento:</span>
+                        <p className="font-semibold">
+                          {(containerAmount / estimatedAppointments).toFixed(2)} {PRODUCT_UNITS[containerUnit] || containerUnit}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Atend. com estoque total:</span>
+                        <p className="font-semibold">
+                          {totalAppointmentsPossible ?? '—'} atendimentos
+                        </p>
+                      </div>
+                      {usageDays && usageDays > 0 && (
+                        <>
+                          <div>
+                            <span className="text-muted-foreground">Dias de uso:</span>
+                            <p className="font-semibold">{usageDays} dias</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Atend./dia (média):</span>
+                            <p className="font-semibold">
+                              {(estimatedAppointments / usageDays).toFixed(1)}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {estimatedAppointments === 0 && containerAmount > 0 && (
+                  <div className="p-2 rounded-md bg-muted/50 text-xs text-muted-foreground flex items-start gap-2">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <p>Preencha a data de início e fim de uso, e a quantidade de atendimentos realizados com esse recipiente. O sistema calculará automaticamente o consumo por atendimento.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

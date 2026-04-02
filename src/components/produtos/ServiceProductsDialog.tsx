@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Link2, Plus, Trash2, Package, AlertTriangle, ShoppingCart, Edit, Droplets, Box, Layers } from 'lucide-react';
+import { Link2, Plus, Trash2, Package, AlertTriangle, ShoppingCart, Edit, Droplets, Box, Layers, Calendar, Info } from 'lucide-react';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { usePackageTemplates } from '@/hooks/usePackageTemplates';
@@ -49,6 +51,9 @@ import { useServices } from '@/hooks/useServices';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { convertQuantity } from '@/lib/productStock';
+import { differenceInDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Helper to check if product uses estimated tracking (liquid/gel/cream)
 const isEstimatedTracking = (type: ProductType) => 
@@ -60,6 +65,17 @@ const PRODUCT_UNITS: Record<string, string> = {
   'l': 'L',
   'g': 'g',
   'kg': 'kg',
+};
+
+// Units available per product type for linking
+const getAvailableUnits = (productType: ProductType, baseUnit: string) => {
+  if (['liquid', 'gel', 'cream'].includes(productType)) {
+    return ['ml', 'l'];
+  }
+  if (['powder'].includes(productType)) {
+    return ['g', 'kg'];
+  }
+  return [baseUnit || 'un'];
 };
 
 export function ServiceProductsDialog() {
@@ -78,12 +94,19 @@ export function ServiceProductsDialog() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
-  // For exact tracking (solids)
-  const [quantityPerUse, setQuantityPerUse] = useState<number>(1);
+  // "Do you know the quantity?" toggle
+  const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   
-  // For estimated tracking (liquids/gel/cream)
-  const [estimatedAppointments, setEstimatedAppointments] = useState<number>(30);
-  const [containerAmount, setContainerAmount] = useState<number>(1);
+  // For exact tracking (knows quantity = yes)
+  const [quantityPerUse, setQuantityPerUse] = useState<number>(1);
+  const [selectedUnit, setSelectedUnit] = useState<string>('');
+  
+  // For estimated tracking (knows quantity = no)
+  const [estimatedAppointments, setEstimatedAppointments] = useState<number>(0);
+  const [containerAmount, setContainerAmount] = useState<number>(0);
+  const [containerUnit, setContainerUnit] = useState<string>('');
+  const [usageStartDate, setUsageStartDate] = useState<string>('');
+  const [usageEndDate, setUsageEndDate] = useState<string>('');
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(1);
@@ -91,8 +114,21 @@ export function ServiceProductsDialog() {
 
   // Get selected product info
   const selectedProductData = useMemo(() => {
-    return products.find(p => p.id === selectedProduct);
+    const p = products.find(p => p.id === selectedProduct);
+    if (p && !selectedUnit) {
+      // auto-set unit based on product type
+    }
+    return p;
   }, [products, selectedProduct]);
+
+  // When product changes, auto-set unit
+  useMemo(() => {
+    if (selectedProductData) {
+      const units = getAvailableUnits(selectedProductData.product_type, selectedProductData.unit);
+      setSelectedUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
+      setContainerUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
+    }
+  }, [selectedProductData?.id]);
 
   // Calculate how many appointments were completed with each product
   const productUsageStats = useMemo(() => {

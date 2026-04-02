@@ -554,6 +554,26 @@ export function ProfessionalAbsenceDialog({
                 </Select>
               </div>
             </div>
+
+              {/* Conflict Warning */}
+              {hasConflicts && (
+                <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/10 space-y-2">
+                  <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+                    <AlertTriangle className="h-4 w-4" />
+                    Conflito com agendamentos existentes
+                  </div>
+                  <div className="space-y-1">
+                    {conflictingAppointments.map((c, i) => (
+                      <p key={i} className="text-xs text-destructive/80">
+                        {format(new Date(c.date + 'T12:00:00'), 'dd/MM/yyyy')}: {c.count} agendamento(s) — {c.names.join(', ')}
+                      </p>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Cancele ou reagende os agendamentos antes de registrar a ausência.
+                  </p>
+                </div>
+              )}
           </ScrollArea>
 
           <DialogFooter className="flex gap-2 px-6 py-4 border-t shrink-0">
@@ -571,7 +591,7 @@ export function ProfessionalAbsenceDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={!professionalId || isPending}>
+            <Button onClick={handleSubmit} disabled={!professionalId || isPending || hasConflicts}>
               {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Registrar Ausência'}
             </Button>
           </DialogFooter>

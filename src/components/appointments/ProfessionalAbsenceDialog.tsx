@@ -141,11 +141,11 @@ export function ProfessionalAbsenceDialog({
 
   // Generate dates based on recurrence settings
   const generateRecurringDates = (): Date[] => {
-    if (!isRecurring || !repeatUntil) return [new Date(date)];
+    if (!isRecurring || !repeatUntil) return [new Date(date + 'T12:00:00')];
 
     const dates: Date[] = [];
-    const startDate = new Date(date);
-    const endDate = new Date(repeatUntil);
+    const startDate = new Date(date + 'T12:00:00');
+    const endDate = new Date(repeatUntil + 'T12:00:00');
 
     let currentDate = new Date(startDate);
 
@@ -154,7 +154,6 @@ export function ProfessionalAbsenceDialog({
         dates.push(new Date(currentDate));
         currentDate = addDays(currentDate, 1);
       } else if (frequency === 'weekly') {
-        // For weekly, check if the current day is in selectedWeekdays
         if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
           dates.push(new Date(currentDate));
         }
@@ -163,7 +162,6 @@ export function ProfessionalAbsenceDialog({
         if (selectedWeekdays.length === 0 || selectedWeekdays.includes(currentDate.getDay())) {
           dates.push(new Date(currentDate));
         }
-        // Move to next occurrence (every 2 weeks for the same weekday)
         if (dates.length > 0 && selectedWeekdays.includes(currentDate.getDay())) {
           currentDate = addWeeks(currentDate, 2);
         } else {
@@ -174,12 +172,45 @@ export function ProfessionalAbsenceDialog({
         currentDate = addMonths(currentDate, 1);
       }
 
-      // Safety limit to prevent infinite loops
       if (dates.length > 365) break;
     }
 
     return dates;
   };
+
+  // Check for conflicting appointments on the selected date/time range for the professional
+  const conflictingAppointments = useMemo(() => {
+    if (!professionalId || !date || !startTime || !endTime) return [];
+
+    const datesToCheck = generateRecurringDates();
+    const conflicts: { date: string; count: number; names: string[] }[] = [];
+
+    for (const absenceDate of datesToCheck) {
+      const dateStr = format(absenceDate, 'yyyy-MM-dd');
+      const absStart = new Date(`${dateStr}T${startTime}`);
+      const absEnd = new Date(`${dateStr}T${endTime}`);
+
+      const overlapping = appointments.filter(apt => {
+        if (apt.professional_id !== professionalId) return false;
+        if (apt.status === 'cancelled') return false;
+        const aptStart = new Date(apt.start_time);
+        const aptEnd = new Date(apt.end_time);
+        return aptStart < absEnd && aptEnd > absStart;
+      });
+
+      if (overlapping.length > 0) {
+        conflicts.push({
+          date: dateStr,
+          count: overlapping.length,
+          names: overlapping.map(a => a.client?.name || 'Cliente').slice(0, 3),
+        });
+      }
+    }
+
+    return conflicts;
+  }, [professionalId, date, startTime, endTime, appointments, isRecurring, repeatUntil, frequency, selectedWeekdays]);
+
+  const hasConflicts = conflictingAppointments.length > 0;
 
   const handleSubmit = async () => {
     if (!professionalId) return;

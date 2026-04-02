@@ -100,7 +100,7 @@ export function FillDocumentDialog({
       content = content.replace(/\{email\}/gi, selectedClient.email || '');
       content = content.replace(/\{telefone\}/gi, selectedClient.phone || '');
       content = content.replace(/\{cpf\}/gi, selectedClient.cpf || '');
-      content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate), 'dd/MM/yyyy') : '');
+      content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '');
       
       // Auto-fill professional from assigned_professional
       const professionalName = (selectedClient as any).assigned_professional?.name || '';
@@ -108,7 +108,7 @@ export function FillDocumentDialog({
       
       // Calculate age from birthdate
       if (selectedClient.birthdate) {
-        const birth = new Date(selectedClient.birthdate);
+        const birth = new Date(selectedClient.birthdate + 'T12:00:00');
         const today = new Date();
         let age = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();

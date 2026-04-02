@@ -591,7 +591,7 @@ export default function ProfissionalDetalhes() {
                       <div className="flex items-center justify-between py-2">
                         <span className="text-xs text-muted-foreground">Nascimento</span>
                         <span className="text-sm font-medium">
-                          {professional.birthdate ? format(new Date(professional.birthdate), 'dd/MM/yyyy') : '-'}
+                          {professional.birthdate ? format(new Date(professional.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                         </span>
                       </div>
                     </CardContent>

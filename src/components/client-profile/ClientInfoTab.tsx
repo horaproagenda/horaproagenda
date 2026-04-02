@@ -170,7 +170,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
               {editing ? (
                 <Input type="date" value={formData.birthdate} onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })} className="h-8 text-xs" />
               ) : (
-                <p className="text-sm">{client.birthdate ? format(new Date(client.birthdate), "dd/MM/yyyy") : '-'}</p>
+                <p className="text-sm">{client.birthdate ? format(new Date(client.birthdate + 'T12:00:00'), "dd/MM/yyyy") : '-'}</p>
               )}
             </div>
 

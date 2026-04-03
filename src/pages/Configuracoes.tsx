@@ -40,6 +40,10 @@ const Configuracoes = () => {
       setSlotInterval(settings.slot_interval || 30);
       setWorkSaturdays(settings.work_saturdays ?? true);
       setWorkSundays(settings.work_sundays ?? false);
+      setSaturdayOpeningTime(settings.saturday_opening_time || '08:00');
+      setSaturdayClosingTime(settings.saturday_closing_time || '18:00');
+      setSundayOpeningTime(settings.sunday_opening_time || '08:00');
+      setSundayClosingTime(settings.sunday_closing_time || '18:00');
       setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
       setTimezone(settings.timezone || 'America/Sao_Paulo');

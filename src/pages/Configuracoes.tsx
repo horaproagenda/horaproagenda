@@ -190,10 +190,54 @@ const Configuracoes = () => {
                   <Label className="text-xs">Trabalhar aos sábados</Label>
                   <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} />
                 </div>
+                {workSaturdays && (
+                  <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Abertura (Sáb)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={saturdayOpeningTime}
+                        onChange={(e) => setSaturdayOpeningTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fechamento (Sáb)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={saturdayClosingTime}
+                        onChange={(e) => setSaturdayClosingTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos domingos</Label>
                   <Switch checked={workSundays} onCheckedChange={setWorkSundays} />
                 </div>
+                {workSundays && (
+                  <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Abertura (Dom)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={sundayOpeningTime}
+                        onChange={(e) => setSundayOpeningTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fechamento (Dom)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={sundayClosingTime}
+                        onChange={(e) => setSundayClosingTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
                 <Button 
                   size="sm"
                   className="w-full btn-vibrant" 

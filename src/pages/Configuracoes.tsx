@@ -57,6 +57,10 @@ const Configuracoes = () => {
       slot_interval: slotInterval,
       work_saturdays: workSaturdays,
       work_sundays: workSundays,
+      saturday_opening_time: saturdayOpeningTime,
+      saturday_closing_time: saturdayClosingTime,
+      sunday_opening_time: sundayOpeningTime,
+      sunday_closing_time: sundayClosingTime,
       timezone: timezone,
     });
   };

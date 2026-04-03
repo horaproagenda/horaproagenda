@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

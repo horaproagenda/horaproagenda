@@ -117,7 +117,7 @@ export function NewAppointmentDialog({
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
   const { appointments, createAppointment } = useAppointments();
-  const { settings, generateTimeSlots } = useBusinessSettings();
+  const { settings, generateTimeSlots, getBusinessHoursForDay } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createRecurringAppointments } = useRecurringAppointments();

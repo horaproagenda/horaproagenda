@@ -649,6 +649,12 @@ export function NewAppointmentDialog({
       return;
     }
     
+    // Block if outside business hours
+    if (businessHoursError) {
+      toast.error(businessHoursError);
+      return;
+    }
+    
     // For regular services, we need a service_id
     if (!isPackageAppointment && !selectedService) {
       return;

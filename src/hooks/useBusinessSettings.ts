@@ -72,12 +72,13 @@ export function useBusinessSettings() {
     mutationFn: async (updates: Partial<BusinessSettings>) => {
       // Format time fields if present
       const formattedUpdates = { ...updates };
-      if (formattedUpdates.opening_time && formattedUpdates.opening_time.length === 5) {
-        formattedUpdates.opening_time = formattedUpdates.opening_time + ':00';
-      }
-      if (formattedUpdates.closing_time && formattedUpdates.closing_time.length === 5) {
-        formattedUpdates.closing_time = formattedUpdates.closing_time + ':00';
-      }
+      const timeFields = ['opening_time', 'closing_time', 'saturday_opening_time', 'saturday_closing_time', 'sunday_opening_time', 'sunday_closing_time'] as const;
+      timeFields.forEach(field => {
+        const val = formattedUpdates[field];
+        if (val && typeof val === 'string' && val.length === 5) {
+          (formattedUpdates as any)[field] = val + ':00';
+        }
+      });
       
       if (!settings?.id) {
         // Create settings if they don't exist

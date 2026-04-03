@@ -530,6 +530,16 @@ const Agenda = () => {
     setMonthStart(startOfMonth(today));
   };
 
+  // Persist filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('agenda-filter-professional', professionalFilter);
+    localStorage.setItem('agenda-filter-room', roomFilter);
+    localStorage.setItem('agenda-filter-equipment', equipmentFilter);
+    localStorage.setItem('agenda-filter-status', statusFilter);
+    localStorage.setItem('agenda-filter-payment', paymentFilter);
+    localStorage.setItem('agenda-view-type', viewType);
+  }, [professionalFilter, roomFilter, equipmentFilter, statusFilter, paymentFilter, viewType]);
+
   const clearFilters = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');

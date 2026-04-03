@@ -119,12 +119,29 @@ export function useBusinessSettings() {
     return generateSlotsFromRange(settings.opening_time, settings.closing_time, settings.slot_interval);
   };
 
-  // Generate fine-grained slots (always 15min) for appointment matching
-  const generateDetailedTimeSlots = () => {
-    if (!settings) {
-      return generateSlotsFromRange('08:00', '20:00', 15);
+  // Get business hours for a specific day of the week (0=Sunday, 6=Saturday)
+  const getBusinessHoursForDay = (dayOfWeek: number): { open: string; close: string; isOpen: boolean } => {
+    if (!settings) return { open: '08:00', close: '20:00', isOpen: dayOfWeek !== 0 };
+    
+    if (dayOfWeek === 0) {
+      return {
+        open: settings.sunday_opening_time || '08:00',
+        close: settings.sunday_closing_time || '18:00',
+        isOpen: settings.work_sundays,
+      };
     }
-    return generateSlotsFromRange(settings.opening_time, settings.closing_time, 15);
+    if (dayOfWeek === 6) {
+      return {
+        open: settings.saturday_opening_time || '08:00',
+        close: settings.saturday_closing_time || '18:00',
+        isOpen: settings.work_saturdays,
+      };
+    }
+    return {
+      open: settings.opening_time,
+      close: settings.closing_time,
+      isOpen: true,
+    };
   };
 
   return {
@@ -133,6 +150,7 @@ export function useBusinessSettings() {
     updateSettings,
     generateTimeSlots,
     generateDetailedTimeSlots,
+    getBusinessHoursForDay,
   };
 }
 

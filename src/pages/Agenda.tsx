@@ -125,12 +125,24 @@ const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
-  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
-  const [roomFilter, setRoomFilter] = useState<string>('all');
-  const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [viewType, setViewType] = useState<ViewType>('week');
+  const [professionalFilter, setProfessionalFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-professional') || 'all';
+  });
+  const [roomFilter, setRoomFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-room') || 'all';
+  });
+  const [equipmentFilter, setEquipmentFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-equipment') || 'all';
+  });
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-status') || 'all';
+  });
+  const [paymentFilter, setPaymentFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-payment') || 'all';
+  });
+  const [viewType, setViewType] = useState<ViewType>(() => {
+    return (localStorage.getItem('agenda-view-type') as ViewType) || 'week';
+  });
   const [prevViewType, setPrevViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);

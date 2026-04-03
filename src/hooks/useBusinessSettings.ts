@@ -58,6 +58,10 @@ export function useBusinessSettings() {
       if (data) {
         data.opening_time = data.opening_time?.substring(0, 5) || '08:00';
         data.closing_time = data.closing_time?.substring(0, 5) || '20:00';
+        data.saturday_opening_time = data.saturday_opening_time?.substring(0, 5) || '08:00';
+        data.saturday_closing_time = data.saturday_closing_time?.substring(0, 5) || '18:00';
+        data.sunday_opening_time = data.sunday_opening_time?.substring(0, 5) || '08:00';
+        data.sunday_closing_time = data.sunday_closing_time?.substring(0, 5) || '18:00';
       }
       
       return data as BusinessSettings | null;

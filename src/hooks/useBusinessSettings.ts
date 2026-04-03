@@ -9,6 +9,10 @@ export interface BusinessSettings {
   slot_interval: number;
   work_saturdays: boolean;
   work_sundays: boolean;
+  saturday_opening_time: string;
+  saturday_closing_time: string;
+  sunday_opening_time: string;
+  sunday_closing_time: string;
   drag_and_drop_enabled: boolean;
   auto_complete_appointments: boolean;
   timezone: string;
@@ -54,6 +58,10 @@ export function useBusinessSettings() {
       if (data) {
         data.opening_time = data.opening_time?.substring(0, 5) || '08:00';
         data.closing_time = data.closing_time?.substring(0, 5) || '20:00';
+        data.saturday_opening_time = data.saturday_opening_time?.substring(0, 5) || '08:00';
+        data.saturday_closing_time = data.saturday_closing_time?.substring(0, 5) || '18:00';
+        data.sunday_opening_time = data.sunday_opening_time?.substring(0, 5) || '08:00';
+        data.sunday_closing_time = data.sunday_closing_time?.substring(0, 5) || '18:00';
       }
       
       return data as BusinessSettings | null;
@@ -64,12 +72,13 @@ export function useBusinessSettings() {
     mutationFn: async (updates: Partial<BusinessSettings>) => {
       // Format time fields if present
       const formattedUpdates = { ...updates };
-      if (formattedUpdates.opening_time && formattedUpdates.opening_time.length === 5) {
-        formattedUpdates.opening_time = formattedUpdates.opening_time + ':00';
-      }
-      if (formattedUpdates.closing_time && formattedUpdates.closing_time.length === 5) {
-        formattedUpdates.closing_time = formattedUpdates.closing_time + ':00';
-      }
+      const timeFields = ['opening_time', 'closing_time', 'saturday_opening_time', 'saturday_closing_time', 'sunday_opening_time', 'sunday_closing_time'] as const;
+      timeFields.forEach(field => {
+        const val = formattedUpdates[field];
+        if (val && typeof val === 'string' && val.length === 5) {
+          (formattedUpdates as any)[field] = val + ':00';
+        }
+      });
       
       if (!settings?.id) {
         // Create settings if they don't exist
@@ -118,12 +127,38 @@ export function useBusinessSettings() {
     return generateSlotsFromRange(settings.opening_time, settings.closing_time, 15);
   };
 
+  // Get business hours for a specific day of the week (0=Sunday, 6=Saturday)
+  const getBusinessHoursForDay = (dayOfWeek: number): { open: string; close: string; isOpen: boolean } => {
+    if (!settings) return { open: '08:00', close: '20:00', isOpen: dayOfWeek !== 0 };
+    
+    if (dayOfWeek === 0) {
+      return {
+        open: settings.sunday_opening_time || '08:00',
+        close: settings.sunday_closing_time || '18:00',
+        isOpen: settings.work_sundays,
+      };
+    }
+    if (dayOfWeek === 6) {
+      return {
+        open: settings.saturday_opening_time || '08:00',
+        close: settings.saturday_closing_time || '18:00',
+        isOpen: settings.work_saturdays,
+      };
+    }
+    return {
+      open: settings.opening_time,
+      close: settings.closing_time,
+      isOpen: true,
+    };
+  };
+
   return {
     settings,
     isLoading,
     updateSettings,
     generateTimeSlots,
     generateDetailedTimeSlots,
+    getBusinessHoursForDay,
   };
 }
 

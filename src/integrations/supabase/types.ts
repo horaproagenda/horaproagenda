@@ -291,7 +291,11 @@ export type Database = {
           drag_and_drop_enabled: boolean
           id: string
           opening_time: string
+          saturday_closing_time: string | null
+          saturday_opening_time: string | null
           slot_interval: number
+          sunday_closing_time: string | null
+          sunday_opening_time: string | null
           timezone: string | null
           updated_at: string
           work_saturdays: boolean
@@ -309,7 +313,11 @@ export type Database = {
           drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
+          saturday_closing_time?: string | null
+          saturday_opening_time?: string | null
           slot_interval?: number
+          sunday_closing_time?: string | null
+          sunday_opening_time?: string | null
           timezone?: string | null
           updated_at?: string
           work_saturdays?: boolean
@@ -327,7 +335,11 @@ export type Database = {
           drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
+          saturday_closing_time?: string | null
+          saturday_opening_time?: string | null
           slot_interval?: number
+          sunday_closing_time?: string | null
+          sunday_opening_time?: string | null
           timezone?: string | null
           updated_at?: string
           work_saturdays?: boolean

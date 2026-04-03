@@ -25,6 +25,10 @@ const Configuracoes = () => {
   const [slotInterval, setSlotInterval] = useState(30);
   const [workSaturdays, setWorkSaturdays] = useState(true);
   const [workSundays, setWorkSundays] = useState(false);
+  const [saturdayOpeningTime, setSaturdayOpeningTime] = useState('08:00');
+  const [saturdayClosingTime, setSaturdayClosingTime] = useState('18:00');
+  const [sundayOpeningTime, setSundayOpeningTime] = useState('08:00');
+  const [sundayClosingTime, setSundayClosingTime] = useState('18:00');
   const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
@@ -36,6 +40,10 @@ const Configuracoes = () => {
       setSlotInterval(settings.slot_interval || 30);
       setWorkSaturdays(settings.work_saturdays ?? true);
       setWorkSundays(settings.work_sundays ?? false);
+      setSaturdayOpeningTime(settings.saturday_opening_time || '08:00');
+      setSaturdayClosingTime(settings.saturday_closing_time || '18:00');
+      setSundayOpeningTime(settings.sunday_opening_time || '08:00');
+      setSundayClosingTime(settings.sunday_closing_time || '18:00');
       setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
       setTimezone(settings.timezone || 'America/Sao_Paulo');
@@ -49,6 +57,10 @@ const Configuracoes = () => {
       slot_interval: slotInterval,
       work_saturdays: workSaturdays,
       work_sundays: workSundays,
+      saturday_opening_time: saturdayOpeningTime,
+      saturday_closing_time: saturdayClosingTime,
+      sunday_opening_time: sundayOpeningTime,
+      sunday_closing_time: sundayClosingTime,
       timezone: timezone,
     });
   };
@@ -178,10 +190,54 @@ const Configuracoes = () => {
                   <Label className="text-xs">Trabalhar aos sábados</Label>
                   <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} />
                 </div>
+                {workSaturdays && (
+                  <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Abertura (Sáb)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={saturdayOpeningTime}
+                        onChange={(e) => setSaturdayOpeningTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fechamento (Sáb)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={saturdayClosingTime}
+                        onChange={(e) => setSaturdayClosingTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos domingos</Label>
                   <Switch checked={workSundays} onCheckedChange={setWorkSundays} />
                 </div>
+                {workSundays && (
+                  <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Abertura (Dom)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={sundayOpeningTime}
+                        onChange={(e) => setSundayOpeningTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fechamento (Dom)</Label>
+                      <Input 
+                        type="time" 
+                        className="h-8 text-sm"
+                        value={sundayClosingTime}
+                        onChange={(e) => setSundayClosingTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
                 <Button 
                   size="sm"
                   className="w-full btn-vibrant" 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -117,7 +117,7 @@ export function NewAppointmentDialog({
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
   const { appointments, createAppointment } = useAppointments();
-  const { settings, generateTimeSlots } = useBusinessSettings();
+  const { settings, generateTimeSlots, getBusinessHoursForDay } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createRecurringAppointments } = useRecurringAppointments();
@@ -545,6 +545,45 @@ export function NewAppointmentDialog({
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
 
+  // Business hours validation - check if selected date/time is within business hours
+  const businessHoursError = useMemo(() => {
+    if (!date || !time || !settings) return null;
+    const dayOfWeek = date.getDay();
+    const hours = getBusinessHoursForDay(dayOfWeek);
+    
+    if (!hours.isOpen) {
+      const dayName = dayOfWeek === 0 ? 'Domingo' : 'Sábado';
+      return `Estabelecimento fechado ${dayName === 'Domingo' ? 'aos domingos' : 'aos sábados'}`;
+    }
+    
+    if (time < hours.open || time >= hours.close) {
+      return `Horário fora do funcionamento (${hours.open} - ${hours.close})`;
+    }
+    
+    return null;
+  }, [date, time, settings, getBusinessHoursForDay]);
+
+  // Client's frequent services - services from appointment history
+  const clientFrequentServices = useMemo(() => {
+    if (!selectedClient) return [];
+    
+    const serviceCount: Record<string, number> = {};
+    appointments.forEach(apt => {
+      if (apt.client_id === selectedClient && apt.service_id && !['cancelled', 'missed'].includes(apt.status)) {
+        serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(serviceCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([serviceId, count]) => {
+        const service = services.find(s => s.id === serviceId);
+        return service ? { ...service, bookingCount: count } : null;
+      })
+      .filter(Boolean) as (typeof services[0] & { bookingCount: number })[];
+  }, [selectedClient, appointments, services]);
+
   // Get available time slots for the selected date
   const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
     const duration = selectedServiceData?.duration || 60;
@@ -607,6 +646,12 @@ export function NewAppointmentDialog({
     // For packages, selectedService contains the package ID, not service ID
     // For services, selectedService must be a valid service ID
     if (!selectedClient || !date || !time || !serviceOrPackage) {
+      return;
+    }
+    
+    // Block if outside business hours
+    if (businessHoursError) {
+      toast.error(businessHoursError);
       return;
     }
     
@@ -922,6 +967,39 @@ Até breve! ✨`;
               />
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
+                  {/* Client's frequent services - shown as quick suggestions */}
+                  {selectedClient && clientFrequentServices.length > 0 && !serviceSearch && (
+                    <div className="border-b-2 border-amber-500/20">
+                      <div className="px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-500/10 flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        Serviços Frequentes
+                      </div>
+                      {clientFrequentServices.map(service => (
+                        <div
+                          key={`freq-${service.id}`}
+                          className="p-2 hover:bg-amber-500/10 cursor-pointer border-b bg-amber-500/5"
+                          onClick={() => {
+                            setSelectedService(service.id);
+                            setServiceSearch(service.name);
+                            setServiceType('service');
+                            setUsingPaidServiceId(null);
+                            setShowServiceSuggestions(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-amber-700">{service.name}</span>
+                            <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">
+                              {service.bookingCount}x agendado
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Client's paid services - shown first */}
                   {selectedClient && clientPaidServices.length > 0 && (
                     <div className="border-b-2 border-green-500/20">
@@ -1644,6 +1722,14 @@ Até breve! ✨`;
               </div>
             )}
 
+            {/* Business hours warning */}
+            {businessHoursError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm">{businessHoursError}</AlertDescription>
+              </Alert>
+            )}
+
             {/* Conflict warnings */}
             {hasConflicts && (
               <Alert variant="destructive">
@@ -1682,7 +1768,7 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || hasPreviewConflicts || hasServicePreviewConflicts || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
                 {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
               </Button>

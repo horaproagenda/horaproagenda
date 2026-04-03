@@ -125,12 +125,24 @@ const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
-  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
-  const [roomFilter, setRoomFilter] = useState<string>('all');
-  const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [viewType, setViewType] = useState<ViewType>('week');
+  const [professionalFilter, setProfessionalFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-professional') || 'all';
+  });
+  const [roomFilter, setRoomFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-room') || 'all';
+  });
+  const [equipmentFilter, setEquipmentFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-equipment') || 'all';
+  });
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-status') || 'all';
+  });
+  const [paymentFilter, setPaymentFilter] = useState<string>(() => {
+    return localStorage.getItem('agenda-filter-payment') || 'all';
+  });
+  const [viewType, setViewType] = useState<ViewType>(() => {
+    return (localStorage.getItem('agenda-view-type') as ViewType) || 'week';
+  });
   const [prevViewType, setPrevViewType] = useState<ViewType>('week');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -518,6 +530,16 @@ const Agenda = () => {
     setMonthStart(startOfMonth(today));
   };
 
+  // Persist filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('agenda-filter-professional', professionalFilter);
+    localStorage.setItem('agenda-filter-room', roomFilter);
+    localStorage.setItem('agenda-filter-equipment', equipmentFilter);
+    localStorage.setItem('agenda-filter-status', statusFilter);
+    localStorage.setItem('agenda-filter-payment', paymentFilter);
+    localStorage.setItem('agenda-view-type', viewType);
+  }, [professionalFilter, roomFilter, equipmentFilter, statusFilter, paymentFilter, viewType]);
+
   const clearFilters = () => {
     setProfessionalFilter('all');
     setRoomFilter('all');
@@ -605,6 +627,17 @@ const Agenda = () => {
   };
 
   const handleSlotClick = (day: Date, time: string, professionalId?: string) => {
+    // Block clicks on closed days
+    const dayOfWeek = day.getDay();
+    if (dayOfWeek === 0 && !settings?.work_sundays) {
+      toast.error('Estabelecimento fechado aos domingos');
+      return;
+    }
+    if (dayOfWeek === 6 && !settings?.work_saturdays) {
+      toast.error('Estabelecimento fechado aos sábados');
+      return;
+    }
+    
     // Check for absence first
     const absence = getAbsenceAtSlot(day, time, professionalId);
     if (absence) {

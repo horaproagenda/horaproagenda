@@ -25,6 +25,10 @@ const Configuracoes = () => {
   const [slotInterval, setSlotInterval] = useState(30);
   const [workSaturdays, setWorkSaturdays] = useState(true);
   const [workSundays, setWorkSundays] = useState(false);
+  const [saturdayOpeningTime, setSaturdayOpeningTime] = useState('08:00');
+  const [saturdayClosingTime, setSaturdayClosingTime] = useState('18:00');
+  const [sundayOpeningTime, setSundayOpeningTime] = useState('08:00');
+  const [sundayClosingTime, setSundayClosingTime] = useState('18:00');
   const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');

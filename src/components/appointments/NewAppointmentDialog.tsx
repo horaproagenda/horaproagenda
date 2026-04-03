@@ -967,6 +967,39 @@ Até breve! ✨`;
               />
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
+                  {/* Client's frequent services - shown as quick suggestions */}
+                  {selectedClient && clientFrequentServices.length > 0 && !serviceSearch && (
+                    <div className="border-b-2 border-amber-500/20">
+                      <div className="px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-500/10 flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        Serviços Frequentes
+                      </div>
+                      {clientFrequentServices.map(service => (
+                        <div
+                          key={`freq-${service.id}`}
+                          className="p-2 hover:bg-amber-500/10 cursor-pointer border-b bg-amber-500/5"
+                          onClick={() => {
+                            setSelectedService(service.id);
+                            setServiceSearch(service.name);
+                            setServiceType('service');
+                            setUsingPaidServiceId(null);
+                            setShowServiceSuggestions(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-amber-700">{service.name}</span>
+                            <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">
+                              {service.bookingCount}x agendado
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Client's paid services - shown first */}
                   {selectedClient && clientPaidServices.length > 0 && (
                     <div className="border-b-2 border-green-500/20">

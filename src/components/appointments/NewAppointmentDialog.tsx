@@ -545,6 +545,45 @@ export function NewAppointmentDialog({
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
 
+  // Business hours validation - check if selected date/time is within business hours
+  const businessHoursError = useMemo(() => {
+    if (!date || !time || !settings) return null;
+    const dayOfWeek = date.getDay();
+    const hours = getBusinessHoursForDay(dayOfWeek);
+    
+    if (!hours.isOpen) {
+      const dayName = dayOfWeek === 0 ? 'Domingo' : 'Sábado';
+      return `Estabelecimento fechado ${dayName === 'Domingo' ? 'aos domingos' : 'aos sábados'}`;
+    }
+    
+    if (time < hours.open || time >= hours.close) {
+      return `Horário fora do funcionamento (${hours.open} - ${hours.close})`;
+    }
+    
+    return null;
+  }, [date, time, settings, getBusinessHoursForDay]);
+
+  // Client's frequent services - services from appointment history
+  const clientFrequentServices = useMemo(() => {
+    if (!selectedClient) return [];
+    
+    const serviceCount: Record<string, number> = {};
+    appointments.forEach(apt => {
+      if (apt.client_id === selectedClient && apt.service_id && !['cancelled', 'missed'].includes(apt.status)) {
+        serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(serviceCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([serviceId, count]) => {
+        const service = services.find(s => s.id === serviceId);
+        return service ? { ...service, bookingCount: count } : null;
+      })
+      .filter(Boolean) as (typeof services[0] & { bookingCount: number })[];
+  }, [selectedClient, appointments, services]);
+
   // Get available time slots for the selected date
   const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
     const duration = selectedServiceData?.duration || 60;

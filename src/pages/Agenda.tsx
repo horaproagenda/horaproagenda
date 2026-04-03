@@ -627,6 +627,17 @@ const Agenda = () => {
   };
 
   const handleSlotClick = (day: Date, time: string, professionalId?: string) => {
+    // Block clicks on closed days
+    const dayOfWeek = day.getDay();
+    if (dayOfWeek === 0 && !settings?.work_sundays) {
+      toast.error('Estabelecimento fechado aos domingos');
+      return;
+    }
+    if (dayOfWeek === 6 && !settings?.work_saturdays) {
+      toast.error('Estabelecimento fechado aos sábados');
+      return;
+    }
+    
     // Check for absence first
     const absence = getAbsenceAtSlot(day, time, professionalId);
     if (absence) {

@@ -9,6 +9,10 @@ export interface BusinessSettings {
   slot_interval: number;
   work_saturdays: boolean;
   work_sundays: boolean;
+  saturday_opening_time: string;
+  saturday_closing_time: string;
+  sunday_opening_time: string;
+  sunday_closing_time: string;
   drag_and_drop_enabled: boolean;
   auto_complete_appointments: boolean;
   timezone: string;

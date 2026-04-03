@@ -1722,6 +1722,14 @@ Até breve! ✨`;
               </div>
             )}
 
+            {/* Business hours warning */}
+            {businessHoursError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm">{businessHoursError}</AlertDescription>
+              </Alert>
+            )}
+
             {/* Conflict warnings */}
             {hasConflicts && (
               <Alert variant="destructive">

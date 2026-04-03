@@ -119,6 +119,14 @@ export function useBusinessSettings() {
     return generateSlotsFromRange(settings.opening_time, settings.closing_time, settings.slot_interval);
   };
 
+  // Generate fine-grained slots (always 15min) for appointment matching
+  const generateDetailedTimeSlots = () => {
+    if (!settings) {
+      return generateSlotsFromRange('08:00', '20:00', 15);
+    }
+    return generateSlotsFromRange(settings.opening_time, settings.closing_time, 15);
+  };
+
   // Get business hours for a specific day of the week (0=Sunday, 6=Saturday)
   const getBusinessHoursForDay = (dayOfWeek: number): { open: string; close: string; isOpen: boolean } => {
     if (!settings) return { open: '08:00', close: '20:00', isOpen: dayOfWeek !== 0 };

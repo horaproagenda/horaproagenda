@@ -25,10 +25,10 @@ export type Database = {
           source_type: string
         }
         Insert: {
-          appointment_id: string
+          appointment_id?: string
           created_at?: string
           id?: string
-          product_id: string
+          product_id?: string
           quantity_used?: number
           source_id: string
           source_type: string

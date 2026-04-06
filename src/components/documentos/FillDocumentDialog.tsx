@@ -258,13 +258,16 @@ export function FillDocumentDialog({
       const docType = template.title.toLowerCase().includes('anamnese') ? 'anamnese' : 
                       template.title.toLowerCase().includes('contrato') ? 'contract' : 'other';
 
+      const hasContent = filledContent && filledContent.trim().length > 0;
       const insertData: any = {
         client_id: selectedClientId,
         template_id: template.id,
         title: template.title,
-        description: `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+        description: hasContent
+          ? `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+          : null,
         type: docType,
-        content: filledContent,
+        content: hasContent ? filledContent : null,
         filled_variables: customVariables,
       };
 

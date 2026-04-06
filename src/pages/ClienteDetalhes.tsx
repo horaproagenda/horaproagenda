@@ -83,7 +83,7 @@ export default function ClienteDetalhes() {
         </div>
 
         {/* Compact Client Header */}
-        <ClientHeader client={client} onEdit={() => setActiveTab('info')} />
+        <ClientHeader client={client} onEdit={() => setActiveTab('info')} onUpdate={updateClient.mutateAsync} />
 
         {/* Compact Stats Section */}
         <ClientStatsSection stats={stats} />

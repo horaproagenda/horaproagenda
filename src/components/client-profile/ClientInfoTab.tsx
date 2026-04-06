@@ -6,13 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Edit, Save, X, User, Clock } from 'lucide-react';
+import { Edit, Save, X, User, Clock, Plus, Minus, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 const REFERRAL_SOURCES = [
   { value: 'instagram', label: 'Instagram' },
@@ -31,6 +34,9 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastEditorName, setLastEditorName] = useState<string | null>(null);
+  const [creditDialogOpen, setCreditDialogOpen] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditLoading, setCreditLoading] = useState(false);
   const { professionals } = useProfessionals();
   const { hasRole } = useAuth();
   
@@ -103,6 +109,27 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
       assigned_professional_id: client.assigned_professional_id || '',
     });
     setEditing(false);
+  };
+
+  const handleAddCredit = async () => {
+    const amount = parseFloat(creditAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    setCreditLoading(true);
+    try {
+      const newBalance = (client.credit_balance || 0) + amount;
+      await onUpdate({ credit_balance: newBalance });
+      toast.success(`Crédito de ${formatCurrency(amount)} adicionado!`);
+      setCreditAmount('');
+      setCreditDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding credit:', error);
+      toast.error('Erro ao adicionar crédito');
+    } finally {
+      setCreditLoading(false);
+    }
   };
 
   return (
@@ -192,6 +219,21 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
               )}
             </div>
 
+            {/* Client Credit Balance */}
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Crédito</Label>
+              <div className="flex items-center gap-1.5">
+                <p className={`text-sm font-medium ${(client.credit_balance || 0) > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  {formatCurrency(client.credit_balance || 0)}
+                </p>
+                {isAdminOrReceptionist && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreditDialogOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Status</Label>
               {editing ? (
@@ -206,7 +248,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
               )}
             </div>
 
-            {isAdminOrReceptionist && (
+            {(isAdminOrReceptionist || client.assigned_professional_id) && (
               <div className="space-y-1">
                 <Label className="text-[10px] text-muted-foreground">Profissional</Label>
                 {editing ? (
@@ -222,7 +264,11 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm">{client.assigned_professional?.name || '-'}</p>
+                  <p className="text-sm">
+                    {client.assigned_professional?.name || 
+                     activeProfessionals.find(p => p.id === client.assigned_professional_id)?.name || 
+                     '-'}
+                  </p>
                 )}
               </div>
             )}
@@ -271,6 +317,44 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
           </div>
         </CardContent>
       </Card>
+      {/* Add Credit Dialog */}
+      <Dialog open={creditDialogOpen} onOpenChange={setCreditDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4" /> Adicionar Crédito
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Saldo atual: <strong className="text-foreground">{formatCurrency(client.credit_balance || 0)}</strong>
+            </p>
+            <div className="space-y-1">
+              <Label className="text-xs">Valor do crédito (R$)</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="0,00"
+                className="h-8 text-xs"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Este valor será usado como desconto em pagamentos futuros e não entrará no caixa.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setCreditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" className="h-8 text-xs" onClick={handleAddCredit} disabled={creditLoading}>
+                {creditLoading ? 'Salvando...' : 'Adicionar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -264,7 +264,11 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm">{client.assigned_professional?.name || '-'}</p>
+                  <p className="text-sm">
+                    {client.assigned_professional?.name || 
+                     activeProfessionals.find(p => p.id === client.assigned_professional_id)?.name || 
+                     '-'}
+                  </p>
                 )}
               </div>
             )}

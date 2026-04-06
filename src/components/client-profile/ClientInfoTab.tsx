@@ -248,7 +248,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
               )}
             </div>
 
-            {isAdminOrReceptionist && (
+            {(isAdminOrReceptionist || client.assigned_professional_id) && (
               <div className="space-y-1">
                 <Label className="text-[10px] text-muted-foreground">Profissional</Label>
                 {editing ? (

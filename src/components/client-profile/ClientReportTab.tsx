@@ -447,8 +447,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     <span className="font-medium truncate">{payment.serviceName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {payment.totalPrice > payment.amount && payment.amount > 0 && (
+                      <span className="text-muted-foreground line-through text-[10px]">
+                        R$ {Number(payment.totalPrice).toFixed(0)}
+                      </span>
+                    )}
                     <span className="font-semibold text-emerald-600">
                       R$ {Number(payment.amount).toFixed(0)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {getPaymentMethodName(payment.paymentMethod)}
                     </span>
                     <Badge 
                       variant={payment.status === 'paid' ? 'default' : payment.status === 'cancelled' ? 'destructive' : 'secondary'}

@@ -894,20 +894,7 @@ export default function Produtos() {
           onUpdatePurchase={async (data) => { await updatePurchase.mutateAsync(data); }}
           onDeletePurchase={async (id) => { await deletePurchase.mutateAsync(id); }}
           onCreateServiceLink={async (data) => {
-            const { createServiceProduct: createSP } = await import('@/hooks/useServiceProducts').then(m => ({ createServiceProduct: null }));
-            // Use the serviceProducts hook's mutation directly
-            await supabase.from('service_products').insert({
-              service_id: data.service_id,
-              product_id: data.product_id,
-              quantity_per_use: data.quantity_per_use ?? 1,
-              estimated_appointments: data.estimated_appointments ?? null,
-              container_amount: data.container_amount ?? null,
-              container_unit: data.container_unit ?? null,
-              tracking_method: data.tracking_method ?? 'exact',
-              notes: data.notes ?? null,
-            });
-            queryClient.invalidateQueries({ queryKey: ['service_products'] });
-            toast.success('Produto vinculado ao serviço!');
+            await createSPMutation.mutateAsync(data);
           }}
           onUpdateServiceLink={async () => {}}
           onDeleteServiceLink={async () => {}}

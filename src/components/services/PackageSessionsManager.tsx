@@ -537,25 +537,23 @@ Até breve! ✨`;
       </div>
 
       {/* Mass Reschedule All Pending Button */}
-      {pendingSessions > 0 && (
+      {(pendingSessions + cancelledSessions) > 0 && (
         <Button
           variant="outline"
           size="sm"
           className="w-full flex items-center gap-2"
           onClick={() => {
-            // Find the first pending session
-            const firstPending = sessions.find(s => 
-              s.status === 'pending' && !s.appointment
+            const firstAvailable = sessions.find(s => 
+              (s.status === 'pending' && !s.appointment) || isSessionCancelled(s)
             );
-            if (firstPending) {
-              openRescheduleDialog(firstPending);
-              // Auto-enable mass reschedule
+            if (firstAvailable) {
+              openRescheduleDialog(firstAvailable);
               setTimeout(() => setMassRescheduleEnabled(true), 100);
             }
           }}
         >
           <CalendarRange className="h-4 w-4" />
-          Reagendar todas as {pendingSessions} sessões pendentes
+          Reagendar {pendingSessions + cancelledSessions} sessões disponíveis
         </Button>
       )}
 

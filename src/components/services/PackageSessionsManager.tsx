@@ -515,14 +515,18 @@ Até breve! ✨`;
   return (
     <div className="space-y-4">
       {/* Progress Summary */}
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-4 gap-2 text-center">
         <div className="p-2 rounded-lg bg-green-500/10">
           <p className="text-lg font-bold text-green-600">{completedSessions}</p>
-          <p className="text-xs text-muted-foreground">Realizadas</p>
+          <p className="text-xs text-muted-foreground">Realizadas/Faltou</p>
         </div>
         <div className="p-2 rounded-lg bg-blue-500/10">
           <p className="text-lg font-bold text-blue-600">{scheduledSessions}</p>
           <p className="text-xs text-muted-foreground">Agendadas</p>
+        </div>
+        <div className="p-2 rounded-lg bg-red-500/10">
+          <p className="text-lg font-bold text-red-600">{cancelledSessions}</p>
+          <p className="text-xs text-muted-foreground">Canceladas</p>
         </div>
         <div className="p-2 rounded-lg bg-gray-500/10">
           <p className="text-lg font-bold text-gray-600">{pendingSessions}</p>

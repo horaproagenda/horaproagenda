@@ -587,7 +587,19 @@ Até breve! ✨`;
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(session)}
-              {session.status !== 'completed' && session.appointment?.status !== 'completed' && (
+              {/* Cancelled sessions can be rescheduled */}
+              {isSessionCancelled(session) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openRescheduleDialog(session)}
+                  title="Reagendar sessão cancelada"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Pending/Scheduled sessions can be rescheduled */}
+              {!isSessionCompleted(session) && !isSessionMissed(session) && !isSessionCancelled(session) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -596,6 +608,10 @@ Até breve! ✨`;
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
+              )}
+              {/* Missed sessions: no action - session is consumed */}
+              {isSessionMissed(session) && (
+                <span className="text-[10px] text-muted-foreground">Sem reposição</span>
               )}
             </div>
           </div>

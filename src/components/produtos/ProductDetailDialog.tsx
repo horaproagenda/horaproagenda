@@ -56,6 +56,7 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useProductConsumption } from '@/hooks/useProductConsumption';
+import { useProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -476,6 +476,7 @@ export default function Produtos() {
             </DropdownMenu>
 
             <ManageSuppliersDialog />
+            <ServiceProductsDialog />
           </div>
 
           {canEdit && (

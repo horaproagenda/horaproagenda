@@ -122,9 +122,15 @@ export function ProductDetailDialog({
   const { serviceProducts } = useServiceProducts();
   const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport } = useProductConsumption();
+  const { consumptions: dailyConsumptions, createConsumption, deleteConsumption, stats: consumptionStats } = useProductDailyConsumption(product?.id);
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
+
+  // Daily consumption form state
+  const [consumptionDate, setConsumptionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [consumptionQuantity, setConsumptionQuantity] = useState(0);
+  const [consumptionNotes, setConsumptionNotes] = useState('');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});

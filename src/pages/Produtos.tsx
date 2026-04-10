@@ -83,6 +83,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
 import { ProductDetailDialog } from '@/components/produtos/ProductDetailDialog';
+import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';

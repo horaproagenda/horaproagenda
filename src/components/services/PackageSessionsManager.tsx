@@ -465,11 +465,26 @@ Até breve! ✨`;
     });
   };
 
+  const isSessionMissed = (session: PackageSession) => {
+    return session.appointment?.status === 'missed' || session.status === 'missed';
+  };
+
+  const isSessionCancelled = (session: PackageSession) => {
+    return (session.appointment?.status === 'cancelled' || session.status === 'cancelled') && !isSessionMissed(session);
+  };
+
+  const isSessionCompleted = (session: PackageSession) => {
+    return session.appointment?.status === 'completed' || session.status === 'completed';
+  };
+
   const getStatusBadge = (session: PackageSession) => {
-    if (session.appointment?.status === 'completed' || session.status === 'completed') {
+    if (isSessionCompleted(session)) {
       return <Badge variant="default" className="bg-green-500">Realizada</Badge>;
     }
-    if (session.appointment?.status === 'cancelled' || session.status === 'cancelled') {
+    if (isSessionMissed(session)) {
+      return <Badge variant="destructive" className="bg-orange-500">Faltou</Badge>;
+    }
+    if (isSessionCancelled(session)) {
       return <Badge variant="destructive">Cancelada</Badge>;
     }
     if (session.appointment || session.scheduled_date) {
@@ -478,13 +493,16 @@ Até breve! ✨`;
     return <Badge variant="outline">Pendente</Badge>;
   };
 
+  // Missed sessions count as "consumed" - client loses the session
   const completedSessions = sessions.filter(s => 
-    s.status === 'completed' || s.appointment?.status === 'completed'
+    isSessionCompleted(s) || isSessionMissed(s)
   ).length;
 
   const scheduledSessions = sessions.filter(s => 
-    s.status === 'scheduled' || (s.appointment && s.appointment.status !== 'completed' && s.appointment.status !== 'cancelled')
+    s.status === 'scheduled' || (s.appointment && !['completed', 'cancelled', 'missed'].includes(s.appointment.status))
   ).length;
+
+  const cancelledSessions = sessions.filter(s => isSessionCancelled(s)).length;
 
   const pendingSessions = sessions.filter(s => 
     s.status === 'pending' && !s.appointment

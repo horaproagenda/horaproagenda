@@ -1566,6 +1566,80 @@ export type Database = {
         }
         Relationships: []
       }
+      product_daily_consumption: {
+        Row: {
+          appointment_id: string | null
+          consumption_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          professional_id: string | null
+          quantity_used: number
+          service_id: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          consumption_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          professional_id?: string | null
+          quantity_used?: number
+          service_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          consumption_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          professional_id?: string | null
+          quantity_used?: number
+          service_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_daily_consumption_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_daily_consumption_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_daily_consumption_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_daily_consumption_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_purchases: {
         Row: {
           created_at: string

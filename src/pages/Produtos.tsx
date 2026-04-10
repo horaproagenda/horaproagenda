@@ -83,6 +83,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
 import { ProductDetailDialog } from '@/components/produtos/ProductDetailDialog';
+import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
@@ -139,7 +140,7 @@ export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
-  const { serviceProducts } = useServiceProducts();
+  const { serviceProducts, createServiceProduct: createSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -476,6 +477,7 @@ export default function Produtos() {
             </DropdownMenu>
 
             <ManageSuppliersDialog />
+            <ServiceProductsDialog />
           </div>
 
           {canEdit && (
@@ -892,7 +894,7 @@ export default function Produtos() {
           onUpdatePurchase={async (data) => { await updatePurchase.mutateAsync(data); }}
           onDeletePurchase={async (id) => { await deletePurchase.mutateAsync(id); }}
           onCreateServiceLink={async (data) => {
-            // Service product creation is handled inside ProductDetailDialog via its own hooks
+            await createSPMutation.mutateAsync(data);
           }}
           onUpdateServiceLink={async () => {}}
           onDeleteServiceLink={async () => {}}

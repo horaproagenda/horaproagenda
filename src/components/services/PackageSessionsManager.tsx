@@ -340,7 +340,9 @@ export function PackageSessionsManager({
     const pendingSessions = sessions.filter(s => 
       s.session_number >= selectedSession.session_number && 
       s.status !== 'completed' && 
-      s.appointment?.status !== 'completed'
+      s.status !== 'missed' &&
+      s.appointment?.status !== 'completed' &&
+      s.appointment?.status !== 'missed'
     );
 
     const preview = pendingSessions.map((session, index) => ({

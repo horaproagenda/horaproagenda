@@ -340,7 +340,9 @@ export function PackageSessionsManager({
     const pendingSessions = sessions.filter(s => 
       s.session_number >= selectedSession.session_number && 
       s.status !== 'completed' && 
-      s.appointment?.status !== 'completed'
+      s.status !== 'missed' &&
+      s.appointment?.status !== 'completed' &&
+      s.appointment?.status !== 'missed'
     );
 
     const preview = pendingSessions.map((session, index) => ({
@@ -465,11 +467,26 @@ Até breve! ✨`;
     });
   };
 
+  const isSessionMissed = (session: PackageSession) => {
+    return session.appointment?.status === 'missed' || session.status === 'missed';
+  };
+
+  const isSessionCancelled = (session: PackageSession) => {
+    return (session.appointment?.status === 'cancelled' || session.status === 'cancelled') && !isSessionMissed(session);
+  };
+
+  const isSessionCompleted = (session: PackageSession) => {
+    return session.appointment?.status === 'completed' || session.status === 'completed';
+  };
+
   const getStatusBadge = (session: PackageSession) => {
-    if (session.appointment?.status === 'completed' || session.status === 'completed') {
+    if (isSessionCompleted(session)) {
       return <Badge variant="default" className="bg-green-500">Realizada</Badge>;
     }
-    if (session.appointment?.status === 'cancelled' || session.status === 'cancelled') {
+    if (isSessionMissed(session)) {
+      return <Badge variant="destructive" className="bg-orange-500">Faltou</Badge>;
+    }
+    if (isSessionCancelled(session)) {
       return <Badge variant="destructive">Cancelada</Badge>;
     }
     if (session.appointment || session.scheduled_date) {
@@ -478,13 +495,16 @@ Até breve! ✨`;
     return <Badge variant="outline">Pendente</Badge>;
   };
 
+  // Missed sessions count as "consumed" - client loses the session
   const completedSessions = sessions.filter(s => 
-    s.status === 'completed' || s.appointment?.status === 'completed'
+    isSessionCompleted(s) || isSessionMissed(s)
   ).length;
 
   const scheduledSessions = sessions.filter(s => 
-    s.status === 'scheduled' || (s.appointment && s.appointment.status !== 'completed' && s.appointment.status !== 'cancelled')
+    s.status === 'scheduled' || (s.appointment && !['completed', 'cancelled', 'missed'].includes(s.appointment.status))
   ).length;
+
+  const cancelledSessions = sessions.filter(s => isSessionCancelled(s)).length;
 
   const pendingSessions = sessions.filter(s => 
     s.status === 'pending' && !s.appointment
@@ -497,14 +517,18 @@ Até breve! ✨`;
   return (
     <div className="space-y-4">
       {/* Progress Summary */}
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-4 gap-2 text-center">
         <div className="p-2 rounded-lg bg-green-500/10">
           <p className="text-lg font-bold text-green-600">{completedSessions}</p>
-          <p className="text-xs text-muted-foreground">Realizadas</p>
+          <p className="text-xs text-muted-foreground">Realizadas/Faltou</p>
         </div>
         <div className="p-2 rounded-lg bg-blue-500/10">
           <p className="text-lg font-bold text-blue-600">{scheduledSessions}</p>
           <p className="text-xs text-muted-foreground">Agendadas</p>
+        </div>
+        <div className="p-2 rounded-lg bg-red-500/10">
+          <p className="text-lg font-bold text-red-600">{cancelledSessions}</p>
+          <p className="text-xs text-muted-foreground">Canceladas</p>
         </div>
         <div className="p-2 rounded-lg bg-gray-500/10">
           <p className="text-lg font-bold text-gray-600">{pendingSessions}</p>
@@ -513,25 +537,23 @@ Até breve! ✨`;
       </div>
 
       {/* Mass Reschedule All Pending Button */}
-      {pendingSessions > 0 && (
+      {(pendingSessions + cancelledSessions) > 0 && (
         <Button
           variant="outline"
           size="sm"
           className="w-full flex items-center gap-2"
           onClick={() => {
-            // Find the first pending session
-            const firstPending = sessions.find(s => 
-              s.status === 'pending' && !s.appointment
+            const firstAvailable = sessions.find(s => 
+              (s.status === 'pending' && !s.appointment) || isSessionCancelled(s)
             );
-            if (firstPending) {
-              openRescheduleDialog(firstPending);
-              // Auto-enable mass reschedule
+            if (firstAvailable) {
+              openRescheduleDialog(firstAvailable);
               setTimeout(() => setMassRescheduleEnabled(true), 100);
             }
           }}
         >
           <CalendarRange className="h-4 w-4" />
-          Reagendar todas as {pendingSessions} sessões pendentes
+          Reagendar {pendingSessions + cancelledSessions} sessões disponíveis
         </Button>
       )}
 
@@ -565,7 +587,19 @@ Até breve! ✨`;
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(session)}
-              {session.status !== 'completed' && session.appointment?.status !== 'completed' && (
+              {/* Cancelled sessions can be rescheduled */}
+              {isSessionCancelled(session) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openRescheduleDialog(session)}
+                  title="Reagendar sessão cancelada"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Pending/Scheduled sessions can be rescheduled */}
+              {!isSessionCompleted(session) && !isSessionMissed(session) && !isSessionCancelled(session) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -574,6 +608,10 @@ Até breve! ✨`;
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
+              )}
+              {/* Missed sessions: no action - session is consumed */}
+              {isSessionMissed(session) && (
+                <span className="text-[10px] text-muted-foreground">Sem reposição</span>
               )}
             </div>
           </div>

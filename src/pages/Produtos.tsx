@@ -140,7 +140,7 @@ export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
-  const { serviceProducts } = useServiceProducts();
+  const { serviceProducts, createServiceProduct: createSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');

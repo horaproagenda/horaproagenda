@@ -217,6 +217,11 @@ export function SaleForm() {
     [clients, selectedClientId]
   );
 
+  // Client credit balance
+  const clientCreditBalance = useMemo(() => {
+    return selectedClient?.credit_balance || 0;
+  }, [selectedClient]);
+
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return [];
     const search = clientSearch.toLowerCase();

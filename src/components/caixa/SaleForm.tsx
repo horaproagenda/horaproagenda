@@ -136,11 +136,6 @@ export function SaleForm() {
     return name.includes('crédito ao cliente') || name.includes('credito ao cliente');
   }, [selectedPaymentMethod]);
 
-  // Client credit balance
-  const clientCreditBalance = useMemo(() => {
-    return selectedClient?.credit_balance || 0;
-  }, [selectedClient]);
-
   // Get applicable card brands
   const applicableCardBrands = useMemo(() => {
     if (isCreditCard) {

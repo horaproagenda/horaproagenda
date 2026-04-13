@@ -1001,7 +1001,79 @@ export function SaleForm() {
                       </Select>
                     </div>
                   )}
+
+                  {/* Boleto Installments */}
+                  {isBoleto && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Parcelas do Boleto</Label>
+                        <Select
+                          value={boletoInstallments.toString()}
+                          onValueChange={(v) => setBoletoInstallments(parseInt(v))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
+                              <SelectItem key={n} value={n.toString()}>
+                                {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {boletoInstallments > 1 && (
+                        <div className="space-y-2">
+                          <Label>1º Vencimento</Label>
+                          <Input
+                            type="date"
+                            value={boletoFirstDueDate}
+                            onChange={(e) => setBoletoFirstDueDate(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
+
+                {/* Boleto Info */}
+                {isBoleto && boletoInstallments > 1 && paymentAmount > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-muted/50 border">
+                    <Badge variant="outline" className="border-primary/30 text-primary">
+                      <FileText className="h-3 w-3 mr-1" />
+                      {boletoInstallments}x Boleto
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Parcela: R$ {(paymentAmount / boletoInstallments).toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Client Credit Info - when using "Crédito ao Cliente" */}
+                {isClientCreditPayment && selectedClient && (
+                  <div className={`flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg border ${
+                    clientCreditBalance > 0 
+                      ? 'bg-emerald-500/10 border-emerald-500/30' 
+                      : 'bg-destructive/10 border-destructive/30'
+                  }`}>
+                    <Badge variant="outline" className={clientCreditBalance > 0 ? 'border-emerald-500/50 text-emerald-700' : 'border-destructive/50 text-destructive'}>
+                      <Wallet className="h-3 w-3 mr-1" />
+                      Crédito Disponível
+                    </Badge>
+                    <span className={clientCreditBalance > 0 ? 'text-emerald-700 font-medium' : 'text-destructive font-medium'}>
+                      {formatCurrency(clientCreditBalance)}
+                    </span>
+                    {clientCreditBalance > 0 && paymentAmount > clientCreditBalance && (
+                      <span className="text-destructive text-xs">
+                        ⚠ Valor excede o crédito disponível
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Card Fee Information */}
                 {selectedCardBrand && feeInfo.feePercentage > 0 && (
@@ -1027,10 +1099,11 @@ export function SaleForm() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="space-y-2">
-                    <Label>Valor</Label>
+                    <Label>Valor {isClientCreditPayment ? `(máx: ${formatCurrency(clientCreditBalance)})` : ''}</Label>
                     <Input
                       type="number"
                       min={0}
+                      max={isClientCreditPayment ? clientCreditBalance : undefined}
                       step={0.01}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
@@ -1039,7 +1112,7 @@ export function SaleForm() {
                   
                   <Button 
                     onClick={handleFinalizeSale}
-                    disabled={isProcessing || !paymentMethodId || paymentAmount <= 0}
+                    disabled={isProcessing || !paymentMethodId || paymentAmount <= 0 || (isClientCreditPayment && paymentAmount > clientCreditBalance)}
                     size="lg"
                     className="h-10"
                   >

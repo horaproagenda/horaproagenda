@@ -278,6 +278,59 @@ export type Database = {
         }
         Relationships: []
       }
+      boleto_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          id: string
+          installment_number: number
+          notes: string | null
+          paid_date: string | null
+          sale_id: string
+          status: string
+          total_installments: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          id?: string
+          installment_number: number
+          notes?: string | null
+          paid_date?: string | null
+          sale_id: string
+          status?: string
+          total_installments: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          paid_date?: string | null
+          sale_id?: string
+          status?: string
+          total_installments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boleto_installments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "single_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_settings: {
         Row: {
           auto_complete_appointments: boolean

@@ -684,6 +684,8 @@ export function SaleForm() {
     setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
     setPaymentMethodId('');
     setPaymentAmount(0);
+    setBoletoInstallments(1);
+    setBoletoFirstDueDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
   return (

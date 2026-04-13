@@ -416,6 +416,18 @@ export function SaleForm() {
       return;
     }
 
+    // Validate "Crédito ao Cliente" - only accept up to available balance
+    if (isClientCreditPayment) {
+      if (clientCreditBalance <= 0) {
+        toast.error('Este cliente não possui saldo de crédito disponível!');
+        return;
+      }
+      if (paymentAmount > clientCreditBalance) {
+        toast.error(`O valor excede o crédito disponível do cliente (${formatCurrency(clientCreditBalance)}). Ajuste o valor.`);
+        return;
+      }
+    }
+
     const paymentMethod = activePaymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
       toast.error('Forma de pagamento inválida');

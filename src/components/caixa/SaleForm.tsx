@@ -122,6 +122,25 @@ export function SaleForm() {
     return selectedPaymentMethod.name.toLowerCase().includes('débito');
   }, [selectedPaymentMethod]);
 
+  // Detect boleto payment
+  const isBoleto = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('boleto');
+  }, [selectedPaymentMethod]);
+
+  // Detect "Crédito ao Cliente" payment method
+  const isClientCreditPayment = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('crédito ao cliente') || name.includes('credito ao cliente');
+  }, [selectedPaymentMethod]);
+
+  // Client credit balance
+  const clientCreditBalance = useMemo(() => {
+    return selectedClient?.credit_balance || 0;
+  }, [selectedClient]);
+
   // Get applicable card brands
   const applicableCardBrands = useMemo(() => {
     if (isCreditCard) {

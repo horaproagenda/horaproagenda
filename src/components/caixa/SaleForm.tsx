@@ -95,6 +95,10 @@ export function SaleForm() {
   const [cardFeeAmount, setCardFeeAmount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Boleto installment state
+  const [boletoInstallments, setBoletoInstallments] = useState<number>(1);
+  const [boletoFirstDueDate, setBoletoFirstDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
   // Get selected payment method details
   const selectedPaymentMethod = useMemo(
     () => activePaymentMethods.find(m => m.id === paymentMethodId),

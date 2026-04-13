@@ -603,6 +603,48 @@ export function SaleForm() {
         });
       }
 
+      // Deduct credit balance when using "Crédito ao Cliente"
+      if (isClientCredit && selectedClientId) {
+        const newBalance = Math.max(0, clientCreditBalance - paymentAmount);
+        await supabase
+          .from('clients')
+          .update({ credit_balance: newBalance })
+          .eq('id', selectedClientId);
+      }
+
+      // Create boleto installments if payment is boleto with installments
+      if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
+        // Get the last sale record to link
+        const { data: lastSales } = await supabase
+          .from('single_sales')
+          .select('id')
+          .eq('client_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (lastSales && lastSales.length > 0) {
+          const saleId = lastSales[0].id;
+          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
+          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
+
+          const records = Array.from({ length: boletoInstallments }, (_, i) => {
+            const dueDate = new Date(boletoFirstDueDate);
+            dueDate.setDate(dueDate.getDate() + i * 30);
+            return {
+              sale_id: saleId,
+              installment_number: i + 1,
+              total_installments: boletoInstallments,
+              amount: i === 0 ? installmentAmount + remainder : installmentAmount,
+              due_date: dueDate.toISOString().split('T')[0],
+              status: 'pending' as const,
+              created_by: user?.id || null,
+            };
+          });
+
+          await supabase.from('boleto_installments').insert(records);
+        }
+      }
+
       // Invalidate all relevant queries for full sync
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
@@ -618,6 +660,7 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['client'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
 

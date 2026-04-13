@@ -104,7 +104,6 @@ export function useClientProfile(clientId: string) {
           table: 'service_packages',
         },
         (payload) => {
-          // Check if this package belongs to our client
           if (payload.new && (payload.new as { client_id?: string }).client_id === clientId) {
             console.log('New package for this client:', payload);
             queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
@@ -118,12 +117,31 @@ export function useClientProfile(clientId: string) {
         console.log('Packages subscription for profile status:', status);
       });
 
+    // Subscribe to client_documents changes (to catch fill-link submissions)
+    const documentsChannel = supabase
+      .channel(`client-documents-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'client_documents',
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          console.log('Realtime document update received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['client-documents', clientId] });
+        }
+      )
+      .subscribe();
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(salesChannel);
       supabase.removeChannel(allAppointmentsChannel);
       supabase.removeChannel(allPackagesChannel);
+      supabase.removeChannel(documentsChannel);
     };
   }, [clientId, queryClient]);
 

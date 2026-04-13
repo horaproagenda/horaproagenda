@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar, AlertTriangle, Wallet } from 'lucide-react';
+import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar, AlertTriangle, Wallet, FileText } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { usePackageTemplates } from '@/hooks/usePackageTemplates';
@@ -36,6 +36,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { formatCurrency } from '@/lib/utils';
 
 interface SaleItem {
   id: string;
@@ -94,6 +95,10 @@ export function SaleForm() {
   const [cardFeeAmount, setCardFeeAmount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Boleto installment state
+  const [boletoInstallments, setBoletoInstallments] = useState<number>(1);
+  const [boletoFirstDueDate, setBoletoFirstDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
   // Get selected payment method details
   const selectedPaymentMethod = useMemo(
     () => activePaymentMethods.find(m => m.id === paymentMethodId),
@@ -115,6 +120,20 @@ export function SaleForm() {
   const isDebitCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     return selectedPaymentMethod.name.toLowerCase().includes('débito');
+  }, [selectedPaymentMethod]);
+
+  // Detect boleto payment
+  const isBoleto = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('boleto');
+  }, [selectedPaymentMethod]);
+
+  // Detect "Crédito ao Cliente" payment method
+  const isClientCreditPayment = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('crédito ao cliente') || name.includes('credito ao cliente');
   }, [selectedPaymentMethod]);
 
   // Get applicable card brands
@@ -197,6 +216,11 @@ export function SaleForm() {
     clients.find(c => c.id === selectedClientId),
     [clients, selectedClientId]
   );
+
+  // Client credit balance
+  const clientCreditBalance = useMemo(() => {
+    return selectedClient?.credit_balance || 0;
+  }, [selectedClient]);
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return [];
@@ -392,6 +416,18 @@ export function SaleForm() {
       return;
     }
 
+    // Validate "Crédito ao Cliente" - only accept up to available balance
+    if (isClientCreditPayment) {
+      if (clientCreditBalance <= 0) {
+        toast.error('Este cliente não possui saldo de crédito disponível!');
+        return;
+      }
+      if (paymentAmount > clientCreditBalance) {
+        toast.error(`O valor excede o crédito disponível do cliente (${formatCurrency(clientCreditBalance)}). Ajuste o valor.`);
+        return;
+      }
+    }
+
     const paymentMethod = activePaymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
       toast.error('Forma de pagamento inválida');
@@ -567,6 +603,48 @@ export function SaleForm() {
         });
       }
 
+      // Deduct credit balance when using "Crédito ao Cliente"
+      if (isClientCredit && selectedClientId) {
+        const newBalance = Math.max(0, clientCreditBalance - paymentAmount);
+        await supabase
+          .from('clients')
+          .update({ credit_balance: newBalance })
+          .eq('id', selectedClientId);
+      }
+
+      // Create boleto installments if payment is boleto with installments
+      if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
+        // Get the last sale record to link
+        const { data: lastSales } = await supabase
+          .from('single_sales')
+          .select('id')
+          .eq('client_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (lastSales && lastSales.length > 0) {
+          const saleId = lastSales[0].id;
+          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
+          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
+
+          const records = Array.from({ length: boletoInstallments }, (_, i) => {
+            const dueDate = new Date(boletoFirstDueDate);
+            dueDate.setDate(dueDate.getDate() + i * 30);
+            return {
+              sale_id: saleId,
+              installment_number: i + 1,
+              total_installments: boletoInstallments,
+              amount: i === 0 ? installmentAmount + remainder : installmentAmount,
+              due_date: dueDate.toISOString().split('T')[0],
+              status: 'pending' as const,
+              created_by: user?.id || null,
+            };
+          });
+
+          await supabase.from('boleto_installments').insert(records);
+        }
+      }
+
       // Invalidate all relevant queries for full sync
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
@@ -582,6 +660,7 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['client'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
 
@@ -605,6 +684,8 @@ export function SaleForm() {
     setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
     setPaymentMethodId('');
     setPaymentAmount(0);
+    setBoletoInstallments(1);
+    setBoletoFirstDueDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
   return (
@@ -922,7 +1003,79 @@ export function SaleForm() {
                       </Select>
                     </div>
                   )}
+
+                  {/* Boleto Installments */}
+                  {isBoleto && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Parcelas do Boleto</Label>
+                        <Select
+                          value={boletoInstallments.toString()}
+                          onValueChange={(v) => setBoletoInstallments(parseInt(v))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
+                              <SelectItem key={n} value={n.toString()}>
+                                {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {boletoInstallments > 1 && (
+                        <div className="space-y-2">
+                          <Label>1º Vencimento</Label>
+                          <Input
+                            type="date"
+                            value={boletoFirstDueDate}
+                            onChange={(e) => setBoletoFirstDueDate(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
+
+                {/* Boleto Info */}
+                {isBoleto && boletoInstallments > 1 && paymentAmount > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-muted/50 border">
+                    <Badge variant="outline" className="border-primary/30 text-primary">
+                      <FileText className="h-3 w-3 mr-1" />
+                      {boletoInstallments}x Boleto
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Parcela: R$ {(paymentAmount / boletoInstallments).toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Client Credit Info - when using "Crédito ao Cliente" */}
+                {isClientCreditPayment && selectedClient && (
+                  <div className={`flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg border ${
+                    clientCreditBalance > 0 
+                      ? 'bg-emerald-500/10 border-emerald-500/30' 
+                      : 'bg-destructive/10 border-destructive/30'
+                  }`}>
+                    <Badge variant="outline" className={clientCreditBalance > 0 ? 'border-emerald-500/50 text-emerald-700' : 'border-destructive/50 text-destructive'}>
+                      <Wallet className="h-3 w-3 mr-1" />
+                      Crédito Disponível
+                    </Badge>
+                    <span className={clientCreditBalance > 0 ? 'text-emerald-700 font-medium' : 'text-destructive font-medium'}>
+                      {formatCurrency(clientCreditBalance)}
+                    </span>
+                    {clientCreditBalance > 0 && paymentAmount > clientCreditBalance && (
+                      <span className="text-destructive text-xs">
+                        ⚠ Valor excede o crédito disponível
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Card Fee Information */}
                 {selectedCardBrand && feeInfo.feePercentage > 0 && (
@@ -948,10 +1101,11 @@ export function SaleForm() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="space-y-2">
-                    <Label>Valor</Label>
+                    <Label>Valor {isClientCreditPayment ? `(máx: ${formatCurrency(clientCreditBalance)})` : ''}</Label>
                     <Input
                       type="number"
                       min={0}
+                      max={isClientCreditPayment ? clientCreditBalance : undefined}
                       step={0.01}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
@@ -960,7 +1114,7 @@ export function SaleForm() {
                   
                   <Button 
                     onClick={handleFinalizeSale}
-                    disabled={isProcessing || !paymentMethodId || paymentAmount <= 0}
+                    disabled={isProcessing || !paymentMethodId || paymentAmount <= 0 || (isClientCreditPayment && paymentAmount > clientCreditBalance)}
                     size="lg"
                     className="h-10"
                   >

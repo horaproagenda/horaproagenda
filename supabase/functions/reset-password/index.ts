@@ -27,12 +27,33 @@ serve(async (req) => {
       throw new Error("A senha deve ter pelo menos 6 caracteres");
     }
 
-    // Use service role to update user password
+    // Use service role to verify and update
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    // SECURITY: Verify that a verification code was recently used for this email
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: usedCode, error: codeError } = await supabaseAdmin
+      .from("verification_codes")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .not("used_at", "is", null)
+      .gte("used_at", fiveMinutesAgo)
+      .limit(1)
+      .maybeSingle();
+
+    if (codeError) {
+      console.error("Error checking verification code:", codeError);
+      throw new Error("Erro ao verificar código");
+    }
+
+    if (!usedCode) {
+      console.error("No recently used verification code found for:", email);
+      throw new Error("Código de verificação não encontrado ou expirado. Solicite um novo código.");
+    }
 
     // Find user by email
     const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
@@ -58,6 +79,12 @@ serve(async (req) => {
       console.error("Error updating password:", updateError);
       throw new Error("Erro ao atualizar senha");
     }
+
+    // Invalidate the used verification code by deleting it
+    await supabaseAdmin
+      .from("verification_codes")
+      .delete()
+      .eq("email", email.toLowerCase());
 
     console.log("Password updated successfully for:", email);
 

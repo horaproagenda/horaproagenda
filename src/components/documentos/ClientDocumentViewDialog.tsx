@@ -285,10 +285,10 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
+        <ScrollArea className="flex-1 max-h-[60vh] px-6 py-4">
           {document.content ? (
             <div className="prose prose-sm max-w-none dark:prose-invert">
-              <pre className="whitespace-pre-wrap font-sans text-sm bg-muted/30 rounded-lg p-4 border">
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
                 {document.content}
               </pre>
             </div>

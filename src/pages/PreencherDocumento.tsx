@@ -553,6 +553,71 @@ export default function PreencherDocumento() {
 
   if (!template) return null;
 
+  // CPF authentication gate — only when a client is linked AND has CPF on file
+  if (client?.cpf && !authenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center border-b">
+            <div className="mx-auto rounded-full bg-primary/10 p-3 w-fit">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-lg mt-3">Verificação de Identidade</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Para acessar e assinar o documento <strong>"{template.title}"</strong>, confirme seu CPF cadastrado.
+            </p>
+          </CardHeader>
+          <CardContent className="py-6 space-y-4">
+            {client.name && (
+              <div className="rounded-md bg-muted/30 border p-2.5 text-center text-sm">
+                <span className="text-muted-foreground">Documento para: </span>
+                <span className="font-medium">{client.name}</span>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="cpf-input" className="text-sm">Digite seu CPF</Label>
+              <Input
+                id="cpf-input"
+                inputMode="numeric"
+                autoFocus
+                placeholder="000.000.000-00"
+                value={cpfInput}
+                onChange={(event) => {
+                  setCpfInput(event.target.value);
+                  setCpfError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleCpfSubmit();
+                }}
+                disabled={cpfAttempts >= 5}
+                className="text-center text-lg tracking-wider h-11"
+                maxLength={14}
+              />
+              {cpfError && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {cpfError}
+                </p>
+              )}
+            </div>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleCpfSubmit}
+              disabled={cpfAttempts >= 5}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Acessar Documento
+            </Button>
+            <p className="text-[11px] text-center text-muted-foreground pt-2">
+              🔒 Este documento é privado e foi enviado especificamente para você. Apenas o titular do CPF cadastrado pode acessá-lo.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8 px-4">
       <div className="max-w-3xl mx-auto">

@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Link2,
   Copy,
@@ -24,6 +25,10 @@ import {
   MessageCircle,
   Loader2,
   ExternalLink,
+  ShieldCheck,
+  User,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
@@ -52,11 +57,15 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedDescription, setCopiedDescription] = useState(false);
 
   const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);
   const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
   const selectedClient = activeClients.find(c => c.id === selectedClientId);
   const selectedProfessional = activeProfessionals.find(p => p.id === selectedProfessionalId);
+
+  // When opened from a client profile, the client is locked.
+  const isClientLocked = !!preSelectedClientId;
 
   useEffect(() => {
     if (open && preSelectedClientId) {
@@ -91,6 +100,15 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const handleGenerate = async () => {
     if (!template) return;
 
+    if (!selectedClientId) {
+      toast.error('Selecione um cliente para gerar o link com autenticação por CPF.');
+      return;
+    }
+    if (!selectedClient?.cpf) {
+      toast.error('O cliente selecionado não possui CPF cadastrado. Edite o perfil do cliente e adicione o CPF antes de gerar o link.');
+      return;
+    }
+
     setLoading(true);
     try {
       const normalizedExpiresInDays = expiresInDays === 'none' ? undefined : parseInt(expiresInDays, 10);
@@ -109,21 +127,32 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
     }
   };
 
-  const handleCopy = async () => {
+  // Friendly description shown above the raw URL — and used by share actions.
+  const linkDescription = `📄 Documento: ${template?.title ?? ''}\n👤 Cliente: ${selectedClient?.name ?? ''}\n\nPara acessar e assinar, será solicitado o CPF cadastrado.\n\n🔗 Link: ${generatedUrl}`;
+
+  const handleCopy = async (textOverride?: string, isDescription = false) => {
     try {
-      await navigator.clipboard.writeText(generatedUrl);
-      setCopied(true);
-      toast.success('Link copiado!');
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(textOverride ?? generatedUrl);
+      if (isDescription) {
+        setCopiedDescription(true);
+        toast.success('Mensagem copiada!');
+        setTimeout(() => setCopiedDescription(false), 2000);
+      } else {
+        setCopied(true);
+        toast.success('Link copiado!');
+        setTimeout(() => setCopied(false), 2000);
+      }
     } catch {
-      toast.error('Erro ao copiar link');
+      toast.error('Erro ao copiar');
     }
   };
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent(
-      `Olá${selectedClient ? ` ${selectedClient.name.split(' ')[0]}` : ''}! ` +
-      `Por favor, preencha o documento "${template?.title}" através deste link: ${generatedUrl}`
+      `Olá${selectedClient ? ` ${selectedClient.name.split(' ')[0]}` : ''}!\n\n` +
+      `Por favor, preencha e assine o documento *"${template?.title}"* pelo link abaixo.\n` +
+      `Para sua segurança, será necessário informar seu CPF cadastrado para acessar.\n\n` +
+      `${generatedUrl}`
     );
 
     if (selectedClient?.phone) {
@@ -140,6 +169,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
     setSelectedProfessionalId('');
     setExpiresInDays('7');
     setCopied(false);
+    setCopiedDescription(false);
   };
 
   const handleClose = () => {
@@ -151,14 +181,14 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
             Enviar por Link
           </DialogTitle>
           <DialogDescription>
-            Gere um link para o cliente preencher o documento "{template.title}" online. Copie o link e envie manualmente por SMS, e-mail ou mensagem.
+            Gere um link seguro para o cliente preencher e assinar o documento "{template.title}". O cliente precisará informar o CPF cadastrado para acessar.
           </DialogDescription>
         </DialogHeader>
 
@@ -166,22 +196,35 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
           {!generatedUrl ? (
             <>
               <div className="space-y-2">
-                <Label className="text-sm">Cliente</Label>
-                <Select value={selectedClientId || 'none'} onValueChange={(value) => setSelectedClientId(value === 'none' ? '' : value)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Selecione o cliente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum (link genérico)</SelectItem>
-                    {activeClients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-sm">Cliente *</Label>
+                {isClientLocked && selectedClient ? (
+                  <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{selectedClient.name}</span>
+                    <Badge variant="secondary" className="ml-auto text-[10px]">Fixo</Badge>
+                  </div>
+                ) : (
+                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione o cliente..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeClients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}{!client.cpf ? ' (sem CPF)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {selectedClient && !selectedClient.cpf && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>Este cliente não possui CPF cadastrado. Cadastre o CPF no perfil para liberar a autenticação.</span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Dados do cliente serão preservados no link para evitar tela branca e garantir o preenchimento automático.
+                  O nome do cliente é fixo conforme o cadastro, evitando erros.
                 </p>
               </div>
 
@@ -218,45 +261,69 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
                 </Select>
               </div>
 
+              <div className="flex items-start gap-2 rounded-md border bg-primary/5 p-3 text-xs text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <span>O acesso ao documento é protegido: o cliente precisa digitar o CPF cadastrado para abrir, preencher e assinar.</span>
+              </div>
+
               <Separator />
 
               <Button className="w-full gap-2" onClick={handleGenerate} disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                {loading ? 'Gerando...' : 'Gerar Link'}
+                {loading ? 'Gerando...' : 'Gerar Link Seguro'}
               </Button>
             </>
           ) : (
             <>
+              {/* Friendly description */}
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span>{template.title}</span>
+                </div>
+                {selectedClient && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>{selectedClient.name}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  <span>Acesso protegido por CPF</span>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-primary">Link Gerado ✓</Label>
                 <div className="flex gap-2">
                   <Input value={generatedUrl} readOnly className="text-xs font-mono bg-muted" />
-                  <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
+                  <Button variant="outline" size="icon" onClick={() => handleCopy()} className="shrink-0">
                     {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Copie o link acima e envie manualmente para o cliente por SMS, e-mail, WhatsApp ou qualquer outra forma.
-                </p>
               </div>
 
               <Separator />
 
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="gap-2" onClick={handleCopy}>
-                  <Copy className="h-4 w-4" />
+              {/* Universal copy actions: visible on mobile AND desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button variant="outline" className="gap-2 w-full" onClick={() => handleCopy()}>
+                  {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   Copiar Link
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleWhatsApp}>
+                <Button variant="outline" className="gap-2 w-full" onClick={() => handleCopy(linkDescription, true)}>
+                  {copiedDescription ? <Check className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4" />}
+                  Copiar Mensagem
+                </Button>
+                <Button variant="outline" className="gap-2 w-full" onClick={handleWhatsApp}>
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
                 </Button>
+                <Button variant="ghost" className="gap-2 w-full" onClick={() => window.open(generatedUrl, '_blank')}>
+                  <ExternalLink className="h-4 w-4" />
+                  Abrir Link
+                </Button>
               </div>
-
-              <Button variant="ghost" className="w-full gap-2" onClick={() => window.open(generatedUrl, '_blank')}>
-                <ExternalLink className="h-4 w-4" />
-                Abrir Link
-              </Button>
 
               <Separator />
 

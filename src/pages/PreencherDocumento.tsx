@@ -132,6 +132,43 @@ export default function PreencherDocumento() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [yesNoAnswers, setYesNoAnswers] = useState<Record<string, 'sim' | 'nao' | ''>>({});
   const [additionalInfo, setAdditionalInfo] = useState<Record<string, string>>({});
+  // CPF authentication gate
+  const [authenticated, setAuthenticated] = useState(false);
+  const [cpfInput, setCpfInput] = useState('');
+  const [cpfError, setCpfError] = useState<string | null>(null);
+  const [cpfAttempts, setCpfAttempts] = useState(0);
+
+  const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+  const handleCpfSubmit = () => {
+    const expected = onlyDigits(client?.cpf ?? '');
+    const provided = onlyDigits(cpfInput);
+
+    if (!expected) {
+      // No CPF on file — cannot authenticate, but allow access (legacy links)
+      setAuthenticated(true);
+      return;
+    }
+
+    if (provided.length !== 11) {
+      setCpfError('Digite os 11 dígitos do seu CPF.');
+      return;
+    }
+
+    if (provided === expected) {
+      setCpfError(null);
+      setAuthenticated(true);
+      return;
+    }
+
+    const next = cpfAttempts + 1;
+    setCpfAttempts(next);
+    if (next >= 5) {
+      setCpfError('Muitas tentativas incorretas. Entre em contato com o profissional.');
+    } else {
+      setCpfError(`CPF não confere com o cadastro. Tentativa ${next} de 5.`);
+    }
+  };
 
   useEffect(() => {
     if (!token) {

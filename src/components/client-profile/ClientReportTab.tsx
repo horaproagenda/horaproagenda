@@ -473,82 +473,93 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
         </CardContent>
       </Card>
 
-      {/* Detailed Table - Compact */}
+      {/* Detailed Table */}
       <Card>
         <CardContent className="p-3">
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico Detalhado</h3>
           {filteredAppointments.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-xs">Nenhum agendamento neste mês</p>
+              <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[180px]">Serviço/Pacote</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto">Serviço</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Pago</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Início</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Fim</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[120px]">Profissional</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Sala</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[140px]">Equipamento</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Sessão</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Status</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto w-8"></TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.slice(0, 20).map(appointment => {
+                  {filteredAppointments.map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
-                    const isPackage = !!appointment.package_appointment?.package;
                     const packageData = appointment.package_appointment?.package;
-                    const packagePaymentMethods = packageData?.payment_methods;
-                    const isPackagePaid = isPackage && packagePaymentMethods && packagePaymentMethods.length > 0;
-                    
-                    const serviceName = isPackage 
-                      ? packageData?.name 
-                      : appointment.service?.name;
-                    
-                    // IMPORTANT: For packages, use FULL package price, not per session
-                    const totalPrice = isPackage
-                      ? (isPackagePaid ? 0 : (packageData?.total_price || 0))
-                      : (appointment.service?.price || 0);
-                    
-                    const amountPaid = isPackagePaid 
-                      ? (packageData?.total_price || 0) 
-                      : (appointment.amount_paid || 0);
-                    const pendingAmount = Math.max(0, totalPrice - amountPaid);
-                    
+                    const serviceName = packageData?.name || appointment.service?.name || packageData?.service?.name || '-';
+                    const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
+                    const roomName = appointment.room?.name || packageData?.room?.name || appointment.service?.room?.name || '-';
+                    const equipmentList = appointment.service?.equipment?.length
+                      ? appointment.service.equipment
+                      : packageData?.equipment || [];
+                    const packageId = packageData?.id;
+                    const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
+
                     return (
-                      <TableRow key={appointment.id} className="hover:bg-muted/30">
-                        <TableCell className="text-xs py-1.5">
-                          {format(new Date(appointment.start_time), 'dd/MM')}
+                      <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
+                        <TableCell className="text-xs py-2">
+                          <div className="font-medium">{serviceName}</div>
+                          {packageData && <div className="text-[10px] text-muted-foreground">Pacote: {packageData.name}</div>}
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 max-w-[120px] truncate">
-                          {serviceName || '-'}
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.end_time), 'HH:mm')}</TableCell>
+                        <TableCell className="text-xs py-2">{professionalName}</TableCell>
+                        <TableCell className="text-xs py-2">{roomName}</TableCell>
+                        <TableCell className="text-xs py-2">{equipmentList.length ? equipmentList.join(', ') : '-'}</TableCell>
+                        <TableCell className="py-2">
+                          {appointment.package_appointment ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                              {appointment.package_appointment.session_number}/{packageData?.total_sessions || '-'}
+                            </Badge>
+                          ) : '-'}
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">
-                          R$ {totalPrice.toFixed(0)}
+                        <TableCell className="py-2">
+                          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 whitespace-nowrap">{status.label}</Badge>
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">
-                          <span className={amountPaid > 0 ? 'text-emerald-600' : 'text-muted-foreground'}>
-                            R$ {amountPaid.toFixed(0)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          {onEditAppointment && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => onEditAppointment(appointment)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          )}
+                        <TableCell className="py-2">
+                          <div className="flex justify-end gap-1">
+                            {canReajust && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] px-2"
+                                onClick={() => propagateSeriesDates.mutate({
+                                  appointment_id: appointment.id,
+                                  new_start_time: new Date(appointment.start_time),
+                                  new_end_time: new Date(appointment.end_time),
+                                  propagate_type: 'package',
+                                  package_id: packageId,
+                                  interval_days: packageData?.interval_days || undefined,
+                                })}
+                                disabled={propagateSeriesDates.isPending}
+                              >
+                                Reajustar seguintes
+                              </Button>
+                            )}
+                            {onEditAppointment && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditAppointment(appointment)}>
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

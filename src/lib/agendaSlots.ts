@@ -1,4 +1,4 @@
-import { addDays, format, getDay, isSameDay, isSameMonth, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, getDay, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Appointment } from '@/types';
 
 type AgendaViewType = 'day' | 'week' | 'month' | 'professional';

@@ -239,41 +239,47 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
             <div className="space-y-3 py-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Serviços</Label>
+                  <Label className="text-xs">Serviços e pacotes</Label>
                   <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
                   </Button>
                 </div>
 
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum serviço</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum item</p>
                 ) : (
                   <div className="space-y-1.5">
                     {items.map((item, index) => (
-                      <div key={index} className="flex gap-1.5 items-center">
-                        <Select value={item.service_id} onValueChange={(v) => updateItem(index, v)}>
-                          <SelectTrigger className="flex-1 h-8 text-xs">
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {services.filter((s) => s.is_active).map((service) => (
-                              <SelectItem key={service.id} value={service.id} className="text-xs">
-                                {service.name} - R$ {service.price.toFixed(0)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                          className="w-14 h-8 text-xs"
-                        />
-                        <span className="w-16 text-right text-xs font-medium">R$ {item.total.toFixed(0)}</span>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                      <div key={index} className="grid grid-cols-12 gap-1.5 items-end rounded border bg-muted/20 p-2">
+                        <div className="col-span-12 sm:col-span-5">
+                          <Label className="text-[10px] text-muted-foreground">Item</Label>
+                          <SearchableSelect
+                            value={item.service_id ? `${item.item_type || 'service'}:${item.service_id}` : ''}
+                            onChange={(v) => updateItem(index, v)}
+                            options={itemOptions}
+                            placeholder="Selecione serviço ou pacote..."
+                            searchPlaceholder="Buscar item..."
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="col-span-3 sm:col-span-1">
+                          <Label className="text-[10px] text-muted-foreground">Qtd.</Label>
+                          <Input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-4 sm:col-span-2">
+                          <Label className="text-[10px] text-muted-foreground">Valor</Label>
+                          <Input type="number" value={item.unit_price} readOnly className="h-8 text-xs bg-muted/40" />
+                        </div>
+                        <div className="col-span-4 sm:col-span-2">
+                          <Label className="text-[10px] text-muted-foreground">Desconto</Label>
+                          <Input type="number" min="0" step="0.01" value={item.discount_amount || ''} onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2 flex items-center justify-end gap-1">
+                          <span className="text-xs font-medium whitespace-nowrap">R$ {item.total.toFixed(2)}</span>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -281,8 +287,10 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
               </div>
 
               {items.length > 0 && (
-                <div className="flex justify-end p-2 bg-muted rounded text-sm font-bold">
-                  Total: R$ {totalAmount.toFixed(2)}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-muted rounded text-xs">
+                  <span>Valor: <strong>R$ {originalTotal.toFixed(2)}</strong></span>
+                  <span>Desconto: <strong>R$ {totalDiscount.toFixed(2)}</strong></span>
+                  <span className="text-right">Total: <strong>R$ {totalAmount.toFixed(2)}</strong></span>
                 </div>
               )}
 
@@ -327,7 +335,7 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {quote.items.map(i => `${i.quantity}x ${i.service_name}`).join(', ')}
+                        {quote.items.map(i => `${i.item_type === 'package' ? 'Pacote: ' : ''}${i.quantity}x ${i.service_name}${(i.discount_amount || 0) > 0 ? ` (desc. R$ ${i.discount_amount.toFixed(2)})` : ''}`).join(', ')}
                       </p>
                     </div>
 

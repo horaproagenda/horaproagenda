@@ -1,4 +1,4 @@
-import { addDays, format, getDay, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, getDay, isSameDay, startOfDay, endOfDay, startOfMonth } from 'date-fns';
 import { Appointment } from '@/types';
 
 type AgendaViewType = 'day' | 'week' | 'month' | 'professional';
@@ -36,7 +36,7 @@ export function mergeAgendaTimeSlots({
       return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter(day => !(hideSunday && getDay(day) === 0));
     }
     if (viewType === 'month') {
-      return Array.from({ length: endOfMonthDayCount(monthStart) }, (_, i) => addDays(startOfDay(monthStart), i));
+      return Array.from({ length: endOfMonthDayCount(monthStart) }, (_, i) => addDays(startOfMonth(monthStart), i));
     }
     return [selectedDate];
   })();

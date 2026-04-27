@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "test": "playwright test e2e/regression-utils.spec.ts",
+    "test:unit": "vitest run",
+    "test:pipeline": "tsc --noEmit && playwright test e2e/regression-utils.spec.ts && vitest run",
     "preview": "vite preview"
   },
   "dependencies": {

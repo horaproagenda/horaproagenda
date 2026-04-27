@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByPreservedSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -19,9 +21,11 @@ interface ClientCreditsTabProps {
 interface PackageAppointmentDetail {
   id: string;
   session_number: number;
+  original_session_number?: number;
   status: string;
   scheduled_date: string | null;
   appointment_id: string | null;
+  created_at: string;
   appointment?: {
     start_time: string;
     end_time: string;
@@ -84,7 +88,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           // Completed = appointment linked AND (appointment status is 'completed' OR package_appointment status is 'completed')
           const completedCount = (appointments || []).filter(a => {
             const aptStatus = (a.appointment as { status?: string } | null)?.status;
-            return aptStatus === 'completed' || a.status === 'completed';
+            return isPackageSessionRealized(aptStatus) || isPackageSessionRealized(a.status);
           }).length;
           
           // Scheduled = has appointment_id AND appointment is not completed/cancelled/missed
@@ -94,7 +98,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
             // Must have an appointment linked
             if (!a.appointment_id) return false;
             // Must not be completed
-            if (aptStatus === 'completed' || a.status === 'completed') return false;
+            if (isPackageSessionRealized(aptStatus) || isPackageSessionRealized(a.status)) return false;
             // Must not be cancelled or missed
             if (aptStatus === 'cancelled' || aptStatus === 'missed') return false;
             // Is scheduled or confirmed
@@ -156,7 +160,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         .order('session_number', { ascending: true });
 
       if (error) throw error;
-      return data as PackageAppointmentDetail[];
+      return sortPackageSessionsByPreservedSequence(data as PackageAppointmentDetail[]);
     },
     enabled: !!selectedPackageId,
     staleTime: 0,
@@ -180,12 +184,12 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
 
   // Calculate session counts correctly from packageDetails
   const completedSessions = packageDetails?.filter(s => {
-    return s.appointment?.status === 'completed' || s.status === 'completed';
+    return isPackageSessionRealized(s.appointment?.status) || isPackageSessionRealized(s.status);
   }).length || 0;
   
   const scheduledSessions = packageDetails?.filter(s => {
     if (!s.appointment_id) return false;
-    if (s.appointment?.status === 'completed' || s.status === 'completed') return false;
+    if (isPackageSessionRealized(s.appointment?.status) || isPackageSessionRealized(s.status)) return false;
     if (s.appointment?.status === 'cancelled' || s.appointment?.status === 'missed') return false;
     return s.appointment?.status === 'scheduled' || s.appointment?.status === 'confirmed' || s.status === 'scheduled';
   }).length || 0;

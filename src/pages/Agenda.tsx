@@ -451,8 +451,19 @@ const Agenda = () => {
     return filteredByFilters.find(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
-      return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
+      return slotStart >= aptStart && slotStart < aptEnd;
     });
+  };
+
+  const isVisibleRangeStart = (day: Date, time: string, startTime: string, endTime: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (slotStart < start || slotStart >= end) return false;
+    return isSameDay(start, day) ? format(start, 'HH:mm') === time : time === '00:00';
   };
 
   // Check if a slot has a professional absence

@@ -942,7 +942,7 @@ Até breve! ✨`;
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" data-appointment-form="new">
             <div className="space-y-2 relative">
               <Label htmlFor="client">Cliente *</Label>
               <Input

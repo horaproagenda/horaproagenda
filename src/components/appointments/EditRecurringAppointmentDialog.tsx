@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Appointment } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -188,9 +189,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center justify-center gap-2 px-6 pt-6 text-center">
               Editar Agendamento
               {isRecurringSeries && (
                 <Badge variant="secondary" className="text-xs flex items-center gap-1">
@@ -200,13 +201,14 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
               )}
             </DialogTitle>
             {isRecurringSeries && (
-              <DialogDescription className="text-xs">
+              <DialogDescription className="px-6 text-center text-xs">
                 Este agendamento faz parte de uma série recorrente
               </DialogDescription>
             )}
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <ScrollArea className="max-h-[72vh] px-6 pb-6">
+          <div className="mx-auto max-w-xl space-y-4 py-4">
             {/* Client and Service Info (read-only) */}
             <div className="p-3 rounded-lg bg-muted/50 space-y-2">
               <div className="flex items-center gap-2 text-sm">
@@ -307,7 +309,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <Separator />
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
               <Button 
                 variant="destructive" 
                 size="sm"
@@ -317,7 +319,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 <Trash2 className="h-4 w-4 mr-1" />
                 Excluir
               </Button>
-              <div className="flex-1" />
+              <div className="hidden flex-1 sm:block" />
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
@@ -332,6 +334,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
               )}
             </div>
           </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

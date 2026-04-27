@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 
@@ -75,75 +76,42 @@ export function ClientDocumentViewDialog({
 
   if (!document) return null;
 
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('Bloqueador de pop-up ativo. Permita pop-ups para imprimir.');
-      return;
-    }
+  const handleDownloadPdf = () => {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const margin = 18;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const maxWidth = pageWidth - margin * 2;
+    const removeAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    let y = 22;
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${document.title}</title>
-          <style>
-            @page { margin: 2cm; }
-            body { 
-              font-family: 'Segoe UI', Arial, sans-serif; 
-              line-height: 1.6; 
-              color: #333;
-              padding: 20px;
-            }
-            h1 { 
-              font-size: 18px; 
-              margin-bottom: 20px;
-              text-align: center;
-              border-bottom: 2px solid #333;
-              padding-bottom: 10px;
-            }
-            .content { 
-              white-space: pre-wrap; 
-              font-size: 12px;
-            }
-            .footer {
-              margin-top: 40px;
-              border-top: 1px solid #ccc;
-              padding-top: 10px;
-              font-size: 10px;
-              color: #666;
-            }
-            .signature-area {
-              margin-top: 60px;
-              display: flex;
-              justify-content: space-around;
-            }
-            .signature-line {
-              width: 200px;
-              border-top: 1px solid #333;
-              text-align: center;
-              padding-top: 5px;
-              font-size: 11px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${escapeHtml(document.title)}</h1>
-          <div class="content">${sanitizeDocumentContent(document.content || '')}</div>
-          <div class="signature-area">
-            <div class="signature-line">Assinatura do Cliente</div>
-            <div class="signature-line">Assinatura do Responsável</div>
-          </div>
-          <div class="footer">
-            Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </div>
-        </body>
-      </html>
-    `;
+    pdf.setLineWidth(0.3);
+    pdf.rect(10, 10, pageWidth - 20, pageHeight - 20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.text(removeAccents(document.title), pageWidth / 2, y, { align: 'center', maxWidth });
+    y += 10;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.text(removeAccents(`Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
+    y += 8;
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 8;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.print();
+    const lines = pdf.splitTextToSize(removeAccents(document.content || ''), maxWidth);
+    pdf.setFontSize(10);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - 32) {
+        pdf.addPage();
+        pdf.rect(10, 10, pageWidth - 20, pageHeight - 20);
+        y = 22;
+      }
+      pdf.text(line, margin, y);
+      y += 5;
+    });
+
+    const fileName = removeAccents(`${document.title} - ${client?.name || 'cliente'}.pdf`).replace(/[^a-zA-Z0-9 ._-]/g, '');
+    pdf.save(fileName);
   };
 
   const handleOpenGovBr = () => {
@@ -285,10 +253,10 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[60vh] px-6 py-4">
+        <ScrollArea className="flex-1 h-[62vh] px-6 py-4">
           {document.content ? (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
+            <div className="mx-auto w-full max-w-[620px] rounded-sm border bg-card p-4 shadow-sm">
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6">
                 {document.content}
               </pre>
             </div>
@@ -320,9 +288,9 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
             <div className="flex flex-wrap gap-2">
               {document.content && (
                 <>
-                  <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
                     <Printer className="h-4 w-4 mr-1.5" />
-                    Imprimir / PDF
+                    Baixar PDF
                   </Button>
                   
                   {/* WhatsApp Send Button */}

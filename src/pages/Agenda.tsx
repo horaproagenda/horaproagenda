@@ -714,7 +714,8 @@ const Agenda = () => {
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number,
-    discountApplied?: number // Desconto aplicado
+    discountApplied?: number, // Desconto aplicado
+    usedClientCreditMethod?: string
   ) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
@@ -752,7 +753,11 @@ const Agenda = () => {
     const totalPaid = existingPaid + actualAmountForProcedure + saldoToAdd + courtesyToAdd;
     
     const existingMethods = appointment.payment_methods || [];
-    const newMethods = [...new Set([...existingMethods, ...paymentMethods.map(p => p.method)])];
+    const newMethods = [...new Set([
+      ...existingMethods,
+      ...paymentMethods.map(p => p.method),
+      ...(creditUsed > 0 && usedClientCreditMethod ? [usedClientCreditMethod] : []),
+    ])];
     
     // Calculate total card fees from payments
     let totalCardFee = 0;

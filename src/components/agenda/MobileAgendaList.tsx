@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MobileViewType } from './MobileAgendaHeader';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];
@@ -285,6 +286,10 @@ function AppointmentRow({ apt, professionals, onClick }: {
   const dot = getAppointmentStatusConfig(apt.status).dotClassName;
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap([apt]), [apt]);
+  const packageData = apt.package_appointment?.package;
+  const displayName = packageData?.name || apt.service?.name || 'Serviço';
+  const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;
 
   return (
     <div
@@ -302,8 +307,11 @@ function AppointmentRow({ apt, professionals, onClick }: {
           {apt.client?.name || 'Cliente'}
         </p>
         <p className="text-[11px] text-muted-foreground truncate leading-tight">
-          {apt.service?.name || 'Serviço'}
+          {displayName}
         </p>
+        {applicationLabel && (
+          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+        )}
         {prof && (
           <div className="flex items-center gap-1">
             <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: profColor }} />

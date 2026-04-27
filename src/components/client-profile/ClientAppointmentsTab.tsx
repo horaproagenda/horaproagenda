@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
-import { getPackageApplicationLabel } from '@/lib/packageSequence';
+import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
@@ -65,6 +65,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   
   const monthOptions = useMemo(() => getMonthOptions(), []);
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
   const filteredAppointments = useMemo(() => {
     return appointments
@@ -352,7 +353,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const borderColor = colorMap.get(colorKey) || 'hsl(var(--border))';
                 const isSelected = selectedAppointments.has(appointment.id);
                 const totalSessions = packageData?.total_sessions;
-                const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions);
+                const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id));
                 const displayName = packageData?.name || appointment.service?.name || 'Serviço';
                 const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
 

@@ -69,7 +69,7 @@ import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
-import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, validateClientCreditPayment } from '@/lib/clientCreditPayment';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -605,8 +605,7 @@ export function AppointmentDetailDialog({
   const hasExcessPayment = excessPaymentAmount > 0;
 
   const handleConfirmPayment = () => {
-    if (isClientCreditInvalid) {
-      toast.error(clientCreditValidationMessage || 'Valor de crédito ao cliente inválido.');
+    if (showClientCreditValidationToast(isClientCreditInvalid ? clientCreditValidationMessage : null)) {
       return;
     }
 

@@ -1371,13 +1371,8 @@ const Agenda = () => {
                 </div>
                 {professionalsToShow.map(prof => {
                   const apt = filteredByFilters.find(a => {
-                    const aptDate = new Date(a.start_time);
                     const aptProfId = a.professional_id || a.service?.professional_id;
-                    const [hours, minutes] = time.split(':').map(Number);
-                    return isSameDay(aptDate, selectedDate) && 
-                           aptDate.getHours() === hours && 
-                           aptDate.getMinutes() === minutes &&
-                           aptProfId === prof.id;
+                    return aptProfId === prof.id && isVisibleRangeStart(selectedDate, time, a.start_time, a.end_time);
                   });
                   
                   const occupyingApt = filteredByFilters.find(a => {
@@ -1387,8 +1382,7 @@ const Agenda = () => {
                     const [hours, minutes] = time.split(':').map(Number);
                     const slotTime = new Date(selectedDate);
                     slotTime.setHours(hours, minutes, 0, 0);
-                    return isSameDay(aptStart, selectedDate) && 
-                           slotTime >= aptStart && 
+                    return slotTime >= aptStart && 
                            slotTime < aptEnd &&
                            aptProfId === prof.id;
                   });

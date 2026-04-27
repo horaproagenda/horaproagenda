@@ -30,7 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
-import { getPackageApplicationLabel } from '@/lib/packageSequence';
+import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -96,6 +96,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const { propagateSeriesDates } = useRecurringAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
   // Filter data by selected month (or show all if 'all' selected)
   const filterByMonth = (dateStr: string) => {
@@ -521,7 +522,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     const equipmentNames = getEquipmentNames(equipmentList);
                     const packageId = packageData?.id;
                     const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
-                    const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions);
+                    const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
 
                     return (
                       <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">

@@ -1162,7 +1162,7 @@ const Agenda = () => {
                     {isStart && apt && (
                       <div 
                         className={cn(
-                          'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
+                           'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
                           dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                           isDragging && 'opacity-50 ring-2 ring-primary'
                         )}
@@ -1409,7 +1409,7 @@ const Agenda = () => {
                       {apt && (
                         <div 
                           className={cn(
-                            'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
+                            'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
                             dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                             isDragging && 'opacity-50 ring-2 ring-primary'
                           )}

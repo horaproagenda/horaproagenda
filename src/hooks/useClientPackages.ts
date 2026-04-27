@@ -203,6 +203,7 @@ export function useClientPackages(clientId: string | null) {
       const sessions = Array.from({ length: data.templateData.total_sessions }, (_, i) => ({
         package_id: newPackage.id,
         session_number: i + 1,
+        original_session_number: i + 1,
         status: 'pending',
       }));
 

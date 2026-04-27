@@ -143,6 +143,7 @@ export interface PackageAppointment {
   package_id: string;
   appointment_id: string | null;
   session_number: number;
+  original_session_number?: number;
   scheduled_date: string | null;
   status: PackageAppointmentStatus;
   notes: string | null;

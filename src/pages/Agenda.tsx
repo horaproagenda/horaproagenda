@@ -1270,15 +1270,12 @@ const Agenda = () => {
                     {dayAppointments.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
                         {dayAppointments.slice(0, 4).map((apt, i) => {
-                          const profId = apt.professional_id || apt.service?.professional_id;
-                          const prof = professionals.find(p => p.id === profId);
-                          const color = prof?.agenda_color || '#3B82F6';
+                          const statusDot = getAppointmentStatusConfig(apt.status).dotClassName;
                           
                           return (
                             <div 
                               key={i} 
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
+                              className={cn('h-2 w-2 rounded-full', isSelected ? 'bg-primary-foreground/70' : statusDot)}
                               title={`${apt.client?.name} - ${apt.service?.name}`}
                             />
                           );

@@ -326,7 +326,7 @@ export function useClientProfile(clientId: string) {
     mutationFn: async (doc: Omit<ClientDocument, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('client_documents')
-        .insert(doc)
+        .insert(doc as any)
         .select()
         .single();
 

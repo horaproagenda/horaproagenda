@@ -37,7 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
-import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, validateClientCreditPayment } from '@/lib/clientCreditPayment';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface SaleItem {
   id: string;
@@ -420,8 +420,7 @@ export function SaleForm() {
         return;
       }
       const creditValidationMessage = validateClientCreditPayment(paymentAmount, clientCreditBalance, saleInfo.total);
-      if (creditValidationMessage) {
-        toast.error(creditValidationMessage);
+      if (showClientCreditValidationToast(creditValidationMessage)) {
         return;
       }
     }

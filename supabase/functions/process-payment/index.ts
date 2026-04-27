@@ -397,6 +397,22 @@ serve(async (req) => {
       if (clientError) {
         console.error('Error deducting client credit:', clientError);
       }
+      const { error: creditHistoryError } = await supabase
+        .from('client_credit_transactions')
+        .insert({
+          client_id: appointment.client.id,
+          appointment_id: body.appointment_id,
+          transaction_type: 'credit_used',
+          amount: body.used_client_credit,
+          previous_balance: Number(currentBalance),
+          new_balance: newBalance,
+          description: `Uso de crédito ao cliente: ${serviceName} - ${clientName}`,
+          created_by: userId,
+        });
+
+      if (creditHistoryError) {
+        console.error('Error recording client credit history:', creditHistoryError);
+      }
       console.log(`Client credit used: ${body.used_client_credit} for ${clientName} - not registered in cash flow`);
     }
 
@@ -523,6 +539,7 @@ serve(async (req) => {
         amount_paid: body.amount_paid,
         payment_status: body.payment_status,
         payment_methods: body.payment_methods,
+        used_client_credit: body.used_client_credit || 0,
         discount_amount: discountAmount,
         user_roles: roles,
       },

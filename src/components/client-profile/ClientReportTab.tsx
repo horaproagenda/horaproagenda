@@ -25,10 +25,11 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter } from 'lucide-react';
+import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useAppointments } from '@/hooks/useAppointments';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
 import { toast } from 'sonner';
@@ -94,6 +95,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
   const { propagateSeriesDates } = useRecurringAppointments();
+  const { deleteAppointment } = useAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
@@ -501,7 +503,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     <TableHead className="text-[10px] py-1.5 h-auto min-w-[120px]">Profissional</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Sala</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto min-w-[140px]">Equipamento</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto">Sessão</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Aplicação</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Status</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto text-right">Ações</TableHead>
                   </TableRow>
@@ -571,6 +573,19 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => {
+                                if (window.confirm('Deseja apagar este agendamento? O registro original do pacote será preservado.')) {
+                                  deleteAppointment.mutate(appointment.id);
+                                }
+                              }}
+                              disabled={deleteAppointment.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

@@ -36,3 +36,19 @@ export const appointmentStatusConfig: Record<AppointmentStatus, { label: string;
 export const getAppointmentStatusConfig = (status?: string | null) => {
   return appointmentStatusConfig[(status as AppointmentStatus) || 'scheduled'] || appointmentStatusConfig.scheduled;
 };
+
+export const getAppointmentStatusStyle = (status?: string | null) => {
+  const tokenByStatus: Record<AppointmentStatus, string> = {
+    scheduled: 'info',
+    confirmed: 'info',
+    completed: 'success',
+    cancelled: 'destructive',
+    missed: 'warning',
+    rescheduled: 'primary',
+  };
+  const token = tokenByStatus[(status as AppointmentStatus) || 'scheduled'] || 'info';
+  return {
+    backgroundColor: `hsl(var(--${token}) / 0.14)`,
+    borderLeft: `3px solid hsl(var(--${token}))`,
+  };
+};

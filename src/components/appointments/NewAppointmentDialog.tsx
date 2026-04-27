@@ -10,6 +10,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,6 +52,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,6 +118,8 @@ export function NewAppointmentDialog({
   const [servicePreviewDates, setServicePreviewDates] = useState<Date[]>([]);
   const [editableServiceDates, setEditableServiceDates] = useState<Date[]>([]);
   const [editingServiceDateIndex, setEditingServiceDateIndex] = useState<number | null>(null);
+  const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
+  const [holidayConfirmed, setHolidayConfirmed] = useState(false);
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -121,6 +134,7 @@ export function NewAppointmentDialog({
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createRecurringAppointments } = useRecurringAppointments();
+  const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
   const timeSlots = generateTimeSlots();
 
   // State to track if using a paid service

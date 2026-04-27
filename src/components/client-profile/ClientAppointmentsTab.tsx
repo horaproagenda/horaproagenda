@@ -164,7 +164,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     // Table data with proper spacing and clean text
     const tableData = appointmentsToExport.map(apt => {
       const serviceName = removeAccents(apt.service?.name || apt.package_appointment?.package?.name || 'Servico');
-      const status = removeAccents(statusConfig[apt.status]?.label || apt.status);
+      const status = removeAccents(getAppointmentStatusConfig(apt.status).label);
       const date = format(new Date(apt.start_time), 'dd/MM/yyyy');
       const startTime = format(new Date(apt.start_time), 'HH:mm');
       const endTime = format(new Date(apt.end_time), 'HH:mm');
@@ -215,7 +215,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     
     // Status summary
     const statusCounts = appointmentsToExport.reduce((acc, apt) => {
-      const status = removeAccents(statusConfig[apt.status]?.label || apt.status);
+      const status = removeAccents(getAppointmentStatusConfig(apt.status).label);
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -345,15 +345,14 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
           ) : (
             <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
               {filteredAppointments.map((appointment) => {
-                const status = statusConfig[appointment.status] || statusConfig.scheduled;
+                const status = getAppointmentStatusConfig(appointment.status);
                 const isPackage = !!appointment.package_appointment;
                 const packageData = appointment.package_appointment?.package;
                 const colorKey = packageData?.id || appointment.service?.id || '';
                 const borderColor = colorMap.get(colorKey) || 'hsl(var(--border))';
                 const isSelected = selectedAppointments.has(appointment.id);
-                const chronologicalNumber = chronologicalPackageNumbers.get(appointment.id);
-                const storedNumber = appointment.package_appointment?.original_session_number || appointment.package_appointment?.session_number;
                 const totalSessions = packageData?.total_sessions;
+                const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions);
                 const displayName = packageData?.name || appointment.service?.name || 'Serviço';
                 const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
 
@@ -390,15 +389,10 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                       <div className="flex items-center gap-1 flex-wrap justify-start md:justify-end">
                         {isPackage && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
-                            Aplicação {chronologicalNumber || storedNumber}/{totalSessions || '-'}
+                            {applicationLabel}
                           </Badge>
                         )}
-                        {isPackage && chronologicalNumber && storedNumber && chronologicalNumber !== storedNumber && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                            Ordem por data {chronologicalNumber}
-                          </Badge>
-                        )}
-                        <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 shrink-0">
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}>
                           {status.label}
                         </Badge>
                       </div>

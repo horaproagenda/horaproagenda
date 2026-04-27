@@ -11,6 +11,7 @@ import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MobileViewType } from './MobileAgendaHeader';
+import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];
@@ -20,15 +21,6 @@ interface MobileAgendaListProps {
   mobileView: MobileViewType;
   onDateSelect: (date: Date) => void;
 }
-
-const statusDot: Record<string, string> = {
-  scheduled: 'bg-info',
-  confirmed: 'bg-success',
-  completed: 'bg-muted-foreground',
-  cancelled: 'bg-destructive',
-  missed: 'bg-destructive',
-  rescheduled: 'bg-warning',
-};
 
 const paymentConfig = {
   pending: { icon: AlertCircle, className: 'text-warning' },
@@ -290,7 +282,7 @@ function AppointmentRow({ apt, professionals, onClick }: {
   const prof = professionals.find(p => p.id === profId);
   const profColor = prof?.agenda_color || '#94a3b8';
   const timeStr = format(new Date(apt.start_time), 'HH:mm');
-  const dot = statusDot[apt.status as string] || statusDot.scheduled;
+  const dot = getAppointmentStatusConfig(apt.status).dotClassName;
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
 

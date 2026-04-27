@@ -112,6 +112,7 @@ import {
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
+import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -576,12 +577,12 @@ const Agenda = () => {
   // Export appointments to CSV
   const handleExportAppointments = () => {
     const statusMap: Record<string, string> = {
-      'scheduled': 'Agendado',
-      'confirmed': 'Confirmado', 
-      'completed': 'Concluído',
-      'cancelled': 'Cancelado',
-      'missed': 'Faltou',
-      'rescheduled': 'Reagendado',
+      scheduled: getAppointmentStatusConfig('scheduled').label,
+      confirmed: getAppointmentStatusConfig('confirmed').label,
+      completed: getAppointmentStatusConfig('completed').label,
+      cancelled: getAppointmentStatusConfig('cancelled').label,
+      missed: getAppointmentStatusConfig('missed').label,
+      rescheduled: getAppointmentStatusConfig('rescheduled').label,
     };
     
     const paymentMap: Record<string, string> = {
@@ -961,7 +962,7 @@ const Agenda = () => {
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
-            const color = prof?.agenda_color || '#3B82F6';
+            const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
             
             // Calculate slot height based on duration
             const slotDuration = settings?.slot_interval || 30;
@@ -1005,11 +1006,7 @@ const Agenda = () => {
                         dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
-                      style={{ 
-                        backgroundColor: `${color}15`,
-                        borderLeft: `2px solid ${color}`,
-                        minHeight: `${slotsSpan * 28 - 4}px`
-                      }}
+                      style={{ ...statusStyle, minHeight: `${slotsSpan * 28 - 4}px` }}
                       draggable={dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
                       onDragEnd={handleDragEnd}
@@ -1145,7 +1142,7 @@ const Agenda = () => {
                 const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
-                const color = prof?.agenda_color || '#3B82F6';
+                const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
                 const isDragging = draggedAppointment?.id === apt?.id;
 
                 return (
@@ -1165,11 +1162,11 @@ const Agenda = () => {
                     {isStart && apt && (
                       <div 
                         className={cn(
-                          'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
+                           'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
                           dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                           isDragging && 'opacity-50 ring-2 ring-primary'
                         )}
-                        style={{ backgroundColor: color }}
+                        style={statusStyle}
                         draggable={dragAndDropEnabled}
                         onDragStart={(e) => handleDragStart(e, apt)}
                         onDragEnd={handleDragEnd}
@@ -1273,15 +1270,12 @@ const Agenda = () => {
                     {dayAppointments.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
                         {dayAppointments.slice(0, 4).map((apt, i) => {
-                          const profId = apt.professional_id || apt.service?.professional_id;
-                          const prof = professionals.find(p => p.id === profId);
-                          const color = prof?.agenda_color || '#3B82F6';
+                          const statusDot = getAppointmentStatusConfig(apt.status).dotClassName;
                           
                           return (
                             <div 
                               key={i} 
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : color }}
+                              className={cn('h-2 w-2 rounded-full', isSelected ? 'bg-primary-foreground/70' : statusDot)}
                               title={`${apt.client?.name} - ${apt.service?.name}`}
                             />
                           );
@@ -1415,7 +1409,7 @@ const Agenda = () => {
                       {apt && (
                         <div 
                           className={cn(
-                            'h-full rounded px-1 py-0.5 text-white text-[10px] transition-all',
+                            'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
                             dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                             isDragging && 'opacity-50 ring-2 ring-primary'
                           )}

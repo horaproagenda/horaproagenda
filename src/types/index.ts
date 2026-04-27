@@ -136,7 +136,7 @@ export interface ServicePackage {
   appointments?: PackageAppointment[];
 }
 
-export type PackageAppointmentStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled';
+export type PackageAppointmentStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled' | 'missed' | 'rescheduled';
 
 export interface PackageAppointment {
   id: string;

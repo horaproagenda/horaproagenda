@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientCredits } from '@/hooks/useClientCredits';
+import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -36,25 +37,6 @@ interface AppointmentCardProps {
   onDelete?: () => void;
 }
 
-const statusConfig = {
-  scheduled: {
-    label: 'Agendado',
-    className: 'bg-info/5 text-info/80 border-info/10',
-  },
-  confirmed: {
-    label: 'Confirmado',
-    className: 'bg-success/5 text-success/80 border-success/10',
-  },
-  completed: {
-    label: 'Concluído',
-    className: 'bg-muted/50 text-muted-foreground/70 border-muted/30',
-  },
-  cancelled: {
-    label: 'Cancelado',
-    className: 'bg-destructive/5 text-destructive/70 border-destructive/10',
-  },
-};
-
 const paymentStatusConfig = {
   pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning/70' },
   partial: { label: 'Parcial', icon: Clock, className: 'text-info/70' },
@@ -62,7 +44,7 @@ const paymentStatusConfig = {
 };
 
 export function AppointmentCard({ appointment, compact = false, professionals = [], onEdit, onDelete }: AppointmentCardProps) {
-  const status = statusConfig[appointment.status as keyof typeof statusConfig] || statusConfig.scheduled;
+  const status = getAppointmentStatusConfig(appointment.status);
   const paymentStatus = paymentStatusConfig[appointment.payment_status as keyof typeof paymentStatusConfig || 'pending'];
   const PaymentIcon = paymentStatus.icon;
   const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;
@@ -75,6 +57,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
   const professionalColor = professional?.agenda_color;
   const hexColor = professionalColor || categoryColor?.hex || '#a1a1aa';
+  const statusStyle = getAppointmentStatusStyle(appointment.status);
   
   // Create softer version of the color for backgrounds
   const softHexColor = `${hexColor}15`;
@@ -104,7 +87,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       <div 
         className="group flex items-center gap-2 rounded-md border border-border/50 bg-card/80 backdrop-blur-sm px-2.5 py-2 transition-all duration-300 ease-out hover:border-border hover:shadow-sm hover:bg-card"
         style={{ 
-          borderLeftColor: hexColor, 
+          ...statusStyle,
           borderLeftWidth: '2px',
         }}
       >
@@ -160,7 +143,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       <div 
         className="group rounded-lg border border-border/40 bg-card/90 backdrop-blur-sm p-3 transition-all duration-300 ease-out hover:border-border/60 hover:shadow-md hover:bg-card animate-fade-in"
         style={{ 
-          borderLeftColor: hexColor, 
+          ...statusStyle,
           borderLeftWidth: '3px',
         }}
       >

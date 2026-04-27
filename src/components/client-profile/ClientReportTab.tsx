@@ -29,6 +29,8 @@ import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filt
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
+import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getPackageApplicationLabel } from '@/lib/packageSequence';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -53,15 +55,6 @@ interface ClientReportTabProps {
   paymentHistory?: PaymentHistoryItem[];
   onEditAppointment?: (appointment: Appointment) => void;
 }
-
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  scheduled: { label: 'Agendado', variant: 'secondary' },
-  confirmed: { label: 'Confirmado', variant: 'default' },
-  completed: { label: 'Realizado', variant: 'outline' },
-  cancelled: { label: 'Cancelado', variant: 'destructive' },
-  missed: { label: 'Faltou', variant: 'destructive' },
-  rescheduled: { label: 'Reagendado', variant: 'secondary' },
-};
 
 const statusOptions = [
   { value: 'all', label: 'Todos' },
@@ -130,24 +123,6 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     .map(item => equipmentNameMap.get(item) || item)
     .filter(Boolean)
     .join(', ');
-
-  const chronologicalPackageNumbers = useMemo(() => {
-    const grouped = new Map<string, Appointment[]>();
-    appointments.forEach((apt) => {
-      const packageId = apt.package_appointment?.package?.id || apt.package_appointment?.package_id;
-      if (!packageId) return;
-      grouped.set(packageId, [...(grouped.get(packageId) || []), apt]);
-    });
-
-    const map = new Map<string, number>();
-    grouped.forEach((items) => {
-      items
-        .slice()
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .forEach((apt, index) => map.set(apt.id, index + 1));
-    });
-    return map;
-  }, [appointments]);
 
   const filteredAppointments = useMemo(() => 
     appointments.filter(a => {
@@ -340,7 +315,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
       appointment.service?.category || '-',
       appointment.service?.duration?.toString() || '-',
       `R$ ${(appointment.service?.price || 0).toFixed(2)}`,
-      statusConfig[appointment.status]?.label || appointment.status,
+      getAppointmentStatusConfig(appointment.status).label,
     ]);
     
     const csvContent = [
@@ -532,7 +507,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                 </TableHeader>
                 <TableBody>
                   {filteredAppointments.map(appointment => {
-                    const status = statusConfig[appointment.status] || statusConfig.scheduled;
+                    const status = getAppointmentStatusConfig(appointment.status);
                     const packageData = appointment.package_appointment?.package;
                     const isPackage = Boolean(packageData);
                     const packageSession = appointment.package_appointment;
@@ -546,8 +521,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     const equipmentNames = getEquipmentNames(equipmentList);
                     const packageId = packageData?.id;
                     const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
-                    const chronologicalNumber = chronologicalPackageNumbers.get(appointment.id);
-                    const preservedNumber = packageSession?.original_session_number || packageSession?.session_number;
+                    const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions);
 
                     return (
                       <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
@@ -564,15 +538,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         <TableCell className="py-2">
                           {packageSession ? (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
-                              Aplicação {preservedNumber}/{packageData?.total_sessions || '-'}
+                              {applicationLabel}
                             </Badge>
                           ) : '-'}
-                          {packageSession && chronologicalNumber && chronologicalNumber !== preservedNumber && (
-                            <div className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">Ordem por data: {chronologicalNumber}</div>
-                          )}
                         </TableCell>
                         <TableCell className="py-2">
-                          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 whitespace-nowrap">{status.label}</Badge>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex justify-end gap-1">

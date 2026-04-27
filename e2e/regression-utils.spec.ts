@@ -13,6 +13,11 @@ import {
   convertQuantity,
 } from '../src/lib/productStock';
 import { mergeAgendaTimeSlots } from '../src/lib/agendaSlots';
+import {
+  getAppointmentPackageApplicationLabel,
+  isPackageSessionRealized,
+  sortPackageSessionsByPreservedSequence,
+} from '../src/lib/packageSequence';
 
 test('normaliza payload público de documento em objeto', () => {
   expect(normalizeDocumentLinkPayload({ id: '1' })).toEqual({ id: '1' });
@@ -131,4 +136,29 @@ test('inclui agendamentos e ausências que atravessam o dia na grade visível', 
 
   expect(slots).toContain('00:00');
   expect(slots).toContain('22:15');
+});
+
+test('preserva número original do pacote após cancelamento e reagendamento', () => {
+  const history = [
+    { id: 'session-2', session_number: 2, original_session_number: 2, status: 'cancelled', created_at: '2026-04-01T10:00:00' },
+    { id: 'session-1', session_number: 1, original_session_number: 1, status: 'completed', created_at: '2026-04-01T09:00:00' },
+    { id: 'session-3', session_number: 3, original_session_number: 3, status: 'scheduled', created_at: '2026-04-01T11:00:00' },
+  ] as any[];
+
+  const ordered = sortPackageSessionsByPreservedSequence(history);
+  expect(ordered.map(item => item.id)).toEqual(['session-1', 'session-2', 'session-3']);
+  expect(getAppointmentPackageApplicationLabel({
+    package_appointment: {
+      session_number: 9,
+      original_session_number: 2,
+      package: { total_sessions: 5 },
+    },
+  } as any)).toBe('Aplicação 2/5');
+});
+
+test('considera falta como aplicação realizada do pacote', () => {
+  expect(isPackageSessionRealized('completed')).toBe(true);
+  expect(isPackageSessionRealized('missed')).toBe(true);
+  expect(isPackageSessionRealized('cancelled')).toBe(false);
+  expect(isPackageSessionRealized('rescheduled')).toBe(false);
 });

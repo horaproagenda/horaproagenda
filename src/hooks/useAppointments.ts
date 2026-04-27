@@ -284,6 +284,20 @@ export function useAppointments() {
         }
       }
 
+      if ((updates.start_time || updates.end_time || updates.status === 'scheduled' || updates.status === 'confirmed') && data.package_appointment_id && updates.status !== 'completed') {
+        const { error: pkgScheduleError } = await supabase
+          .from('package_appointments')
+          .update({
+            status: updates.status === 'confirmed' ? 'scheduled' : 'scheduled',
+            scheduled_date: updates.start_time || data.start_time,
+          })
+          .eq('id', data.package_appointment_id);
+
+        if (pkgScheduleError) {
+          console.error('Error preserving package session schedule:', pkgScheduleError);
+        }
+      }
+
       // If status changed to cancelled/missed/rescheduled, clean up financial entries
       // and reset package session if applicable
       if (updates.status === 'cancelled' || updates.status === 'missed' || updates.status === 'rescheduled') {

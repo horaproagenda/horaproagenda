@@ -377,7 +377,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const borderColor = colorMap.get(colorKey) || 'hsl(var(--border))';
                 const isSelected = selectedAppointments.has(appointment.id);
                 const chronologicalNumber = chronologicalPackageNumbers.get(appointment.id);
-                const storedNumber = appointment.package_appointment?.session_number;
+                const storedNumber = appointment.package_appointment?.original_session_number || appointment.package_appointment?.session_number;
                 const totalSessions = packageData?.total_sessions;
                 const displayName = packageData?.name || appointment.service?.name || 'Serviço';
                 const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
@@ -420,7 +420,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                         )}
                         {isPackage && chronologicalNumber && storedNumber && chronologicalNumber !== storedNumber && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                            Registro original {storedNumber}
+                            Ordem por data {chronologicalNumber}
                           </Badge>
                         )}
                         <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 shrink-0">

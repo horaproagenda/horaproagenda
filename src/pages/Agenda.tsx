@@ -111,6 +111,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
+import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -236,39 +237,16 @@ const Agenda = () => {
   // Merge base slots with any appointment times that fall outside the base slots
   // CRITICAL: This ensures ALL appointments are visible regardless of their start time
   const timeSlots = useMemo(() => {
-    const allSlots = new Set(baseTimeSlots);
-    const isDateInCurrentView = (date: Date) => {
-      if (viewType === 'week') {
-        if (hideSunday && getDay(date) === 0) return false;
-        return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).some(day => isSameDay(date, day));
-      }
-      if (viewType === 'month') return isSameMonth(date, monthStart);
-      return isSameDay(date, selectedDate);
-    };
-    
-    // Add ALL appointment start times, even outside configured hours
-    // This ensures appointments at any minute (e.g., 18:50) are always visible
-    appointments.forEach(apt => {
-      // IMPORTANT: Exclude rescheduled appointments from slot generation too
-      if (apt.status === 'rescheduled') return;
-      
-      const aptStart = new Date(apt.start_time);
-      if (!isDateInCurrentView(aptStart)) return;
-      const aptTime = format(aptStart, 'HH:mm');
-      // Always add the appointment time to ensure it's visible
-      allSlots.add(aptTime);
+    return mergeAgendaTimeSlots({
+      baseSlots: baseTimeSlots,
+      appointments,
+      absences,
+      viewType,
+      selectedDate,
+      weekStart,
+      monthStart,
+      hideSunday,
     });
-    
-    // Add all absence start times
-    absences.forEach(absence => {
-      const absenceStart = new Date(absence.start_time);
-      if (!isDateInCurrentView(absenceStart)) return;
-      const absenceTime = format(absenceStart, 'HH:mm');
-      allSlots.add(absenceTime);
-    });
-    
-    // Sort chronologically
-    return Array.from(allSlots).sort((a, b) => a.localeCompare(b));
   }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
   const weekDays = useMemo(() => {

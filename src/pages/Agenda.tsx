@@ -975,6 +975,7 @@ const Agenda = () => {
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
             const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
+            const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
             
             // Calculate slot height based on duration
             const slotDuration = settings?.slot_interval || 30;
@@ -1033,7 +1034,8 @@ const Agenda = () => {
                             <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                           )}
                           <span className="text-[11px] font-semibold text-foreground truncate">{apt.client?.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {apt.service?.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
+                          {aptDisplay?.applicationLabel && <span className="text-[9px] text-primary font-medium truncate hidden lg:inline">{aptDisplay.applicationLabel}</span>}
                           {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">

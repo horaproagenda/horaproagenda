@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
-import { getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByPreservedSequence } from '@/lib/packageSequence';
+import { buildPackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -20,6 +20,7 @@ interface ClientCreditsTabProps {
 
 interface PackageAppointmentDetail {
   id: string;
+  package_id: string;
   session_number: number;
   original_session_number?: number;
   status: string;
@@ -160,13 +161,17 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         .order('session_number', { ascending: true });
 
       if (error) throw error;
-      return sortPackageSessionsByPreservedSequence(data as PackageAppointmentDetail[]);
+      return sortPackageSessionsByChronologicalSequence(data as PackageAppointmentDetail[]);
     },
     enabled: !!selectedPackageId,
     staleTime: 0,
   });
 
   const isLoading = loadingPackages || loadingServices;
+  const packageSequenceMap = useMemo(
+    () => buildPackageSessionSequenceMap((packageDetails || []) as any[]),
+    [packageDetails]
+  );
 
   if (isLoading) {
     return (
@@ -375,7 +380,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 return (
                   <div key={session.id} className={`p-2 rounded-lg border flex items-center justify-between ${getStatusColor()}`}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">{getPackageApplicationLabel(session as any, selectedPackage?.total_sessions)}</span>
+                      <span className="text-xs font-medium">
+                        {getPackageApplicationLabel(session as any, selectedPackage?.total_sessions, packageSequenceMap.get(session.id))}
+                      </span>
                       {session.appointment && (
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(session.appointment.start_time), "dd/MM HH:mm", { locale: ptBR })}

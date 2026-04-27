@@ -683,7 +683,14 @@ export function AppointmentDetailDialog({
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
               <User className="h-5 w-5 mt-0.5 text-primary" />
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">{appointment.client?.name}</h3>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-lg font-semibold text-foreground"
+                  onClick={() => setShowClientProfileDialog(true)}
+                >
+                  {appointment.client?.name}
+                </Button>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-3 w-3" />
                   {appointment.client?.phone}
@@ -721,21 +728,55 @@ export function AppointmentDetailDialog({
                   </h4>
                 </div>
 
+                <div>
+                  <Label className="text-xs">Serviço</Label>
+                  <SearchableSelect
+                    value={editServiceId || ''}
+                    onChange={handleEditServiceChange}
+                    placeholder="Selecione o serviço"
+                    searchPlaceholder="Buscar serviço..."
+                    emptyMessage="Nenhum serviço encontrado."
+                    options={activeServices.map((service) => ({
+                      value: service.id,
+                      label: service.name,
+                      sublabel: `${service.category} • ${service.duration} min`,
+                    }))}
+                  />
+                </div>
+
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">Data</Label>
-                    <Input
-                      type="date"
-                      value={editDate}
-                      onChange={(e) => setEditDate(e.target.value)}
-                    />
+                    <div className="flex gap-1">
+                      <Input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="icon" className="shrink-0">
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <DatePickerCalendar
+                            mode="single"
+                            selected={editDate ? new Date(`${editDate}T12:00:00`) : undefined}
+                            onSelect={(date) => date && setEditDate(format(date, 'yyyy-MM-dd'))}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs">Início</Label>
                     <Input
                       type="time"
                       value={editStartTime}
-                      onChange={(e) => setEditStartTime(e.target.value)}
+                      onChange={(e) => handleEditStartTimeChange(e.target.value)}
                     />
                   </div>
                   <div>

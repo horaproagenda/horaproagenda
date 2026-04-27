@@ -82,7 +82,8 @@ interface AppointmentDetailDialogProps {
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number,
-    discountApplied?: number // Desconto aplicado
+    discountApplied?: number, // Desconto aplicado
+    usedClientCreditMethod?: string
   ) => void;
 }
 
@@ -627,6 +628,10 @@ export function AppointmentDetailDialog({
   };
 
   const submitPayment = () => {
+    const clientCreditPaymentMethod = payments.find(p => {
+      const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+      return isClientCreditMethod(methodName) && (parseFloat(p.amount) || 0) > 0;
+    });
     const validPayments = payments
       .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
@@ -651,7 +656,8 @@ export function AppointmentDetailDialog({
         finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
         currentOpenRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
-        discount > 0 ? discount : undefined // Desconto aplicado
+        discount > 0 ? discount : undefined, // Desconto aplicado
+        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);

@@ -52,11 +52,12 @@ export function MobileAgendaList({
 }
 
 // ─── Day View ───────────────────────────────────────────
-function MobileDayView({ selectedDate, appointments, professionals, onAppointmentClick }: {
+function MobileDayView({ selectedDate, appointments, professionals, onAppointmentClick, packageSequenceMap }: {
   selectedDate: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const dayAppointments = useMemo(() => {
     return appointments
@@ -96,7 +97,7 @@ function MobileDayView({ selectedDate, appointments, professionals, onAppointmen
               </span>
             </div>
             {apts.map(apt => (
-              <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} />
+              <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} packageSequenceMap={packageSequenceMap} />
             ))}
           </div>
         ))}
@@ -106,12 +107,13 @@ function MobileDayView({ selectedDate, appointments, professionals, onAppointmen
 }
 
 // ─── Week View ──────────────────────────────────────────
-function MobileWeekView({ selectedDate, appointments, professionals, onAppointmentClick, onDateSelect }: {
+function MobileWeekView({ selectedDate, appointments, professionals, onAppointmentClick, onDateSelect, packageSequenceMap }: {
   selectedDate: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
   onDateSelect: (date: Date) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -157,6 +159,7 @@ function MobileWeekView({ selectedDate, appointments, professionals, onAppointme
           appointments={appointments}
           professionals={professionals}
           onAppointmentClick={onAppointmentClick}
+          packageSequenceMap={packageSequenceMap}
         />
       </div>
     </ScrollArea>

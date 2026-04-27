@@ -249,11 +249,12 @@ function MobileMonthView({ selectedDate, appointments, professionals, onDateSele
 }
 
 // ─── Shared Components ──────────────────────────────────
-function DayAppointmentsList({ date, appointments, professionals, onAppointmentClick }: {
+function DayAppointmentsList({ date, appointments, professionals, onAppointmentClick, packageSequenceMap }: {
   date: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const dayApts = useMemo(() => {
     return appointments
@@ -272,16 +273,17 @@ function DayAppointmentsList({ date, appointments, professionals, onAppointmentC
   return (
     <div className="space-y-0.5">
       {dayApts.map(apt => (
-        <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} />
+        <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} packageSequenceMap={packageSequenceMap} />
       ))}
     </div>
   );
 }
 
-function AppointmentRow({ apt, professionals, onClick }: {
+function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   apt: Appointment;
   professionals: Professional[];
   onClick: () => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const profId = apt.professional_id || apt.service?.professional_id;
   const prof = professionals.find(p => p.id === profId);
@@ -290,7 +292,6 @@ function AppointmentRow({ apt, professionals, onClick }: {
   const dot = getAppointmentStatusConfig(apt.status).dotClassName;
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
-  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap([apt]), [apt]);
   const packageData = apt.package_appointment?.package;
   const displayName = packageData?.name || apt.service?.name || 'Serviço';
   const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;

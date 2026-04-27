@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -23,8 +24,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar as DatePickerCalendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -51,6 +55,7 @@ import {
   History,
   Save,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -58,6 +63,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
+import { useServices } from '@/hooks/useServices';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
@@ -101,10 +107,12 @@ export function AppointmentDetailDialog({
   onOpenChange,
   onPayment,
 }: AppointmentDetailDialogProps) {
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
+  const { activeServices } = useServices();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
@@ -121,6 +129,7 @@ export function AppointmentDetailDialog({
   // Removed courtesyCreditAmount - courtesy payment feature removed
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showClientProfileDialog, setShowClientProfileDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
   const [recurringDeleteType, setRecurringDeleteType] = useState<'single' | 'following' | 'all'>('single');
   const [showRescheduleOption, setShowRescheduleOption] = useState(false);
@@ -146,6 +155,7 @@ export function AppointmentDetailDialog({
   const [editDate, setEditDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
+  const [editServiceId, setEditServiceId] = useState<string | null>(null);
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
@@ -217,6 +227,7 @@ export function AppointmentDetailDialog({
       setEditDate(format(startDate, 'yyyy-MM-dd'));
       setEditStartTime(format(startDate, 'HH:mm'));
       setEditEndTime(format(endDate, 'HH:mm'));
+      setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
       setEditNotes(appointment.notes || '');
@@ -383,6 +394,41 @@ export function AppointmentDetailDialog({
     });
   };
 
+  const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;
+
+  const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
+    if (!editDate || !startValue || serviceDuration <= 0) return;
+
+    const newStartTime = new Date(`${editDate}T${startValue}:00`);
+    const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
+    setEditEndTime(format(newEndTime, 'HH:mm'));
+  };
+
+  const handleEditStartTimeChange = (value: string) => {
+    setEditStartTime(value);
+    recalculateEndTime(value);
+  };
+
+  const handleEditServiceChange = (serviceId: string) => {
+    const service = activeServices.find((item) => item.id === serviceId);
+    setEditServiceId(serviceId || null);
+    if (service?.professional_id) setEditProfessionalId(service.professional_id);
+    if (service?.room_id) setEditRoomId(service.room_id);
+    if (editStartTime && service?.duration) recalculateEndTime(editStartTime, service.duration);
+  };
+
+  const handleOpenClientProfile = () => {
+    if (!appointment.client_id) return;
+    setShowClientProfileDialog(false);
+    onOpenChange(false);
+    navigate(`/clientes/${appointment.client_id}`, {
+      state: {
+        returnToAgendaAppointmentId: appointment.id,
+        returnToAgendaDate: appointment.start_time,
+      },
+    });
+  };
+
   const handleSaveEdit = () => {
     const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
     const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
@@ -392,6 +438,7 @@ export function AppointmentDetailDialog({
       updates: {
         start_time: newStartTime.toISOString(),
         end_time: newEndTime.toISOString(),
+          service_id: editServiceId,
         professional_id: editProfessionalId,
         room_id: editRoomId,
         notes: editNotes || undefined,
@@ -636,7 +683,14 @@ export function AppointmentDetailDialog({
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
               <User className="h-5 w-5 mt-0.5 text-primary" />
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">{appointment.client?.name}</h3>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-lg font-semibold text-foreground"
+                  onClick={() => setShowClientProfileDialog(true)}
+                >
+                  {appointment.client?.name}
+                </Button>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-3 w-3" />
                   {appointment.client?.phone}
@@ -674,21 +728,55 @@ export function AppointmentDetailDialog({
                   </h4>
                 </div>
 
+                <div>
+                  <Label className="text-xs">Serviço</Label>
+                  <SearchableSelect
+                    value={editServiceId || ''}
+                    onChange={handleEditServiceChange}
+                    placeholder="Selecione o serviço"
+                    searchPlaceholder="Buscar serviço..."
+                    emptyMessage="Nenhum serviço encontrado."
+                    options={activeServices.map((service) => ({
+                      value: service.id,
+                      label: service.name,
+                      sublabel: `${service.category} • ${service.duration} min`,
+                    }))}
+                  />
+                </div>
+
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">Data</Label>
-                    <Input
-                      type="date"
-                      value={editDate}
-                      onChange={(e) => setEditDate(e.target.value)}
-                    />
+                    <div className="flex gap-1">
+                      <Input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="icon" className="shrink-0">
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <DatePickerCalendar
+                            mode="single"
+                            selected={editDate ? new Date(`${editDate}T12:00:00`) : undefined}
+                            onSelect={(date) => date && setEditDate(format(date, 'yyyy-MM-dd'))}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs">Início</Label>
                     <Input
                       type="time"
                       value={editStartTime}
-                      onChange={(e) => setEditStartTime(e.target.value)}
+                      onChange={(e) => handleEditStartTimeChange(e.target.value)}
                     />
                   </div>
                   <div>
@@ -1360,6 +1448,28 @@ export function AppointmentDetailDialog({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Client Profile Confirmation Dialog */}
+      <AlertDialog open={showClientProfileDialog} onOpenChange={setShowClientProfileDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Ir para perfil do cliente?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja abrir o perfil de <strong>{appointment.client?.name}</strong>? Ao voltar, você retornará para a agenda com os detalhes deste agendamento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOpenClientProfile}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Abrir perfil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

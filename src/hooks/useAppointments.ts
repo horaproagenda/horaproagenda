@@ -35,6 +35,7 @@ export interface PaymentUpdate {
 export interface AppointmentUpdate {
   start_time?: string;
   end_time?: string;
+  service_id?: string | null;
   professional_id?: string | null;
   room_id?: string | null;
   notes?: string;

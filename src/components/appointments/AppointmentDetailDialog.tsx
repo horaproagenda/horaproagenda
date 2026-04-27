@@ -582,8 +582,9 @@ export function AppointmentDetailDialog({
   
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
-  const creditLimitForPayment = Math.min(availableClientCredit, remainingAfterDiscount);
-  const isClientCreditInvalid = paymentMethodCreditUsed > creditLimitForPayment;
+  const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
+  const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
+  const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
   
   const clientCreditUsed = Math.min(
     (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
@@ -605,7 +606,7 @@ export function AppointmentDetailDialog({
 
   const handleConfirmPayment = () => {
     if (isClientCreditInvalid) {
-      toast.error(`Crédito ao cliente limitado a R$ ${creditLimitForPayment.toFixed(2)} para este pagamento.`);
+      toast.error(clientCreditValidationMessage || 'Valor de crédito ao cliente inválido.');
       return;
     }
 

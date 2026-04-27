@@ -12,6 +12,8 @@ import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO
 import { ptBR } from 'date-fns/locale';
 import { Plus, Receipt, MessageCircle, Trash2, Filter } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
+import { useServicePackages } from '@/hooks/useServicePackages';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 
 interface ClientQuotesTabProps {
@@ -59,8 +61,25 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const [validDays, setValidDays] = useState('7');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const { services } = useServices();
+  const { packages } = useServicePackages();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
+  const itemOptions = useMemo(() => [
+    ...services
+      .filter((service) => service.is_active)
+      .map((service) => ({
+        value: `service:${service.id}`,
+        label: service.name,
+        sublabel: `Serviço · R$ ${Number(service.price || 0).toFixed(2)}`,
+      })),
+    ...packages
+      .filter((pkg) => pkg.is_active)
+      .map((pkg) => ({
+        value: `package:${pkg.id}`,
+        label: pkg.name,
+        sublabel: `Pacote · ${pkg.total_sessions} sessões · R$ ${Number(pkg.total_price || 0).toFixed(2)}`,
+      })),
+  ], [services, packages]);
 
   const filteredQuotes = useMemo(() => {
     const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
@@ -77,20 +96,27 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   }, [quotes, selectedMonth]);
 
   const addItem = () => {
-    setItems([...items, { service_id: '', service_name: '', quantity: 1, unit_price: 0, total: 0 }]);
+    setItems([...items, { service_id: '', service_name: '', item_type: 'service', quantity: 1, unit_price: 0, discount_amount: 0, total: 0 }]);
   };
 
-  const updateItem = (index: number, serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
+  const updateItem = (index: number, value: string) => {
+    const [itemType, itemId] = value.split(':') as ['service' | 'package', string];
+    const item = itemType === 'package'
+      ? packages.find((pkg) => pkg.id === itemId)
+      : services.find((service) => service.id === itemId);
+    if (!item) return;
+
+    const unitPrice = itemType === 'package' ? Number((item as any).total_price || 0) : Number((item as any).price || 0);
 
     const newItems = [...items];
     newItems[index] = {
-      service_id: service.id,
-      service_name: service.name,
+      service_id: item.id,
+      service_name: item.name,
+      item_type: itemType,
       quantity: 1,
-      unit_price: service.price,
-      total: service.price,
+      unit_price: unitPrice,
+      discount_amount: 0,
+      total: unitPrice,
     };
     setItems(newItems);
   };
@@ -98,7 +124,15 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const updateQuantity = (index: number, quantity: number) => {
     const newItems = [...items];
     newItems[index].quantity = quantity;
-    newItems[index].total = newItems[index].unit_price * quantity;
+    newItems[index].total = Math.max(0, (newItems[index].unit_price * quantity) - (newItems[index].discount_amount || 0));
+    setItems(newItems);
+  };
+
+  const updateDiscount = (index: number, discount: number) => {
+    const newItems = [...items];
+    const gross = newItems[index].unit_price * newItems[index].quantity;
+    newItems[index].discount_amount = Math.min(Math.max(0, discount), gross);
+    newItems[index].total = Math.max(0, gross - (newItems[index].discount_amount || 0));
     setItems(newItems);
   };
 
@@ -106,6 +140,8 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const originalTotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  const totalDiscount = items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   format, 
   addDays, 
@@ -121,6 +122,8 @@ const viewVariants = {
 };
 
 const Agenda = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -180,6 +183,19 @@ const Agenda = () => {
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
+
+  useEffect(() => {
+    const state = location.state as { openAppointmentId?: string; appointmentDate?: string } | null;
+    if (!state?.openAppointmentId || appointments.length === 0) return;
+
+    const appointmentToReopen = appointments.find((apt) => apt.id === state.openAppointmentId);
+    if (!appointmentToReopen) return;
+
+    setSelectedAppointment(appointmentToReopen);
+    setDetailDialogOpen(true);
+    setSelectedDate(new Date(state.appointmentDate || appointmentToReopen.start_time));
+    navigate('/agenda', { replace: true, state: null });
+  }, [appointments, location.state, navigate]);
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();

@@ -220,7 +220,7 @@ export function useAppointments() {
           if (apt.id === id) {
             return {
               ...apt,
-              amount_paid: (apt.amount_paid || 0) + payment.amount_paid,
+              amount_paid: payment.amount_paid,
               payment_status: payment.payment_status,
               payment_methods: payment.payment_methods,
             };

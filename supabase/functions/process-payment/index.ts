@@ -235,6 +235,7 @@ serve(async (req) => {
     // 5. Calculate payment amounts using the correct total price
     const previousAmountPaid = appointment.amount_paid || 0;
     const newPaymentAmount = body.amount_paid - previousAmountPaid;
+    const newCashPaymentAmount = Math.max(0, newPaymentAmount - (body.used_client_credit || 0));
     const remainingAfterPayment = Math.max(0, totalRequiredAmount - body.amount_paid);
 
     // Note: We allow payments exceeding service price for flexibility
@@ -429,12 +430,12 @@ serve(async (req) => {
       }
     }
 
-    if (newPaymentAmount > 0) {
+    if (newCashPaymentAmount > 0) {
       // Create financial entry
       const { error: entryError } = await supabase.from('financial_entries').insert({
         type: 'receivable',
         description: `Pagamento: ${serviceName} - ${clientName}`,
-        amount: newPaymentAmount,
+        amount: newCashPaymentAmount,
         due_date: today,
         paid_date: today,
         status: 'paid',
@@ -455,7 +456,7 @@ serve(async (req) => {
           type: 'income',
           category: 'sale',
           description: `${serviceName} - ${clientName}`,
-          amount: newPaymentAmount,
+          amount: newCashPaymentAmount,
           payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
           reference_type: 'appointment',
@@ -523,7 +524,7 @@ serve(async (req) => {
         data: updatedAppointment,
         payment_details: {
           previous_amount: previousAmountPaid,
-          new_payment: newPaymentAmount,
+          new_payment: newCashPaymentAmount,
           total_paid: body.amount_paid,
           remaining: remainingAfterPayment
         }

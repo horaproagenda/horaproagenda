@@ -1401,6 +1401,7 @@ const Agenda = () => {
                   
                   const isOccupied = occupyingApt && !apt;
                   const isDragging = draggedAppointment?.id === apt?.id;
+                  const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
 
                   return (
                     <div
@@ -1441,6 +1442,9 @@ const Agenda = () => {
                           }}
                         >
                           <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
+                          {aptDisplay?.applicationLabel && (
+                            <p className="truncate leading-tight text-[9px] text-primary-foreground/90 font-medium">{aptDisplay.applicationLabel}</p>
+                          )}
                         </div>
                       )}
                     </div>

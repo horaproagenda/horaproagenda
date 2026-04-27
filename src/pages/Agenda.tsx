@@ -1158,6 +1158,7 @@ const Agenda = () => {
                 const prof = professionals.find(p => p.id === profId);
                 const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
                 const isDragging = draggedAppointment?.id === apt?.id;
+                const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
 
                 return (
                   <div
@@ -1190,6 +1191,9 @@ const Agenda = () => {
                         }}
                       >
                         <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
+                        {aptDisplay?.applicationLabel && (
+                          <p className="truncate leading-tight text-[9px] text-primary font-medium">{aptDisplay.applicationLabel}</p>
+                        )}
                       </div>
                     )}
                     {isAbsenceStart && absence && !apt && (

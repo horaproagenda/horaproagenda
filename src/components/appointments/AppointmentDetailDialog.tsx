@@ -1449,6 +1449,28 @@ export function AppointmentDetailDialog({
         </DialogContent>
       </Dialog>
 
+      {/* Client Profile Confirmation Dialog */}
+      <AlertDialog open={showClientProfileDialog} onOpenChange={setShowClientProfileDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Ir para perfil do cliente?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja abrir o perfil de <strong>{appointment.client?.name}</strong>? Ao voltar, você retornará para a agenda com os detalhes deste agendamento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOpenClientProfile}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Abrir perfil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="max-w-md">

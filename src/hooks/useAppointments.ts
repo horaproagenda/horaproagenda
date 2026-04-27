@@ -309,53 +309,19 @@ export function useAppointments() {
         }
       }
       
-      // If this is a package appointment, reset the session so it can be rescheduled
+      // Package history must remain intact: status changes are mirrored to the session,
+      // but the session number, appointment link and scheduled date are preserved.
       if ((updates.status === 'cancelled' || updates.status === 'missed' || updates.status === 'rescheduled') && data.package_appointment_id) {
-        // Get current package info
-        const { data: pkgAppointment } = await supabase
-          .from('package_appointments')
-          .select('package_id')
-          .eq('id', data.package_appointment_id)
-          .single();
-
-        // Reset the session to pending so it can be rescheduled
         const { error: pkgError } = await supabase
           .from('package_appointments')
-          .update({ 
-            status: 'pending',
-            appointment_id: null,
-            scheduled_date: null
-          })
+          .update({ status: updates.status as any })
           .eq('id', data.package_appointment_id);
         
         if (pkgError) {
-          console.error('Error resetting package appointment:', pkgError);
+          console.error('Error updating package appointment status:', pkgError);
         }
-
-        // Decrement the sessions_scheduled counter on the package
-        if (pkgAppointment?.package_id) {
-          const { data: pkg } = await supabase
-            .from('service_packages')
-            .select('sessions_scheduled')
-            .eq('id', pkgAppointment.package_id)
-            .single();
-
-          if (pkg && pkg.sessions_scheduled > 0) {
-            await supabase
-              .from('service_packages')
-              .update({ sessions_scheduled: pkg.sessions_scheduled - 1 })
-              .eq('id', pkgAppointment.package_id);
-          }
-        }
-
-        // Remove the link from the rescheduled/cancelled appointment
-        await supabase
-          .from('appointments')
-          .update({ package_appointment_id: null })
-          .eq('id', id);
         
-        // Return with flag indicating session was released
-        return { ...data, sessionReleased: true, status: updates.status };
+        return { ...data, sessionReleased: false, status: updates.status };
       }
 
       return { ...data, sessionReleased: false };
@@ -374,17 +340,7 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       
-      if (data.sessionReleased) {
-        const statusLabels: Record<string, string> = {
-          'cancelled': 'cancelado',
-          'missed': 'marcado como falta',
-          'rescheduled': 'reagendado'
-        };
-        const statusLabel = statusLabels[data.status] || 'atualizado';
-        toast.success(`Agendamento ${statusLabel}! O horário foi liberado para outro agendamento.`);
-      } else {
-        toast.success('Agendamento atualizado!');
-      }
+      toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
       toast.error('Erro ao atualizar agendamento: ' + error.message);

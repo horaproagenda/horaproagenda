@@ -179,7 +179,7 @@ const Agenda = () => {
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
-  const { settings, generateTimeSlots, generateDetailedTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
+  const { settings, generateTimeSlotsForDay, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
@@ -214,15 +214,20 @@ const Agenda = () => {
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
-  const baseTimeSlots = generateTimeSlots();
-  const detailedTimeSlots = generateDetailedTimeSlots();
+  const baseTimeSlots = useMemo(() => {
+    const slots = new Set<string>();
+    for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek += 1) {
+      generateTimeSlotsForDay(dayOfWeek).forEach((slot) => slots.add(slot));
+    }
+    return Array.from(slots).sort((a, b) => a.localeCompare(b));
+  }, [settings, generateTimeSlotsForDay]);
   
   // Merge base slots with any appointment times that fall outside the base slots
   // CRITICAL: This ensures ALL appointments are visible regardless of their start time
   const timeSlots = useMemo(() => {
     const allSlots = new Set(baseTimeSlots);
     
-    // Add ALL appointment start times - don't filter by detailedTimeSlots
+    // Add ALL appointment start times, even outside configured hours
     // This ensures appointments at any minute (e.g., 18:50) are always visible
     appointments.forEach(apt => {
       // IMPORTANT: Exclude rescheduled appointments from slot generation too

@@ -569,8 +569,6 @@ export function AppointmentDetailDialog({
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
     return isClientCreditMethod(methodName) ? sum + (parseFloat(p.amount) || 0) : sum;
   }, 0);
-  const creditLimitForPayment = Math.min(availableClientCredit, remainingAfterDiscount);
-  const isClientCreditInvalid = paymentMethodCreditUsed > creditLimitForPayment;
   const moneyPaymentAmount = payments.reduce((sum, p) => {
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
     return isClientCreditMethod(methodName) ? sum : sum + (parseFloat(p.amount) || 0);
@@ -584,6 +582,8 @@ export function AppointmentDetailDialog({
   
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
+  const creditLimitForPayment = Math.min(availableClientCredit, remainingAfterDiscount);
+  const isClientCreditInvalid = paymentMethodCreditUsed > creditLimitForPayment;
   
   const clientCreditUsed = Math.min(
     (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,

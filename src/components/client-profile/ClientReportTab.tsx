@@ -95,7 +95,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
   const { propagateSeriesDates } = useRecurringAppointments();
-  const { deleteAppointment } = useAppointments();
+  const { deleteAppointment, updateAppointment } = useAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
@@ -578,11 +578,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
                               onClick={() => {
+                                const isPackageAppointment = Boolean(appointment.package_appointment_id || appointment.package_appointment);
                                 if (window.confirm('Deseja apagar este agendamento? O registro original do pacote será preservado.')) {
-                                  deleteAppointment.mutate(appointment.id);
+                                  if (isPackageAppointment) {
+                                    updateAppointment.mutate({ id: appointment.id, updates: { status: 'cancelled' } });
+                                  } else {
+                                    deleteAppointment.mutate(appointment.id);
+                                  }
                                 }
                               }}
-                              disabled={deleteAppointment.isPending}
+                              disabled={deleteAppointment.isPending || updateAppointment.isPending}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>

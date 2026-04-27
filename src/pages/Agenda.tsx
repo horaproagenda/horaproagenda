@@ -451,8 +451,19 @@ const Agenda = () => {
     return filteredByFilters.find(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
-      return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
+      return slotStart >= aptStart && slotStart < aptEnd;
     });
+  };
+
+  const isVisibleRangeStart = (day: Date, time: string, startTime: string, endTime: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (slotStart < start || slotStart >= end) return false;
+    return isSameDay(start, day) ? format(start, 'HH:mm') === time : time === '00:00';
   };
 
   // Check if a slot has a professional absence
@@ -945,8 +956,8 @@ const Agenda = () => {
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
             const absence = getAbsenceAtSlot(selectedDate, time);
-            const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
-            const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
+            const isStart = apt && isVisibleRangeStart(selectedDate, time, apt.start_time, apt.end_time);
+            const isAbsenceStart = absence && isVisibleRangeStart(selectedDate, time, absence.start_time, absence.end_time);
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
@@ -1130,8 +1141,8 @@ const Agenda = () => {
               {weekDays.map(day => {
                 const apt = getAppointmentAtSlot(day, time);
                 const absence = getAbsenceAtSlot(day, time);
-                const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
-                const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
+                const isStart = apt && isVisibleRangeStart(day, time, apt.start_time, apt.end_time);
+                const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
                 const color = prof?.agenda_color || '#3B82F6';
@@ -1360,13 +1371,8 @@ const Agenda = () => {
                 </div>
                 {professionalsToShow.map(prof => {
                   const apt = filteredByFilters.find(a => {
-                    const aptDate = new Date(a.start_time);
                     const aptProfId = a.professional_id || a.service?.professional_id;
-                    const [hours, minutes] = time.split(':').map(Number);
-                    return isSameDay(aptDate, selectedDate) && 
-                           aptDate.getHours() === hours && 
-                           aptDate.getMinutes() === minutes &&
-                           aptProfId === prof.id;
+                    return aptProfId === prof.id && isVisibleRangeStart(selectedDate, time, a.start_time, a.end_time);
                   });
                   
                   const occupyingApt = filteredByFilters.find(a => {
@@ -1376,8 +1382,7 @@ const Agenda = () => {
                     const [hours, minutes] = time.split(':').map(Number);
                     const slotTime = new Date(selectedDate);
                     slotTime.setHours(hours, minutes, 0, 0);
-                    return isSameDay(aptStart, selectedDate) && 
-                           slotTime >= aptStart && 
+                    return slotTime >= aptStart && 
                            slotTime < aptEnd &&
                            aptProfId === prof.id;
                   });

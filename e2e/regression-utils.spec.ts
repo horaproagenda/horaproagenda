@@ -112,3 +112,23 @@ test('protege a agenda para nunca ocultar agendamentos fora do intervalo configu
   expect(slots).toContain('07:10');
   expect(slots).not.toContain('19:30');
 });
+
+test('inclui agendamentos e ausências que atravessam o dia na grade visível', () => {
+  const slots = mergeAgendaTimeSlots({
+    baseSlots: ['08:00', '08:30', '09:00'],
+    appointments: [
+      { id: 'apt-overnight', start_time: '2026-04-26T23:40:00', end_time: '2026-04-27T00:40:00', status: 'scheduled' } as any,
+    ],
+    absences: [
+      { start_time: '2026-04-27T22:15:00', end_time: '2026-04-28T01:00:00' },
+    ],
+    viewType: 'day',
+    selectedDate: new Date('2026-04-27T12:00:00'),
+    weekStart: new Date('2026-04-27T12:00:00'),
+    monthStart: new Date('2026-04-01T12:00:00'),
+    hideSunday: false,
+  });
+
+  expect(slots).toContain('00:00');
+  expect(slots).toContain('22:15');
+});

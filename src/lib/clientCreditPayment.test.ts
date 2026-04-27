@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, validateClientCreditPayment } from './clientCreditPayment';
+import { describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from './clientCreditPayment';
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn() },
+}));
 
 describe('clientCreditPayment', () => {
   it('impede confirmar crédito ao cliente acima do saldo disponível', () => {
@@ -19,5 +24,12 @@ describe('clientCreditPayment', () => {
     expect(isClientCreditPaymentMethod('Crédito ao Cliente')).toBe(true);
     expect(isClientCreditPaymentMethod('Credito ao Cliente')).toBe(true);
     expect(isClientCreditPaymentMethod('Cartão de Crédito')).toBe(false);
+  });
+
+  it('exibe toast de erro correspondente quando a validação falha', () => {
+    const message = validateClientCreditPayment(150, 100, 200);
+
+    expect(showClientCreditValidationToast(message)).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith('Crédito ao cliente limitado ao saldo disponível de R$ 100.00.');
   });
 });

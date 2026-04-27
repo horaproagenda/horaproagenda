@@ -113,6 +113,7 @@ import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
+import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -334,6 +335,17 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
+
+  const getAppointmentDisplayInfo = useCallback((apt: Appointment) => {
+    const packageData = apt.package_appointment?.package;
+    const isPackage = Boolean(packageData);
+    return {
+      title: isPackage ? packageData?.name || apt.service?.name || 'Pacote' : apt.service?.name || 'Serviço',
+      applicationLabel: isPackage ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null,
+    };
+  }, [packageSequenceMap]);
 
   // Day statistics for summary
   const dayStats = useMemo(() => {
@@ -963,6 +975,7 @@ const Agenda = () => {
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
             const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
+            const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
             
             // Calculate slot height based on duration
             const slotDuration = settings?.slot_interval || 30;
@@ -1021,7 +1034,8 @@ const Agenda = () => {
                             <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                           )}
                           <span className="text-[11px] font-semibold text-foreground truncate">{apt.client?.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {apt.service?.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
+                          {aptDisplay?.applicationLabel && <span className="text-[9px] text-primary font-medium truncate hidden lg:inline">{aptDisplay.applicationLabel}</span>}
                           {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1144,6 +1158,7 @@ const Agenda = () => {
                 const prof = professionals.find(p => p.id === profId);
                 const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
                 const isDragging = draggedAppointment?.id === apt?.id;
+                const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
 
                 return (
                   <div
@@ -1176,6 +1191,9 @@ const Agenda = () => {
                         }}
                       >
                         <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
+                        {aptDisplay?.applicationLabel && (
+                          <p className="truncate leading-tight text-[9px] text-primary font-medium">{aptDisplay.applicationLabel}</p>
+                        )}
                       </div>
                     )}
                     {isAbsenceStart && absence && !apt && (
@@ -1383,6 +1401,7 @@ const Agenda = () => {
                   
                   const isOccupied = occupyingApt && !apt;
                   const isDragging = draggedAppointment?.id === apt?.id;
+                  const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
 
                   return (
                     <div
@@ -1423,6 +1442,9 @@ const Agenda = () => {
                           }}
                         >
                           <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
+                          {aptDisplay?.applicationLabel && (
+                            <p className="truncate leading-tight text-[9px] text-primary-foreground/90 font-medium">{aptDisplay.applicationLabel}</p>
+                          )}
                         </div>
                       )}
                     </div>

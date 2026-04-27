@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientCredits } from '@/hooks/useClientCredits';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
+import { getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -58,6 +59,11 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const professionalColor = professional?.agenda_color;
   const hexColor = professionalColor || categoryColor?.hex || '#a1a1aa';
   const statusStyle = getAppointmentStatusStyle(appointment.status);
+  const isPackageAppointment = Boolean(appointment.package_appointment?.package);
+  const displayServiceName = isPackageAppointment
+    ? appointment.package_appointment?.package?.name || appointment.service?.name
+    : appointment.service?.name;
+  const applicationLabel = isPackageAppointment ? getAppointmentPackageApplicationLabel(appointment) : null;
   
   // Create softer version of the color for backgrounds
   const softHexColor = `${hexColor}15`;
@@ -93,7 +99,8 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       >
         <div className="flex-1 min-w-0">
           <p className="font-medium text-xs truncate text-foreground/90">{appointment.client?.name}</p>
-          <p className="text-[10px] text-muted-foreground/70 truncate">{appointment.service?.name}</p>
+          <p className="text-[10px] text-muted-foreground/70 truncate">{displayServiceName}</p>
+          {applicationLabel && <p className="text-[9px] text-primary font-medium truncate">{applicationLabel}</p>}
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-xs font-medium text-foreground/80">{timeStr}</p>
@@ -159,8 +166,11 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
               </Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground/70 truncate">
-              {appointment.service?.name}
+              {displayServiceName}
             </p>
+            {applicationLabel && (
+              <p className="text-[10px] text-primary font-medium truncate">{applicationLabel}</p>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

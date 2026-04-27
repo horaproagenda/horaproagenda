@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MobileViewType } from './MobileAgendaHeader';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];
@@ -36,25 +37,27 @@ export function MobileAgendaList({
   mobileView,
   onDateSelect,
 }: MobileAgendaListProps) {
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
   if (mobileView === 'month') {
     return <MobileMonthView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onDateSelect={onDateSelect} />;
   }
 
   if (mobileView === 'week') {
-    return <MobileWeekView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} onDateSelect={onDateSelect} />;
+    return <MobileWeekView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} onDateSelect={onDateSelect} packageSequenceMap={packageSequenceMap} />;
   }
 
   // Day view
-  return <MobileDayView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} />;
+  return <MobileDayView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} packageSequenceMap={packageSequenceMap} />;
 }
 
 // ─── Day View ───────────────────────────────────────────
-function MobileDayView({ selectedDate, appointments, professionals, onAppointmentClick }: {
+function MobileDayView({ selectedDate, appointments, professionals, onAppointmentClick, packageSequenceMap }: {
   selectedDate: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const dayAppointments = useMemo(() => {
     return appointments
@@ -94,7 +97,7 @@ function MobileDayView({ selectedDate, appointments, professionals, onAppointmen
               </span>
             </div>
             {apts.map(apt => (
-              <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} />
+              <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} packageSequenceMap={packageSequenceMap} />
             ))}
           </div>
         ))}
@@ -104,12 +107,13 @@ function MobileDayView({ selectedDate, appointments, professionals, onAppointmen
 }
 
 // ─── Week View ──────────────────────────────────────────
-function MobileWeekView({ selectedDate, appointments, professionals, onAppointmentClick, onDateSelect }: {
+function MobileWeekView({ selectedDate, appointments, professionals, onAppointmentClick, onDateSelect, packageSequenceMap }: {
   selectedDate: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
   onDateSelect: (date: Date) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -155,6 +159,7 @@ function MobileWeekView({ selectedDate, appointments, professionals, onAppointme
           appointments={appointments}
           professionals={professionals}
           onAppointmentClick={onAppointmentClick}
+          packageSequenceMap={packageSequenceMap}
         />
       </div>
     </ScrollArea>
@@ -244,11 +249,12 @@ function MobileMonthView({ selectedDate, appointments, professionals, onDateSele
 }
 
 // ─── Shared Components ──────────────────────────────────
-function DayAppointmentsList({ date, appointments, professionals, onAppointmentClick }: {
+function DayAppointmentsList({ date, appointments, professionals, onAppointmentClick, packageSequenceMap }: {
   date: Date;
   appointments: Appointment[];
   professionals: Professional[];
   onAppointmentClick: (a: Appointment) => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const dayApts = useMemo(() => {
     return appointments
@@ -267,16 +273,17 @@ function DayAppointmentsList({ date, appointments, professionals, onAppointmentC
   return (
     <div className="space-y-0.5">
       {dayApts.map(apt => (
-        <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} />
+        <AppointmentRow key={apt.id} apt={apt} professionals={professionals} onClick={() => onAppointmentClick(apt)} packageSequenceMap={packageSequenceMap} />
       ))}
     </div>
   );
 }
 
-function AppointmentRow({ apt, professionals, onClick }: {
+function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   apt: Appointment;
   professionals: Professional[];
   onClick: () => void;
+  packageSequenceMap: Map<string, number>;
 }) {
   const profId = apt.professional_id || apt.service?.professional_id;
   const prof = professionals.find(p => p.id === profId);
@@ -285,6 +292,9 @@ function AppointmentRow({ apt, professionals, onClick }: {
   const dot = getAppointmentStatusConfig(apt.status).dotClassName;
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
+  const packageData = apt.package_appointment?.package;
+  const displayName = packageData?.name || apt.service?.name || 'Serviço';
+  const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;
 
   return (
     <div
@@ -302,8 +312,11 @@ function AppointmentRow({ apt, professionals, onClick }: {
           {apt.client?.name || 'Cliente'}
         </p>
         <p className="text-[11px] text-muted-foreground truncate leading-tight">
-          {apt.service?.name || 'Serviço'}
+          {displayName}
         </p>
+        {applicationLabel && (
+          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+        )}
         {prof && (
           <div className="flex items-center gap-1">
             <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: profColor }} />

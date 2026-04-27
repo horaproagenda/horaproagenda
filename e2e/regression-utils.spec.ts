@@ -15,6 +15,8 @@ import {
 import { mergeAgendaTimeSlots } from '../src/lib/agendaSlots';
 import {
   getAppointmentPackageApplicationLabel,
+  buildAppointmentPackageSequenceMap,
+  buildPackageSessionSequenceMap,
   isPackageSessionRealized,
   sortPackageSessionsByPreservedSequence,
 } from '../src/lib/packageSequence';
@@ -154,6 +156,28 @@ test('preserva número original do pacote após cancelamento e reagendamento', (
       package: { total_sessions: 5 },
     },
   } as any)).toBe('Aplicação 2/5');
+});
+
+test('recalcula exibição das aplicações por data sem alterar registros originais', () => {
+  const appointments = [
+    { id: 'apt-10', start_time: '2026-05-07T19:00:00', package_appointment: { id: 'session-10', package_id: 'pkg-1', session_number: 10, original_session_number: 10, package: { id: 'pkg-1', total_sessions: 10 } } },
+    { id: 'apt-1', start_time: '2026-04-01T19:00:00', package_appointment: { id: 'session-1', package_id: 'pkg-1', session_number: 1, original_session_number: 1, package: { id: 'pkg-1', total_sessions: 10 } } },
+    { id: 'apt-3-cancelled', start_time: '2026-05-14T19:00:00', status: 'cancelled', package_appointment: { id: 'session-3', package_id: 'pkg-1', session_number: 3, original_session_number: 3, package: { id: 'pkg-1', total_sessions: 10 } } },
+    { id: 'apt-2', start_time: '2026-04-15T19:00:00', package_appointment: { id: 'session-2', package_id: 'pkg-1', session_number: 2, original_session_number: 2, package: { id: 'pkg-1', total_sessions: 10 } } },
+  ] as any[];
+
+  const sequence = buildAppointmentPackageSequenceMap(appointments);
+  expect(getAppointmentPackageApplicationLabel(appointments[0], sequence.get('apt-10'))).toBe('Aplicação 3/10');
+  expect(getAppointmentPackageApplicationLabel(appointments[2], sequence.get('apt-3-cancelled'))).toBe('Aplicação 4/10');
+  expect(appointments[0].package_appointment.original_session_number).toBe(10);
+
+  const sessionSequence = buildPackageSessionSequenceMap([
+    { id: 'session-10', session_number: 10, original_session_number: 10, scheduled_date: null, created_at: '2026-04-01T10:00:00', appointment: { start_time: '2026-05-07T19:00:00' } },
+    { id: 'session-1', session_number: 1, original_session_number: 1, scheduled_date: null, created_at: '2026-04-01T08:00:00', appointment: { start_time: '2026-04-01T19:00:00' } },
+    { id: 'session-pending', session_number: 7, original_session_number: 7, scheduled_date: null, created_at: '2026-04-01T12:00:00', appointment: null },
+  ] as any[]);
+  expect(sessionSequence.get('session-10')).toBe(2);
+  expect(sessionSequence.get('session-pending')).toBe(3);
 });
 
 test('considera falta como aplicação realizada do pacote', () => {

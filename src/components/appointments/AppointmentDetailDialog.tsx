@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -23,8 +24,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar as DatePickerCalendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -51,6 +55,7 @@ import {
   History,
   Save,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -58,6 +63,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
+import { useServices } from '@/hooks/useServices';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
@@ -101,10 +107,12 @@ export function AppointmentDetailDialog({
   onOpenChange,
   onPayment,
 }: AppointmentDetailDialogProps) {
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
+  const { activeServices } = useServices();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
@@ -121,6 +129,7 @@ export function AppointmentDetailDialog({
   // Removed courtesyCreditAmount - courtesy payment feature removed
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showClientProfileDialog, setShowClientProfileDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
   const [recurringDeleteType, setRecurringDeleteType] = useState<'single' | 'following' | 'all'>('single');
   const [showRescheduleOption, setShowRescheduleOption] = useState(false);
@@ -146,6 +155,7 @@ export function AppointmentDetailDialog({
   const [editDate, setEditDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
+  const [editServiceId, setEditServiceId] = useState<string | null>(null);
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');

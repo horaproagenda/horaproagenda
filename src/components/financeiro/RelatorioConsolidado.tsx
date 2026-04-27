@@ -278,6 +278,7 @@ export function RelatorioConsolidado() {
                   <SelectItem value="all">Todas as origens</SelectItem>
                   <SelectItem value="caixa">Caixa</SelectItem>
                   <SelectItem value="financeiro">Financeiro</SelectItem>
+                  <SelectItem value="credito_cliente">Crédito ao cliente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -324,7 +325,7 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={entry.source === 'caixa' ? 'secondary' : 'outline'}>
-                          {entry.source === 'caixa' ? 'Caixa' : 'Financeiro'}
+                          {entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? 'Crédito cliente' : 'Financeiro'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -333,10 +334,12 @@ export function RelatorioConsolidado() {
                           className={cn(
                             entry.type === 'income' 
                               ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30' 
+                              : entry.type === 'non_cash'
+                              ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
                               : 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
                           )}
                         >
-                          {entry.type === 'income' ? 'Entrada' : 'Saída'}
+                          {entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? 'Sem caixa' : 'Saída'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -358,9 +361,9 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell className={cn(
                         "text-right font-medium",
-                        entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        entry.type === 'income' ? 'text-green-600' : entry.type === 'non_cash' ? 'text-blue-600' : 'text-red-600'
                       )}>
-                        {entry.type === 'income' ? '+' : '-'} R$ {entry.amount.toFixed(2)}
+                        {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} R$ {entry.amount.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))

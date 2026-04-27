@@ -954,7 +954,14 @@ export function SaleForm() {
                   
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
-                    <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                    <Select value={paymentMethodId} onValueChange={(value) => {
+                      const methodName = activePaymentMethods.find(m => m.id === value)?.name.toLowerCase() || '';
+                      setPaymentMethodId(value);
+                      setCardBrandId('');
+                      if (methodName.includes('crédito ao cliente') || methodName.includes('credito ao cliente')) {
+                        setPaymentAmount(Math.min(saleInfo.total, clientCreditBalance));
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>

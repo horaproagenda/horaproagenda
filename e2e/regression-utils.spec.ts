@@ -17,6 +17,8 @@ import {
   getAppointmentPackageApplicationLabel,
   buildAppointmentPackageSequenceMap,
   buildPackageSessionSequenceMap,
+  countRealizedPackageSessions,
+  getPackageApplicationLabel,
   isPackageSessionRealized,
   sortPackageSessionsByPreservedSequence,
 } from '../src/lib/packageSequence';
@@ -185,4 +187,20 @@ test('considera falta como aplicação realizada do pacote', () => {
   expect(isPackageSessionRealized('missed')).toBe(true);
   expect(isPackageSessionRealized('cancelled')).toBe(false);
   expect(isPackageSessionRealized('rescheduled')).toBe(false);
+  expect(countRealizedPackageSessions(['completed', 'missed', 'cancelled', 'scheduled'])).toBe(2);
+});
+
+test('mantém histórico constante ao cancelar e reagendar aplicação de pacote', () => {
+  const originalSessions = [
+    { id: 's1', session_number: 1, original_session_number: 1, created_at: '2026-04-01T09:00:00', scheduled_date: null, appointment: { start_time: '2026-04-01T19:00:00', status: 'completed' } },
+    { id: 's10', session_number: 10, original_session_number: 10, created_at: '2026-04-01T10:00:00', scheduled_date: null, appointment: { start_time: '2026-05-07T19:00:00', status: 'scheduled' } },
+    { id: 's3', session_number: 3, original_session_number: 3, created_at: '2026-04-01T11:00:00', scheduled_date: null, appointment: { start_time: '2026-05-14T19:00:00', status: 'cancelled' } },
+  ] as any[];
+
+  const before = originalSessions.map(session => ({ id: session.id, original: session.original_session_number }));
+  const sequence = buildPackageSessionSequenceMap(originalSessions);
+
+  expect(getPackageApplicationLabel(originalSessions[1], 10, sequence.get('s10'))).toBe('Aplicação 2/10');
+  expect(getPackageApplicationLabel(originalSessions[2], 10, sequence.get('s3'))).toBe('Aplicação 3/10');
+  expect(originalSessions.map(session => ({ id: session.id, original: session.original_session_number }))).toEqual(before);
 });

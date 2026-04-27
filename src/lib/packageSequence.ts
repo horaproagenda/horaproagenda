@@ -96,6 +96,10 @@ export const isPackageSessionRealized = (status?: string | null) => {
   return status === 'completed' || status === 'missed';
 };
 
+export const countRealizedPackageSessions = (statuses: Array<string | null | undefined>) => {
+  return statuses.filter(isPackageSessionRealized).length;
+};
+
 export const getAppointmentPackageApplicationLabel = (appointment: Appointment, sequenceNumber?: number | null) => {
   return getPackageApplicationLabel(
     appointment.package_appointment,

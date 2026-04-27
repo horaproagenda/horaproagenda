@@ -214,6 +214,17 @@ const Agenda = () => {
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
+  // Hide Sunday toggle state
+  const [hideSunday, setHideSunday] = useState(() => {
+    const stored = localStorage.getItem('agenda-hide-sunday');
+    return stored ? JSON.parse(stored) : false;
+  });
+
+  const saveHideSunday = (value: boolean) => {
+    setHideSunday(value);
+    localStorage.setItem('agenda-hide-sunday', JSON.stringify(value));
+  };
+
   const baseTimeSlots = useMemo(() => {
     const slots = new Set<string>();
     for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek += 1) {
@@ -259,17 +270,6 @@ const Agenda = () => {
     // Sort chronologically
     return Array.from(allSlots).sort((a, b) => a.localeCompare(b));
   }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
-
-  // Hide Sunday toggle state
-  const [hideSunday, setHideSunday] = useState(() => {
-    const stored = localStorage.getItem('agenda-hide-sunday');
-    return stored ? JSON.parse(stored) : false;
-  });
-
-  const saveHideSunday = (value: boolean) => {
-    setHideSunday(value);
-    localStorage.setItem('agenda-hide-sunday', JSON.stringify(value));
-  };
 
   const weekDays = useMemo(() => {
     const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));

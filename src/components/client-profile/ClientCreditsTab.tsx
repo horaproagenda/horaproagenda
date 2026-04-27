@@ -313,6 +313,53 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         </CardContent>
       </Card>
 
+      {/* Client Credit Balance History */}
+      <Card>
+        <CardContent className="p-3">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+            <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
+          </h3>
+          {creditTransactions.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Nenhuma movimentação de crédito registrada</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[720px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Tipo</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo anterior</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Novo saldo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {creditTransactions.map(transaction => (
+                      <TableRow key={transaction.id} className="hover:bg-muted/30">
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                          {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                          <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
+                            {transaction.transaction_type === 'credit_used' ? 'Crédito usado' : transaction.transaction_type === 'credit_added' ? 'Adição' : 'Ajuste'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Services Section - Compact */}
       <Card>
         <CardContent className="p-3">

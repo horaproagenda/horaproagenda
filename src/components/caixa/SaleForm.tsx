@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface SaleItem {
   id: string;
@@ -109,14 +110,14 @@ export function SaleForm() {
   const isCardPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
-    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    if (isClientCreditPaymentMethod(name)) return false;
     return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
   }, [selectedPaymentMethod]);
 
   const isCreditCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
-    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    if (isClientCreditPaymentMethod(name)) return false;
     return name.includes('crédito');
   }, [selectedPaymentMethod]);
 
@@ -135,8 +136,7 @@ export function SaleForm() {
   // Detect "Crédito ao Cliente" payment method
   const isClientCreditPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
-    const name = selectedPaymentMethod.name.toLowerCase();
-    return name.includes('crédito ao cliente') || name.includes('credito ao cliente');
+    return isClientCreditPaymentMethod(selectedPaymentMethod.name);
   }, [selectedPaymentMethod]);
 
   // Get applicable card brands

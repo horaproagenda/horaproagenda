@@ -22,11 +22,13 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -89,6 +91,7 @@ const getMonthOptions = () => {
 
 export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
   const queryClient = useQueryClient();
+  const { equipment } = useEquipment();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<PaymentHistoryItem | null>(null);
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
@@ -121,12 +124,19 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     [paymentHistory, selectedMonth]
   );
 
+  const equipmentNameMap = useMemo(() => new Map(equipment.map(item => [item.id, item.name])), [equipment]);
+
+  const getEquipmentNames = (items: string[] = []) => items
+    .map(item => equipmentNameMap.get(item) || item)
+    .filter(Boolean)
+    .join(', ');
+
   const filteredAppointments = useMemo(() => 
     appointments.filter(a => {
       const matchesMonth = filterByMonth(a.start_time);
       const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
       return matchesMonth && matchesStatus;
-    }),
+    }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
     [appointments, selectedMonth, selectedStatus]
   );
 

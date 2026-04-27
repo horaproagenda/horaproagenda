@@ -111,6 +111,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
+import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -179,7 +180,7 @@ const Agenda = () => {
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
-  const { settings, generateTimeSlots, generateDetailedTimeSlots, isLoading: isLoadingSettings } = useBusinessSettings();
+  const { settings, generateTimeSlotsForDay, isLoading: isLoadingSettings } = useBusinessSettings();
   const { absences, isLoading: isLoadingAbsences } = useProfessionalAbsences();
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
@@ -214,35 +215,6 @@ const Agenda = () => {
   const isLoading = isLoadingAppointments || isLoadingProfessionals || isLoadingRooms || isLoadingSettings || isLoadingEquipment || isLoadingAbsences;
   const dragAndDropEnabled = settings?.drag_and_drop_enabled ?? true;
 
-  const baseTimeSlots = generateTimeSlots();
-  const detailedTimeSlots = generateDetailedTimeSlots();
-  
-  // Merge base slots with any appointment times that fall outside the base slots
-  // CRITICAL: This ensures ALL appointments are visible regardless of their start time
-  const timeSlots = useMemo(() => {
-    const allSlots = new Set(baseTimeSlots);
-    
-    // Add ALL appointment start times - don't filter by detailedTimeSlots
-    // This ensures appointments at any minute (e.g., 18:50) are always visible
-    appointments.forEach(apt => {
-      // IMPORTANT: Exclude rescheduled appointments from slot generation too
-      if (apt.status === 'rescheduled') return;
-      
-      const aptTime = format(new Date(apt.start_time), 'HH:mm');
-      // Always add the appointment time to ensure it's visible
-      allSlots.add(aptTime);
-    });
-    
-    // Add all absence start times
-    absences.forEach(absence => {
-      const absenceTime = format(new Date(absence.start_time), 'HH:mm');
-      allSlots.add(absenceTime);
-    });
-    
-    // Sort chronologically
-    return Array.from(allSlots).sort((a, b) => a.localeCompare(b));
-  }, [baseTimeSlots, appointments, absences]);
-
   // Hide Sunday toggle state
   const [hideSunday, setHideSunday] = useState(() => {
     const stored = localStorage.getItem('agenda-hide-sunday');
@@ -253,6 +225,29 @@ const Agenda = () => {
     setHideSunday(value);
     localStorage.setItem('agenda-hide-sunday', JSON.stringify(value));
   };
+
+  const baseTimeSlots = useMemo(() => {
+    const slots = new Set<string>();
+    for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek += 1) {
+      generateTimeSlotsForDay(dayOfWeek).forEach((slot) => slots.add(slot));
+    }
+    return Array.from(slots).sort((a, b) => a.localeCompare(b));
+  }, [settings, generateTimeSlotsForDay]);
+  
+  // Merge base slots with any appointment times that fall outside the base slots
+  // CRITICAL: This ensures ALL appointments are visible regardless of their start time
+  const timeSlots = useMemo(() => {
+    return mergeAgendaTimeSlots({
+      baseSlots: baseTimeSlots,
+      appointments,
+      absences,
+      viewType,
+      selectedDate,
+      weekStart,
+      monthStart,
+      hideSunday,
+    });
+  }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
   const weekDays = useMemo(() => {
     const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));

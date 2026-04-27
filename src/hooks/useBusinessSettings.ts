@@ -152,12 +152,19 @@ export function useBusinessSettings() {
     };
   };
 
+  const generateTimeSlotsForDay = (dayOfWeek: number) => {
+    const hours = getBusinessHoursForDay(dayOfWeek);
+    if (!hours.isOpen) return [];
+    return generateSlotsFromRange(hours.open, hours.close, settings?.slot_interval || 30);
+  };
+
   return {
     settings,
     isLoading,
     updateSettings,
     generateTimeSlots,
     generateDetailedTimeSlots,
+    generateTimeSlotsForDay,
     getBusinessHoursForDay,
   };
 }

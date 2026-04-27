@@ -10,6 +10,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,6 +52,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,6 +118,8 @@ export function NewAppointmentDialog({
   const [servicePreviewDates, setServicePreviewDates] = useState<Date[]>([]);
   const [editableServiceDates, setEditableServiceDates] = useState<Date[]>([]);
   const [editingServiceDateIndex, setEditingServiceDateIndex] = useState<number | null>(null);
+  const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
+  const [holidayConfirmed, setHolidayConfirmed] = useState(false);
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -121,6 +134,7 @@ export function NewAppointmentDialog({
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createRecurringAppointments } = useRecurringAppointments();
+  const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
   const timeSlots = generateTimeSlots();
 
   // State to track if using a paid service
@@ -190,8 +204,15 @@ export function NewAppointmentDialog({
       setServicePreviewDates([]);
       setEditableServiceDates([]);
       setEditingServiceDateIndex(null);
+      setShowHolidayConfirm(false);
+      setHolidayConfirmed(false);
     }
   }, [open, prefilledDate, prefilledTime]);
+
+  useEffect(() => {
+    setHolidayConfirmed(false);
+    setShowHolidayConfirm(false);
+  }, [date]);
 
   // Reset paid service when client changes
   useEffect(() => {
@@ -665,6 +686,12 @@ export function NewAppointmentDialog({
       return;
     }
 
+    const holiday = getHolidayForDate(date);
+    if (holiday && !holidayConfirmed) {
+      setShowHolidayConfirm(true);
+      return;
+    }
+
     const duration = serviceOrPackage.duration || 60;
     const [hours, minutes] = time.split(':').map(Number);
     const startTime = new Date(date);
@@ -866,6 +893,7 @@ Até breve! ✨`;
 
       onOpenChange(false);
       resetForm();
+      setHolidayConfirmed(false);
     } catch (error) {
       console.error('Error creating appointment:', error);
     }
@@ -900,7 +928,10 @@ Até breve! ✨`;
 
   const hasConflicts = conflicts.length > 0;
 
+  const selectedHoliday = date ? getHolidayForDate(date) : undefined;
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
@@ -911,7 +942,7 @@ Até breve! ✨`;
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" data-appointment-form="new">
             <div className="space-y-2 relative">
               <Label htmlFor="client">Cliente *</Label>
               <Input
@@ -1777,5 +1808,31 @@ Até breve! ✨`;
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showHolidayConfirm} onOpenChange={setShowHolidayConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Data em feriado</AlertDialogTitle>
+          <AlertDialogDescription>
+            A data selecionada é feriado: {selectedHoliday?.name}. Deseja continuar com este agendamento?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setHolidayConfirmed(true);
+              setShowHolidayConfirm(false);
+              requestAnimationFrame(() => {
+                document.querySelector<HTMLFormElement>('[data-appointment-form="new"]')?.requestSubmit();
+              });
+            }}
+          >
+            Continuar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

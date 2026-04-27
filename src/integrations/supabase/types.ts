@@ -1313,6 +1313,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          original_session_number: number
           package_id: string
           scheduled_date: string | null
           session_number: number
@@ -1324,6 +1325,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          original_session_number: number
           package_id: string
           scheduled_date?: string | null
           session_number: number
@@ -1335,6 +1337,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          original_session_number?: number
           package_id?: string
           scheduled_date?: string | null
           session_number?: number

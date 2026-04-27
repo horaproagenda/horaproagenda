@@ -593,7 +593,7 @@ export function AppointmentDetailDialog({
 
   const handleConfirmPayment = () => {
     // For courtesy-only, we don't need cash register (no financial impact)
-    if (!isCourtesyOnly && !currentOpenRegister) {
+    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !currentOpenRegister) {
       toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
       return;
     }

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
@@ -17,9 +19,9 @@ interface ConsolidatedEntry {
   id: string;
   date: string;
   description: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'non_cash';
   amount: number;
-  source: 'caixa' | 'financeiro';
+  source: 'caixa' | 'financeiro' | 'credito_cliente';
   status: string;
 }
 
@@ -29,6 +31,16 @@ export function RelatorioConsolidado() {
   const { entries } = useFinancialEntries();
   const { transactions } = useCashTransactions();
   const { cashRegisters } = useCashRegisters();
+  const { data: creditTransactions = [] } = useQuery({
+    queryKey: ['client_credit_transactions_report'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('client_credit_transactions')
+        .select('id, created_at, transaction_type, amount, description');
+      if (error) throw error;
+      return data || [];
+    },
+  });
   
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
   const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -74,7 +86,16 @@ export function RelatorioConsolidado() {
       source: 'caixa' as const,
       status: 'paid',
     })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions]);
+    ...creditTransactions.map((tx: any) => ({
+      id: `credit-${tx.id}`,
+      date: tx.created_at.split('T')[0],
+      description: tx.description || 'Crédito ao cliente',
+      type: 'non_cash' as const,
+      amount: Number(tx.amount || 0),
+      source: 'credito_cliente' as const,
+      status: 'paid',
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions, creditTransactions]);
 
   // Apply filters
   const filteredData = useMemo(() => consolidatedData.filter((entry) => {
@@ -257,6 +278,7 @@ export function RelatorioConsolidado() {
                   <SelectItem value="all">Todas as origens</SelectItem>
                   <SelectItem value="caixa">Caixa</SelectItem>
                   <SelectItem value="financeiro">Financeiro</SelectItem>
+                  <SelectItem value="credito_cliente">Crédito ao cliente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -303,7 +325,7 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={entry.source === 'caixa' ? 'secondary' : 'outline'}>
-                          {entry.source === 'caixa' ? 'Caixa' : 'Financeiro'}
+                          {entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? 'Crédito cliente' : 'Financeiro'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -312,10 +334,12 @@ export function RelatorioConsolidado() {
                           className={cn(
                             entry.type === 'income' 
                               ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30' 
+                              : entry.type === 'non_cash'
+                              ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
                               : 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
                           )}
                         >
-                          {entry.type === 'income' ? 'Entrada' : 'Saída'}
+                          {entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? 'Sem caixa' : 'Saída'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -337,9 +361,9 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell className={cn(
                         "text-right font-medium",
-                        entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        entry.type === 'income' ? 'text-green-600' : entry.type === 'non_cash' ? 'text-blue-600' : 'text-red-600'
                       )}>
-                        {entry.type === 'income' ? '+' : '-'} R$ {entry.amount.toFixed(2)}
+                        {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} R$ {entry.amount.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))

@@ -69,6 +69,7 @@ import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -158,19 +159,18 @@ export function AppointmentDetailDialog({
 
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
-    if (isClientCreditMethod(methodName)) return false;
+    if (isClientCreditPaymentMethod(methodName)) return false;
     const lower = methodName.toLowerCase();
     return lower.includes('crédito') || lower.includes('débito') || lower.includes('cartão');
   };
 
   const isMethodCredit = (methodName: string) => {
-    if (isClientCreditMethod(methodName)) return false;
+    if (isClientCreditPaymentMethod(methodName)) return false;
     return methodName.toLowerCase().includes('crédito');
   };
 
   const isClientCreditMethod = (methodName: string) => {
-    const lower = methodName.toLowerCase();
-    return lower.includes('crédito') && lower.includes('cliente');
+    return isClientCreditPaymentMethod(methodName);
   };
 
   const isMethodDebit = (methodName: string) => {
@@ -582,8 +582,9 @@ export function AppointmentDetailDialog({
   
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
-  const creditLimitForPayment = Math.min(availableClientCredit, remainingAfterDiscount);
-  const isClientCreditInvalid = paymentMethodCreditUsed > creditLimitForPayment;
+  const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
+  const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
+  const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
   
   const clientCreditUsed = Math.min(
     (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
@@ -604,8 +605,7 @@ export function AppointmentDetailDialog({
   const hasExcessPayment = excessPaymentAmount > 0;
 
   const handleConfirmPayment = () => {
-    if (isClientCreditInvalid) {
-      toast.error(`Crédito ao cliente limitado a R$ ${creditLimitForPayment.toFixed(2)} para este pagamento.`);
+    if (showClientCreditValidationToast(isClientCreditInvalid ? clientCreditValidationMessage : null)) {
       return;
     }
 

@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Briefcase, CheckCircle, Eye } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Package, Briefcase, CheckCircle, Eye, WalletCards } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientServices } from '@/hooks/useClientServices';
@@ -43,6 +44,16 @@ interface PackageWithCounts {
   completedCount: number;
   scheduledCount: number;
   pendingCount: number;
+}
+
+interface ClientCreditTransaction {
+  id: string;
+  created_at: string;
+  transaction_type: 'credit_added' | 'credit_used' | 'credit_adjustment';
+  amount: number;
+  previous_balance: number;
+  new_balance: number;
+  description: string;
 }
 
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
@@ -167,6 +178,22 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     staleTime: 0,
   });
 
+  const { data: creditTransactions = [] } = useQuery({
+    queryKey: ['client_credit_transactions', clientId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('client_credit_transactions')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as ClientCreditTransaction[];
+    },
+    enabled: !!clientId,
+    staleTime: 0,
+  });
+
   const isLoading = loadingPackages || loadingServices;
   const packageSequenceMap = useMemo(
     () => buildPackageSessionSequenceMap((packageDetails || []) as any[]),
@@ -281,6 +308,53 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Client Credit Balance History */}
+      <Card>
+        <CardContent className="p-3">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+            <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
+          </h3>
+          {creditTransactions.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Nenhuma movimentação de crédito registrada</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[720px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Tipo</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo anterior</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Novo saldo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {creditTransactions.map(transaction => (
+                      <TableRow key={transaction.id} className="hover:bg-muted/30">
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                          {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                          <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
+                            {transaction.transaction_type === 'credit_used' ? 'Crédito usado' : transaction.transaction_type === 'credit_added' ? 'Adição' : 'Ajuste'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>

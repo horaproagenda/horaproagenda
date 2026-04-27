@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface SaleItem {
   id: string;
@@ -109,14 +110,14 @@ export function SaleForm() {
   const isCardPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
-    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    if (isClientCreditPaymentMethod(name)) return false;
     return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
   }, [selectedPaymentMethod]);
 
   const isCreditCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
-    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    if (isClientCreditPaymentMethod(name)) return false;
     return name.includes('crédito');
   }, [selectedPaymentMethod]);
 
@@ -135,8 +136,7 @@ export function SaleForm() {
   // Detect "Crédito ao Cliente" payment method
   const isClientCreditPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
-    const name = selectedPaymentMethod.name.toLowerCase();
-    return name.includes('crédito ao cliente') || name.includes('credito ao cliente');
+    return isClientCreditPaymentMethod(selectedPaymentMethod.name);
   }, [selectedPaymentMethod]);
 
   // Get applicable card brands
@@ -419,8 +419,8 @@ export function SaleForm() {
         toast.error('Este cliente não possui saldo de crédito disponível!');
         return;
       }
-      if (paymentAmount > clientCreditBalance) {
-        toast.error(`O valor excede o crédito disponível do cliente (${formatCurrency(clientCreditBalance)}). Ajuste o valor.`);
+      const creditValidationMessage = validateClientCreditPayment(paymentAmount, clientCreditBalance, saleInfo.total);
+      if (showClientCreditValidationToast(creditValidationMessage)) {
         return;
       }
     }
@@ -431,8 +431,7 @@ export function SaleForm() {
       return;
     }
 
-    const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
-                           paymentMethod.name.toLowerCase().includes('credito ao cliente');
+    const isClientCredit = isClientCreditPaymentMethod(paymentMethod.name);
 
     if (!currentOpenRegister && !isClientCredit) {
       toast.error('É necessário abrir o caixa antes de realizar vendas!');
@@ -968,8 +967,8 @@ export function SaleForm() {
                       const methodName = activePaymentMethods.find(m => m.id === value)?.name.toLowerCase() || '';
                       setPaymentMethodId(value);
                       setCardBrandId('');
-                      if (methodName.includes('crédito ao cliente') || methodName.includes('credito ao cliente')) {
-                        setPaymentAmount(Math.min(saleInfo.total, clientCreditBalance));
+                      if (isClientCreditPaymentMethod(methodName)) {
+                        setPaymentAmount(getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total));
                       }
                     }}>
                       <SelectTrigger>
@@ -1132,7 +1131,7 @@ export function SaleForm() {
                       value={paymentAmount}
                       onChange={(e) => {
                         const nextValue = parseFloat(e.target.value) || 0;
-                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, clientCreditBalance, saleInfo.total) : nextValue);
+                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : nextValue);
                       }}
                     />
                   </div>

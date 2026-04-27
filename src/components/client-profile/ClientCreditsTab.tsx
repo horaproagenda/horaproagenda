@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Briefcase, CheckCircle, Eye } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Package, Briefcase, CheckCircle, Eye, WalletCards } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientServices } from '@/hooks/useClientServices';
@@ -43,6 +44,16 @@ interface PackageWithCounts {
   completedCount: number;
   scheduledCount: number;
   pendingCount: number;
+}
+
+interface ClientCreditTransaction {
+  id: string;
+  created_at: string;
+  transaction_type: 'credit_added' | 'credit_used' | 'credit_adjustment';
+  amount: number;
+  previous_balance: number;
+  new_balance: number;
+  description: string;
 }
 
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
@@ -164,6 +175,22 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       return sortPackageSessionsByChronologicalSequence((data || []) as any[]) as PackageAppointmentDetail[];
     },
     enabled: !!selectedPackageId,
+    staleTime: 0,
+  });
+
+  const { data: creditTransactions = [] } = useQuery({
+    queryKey: ['client_credit_transactions', clientId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('client_credit_transactions')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as ClientCreditTransaction[];
+    },
+    enabled: !!clientId,
     staleTime: 0,
   });
 

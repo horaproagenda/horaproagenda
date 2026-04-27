@@ -96,9 +96,9 @@ test('protege a agenda para nunca ocultar agendamentos fora do intervalo configu
   const slots = mergeAgendaTimeSlots({
     baseSlots: ['08:00', '08:30', '09:00'],
     appointments: [
-      { id: 'apt-1', start_time: '2026-04-27T18:50:00.000Z', status: 'scheduled' } as any,
-      { id: 'apt-2', start_time: '2026-04-27T07:10:00.000Z', status: 'scheduled' } as any,
-      { id: 'apt-3', start_time: '2026-04-27T19:30:00.000Z', status: 'rescheduled' } as any,
+      { id: 'apt-1', start_time: '2026-04-27T18:50:00', status: 'scheduled' } as any,
+      { id: 'apt-2', start_time: '2026-04-27T07:10:00', status: 'scheduled' } as any,
+      { id: 'apt-3', start_time: '2026-04-27T19:30:00', status: 'rescheduled' } as any,
     ],
     absences: [],
     viewType: 'week',

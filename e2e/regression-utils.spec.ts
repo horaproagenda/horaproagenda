@@ -12,6 +12,7 @@ import {
   calculateTotalPrice,
   convertQuantity,
 } from '../src/lib/productStock';
+import { mergeAgendaTimeSlots } from '../src/lib/agendaSlots';
 
 test('normaliza payload público de documento em objeto', () => {
   expect(normalizeDocumentLinkPayload({ id: '1' })).toEqual({ id: '1' });
@@ -89,4 +90,25 @@ test('permite deixar atendimentos estimados zerados sem quebrar o cálculo', () 
     containerUnit: 'ml',
     estimatedAppointments: 0,
   })).toBeNull();
+});
+
+test('protege a agenda para nunca ocultar agendamentos fora do intervalo configurado', () => {
+  const slots = mergeAgendaTimeSlots({
+    baseSlots: ['08:00', '08:30', '09:00'],
+    appointments: [
+      { id: 'apt-1', start_time: '2026-04-27T18:50:00.000Z', status: 'scheduled' } as any,
+      { id: 'apt-2', start_time: '2026-04-27T07:10:00.000Z', status: 'scheduled' } as any,
+      { id: 'apt-3', start_time: '2026-04-27T19:30:00.000Z', status: 'rescheduled' } as any,
+    ],
+    absences: [],
+    viewType: 'week',
+    selectedDate: new Date('2026-04-27T12:00:00'),
+    weekStart: new Date('2026-04-27T12:00:00'),
+    monthStart: new Date('2026-04-01T12:00:00'),
+    hideSunday: false,
+  });
+
+  expect(slots).toContain('18:50');
+  expect(slots).toContain('07:10');
+  expect(slots).not.toContain('19:30');
 });

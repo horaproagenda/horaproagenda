@@ -744,18 +744,19 @@ export function AppointmentDetailDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
                     <Label className="text-xs">Data</Label>
-                    <div className="flex gap-1">
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
                       <Input
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
+                        className="min-w-0"
                       />
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="icon" className="shrink-0">
+                          <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Abrir calendário">
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>

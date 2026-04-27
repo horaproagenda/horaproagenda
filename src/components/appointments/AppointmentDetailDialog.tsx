@@ -1137,13 +1137,15 @@ export function AppointmentDetailDialog({
                             <Select
                               value={payment.methodId || ''}
                               onValueChange={(value) => {
+                                const methodName = activePaymentMethods.find(m => m.id === value)?.name || value;
                                 const newPayments = [...payments];
                                 newPayments[index] = { 
                                   ...newPayments[index], 
                                   methodId: value, 
-                                  method: activePaymentMethods.find(m => m.id === value)?.name || value,
+                                  method: methodName,
                                   cardBrandId: undefined,
-                                  installments: 1
+                                  installments: 1,
+                                  amount: isClientCreditMethod(methodName) ? Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2) : newPayments[index].amount,
                                 };
                                 setPayments(newPayments);
                               }}
@@ -1165,8 +1167,12 @@ export function AppointmentDetailDialog({
                               step="0.01"
                               placeholder="0,00"
                               value={payment.amount}
+                              max={isClientCreditMethod(selectedMethod?.name || '') ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
                               onChange={(e) => updatePayment(index, 'amount', e.target.value)}
                             />
+                            {isClientCreditMethod(selectedMethod?.name || '') && (
+                              <p className="mt-1 text-[10px] text-muted-foreground">Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>
+                            )}
                           </div>
                           {payments.length > 1 && (
                             <Button

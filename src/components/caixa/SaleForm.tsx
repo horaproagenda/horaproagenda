@@ -419,8 +419,9 @@ export function SaleForm() {
         toast.error('Este cliente não possui saldo de crédito disponível!');
         return;
       }
-      if (paymentAmount > clientCreditBalance) {
-        toast.error(`O valor excede o crédito disponível do cliente (${formatCurrency(clientCreditBalance)}). Ajuste o valor.`);
+      const creditValidationMessage = validateClientCreditPayment(paymentAmount, clientCreditBalance, saleInfo.total);
+      if (creditValidationMessage) {
+        toast.error(creditValidationMessage);
         return;
       }
     }
@@ -431,8 +432,7 @@ export function SaleForm() {
       return;
     }
 
-    const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
-                           paymentMethod.name.toLowerCase().includes('credito ao cliente');
+    const isClientCredit = isClientCreditPaymentMethod(paymentMethod.name);
 
     if (!currentOpenRegister && !isClientCredit) {
       toast.error('É necessário abrir o caixa antes de realizar vendas!');
@@ -968,8 +968,8 @@ export function SaleForm() {
                       const methodName = activePaymentMethods.find(m => m.id === value)?.name.toLowerCase() || '';
                       setPaymentMethodId(value);
                       setCardBrandId('');
-                      if (methodName.includes('crédito ao cliente') || methodName.includes('credito ao cliente')) {
-                        setPaymentAmount(Math.min(saleInfo.total, clientCreditBalance));
+                      if (isClientCreditPaymentMethod(methodName)) {
+                        setPaymentAmount(getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total));
                       }
                     }}>
                       <SelectTrigger>
@@ -1132,7 +1132,7 @@ export function SaleForm() {
                       value={paymentAmount}
                       onChange={(e) => {
                         const nextValue = parseFloat(e.target.value) || 0;
-                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, clientCreditBalance, saleInfo.total) : nextValue);
+                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : nextValue);
                       }}
                     />
                   </div>

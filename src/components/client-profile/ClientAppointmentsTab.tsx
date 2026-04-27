@@ -11,21 +11,14 @@ import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Squa
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getPackageApplicationLabel } from '@/lib/packageSequence';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
   clientName?: string;
   clientCpf?: string;
 }
-
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  scheduled: { label: 'Agendado', variant: 'secondary' },
-  confirmed: { label: 'Confirmado', variant: 'default' },
-  completed: { label: 'Realizado', variant: 'outline' },
-  cancelled: { label: 'Cancelado', variant: 'destructive' },
-  missed: { label: 'Faltou', variant: 'destructive' },
-  rescheduled: { label: 'Reagendado', variant: 'secondary' },
-};
 
 const statusOptions = [
   { value: 'all', label: 'Todos' },
@@ -95,24 +88,6 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
       })
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   }, [appointments, selectedMonth, selectedStatus]);
-
-  const chronologicalPackageNumbers = useMemo(() => {
-    const grouped = new Map<string, Appointment[]>();
-    appointments.forEach((apt) => {
-      const packageId = apt.package_appointment?.package?.id || apt.package_appointment?.package_id;
-      if (!packageId) return;
-      grouped.set(packageId, [...(grouped.get(packageId) || []), apt]);
-    });
-
-    const map = new Map<string, number>();
-    grouped.forEach((items) => {
-      items
-        .slice()
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .forEach((apt, index) => map.set(apt.id, index + 1));
-    });
-    return map;
-  }, [appointments]);
 
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();

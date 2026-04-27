@@ -701,13 +701,13 @@ export function SaleForm() {
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertTitle className="text-amber-700 dark:text-amber-400">Caixa Fechado</AlertTitle>
           <AlertDescription className="text-amber-600 dark:text-amber-300">
-            Para realizar vendas, é necessário abrir o caixa primeiro. Vá até a aba "Controle do Caixa" para abrir.
+            Para pagamentos com entrada financeira, abra o caixa primeiro. Pagamentos por crédito ao cliente não entram no caixa.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Main Sales Form */}
-      <Card className={!currentOpenRegister ? 'opacity-50 pointer-events-none' : ''}>
+      <Card className={!currentOpenRegister ? 'opacity-90' : ''}>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl flex items-center gap-2">
             <ShoppingCart className="h-6 w-6" />

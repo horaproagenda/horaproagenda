@@ -462,7 +462,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
           {filteredPaymentHistory.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2">Nenhum pagamento registrado neste período</p>
           ) : (
-            <ScrollArea className="max-h-[420px] rounded border">
+            <div className="overflow-x-auto">
               <div className="min-w-[980px]">
               <Table>
                 <TableHeader>
@@ -498,6 +498,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                 </TableBody>
               </Table>
             </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -512,7 +513,8 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollArea className="max-h-[460px] rounded border">
+              <div className="min-w-[980px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">

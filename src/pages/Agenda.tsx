@@ -734,12 +734,18 @@ const Agenda = () => {
     const courtesyToAdd = courtesyCredit || 0; // Cortesia: gift without financial entry
     const creditUsed = usedClientCredit || 0;
     const discount = discountApplied || 0;
+    const availableCredit = Number(appointment.client?.credit_balance || 0);
     
     // CRITICAL FIX: Calculate the actual amount to record as paid
     // Apply discount first, then check for overpayment
     const priceAfterDiscount = Math.max(0, totalPrice - discount);
     const existingPaid = appointment.amount_paid || 0;
     const remainingToPay = Math.max(0, priceAfterDiscount - existingPaid);
+
+    if (creditUsed > Math.min(availableCredit, remainingToPay)) {
+      toast.error(`Crédito ao cliente limitado a R$ ${Math.min(availableCredit, remainingToPay).toFixed(2)} para este pagamento.`);
+      return;
+    }
     
     // Check if this is an overpayment with change return scenario
     const effectivePayment = creditUsed + paymentTotal;

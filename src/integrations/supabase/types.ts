@@ -642,6 +642,48 @@ export type Database = {
           },
         ]
       }
+      client_credit_transactions: {
+        Row: {
+          amount: number
+          appointment_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          new_balance: number
+          previous_balance: number
+          sale_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount?: number
+          appointment_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          new_balance?: number
+          previous_balance?: number
+          sale_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          new_balance?: number
+          previous_balance?: number
+          sale_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: []
+      }
       client_documents: {
         Row: {
           client_id: string

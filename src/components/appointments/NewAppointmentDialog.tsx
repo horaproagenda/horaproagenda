@@ -928,7 +928,10 @@ Até breve! ✨`;
 
   const hasConflicts = conflicts.length > 0;
 
+  const selectedHoliday = date ? getHolidayForDate(date) : undefined;
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
@@ -1805,5 +1808,31 @@ Até breve! ✨`;
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showHolidayConfirm} onOpenChange={setShowHolidayConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Data em feriado</AlertDialogTitle>
+          <AlertDialogDescription>
+            A data selecionada é feriado: {selectedHoliday?.name}. Deseja continuar com este agendamento?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setHolidayConfirmed(true);
+              setShowHolidayConfirm(false);
+              requestAnimationFrame(() => {
+                document.querySelector<HTMLFormElement>('[data-appointment-form="new"]')?.requestSubmit();
+              });
+            }}
+          >
+            Continuar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -124,24 +124,6 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     .filter(Boolean)
     .join(', ');
 
-  const chronologicalPackageNumbers = useMemo(() => {
-    const grouped = new Map<string, Appointment[]>();
-    appointments.forEach((apt) => {
-      const packageId = apt.package_appointment?.package?.id || apt.package_appointment?.package_id;
-      if (!packageId) return;
-      grouped.set(packageId, [...(grouped.get(packageId) || []), apt]);
-    });
-
-    const map = new Map<string, number>();
-    grouped.forEach((items) => {
-      items
-        .slice()
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .forEach((apt, index) => map.set(apt.id, index + 1));
-    });
-    return map;
-  }, [appointments]);
-
   const filteredAppointments = useMemo(() => 
     appointments.filter(a => {
       const matchesMonth = filterByMonth(a.start_time);
@@ -539,7 +521,6 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     const equipmentNames = getEquipmentNames(equipmentList);
                     const packageId = packageData?.id;
                     const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
-                    const preservedNumber = packageSession?.original_session_number || packageSession?.session_number;
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions);
 
                     return (

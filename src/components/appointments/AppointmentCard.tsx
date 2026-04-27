@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientCredits } from '@/hooks/useClientCredits';
-import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -57,6 +57,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const professional = professionals.find(p => p.id === professionalId) || appointment.service?.professional;
   const professionalColor = professional?.agenda_color;
   const hexColor = professionalColor || categoryColor?.hex || '#a1a1aa';
+  const statusStyle = getAppointmentStatusStyle(appointment.status);
   
   // Create softer version of the color for backgrounds
   const softHexColor = `${hexColor}15`;
@@ -86,7 +87,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       <div 
         className="group flex items-center gap-2 rounded-md border border-border/50 bg-card/80 backdrop-blur-sm px-2.5 py-2 transition-all duration-300 ease-out hover:border-border hover:shadow-sm hover:bg-card"
         style={{ 
-          borderLeftColor: hexColor, 
+          ...statusStyle,
           borderLeftWidth: '2px',
         }}
       >
@@ -142,7 +143,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
       <div 
         className="group rounded-lg border border-border/40 bg-card/90 backdrop-blur-sm p-3 transition-all duration-300 ease-out hover:border-border/60 hover:shadow-md hover:bg-card animate-fade-in"
         style={{ 
-          borderLeftColor: hexColor, 
+          ...statusStyle,
           borderLeftWidth: '3px',
         }}
       >

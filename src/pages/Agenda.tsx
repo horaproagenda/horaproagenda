@@ -113,6 +113,7 @@ import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
+import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -334,6 +335,17 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
+
+  const getAppointmentDisplayInfo = useCallback((apt: Appointment) => {
+    const packageData = apt.package_appointment?.package;
+    const isPackage = Boolean(packageData);
+    return {
+      title: isPackage ? packageData?.name || apt.service?.name || 'Pacote' : apt.service?.name || 'Serviço',
+      applicationLabel: isPackage ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null,
+    };
+  }, [packageSequenceMap]);
 
   // Day statistics for summary
   const dayStats = useMemo(() => {

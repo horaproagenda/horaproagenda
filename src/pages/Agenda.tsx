@@ -112,6 +112,7 @@ import {
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
 import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
+import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -576,12 +577,12 @@ const Agenda = () => {
   // Export appointments to CSV
   const handleExportAppointments = () => {
     const statusMap: Record<string, string> = {
-      'scheduled': 'Agendado',
-      'confirmed': 'Confirmado', 
-      'completed': 'Concluído',
-      'cancelled': 'Cancelado',
-      'missed': 'Faltou',
-      'rescheduled': 'Reagendado',
+      scheduled: getAppointmentStatusConfig('scheduled').label,
+      confirmed: getAppointmentStatusConfig('confirmed').label,
+      completed: getAppointmentStatusConfig('completed').label,
+      cancelled: getAppointmentStatusConfig('cancelled').label,
+      missed: getAppointmentStatusConfig('missed').label,
+      rescheduled: getAppointmentStatusConfig('rescheduled').label,
     };
     
     const paymentMap: Record<string, string> = {

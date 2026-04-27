@@ -102,10 +102,11 @@ serve(async (req) => {
       errors.push({ field: 'appointment_id', message: 'Appointment ID is required' });
     }
 
-    // Payment methods are required UNLESS this is a courtesy-only payment
+    // Payment methods are required UNLESS this is courtesy-only or using existing client credit only
     const isCourtesyOnly = body.courtesy_credit && body.courtesy_credit > 0 && (!body.amount_paid || body.amount_paid === 0);
+    const isClientCreditOnly = body.used_client_credit && body.used_client_credit > 0 && (!Array.isArray(body.payment_methods) || body.payment_methods.length === 0);
     
-    if (!isCourtesyOnly && (!Array.isArray(body.payment_methods) || body.payment_methods.length === 0)) {
+    if (!isCourtesyOnly && !isClientCreditOnly && (!Array.isArray(body.payment_methods) || body.payment_methods.length === 0)) {
       errors.push({ field: 'payment_methods', message: 'At least one payment method is required' });
     }
 
@@ -127,6 +128,10 @@ serve(async (req) => {
 
     if (body.used_client_credit && (typeof body.used_client_credit !== 'number' || body.used_client_credit < 0)) {
       errors.push({ field: 'used_client_credit', message: 'Used client credit must be a positive number' });
+    }
+
+    if (body.used_client_credit && body.used_client_credit > 0 && body.used_client_credit > body.amount_paid) {
+      errors.push({ field: 'used_client_credit', message: 'Used client credit cannot exceed the paid amount' });
     }
 
     if (body.card_fee_amount && (typeof body.card_fee_amount !== 'number' || body.card_fee_amount < 0)) {
@@ -365,6 +370,12 @@ serve(async (req) => {
     // 7b. Deduct credit from client (using existing credit for payment)
     if (body.used_client_credit && body.used_client_credit > 0 && appointment.client?.id) {
       const currentBalance = appointment.client.credit_balance || 0;
+      if (body.used_client_credit > Number(currentBalance)) {
+        return new Response(
+          JSON.stringify({ success: false, errors: [{ field: 'used_client_credit', message: 'Crédito utilizado maior que o saldo disponível do cliente' }] }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       const newBalance = Math.max(0, Number(currentBalance) - body.used_client_credit);
 
       const { error: clientError } = await supabase
@@ -375,43 +386,7 @@ serve(async (req) => {
       if (clientError) {
         console.error('Error deducting client credit:', clientError);
       }
-
-      // Create financial entry for credit usage
-      const { error: creditEntryError } = await supabase.from('financial_entries').insert({
-        type: 'receivable',
-        description: `Uso de crédito: ${serviceName} - ${clientName}`,
-        amount: body.used_client_credit,
-        due_date: today,
-        paid_date: today,
-        status: 'paid',
-        client_id: appointment.client.id,
-        appointment_id: body.appointment_id,
-        notes: 'Pagamento com crédito do cliente',
-        created_by: userId,
-      });
-
-      if (creditEntryError) {
-        console.error('Error creating credit usage financial entry:', creditEntryError);
-      }
-
-      // Create cash transaction for credit usage if register is open
-      if (body.cash_register_id) {
-        const { error: creditCashError } = await supabase.from('cash_transactions').insert({
-          cash_register_id: body.cash_register_id,
-          type: 'income',
-          category: 'credit_usage',
-          description: `Uso de crédito: ${serviceName} - ${clientName}`,
-          amount: body.used_client_credit,
-          payment_method: null,
-          reference_id: body.appointment_id,
-          reference_type: 'appointment',
-          created_by: userId,
-        });
-
-        if (creditCashError) {
-          console.error('Error creating credit usage cash transaction:', creditCashError);
-        }
-      }
+      console.log(`Client credit used: ${body.used_client_credit} for ${clientName} - not registered in cash flow`);
     }
 
     // 8. Create financial entries and cash transactions for actual payments

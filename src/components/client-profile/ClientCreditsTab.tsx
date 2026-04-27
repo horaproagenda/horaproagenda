@@ -161,7 +161,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         .order('session_number', { ascending: true });
 
       if (error) throw error;
-      return sortPackageSessionsByChronologicalSequence(data as PackageAppointmentDetail[]);
+      return sortPackageSessionsByChronologicalSequence((data || []) as any[]) as PackageAppointmentDetail[];
     },
     enabled: !!selectedPackageId,
     staleTime: 0,
@@ -195,7 +195,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const scheduledSessions = packageDetails?.filter(s => {
     if (!s.appointment_id) return false;
     if (isPackageSessionRealized(s.appointment?.status) || isPackageSessionRealized(s.status)) return false;
-    if (s.appointment?.status === 'cancelled' || s.appointment?.status === 'missed') return false;
+    if (s.appointment?.status === 'cancelled') return false;
     return s.appointment?.status === 'scheduled' || s.appointment?.status === 'confirmed' || s.status === 'scheduled';
   }).length || 0;
   

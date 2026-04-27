@@ -582,6 +582,8 @@ export function AppointmentDetailDialog({
   
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
+  const creditLimitForPayment = Math.min(availableClientCredit, remainingAfterDiscount);
+  const isClientCreditInvalid = paymentMethodCreditUsed > creditLimitForPayment;
   
   const clientCreditUsed = Math.min(
     (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
@@ -602,6 +604,11 @@ export function AppointmentDetailDialog({
   const hasExcessPayment = excessPaymentAmount > 0;
 
   const handleConfirmPayment = () => {
+    if (isClientCreditInvalid) {
+      toast.error(`Crédito ao cliente limitado a R$ ${creditLimitForPayment.toFixed(2)} para este pagamento.`);
+      return;
+    }
+
     // For courtesy-only, we don't need cash register (no financial impact)
     if (!isCourtesyOnly && moneyPaymentAmount > 0 && !currentOpenRegister) {
       toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
@@ -1404,7 +1411,7 @@ export function AppointmentDetailDialog({
                     <Button variant="outline" onClick={() => setShowPaymentForm(false)} className="flex-1">
                       Cancelar
                     </Button>
-                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={totalWithCredit <= 0 && !isCourtesyOnly}>
+                    <Button onClick={handleConfirmPayment} className="flex-1" disabled={(totalWithCredit <= 0 && !isCourtesyOnly) || isClientCreditInvalid}>
                       Confirmar Pagamento
                     </Button>
                   </div>

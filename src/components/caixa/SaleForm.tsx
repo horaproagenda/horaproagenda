@@ -615,6 +615,16 @@ export function SaleForm() {
           .from('clients')
           .update({ credit_balance: newBalance })
           .eq('id', selectedClientId);
+
+        await (supabase as any).from('client_credit_transactions').insert({
+          client_id: selectedClientId,
+          transaction_type: 'credit_used',
+          amount: paymentAmount,
+          previous_balance: clientCreditBalance,
+          new_balance: newBalance,
+          description: `Uso de crédito ao cliente: ${saleDescription}`,
+          created_by: user?.id,
+        });
       }
 
       // Create boleto installments if payment is boleto with installments
@@ -1120,7 +1130,10 @@ export function SaleForm() {
                       max={isClientCreditPayment ? clientCreditBalance : undefined}
                       step={0.01}
                       value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const nextValue = parseFloat(e.target.value) || 0;
+                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, clientCreditBalance, saleInfo.total) : nextValue);
+                      }}
                     />
                   </div>
                   

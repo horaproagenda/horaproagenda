@@ -335,7 +335,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                             <Badge className={`${documentTypeColors[doc.type]} text-[10px] px-1.5 py-0`} variant="secondary">
                               {documentTypeLabels[doc.type]}
                             </Badge>
-                            {(doc as any).content && (
+                            {(doc.content || doc.signed_at) && (
                               <Badge variant="outline" className="text-[10px] px-1 py-0">
                                 Preenchido
                               </Badge>

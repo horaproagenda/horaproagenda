@@ -207,6 +207,11 @@ export interface ClientDocument {
   description: string | null;
   file_path: string | null;
   file_url: string | null;
+  content?: string | null;
+  template_id?: string | null;
+  filled_variables?: Record<string, unknown> | null;
+  signed_at?: string | null;
+  signed_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -231,6 +236,8 @@ export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
 export interface QuoteItem {
   service_id: string;
   service_name: string;
+  item_type?: 'service' | 'package';
+  discount_amount?: number;
   quantity: number;
   unit_price: number;
   total: number;

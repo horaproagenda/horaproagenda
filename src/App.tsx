@@ -65,6 +65,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 {/* Public route for client document filling */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
+                <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />

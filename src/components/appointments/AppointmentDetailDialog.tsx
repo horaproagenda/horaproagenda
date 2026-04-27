@@ -165,6 +165,11 @@ export function AppointmentDetailDialog({
     return methodName.toLowerCase().includes('crédito');
   };
 
+  const isClientCreditMethod = (methodName: string) => {
+    const lower = methodName.toLowerCase();
+    return lower.includes('crédito') && lower.includes('cliente');
+  };
+
   const isMethodDebit = (methodName: string) => {
     return methodName.toLowerCase().includes('débito');
   };
@@ -550,7 +555,15 @@ export function AppointmentDetailDialog({
     setPayments(newPayments);
   };
 
-  const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const paymentMethodCreditUsed = payments.reduce((sum, p) => {
+    const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+    return isClientCreditMethod(methodName) ? sum + (parseFloat(p.amount) || 0) : sum;
+  }, 0);
+  const moneyPaymentAmount = payments.reduce((sum, p) => {
+    const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+    return isClientCreditMethod(methodName) ? sum : sum + (parseFloat(p.amount) || 0);
+  }, 0);
+  const totalPaymentAmount = moneyPaymentAmount;
   const courtesyCredit = 0; // Cortesia removed
   const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
   
@@ -560,9 +573,11 @@ export function AppointmentDetailDialog({
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
   
-  const clientCreditUsed = useClientCredit 
-    ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAfterDiscount) 
-    : 0;
+  const clientCreditUsed = Math.min(
+    (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
+    availableClientCredit,
+    remainingAfterDiscount
+  );
   
   const totalWithCredit = totalPaymentAmount + courtesyCredit + clientCreditUsed;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;
@@ -578,7 +593,7 @@ export function AppointmentDetailDialog({
 
   const handleConfirmPayment = () => {
     // For courtesy-only, we don't need cash register (no financial impact)
-    if (!isCourtesyOnly && !currentOpenRegister) {
+    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !currentOpenRegister) {
       toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
       return;
     }
@@ -604,7 +619,7 @@ export function AppointmentDetailDialog({
 
   const submitPayment = () => {
     const validPayments = payments
-      .filter(p => p.amount && parseFloat(p.amount) > 0)
+      .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
         method: p.methodId || p.method, 
         amount: parseFloat(p.amount),
@@ -1122,13 +1137,15 @@ export function AppointmentDetailDialog({
                             <Select
                               value={payment.methodId || ''}
                               onValueChange={(value) => {
+                                const methodName = activePaymentMethods.find(m => m.id === value)?.name || value;
                                 const newPayments = [...payments];
                                 newPayments[index] = { 
                                   ...newPayments[index], 
                                   methodId: value, 
-                                  method: activePaymentMethods.find(m => m.id === value)?.name || value,
+                                  method: methodName,
                                   cardBrandId: undefined,
-                                  installments: 1
+                                  installments: 1,
+                                  amount: isClientCreditMethod(methodName) ? Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2) : newPayments[index].amount,
                                 };
                                 setPayments(newPayments);
                               }}
@@ -1150,8 +1167,12 @@ export function AppointmentDetailDialog({
                               step="0.01"
                               placeholder="0,00"
                               value={payment.amount}
+                              max={isClientCreditMethod(selectedMethod?.name || '') ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
                               onChange={(e) => updatePayment(index, 'amount', e.target.value)}
                             />
+                            {isClientCreditMethod(selectedMethod?.name || '') && (
+                              <p className="mt-1 text-[10px] text-muted-foreground">Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>
+                            )}
                           </div>
                           {payments.length > 1 && (
                             <Button

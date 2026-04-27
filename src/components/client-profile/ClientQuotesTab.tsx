@@ -12,6 +12,8 @@ import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO
 import { ptBR } from 'date-fns/locale';
 import { Plus, Receipt, MessageCircle, Trash2, Filter } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
+import { useServicePackages } from '@/hooks/useServicePackages';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 
 interface ClientQuotesTabProps {
@@ -59,8 +61,25 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const [validDays, setValidDays] = useState('7');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const { services } = useServices();
+  const { packages } = useServicePackages();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
+  const itemOptions = useMemo(() => [
+    ...services
+      .filter((service) => service.is_active)
+      .map((service) => ({
+        value: `service:${service.id}`,
+        label: service.name,
+        sublabel: `Serviço · R$ ${Number(service.price || 0).toFixed(2)}`,
+      })),
+    ...packages
+      .filter((pkg) => pkg.is_active)
+      .map((pkg) => ({
+        value: `package:${pkg.id}`,
+        label: pkg.name,
+        sublabel: `Pacote · ${pkg.total_sessions} sessões · R$ ${Number(pkg.total_price || 0).toFixed(2)}`,
+      })),
+  ], [services, packages]);
 
   const filteredQuotes = useMemo(() => {
     const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
@@ -77,20 +96,27 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   }, [quotes, selectedMonth]);
 
   const addItem = () => {
-    setItems([...items, { service_id: '', service_name: '', quantity: 1, unit_price: 0, total: 0 }]);
+    setItems([...items, { service_id: '', service_name: '', item_type: 'service', quantity: 1, unit_price: 0, discount_amount: 0, total: 0 }]);
   };
 
-  const updateItem = (index: number, serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
+  const updateItem = (index: number, value: string) => {
+    const [itemType, itemId] = value.split(':') as ['service' | 'package', string];
+    const item = itemType === 'package'
+      ? packages.find((pkg) => pkg.id === itemId)
+      : services.find((service) => service.id === itemId);
+    if (!item) return;
+
+    const unitPrice = itemType === 'package' ? Number((item as any).total_price || 0) : Number((item as any).price || 0);
 
     const newItems = [...items];
     newItems[index] = {
-      service_id: service.id,
-      service_name: service.name,
+      service_id: item.id,
+      service_name: item.name,
+      item_type: itemType,
       quantity: 1,
-      unit_price: service.price,
-      total: service.price,
+      unit_price: unitPrice,
+      discount_amount: 0,
+      total: unitPrice,
     };
     setItems(newItems);
   };
@@ -98,7 +124,15 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const updateQuantity = (index: number, quantity: number) => {
     const newItems = [...items];
     newItems[index].quantity = quantity;
-    newItems[index].total = newItems[index].unit_price * quantity;
+    newItems[index].total = Math.max(0, (newItems[index].unit_price * quantity) - (newItems[index].discount_amount || 0));
+    setItems(newItems);
+  };
+
+  const updateDiscount = (index: number, discount: number) => {
+    const newItems = [...items];
+    const gross = newItems[index].unit_price * newItems[index].quantity;
+    newItems[index].discount_amount = Math.min(Math.max(0, discount), gross);
+    newItems[index].total = Math.max(0, gross - (newItems[index].discount_amount || 0));
     setItems(newItems);
   };
 
@@ -106,6 +140,8 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const originalTotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  const totalDiscount = items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {
@@ -203,41 +239,47 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
             <div className="space-y-3 py-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Serviços</Label>
+                  <Label className="text-xs">Serviços e pacotes</Label>
                   <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
                   </Button>
                 </div>
 
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum serviço</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum item</p>
                 ) : (
                   <div className="space-y-1.5">
                     {items.map((item, index) => (
-                      <div key={index} className="flex gap-1.5 items-center">
-                        <Select value={item.service_id} onValueChange={(v) => updateItem(index, v)}>
-                          <SelectTrigger className="flex-1 h-8 text-xs">
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {services.filter((s) => s.is_active).map((service) => (
-                              <SelectItem key={service.id} value={service.id} className="text-xs">
-                                {service.name} - R$ {service.price.toFixed(0)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                          className="w-14 h-8 text-xs"
-                        />
-                        <span className="w-16 text-right text-xs font-medium">R$ {item.total.toFixed(0)}</span>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                      <div key={index} className="grid grid-cols-12 gap-1.5 items-end rounded border bg-muted/20 p-2">
+                        <div className="col-span-12 sm:col-span-5">
+                          <Label className="text-[10px] text-muted-foreground">Item</Label>
+                          <SearchableSelect
+                            value={item.service_id ? `${item.item_type || 'service'}:${item.service_id}` : ''}
+                            onChange={(v) => updateItem(index, v)}
+                            options={itemOptions}
+                            placeholder="Selecione serviço ou pacote..."
+                            searchPlaceholder="Buscar item..."
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="col-span-3 sm:col-span-1">
+                          <Label className="text-[10px] text-muted-foreground">Qtd.</Label>
+                          <Input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-4 sm:col-span-2">
+                          <Label className="text-[10px] text-muted-foreground">Valor</Label>
+                          <Input type="number" value={item.unit_price} readOnly className="h-8 text-xs bg-muted/40" />
+                        </div>
+                        <div className="col-span-4 sm:col-span-2">
+                          <Label className="text-[10px] text-muted-foreground">Desconto</Label>
+                          <Input type="number" min="0" step="0.01" value={item.discount_amount || ''} onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2 flex items-center justify-end gap-1">
+                          <span className="text-xs font-medium whitespace-nowrap">R$ {item.total.toFixed(2)}</span>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -245,8 +287,10 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
               </div>
 
               {items.length > 0 && (
-                <div className="flex justify-end p-2 bg-muted rounded text-sm font-bold">
-                  Total: R$ {totalAmount.toFixed(2)}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-muted rounded text-xs">
+                  <span>Valor: <strong>R$ {originalTotal.toFixed(2)}</strong></span>
+                  <span>Desconto: <strong>R$ {totalDiscount.toFixed(2)}</strong></span>
+                  <span className="text-right">Total: <strong>R$ {totalAmount.toFixed(2)}</strong></span>
                 </div>
               )}
 
@@ -291,7 +335,7 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {quote.items.map(i => `${i.quantity}x ${i.service_name}`).join(', ')}
+                        {quote.items.map(i => `${i.item_type === 'package' ? 'Pacote: ' : ''}${i.quantity}x ${i.service_name}${(i.discount_amount || 0) > 0 ? ` (desc. R$ ${i.discount_amount.toFixed(2)})` : ''}`).join(', ')}
                       </p>
                     </div>
 

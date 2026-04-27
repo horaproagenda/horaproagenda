@@ -27,6 +27,16 @@ function generateToken(): string {
   return token;
 }
 
+function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'documento';
+}
+
 export function useDocumentFillLinks(templateId?: string) {
   const queryClient = useQueryClient();
 
@@ -53,6 +63,8 @@ export function useDocumentFillLinks(templateId?: string) {
     templateId: string,
     options?: {
       clientId?: string;
+      clientName?: string;
+      documentTitle?: string;
       professionalId?: string;
       expiresInDays?: number;
       prefillSnapshot?: DocumentPrefillSnapshot;
@@ -85,7 +97,9 @@ export function useDocumentFillLinks(templateId?: string) {
       queryClient.invalidateQueries({ queryKey: ['document_fill_links'] });
 
       const baseUrl = window.location.origin;
-      const url = `${baseUrl}/preencher-documento?token=${token}`;
+      const slugParts = [options?.clientName, options?.documentTitle].filter(Boolean).join(' ');
+      const friendlySlug = slugify(slugParts);
+      const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${token}`;
 
       toast.success('Link gerado com sucesso!');
       return { url, token };

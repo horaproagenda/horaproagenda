@@ -37,17 +37,18 @@ export function MobileAgendaList({
   mobileView,
   onDateSelect,
 }: MobileAgendaListProps) {
+  const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
   if (mobileView === 'month') {
     return <MobileMonthView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onDateSelect={onDateSelect} />;
   }
 
   if (mobileView === 'week') {
-    return <MobileWeekView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} onDateSelect={onDateSelect} />;
+    return <MobileWeekView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} onDateSelect={onDateSelect} packageSequenceMap={packageSequenceMap} />;
   }
 
   // Day view
-  return <MobileDayView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} />;
+  return <MobileDayView selectedDate={selectedDate} appointments={appointments} professionals={professionals} onAppointmentClick={onAppointmentClick} packageSequenceMap={packageSequenceMap} />;
 }
 
 // ─── Day View ───────────────────────────────────────────

@@ -204,8 +204,15 @@ export function NewAppointmentDialog({
       setServicePreviewDates([]);
       setEditableServiceDates([]);
       setEditingServiceDateIndex(null);
+      setShowHolidayConfirm(false);
+      setHolidayConfirmed(false);
     }
   }, [open, prefilledDate, prefilledTime]);
+
+  useEffect(() => {
+    setHolidayConfirmed(false);
+    setShowHolidayConfirm(false);
+  }, [date]);
 
   // Reset paid service when client changes
   useEffect(() => {
@@ -679,6 +686,12 @@ export function NewAppointmentDialog({
       return;
     }
 
+    const holiday = getHolidayForDate(date);
+    if (holiday && !holidayConfirmed) {
+      setShowHolidayConfirm(true);
+      return;
+    }
+
     const duration = serviceOrPackage.duration || 60;
     const [hours, minutes] = time.split(':').map(Number);
     const startTime = new Date(date);
@@ -880,6 +893,7 @@ Até breve! ✨`;
 
       onOpenChange(false);
       resetForm();
+      setHolidayConfirmed(false);
     } catch (error) {
       console.error('Error creating appointment:', error);
     }

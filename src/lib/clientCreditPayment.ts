@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 export const CLIENT_CREDIT_PAYMENT_LABEL = 'Crédito ao cliente (sem entrada no caixa)';
 
 export function isClientCreditPaymentMethod(methodName?: string | null): boolean {
@@ -23,4 +25,10 @@ export function validateClientCreditPayment(amount: number, availableBalance: nu
   }
 
   return null;
+}
+
+export function showClientCreditValidationToast(message: string | null): boolean {
+  if (!message) return false;
+  toast.error(message);
+  return true;
 }

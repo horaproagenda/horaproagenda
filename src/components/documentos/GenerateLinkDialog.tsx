@@ -114,6 +114,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
       const normalizedExpiresInDays = expiresInDays === 'none' ? undefined : parseInt(expiresInDays, 10);
       const result = await createLink(template.id, {
         clientId: selectedClientId || undefined,
+        clientName: selectedClient?.name,
+        documentTitle: template.title,
         professionalId: selectedProfessionalId || undefined,
         expiresInDays: Number.isFinite(normalizedExpiresInDays) ? normalizedExpiresInDays : undefined,
         prefillSnapshot: buildPrefillSnapshot(),

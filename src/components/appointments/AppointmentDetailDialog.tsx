@@ -165,6 +165,11 @@ export function AppointmentDetailDialog({
     return methodName.toLowerCase().includes('crédito');
   };
 
+  const isClientCreditMethod = (methodName: string) => {
+    const lower = methodName.toLowerCase();
+    return lower.includes('crédito') && lower.includes('cliente');
+  };
+
   const isMethodDebit = (methodName: string) => {
     return methodName.toLowerCase().includes('débito');
   };
@@ -550,7 +555,15 @@ export function AppointmentDetailDialog({
     setPayments(newPayments);
   };
 
-  const totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const paymentMethodCreditUsed = payments.reduce((sum, p) => {
+    const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+    return isClientCreditMethod(methodName) ? sum + (parseFloat(p.amount) || 0) : sum;
+  }, 0);
+  const moneyPaymentAmount = payments.reduce((sum, p) => {
+    const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+    return isClientCreditMethod(methodName) ? sum : sum + (parseFloat(p.amount) || 0);
+  }, 0);
+  const totalPaymentAmount = moneyPaymentAmount;
   const courtesyCredit = 0; // Cortesia removed
   const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
   
@@ -560,9 +573,11 @@ export function AppointmentDetailDialog({
   // Remaining amount after discount
   const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
   
-  const clientCreditUsed = useClientCredit 
-    ? Math.min(parseFloat(clientCreditUsedAmount) || 0, availableClientCredit, remainingAfterDiscount) 
-    : 0;
+  const clientCreditUsed = Math.min(
+    (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
+    availableClientCredit,
+    remainingAfterDiscount
+  );
   
   const totalWithCredit = totalPaymentAmount + courtesyCredit + clientCreditUsed;
   const totalWithFees = totalWithCredit + totalFeesToAddToClient;

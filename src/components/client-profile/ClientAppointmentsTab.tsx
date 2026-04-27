@@ -93,8 +93,26 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
           return false;
         }
       })
-      .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   }, [appointments, selectedMonth, selectedStatus]);
+
+  const chronologicalPackageNumbers = useMemo(() => {
+    const grouped = new Map<string, Appointment[]>();
+    appointments.forEach((apt) => {
+      const packageId = apt.package_appointment?.package?.id || apt.package_appointment?.package_id;
+      if (!packageId) return;
+      grouped.set(packageId, [...(grouped.get(packageId) || []), apt]);
+    });
+
+    const map = new Map<string, number>();
+    grouped.forEach((items) => {
+      items
+        .slice()
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .forEach((apt, index) => map.set(apt.id, index + 1));
+    });
+    return map;
+  }, [appointments]);
 
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -354,52 +372,64 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
               {filteredAppointments.map((appointment) => {
                 const status = statusConfig[appointment.status] || statusConfig.scheduled;
                 const isPackage = !!appointment.package_appointment;
-                const colorKey = appointment.package_appointment?.package?.id || appointment.service?.id || '';
-                const borderColor = colorMap.get(colorKey) || '#999';
+                const packageData = appointment.package_appointment?.package;
+                const colorKey = packageData?.id || appointment.service?.id || '';
+                const borderColor = colorMap.get(colorKey) || 'hsl(var(--border))';
                 const isSelected = selectedAppointments.has(appointment.id);
+                const chronologicalNumber = chronologicalPackageNumbers.get(appointment.id);
+                const storedNumber = appointment.package_appointment?.session_number;
+                const totalSessions = packageData?.total_sessions;
+                const displayName = packageData?.name || appointment.service?.name || 'Serviço';
+                const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
 
                 return (
                   <div
                     key={appointment.id}
-                    className={`p-2.5 rounded-lg bg-card hover:bg-muted/30 transition-colors border-l-3 ${
+                    className={`p-2.5 rounded bg-card hover:bg-muted/30 transition-colors ${
                       isSelectionMode ? 'cursor-pointer' : ''
                     } ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
-                    style={{ borderLeftColor: borderColor, borderLeftWidth: '3px' }}
+                    style={{ borderLeft: `3px solid ${borderColor}` }}
                     onClick={isSelectionMode ? () => toggleAppointmentSelection(appointment.id) : undefined}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_auto]">
+                      <div className="flex items-start gap-2 min-w-0">
                         {isSelectionMode && (
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleAppointmentSelection(appointment.id)}
                             onClick={(e) => e.stopPropagation()}
-                            className="shrink-0"
+                            className="shrink-0 mt-0.5"
                           />
                         )}
                         {isPackage ? (
-                          <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <Package className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                         ) : (
-                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                         )}
-                        <span className="font-medium text-sm truncate">
-                          {appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço'}
-                        </span>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">{displayName}</div>
+                          {serviceLine && <div className="text-[10px] text-muted-foreground truncate">Serviço: {serviceLine}</div>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-wrap justify-start md:justify-end">
+                        {isPackage && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
+                            Aplicação {chronologicalNumber || storedNumber}/{totalSessions || '-'}
+                          </Badge>
+                        )}
+                        {isPackage && chronologicalNumber && storedNumber && chronologicalNumber !== storedNumber && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                            Registro original {storedNumber}
+                          </Badge>
+                        )}
                         <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 shrink-0">
                           {status.label}
                         </Badge>
-                        {isPackage && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-primary/5 shrink-0">
-                            {appointment.package_appointment?.session_number}/{appointment.package_appointment?.package?.total_sessions}
-                          </Badge>
-                        )}
                       </div>
-                      <span className="text-sm font-semibold text-primary shrink-0">
-                        R$ {(appointment.service?.price || 0).toFixed(0)}
-                      </span>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-[10px] text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {format(new Date(appointment.start_time), "dd/MM/yyyy", { locale: ptBR })}
@@ -408,6 +438,8 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                         <Clock className="h-3 w-3" />
                         {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
                       </div>
+                      <div className="truncate">Prof.: {appointment.professional?.name || packageData?.professional?.name || '-'}</div>
+                      <div className="truncate">Sala: {appointment.room?.name || packageData?.room?.name || '-'}</div>
                     </div>
 
                     {appointment.notes && (

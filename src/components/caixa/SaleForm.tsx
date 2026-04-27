@@ -398,12 +398,6 @@ export function SaleForm() {
   };
 
   const handleFinalizeSale = async () => {
-    // Block sale if cash register is closed
-    if (!currentOpenRegister) {
-      toast.error('É necessário abrir o caixa antes de realizar vendas!');
-      return;
-    }
-
     if (!saleInfo || !selectedClientId) {
       toast.error('Selecione um cliente e adicione itens à venda');
       return;
@@ -434,6 +428,14 @@ export function SaleForm() {
     const paymentMethod = activePaymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
       toast.error('Forma de pagamento inválida');
+      return;
+    }
+
+    const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
+                           paymentMethod.name.toLowerCase().includes('credito ao cliente');
+
+    if (!currentOpenRegister && !isClientCredit) {
+      toast.error('É necessário abrir o caixa antes de realizar vendas!');
       return;
     }
 
@@ -561,29 +563,28 @@ export function SaleForm() {
         }
       }
 
-      // Create financial entry (RECEITA - receivable = income)
+      // Create financial entry only for real money payments. Client credit is non-cash.
       // Build description with item names for financial entry
       const financialItemNames = saleInfo.items.map(item => item.name).join(', ');
       const financialDescription = `Venda: ${financialItemNames} - ${selectedClient?.name}`;
       
-      await supabase.from('financial_entries').insert({
-        type: 'receivable',
-        description: financialDescription,
-        amount: paymentAmount,
-        due_date: paymentDate,
-        paid_date: paymentDate,
-        status: 'paid',
-        payment_method_id: paymentMethodId,
-        client_id: selectedClientId,
-        installments: selectedCardBrand && isCreditCard ? installments : null,
-        created_by: user?.id,
-      });
+      if (!isClientCredit) {
+        await supabase.from('financial_entries').insert({
+          type: 'receivable',
+          description: financialDescription,
+          amount: paymentAmount,
+          due_date: paymentDate,
+          paid_date: paymentDate,
+          status: 'paid',
+          payment_method_id: paymentMethodId,
+          client_id: selectedClientId,
+          installments: selectedCardBrand && isCreditCard ? installments : null,
+          created_by: user?.id,
+        });
+      }
 
       // Create cash transaction if register is open
-      // Skip cash transaction for "Crédito ao Cliente" as it's a courtesy
-      const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
-                             paymentMethod.name.toLowerCase().includes('credito ao cliente');
-      
+      // Skip cash transaction for "Crédito ao Cliente" because it uses existing balance.
       // Build description with item names
       const itemNames = saleInfo.items.map(item => item.name).join(', ');
       const saleDescription = `${itemNames} - ${selectedClient?.name}`;

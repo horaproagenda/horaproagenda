@@ -68,6 +68,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -85,14 +86,7 @@ interface AppointmentDetailDialogProps {
   ) => void;
 }
 
-const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
-  scheduled: { label: 'Agendado', className: 'bg-info/10 text-info border-info/20' },
-  confirmed: { label: 'Confirmado', className: 'bg-success/10 text-success border-success/20' },
-  completed: { label: 'Atendido', className: 'bg-muted text-muted-foreground border-muted' },
-  cancelled: { label: 'Cancelado', className: 'bg-destructive/10 text-destructive border-destructive/20' },
-  missed: { label: 'Faltou', className: 'bg-warning/10 text-warning border-warning/20' },
-  rescheduled: { label: 'Reagendado', className: 'bg-primary/10 text-primary border-primary/20' },
-};
+const statusConfig = appointmentStatusConfig;
 
 const paymentStatusConfig = {
   pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning' },

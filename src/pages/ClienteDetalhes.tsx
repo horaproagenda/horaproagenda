@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +22,8 @@ import { toast } from 'sonner';
 export default function ClienteDetalhes() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const agendaReturnState = location.state as { returnToAgendaAppointmentId?: string; returnToAgendaDate?: string } | null;
   const [activeTab, setActiveTab] = useState('report');
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -35,6 +37,20 @@ export default function ClienteDetalhes() {
       setIsRefreshing(false);
       toast.success('Dados atualizados!');
     }, 1000);
+  };
+
+  const handleBack = () => {
+    if (agendaReturnState?.returnToAgendaAppointmentId) {
+      navigate('/agenda', {
+        state: {
+          openAppointmentId: agendaReturnState.returnToAgendaAppointmentId,
+          appointmentDate: agendaReturnState.returnToAgendaDate,
+        },
+      });
+      return;
+    }
+
+    navigate('/clientes');
   };
 
   if (isLoading) {
@@ -65,7 +81,7 @@ export default function ClienteDetalhes() {
         {/* Compact Header Row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/clientes')}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-lg font-semibold">Perfil do Cliente</h1>

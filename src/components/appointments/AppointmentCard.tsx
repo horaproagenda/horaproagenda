@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientCredits } from '@/hooks/useClientCredits';
+import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -36,25 +37,6 @@ interface AppointmentCardProps {
   onDelete?: () => void;
 }
 
-const statusConfig = {
-  scheduled: {
-    label: 'Agendado',
-    className: 'bg-info/5 text-info/80 border-info/10',
-  },
-  confirmed: {
-    label: 'Confirmado',
-    className: 'bg-success/5 text-success/80 border-success/10',
-  },
-  completed: {
-    label: 'Concluído',
-    className: 'bg-muted/50 text-muted-foreground/70 border-muted/30',
-  },
-  cancelled: {
-    label: 'Cancelado',
-    className: 'bg-destructive/5 text-destructive/70 border-destructive/10',
-  },
-};
-
 const paymentStatusConfig = {
   pending: { label: 'Pendente', icon: AlertCircle, className: 'text-warning/70' },
   partial: { label: 'Parcial', icon: Clock, className: 'text-info/70' },
@@ -62,7 +44,7 @@ const paymentStatusConfig = {
 };
 
 export function AppointmentCard({ appointment, compact = false, professionals = [], onEdit, onDelete }: AppointmentCardProps) {
-  const status = statusConfig[appointment.status as keyof typeof statusConfig] || statusConfig.scheduled;
+  const status = getAppointmentStatusConfig(appointment.status);
   const paymentStatus = paymentStatusConfig[appointment.payment_status as keyof typeof paymentStatusConfig || 'pending'];
   const PaymentIcon = paymentStatus.icon;
   const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;

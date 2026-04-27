@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
@@ -17,9 +19,9 @@ interface ConsolidatedEntry {
   id: string;
   date: string;
   description: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'non_cash';
   amount: number;
-  source: 'caixa' | 'financeiro';
+  source: 'caixa' | 'financeiro' | 'credito_cliente';
   status: string;
 }
 
@@ -29,6 +31,16 @@ export function RelatorioConsolidado() {
   const { entries } = useFinancialEntries();
   const { transactions } = useCashTransactions();
   const { cashRegisters } = useCashRegisters();
+  const { data: creditTransactions = [] } = useQuery({
+    queryKey: ['client_credit_transactions_report'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('client_credit_transactions')
+        .select('id, created_at, transaction_type, amount, description');
+      if (error) throw error;
+      return data || [];
+    },
+  });
   
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
   const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -74,7 +86,16 @@ export function RelatorioConsolidado() {
       source: 'caixa' as const,
       status: 'paid',
     })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions]);
+    ...creditTransactions.map((tx: any) => ({
+      id: `credit-${tx.id}`,
+      date: tx.created_at.split('T')[0],
+      description: tx.description || 'Crédito ao cliente',
+      type: 'non_cash' as const,
+      amount: Number(tx.amount || 0),
+      source: 'credito_cliente' as const,
+      status: 'paid',
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions, creditTransactions]);
 
   // Apply filters
   const filteredData = useMemo(() => consolidatedData.filter((entry) => {

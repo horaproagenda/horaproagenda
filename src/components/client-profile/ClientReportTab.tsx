@@ -26,6 +26,7 @@ import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO
 import { ptBR } from 'date-fns/locale';
 import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -96,6 +97,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
+  const { propagateSeriesDates } = useRecurringAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
@@ -113,7 +115,9 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   };
 
   const filteredPaymentHistory = useMemo(() => 
-    paymentHistory.filter(p => filterByMonth(p.date)),
+    paymentHistory
+      .filter(p => p.status === 'paid' && Number(p.amount || 0) > 0)
+      .filter(p => filterByMonth(p.date)),
     [paymentHistory, selectedMonth]
   );
 
@@ -155,17 +159,8 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   // Calculate summary for filtered month (or all if 'all' selected)
   const summary = useMemo(() => {
     const completed = filteredAppointments.filter(a => a.status === 'completed');
-    // Calculate total received from paid payments in the payment history
-    const totalReceived = filteredPaymentHistory
-      .filter(p => p.status === 'paid')
-      .reduce((sum, p) => sum + p.amount, 0);
-    // Also account for completed appointments with payments
-    const appointmentValue = completed.reduce((sum, a) => sum + (a.amount_paid || 0), 0);
-    // Use the greater of the two to avoid double counting
-    const totalValue = Math.max(totalReceived, appointmentValue);
-    const totalPending = filteredPaymentHistory
-      .filter(p => p.status !== 'paid' && p.status !== 'cancelled')
-      .reduce((sum, p) => sum + p.pendingAmount, 0);
+    const totalValue = filteredPaymentHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalPending = 0;
     
     return {
       total: filteredAppointments.length,
@@ -432,132 +427,139 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
         )}
       </div>
 
-      {/* Payment History - Compact */}
+      {/* Payment History */}
       <Card>
         <CardContent className="p-3">
-          <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico de Pagamentos</h3>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico de Pagamentos Registrados</h3>
           {filteredPaymentHistory.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Nenhum pagamento neste mês</p>
+            <p className="text-xs text-muted-foreground py-2">Nenhum pagamento registrado neste período</p>
           ) : (
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-              {filteredPaymentHistory.map(payment => (
-                <div key={payment.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-muted-foreground shrink-0">{format(new Date(payment.date), 'dd/MM')}</span>
-                    <span className="font-medium truncate">{payment.serviceName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {payment.totalPrice > payment.amount && payment.amount > 0 && (
-                      <span className="text-muted-foreground line-through text-[10px]">
-                        R$ {Number(payment.totalPrice).toFixed(0)}
-                      </span>
-                    )}
-                    <span className="font-semibold text-emerald-600">
-                      R$ {Number(payment.amount).toFixed(0)}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {getPaymentMethodName(payment.paymentMethod)}
-                    </span>
-                    <Badge 
-                      variant={payment.status === 'paid' ? 'default' : payment.status === 'cancelled' ? 'destructive' : 'secondary'}
-                      className={`text-[10px] px-1.5 py-0 ${payment.status === 'paid' ? 'bg-emerald-500' : ''}`}
-                    >
-                      {payment.status === 'paid' ? 'Pago' : payment.status === 'cancelled' ? 'Canc.' : 'Pend.'}
-                    </Badge>
-                    {payment.saleId && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => openCancelDialog(payment)}
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] py-1.5 h-auto">Data pagamento</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Serviço/Pacote</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor item</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Pago</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Forma</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto w-8"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPaymentHistory.map(payment => (
+                    <TableRow key={payment.id} className="hover:bg-muted/30">
+                      <TableCell className="text-xs py-1.5 whitespace-nowrap">{format(new Date(`${payment.date}T12:00:00`), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="text-xs py-1.5 min-w-[180px]">
+                        <div className="font-medium">{payment.serviceName}</div>
+                        <div className="text-[10px] text-muted-foreground">{payment.description}</div>
+                      </TableCell>
+                      <TableCell className="text-xs py-1.5 text-right">R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-xs py-1.5 whitespace-nowrap">{getPaymentMethodName(payment.paymentMethod)}</TableCell>
+                      <TableCell className="py-1.5">
+                        {payment.saleId && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancelDialog(payment)}>
+                            <XCircle className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Detailed Table - Compact */}
+      {/* Detailed Table */}
       <Card>
         <CardContent className="p-3">
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico Detalhado</h3>
           {filteredAppointments.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-xs">Nenhum agendamento neste mês</p>
+              <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[180px]">Serviço/Pacote</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto">Serviço</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Pago</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Início</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Fim</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[120px]">Profissional</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Sala</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto min-w-[140px]">Equipamento</TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto">Sessão</TableHead>
                     <TableHead className="text-[10px] py-1.5 h-auto">Status</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto w-8"></TableHead>
+                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.slice(0, 20).map(appointment => {
+                  {filteredAppointments.map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
-                    const isPackage = !!appointment.package_appointment?.package;
                     const packageData = appointment.package_appointment?.package;
-                    const packagePaymentMethods = packageData?.payment_methods;
-                    const isPackagePaid = isPackage && packagePaymentMethods && packagePaymentMethods.length > 0;
-                    
-                    const serviceName = isPackage 
-                      ? packageData?.name 
-                      : appointment.service?.name;
-                    
-                    // IMPORTANT: For packages, use FULL package price, not per session
-                    const totalPrice = isPackage
-                      ? (isPackagePaid ? 0 : (packageData?.total_price || 0))
-                      : (appointment.service?.price || 0);
-                    
-                    const amountPaid = isPackagePaid 
-                      ? (packageData?.total_price || 0) 
-                      : (appointment.amount_paid || 0);
-                    const pendingAmount = Math.max(0, totalPrice - amountPaid);
-                    
+                    const serviceName = packageData?.name || appointment.service?.name || packageData?.service?.name || '-';
+                    const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
+                    const roomName = appointment.room?.name || packageData?.room?.name || appointment.service?.room?.name || '-';
+                    const equipmentList = appointment.service?.equipment?.length
+                      ? appointment.service.equipment
+                      : packageData?.equipment || [];
+                    const packageId = packageData?.id;
+                    const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
+
                     return (
-                      <TableRow key={appointment.id} className="hover:bg-muted/30">
-                        <TableCell className="text-xs py-1.5">
-                          {format(new Date(appointment.start_time), 'dd/MM')}
+                      <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
+                        <TableCell className="text-xs py-2">
+                          <div className="font-medium">{serviceName}</div>
+                          {packageData && <div className="text-[10px] text-muted-foreground">Pacote: {packageData.name}</div>}
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 max-w-[120px] truncate">
-                          {serviceName || '-'}
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.end_time), 'HH:mm')}</TableCell>
+                        <TableCell className="text-xs py-2">{professionalName}</TableCell>
+                        <TableCell className="text-xs py-2">{roomName}</TableCell>
+                        <TableCell className="text-xs py-2">{equipmentList.length ? equipmentList.join(', ') : '-'}</TableCell>
+                        <TableCell className="py-2">
+                          {appointment.package_appointment ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                              {appointment.package_appointment.session_number}/{packageData?.total_sessions || '-'}
+                            </Badge>
+                          ) : '-'}
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">
-                          R$ {totalPrice.toFixed(0)}
+                        <TableCell className="py-2">
+                          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 whitespace-nowrap">{status.label}</Badge>
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">
-                          <span className={amountPaid > 0 ? 'text-emerald-600' : 'text-muted-foreground'}>
-                            R$ {amountPaid.toFixed(0)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          {onEditAppointment && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => onEditAppointment(appointment)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          )}
+                        <TableCell className="py-2">
+                          <div className="flex justify-end gap-1">
+                            {canReajust && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] px-2"
+                                onClick={() => propagateSeriesDates.mutate({
+                                  appointment_id: appointment.id,
+                                  new_start_time: new Date(appointment.start_time),
+                                  new_end_time: new Date(appointment.end_time),
+                                  propagate_type: 'package',
+                                  package_id: packageId,
+                                  interval_days: packageData?.interval_days || undefined,
+                                })}
+                                disabled={propagateSeriesDates.isPending}
+                              >
+                                Reajustar seguintes
+                              </Button>
+                            )}
+                            {onEditAppointment && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditAppointment(appointment)}>
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

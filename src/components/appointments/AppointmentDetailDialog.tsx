@@ -619,7 +619,7 @@ export function AppointmentDetailDialog({
 
   const submitPayment = () => {
     const validPayments = payments
-      .filter(p => p.amount && parseFloat(p.amount) > 0)
+      .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
         method: p.methodId || p.method, 
         amount: parseFloat(p.amount),

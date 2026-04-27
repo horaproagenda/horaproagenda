@@ -227,6 +227,7 @@ export function AppointmentDetailDialog({
       setEditDate(format(startDate, 'yyyy-MM-dd'));
       setEditStartTime(format(startDate, 'HH:mm'));
       setEditEndTime(format(endDate, 'HH:mm'));
+      setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
       setEditNotes(appointment.notes || '');
@@ -393,6 +394,41 @@ export function AppointmentDetailDialog({
     });
   };
 
+  const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;
+
+  const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
+    if (!editDate || !startValue || serviceDuration <= 0) return;
+
+    const newStartTime = new Date(`${editDate}T${startValue}:00`);
+    const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
+    setEditEndTime(format(newEndTime, 'HH:mm'));
+  };
+
+  const handleEditStartTimeChange = (value: string) => {
+    setEditStartTime(value);
+    recalculateEndTime(value);
+  };
+
+  const handleEditServiceChange = (serviceId: string) => {
+    const service = activeServices.find((item) => item.id === serviceId);
+    setEditServiceId(serviceId || null);
+    if (service?.professional_id) setEditProfessionalId(service.professional_id);
+    if (service?.room_id) setEditRoomId(service.room_id);
+    if (editStartTime && service?.duration) recalculateEndTime(editStartTime, service.duration);
+  };
+
+  const handleOpenClientProfile = () => {
+    if (!appointment.client_id) return;
+    setShowClientProfileDialog(false);
+    onOpenChange(false);
+    navigate(`/clientes/${appointment.client_id}`, {
+      state: {
+        returnToAgendaAppointmentId: appointment.id,
+        returnToAgendaDate: appointment.start_time,
+      },
+    });
+  };
+
   const handleSaveEdit = () => {
     const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
     const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
@@ -402,6 +438,7 @@ export function AppointmentDetailDialog({
       updates: {
         start_time: newStartTime.toISOString(),
         end_time: newEndTime.toISOString(),
+          service_id: editServiceId,
         professional_id: editProfessionalId,
         room_id: editRoomId,
         notes: editNotes || undefined,

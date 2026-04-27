@@ -79,7 +79,7 @@ export const buildAppointmentPackageSequenceMap = (appointments: Appointment[]) 
         const dateA = new Date(a.start_time).getTime();
         const dateB = new Date(b.start_time).getTime();
         if (dateA !== dateB) return dateA - dateB;
-        return getPreservedPackageSessionNumber(a.package_appointment) - getPreservedPackageSessionNumber(b.package_appointment);
+        return (getPreservedPackageSessionNumber(a.package_appointment) || 0) - (getPreservedPackageSessionNumber(b.package_appointment) || 0);
       })
       .forEach((appointment, index) => {
         map.set(appointment.id, index + 1);

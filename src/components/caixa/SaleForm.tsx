@@ -109,12 +109,15 @@ export function SaleForm() {
   const isCardPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
+    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
     return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
   }, [selectedPaymentMethod]);
 
   const isCreditCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
-    return selectedPaymentMethod.name.toLowerCase().includes('crédito');
+    const name = selectedPaymentMethod.name.toLowerCase();
+    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    return name.includes('crédito');
   }, [selectedPaymentMethod]);
 
   const isDebitCard = useMemo(() => {
@@ -395,12 +398,6 @@ export function SaleForm() {
   };
 
   const handleFinalizeSale = async () => {
-    // Block sale if cash register is closed
-    if (!currentOpenRegister) {
-      toast.error('É necessário abrir o caixa antes de realizar vendas!');
-      return;
-    }
-
     if (!saleInfo || !selectedClientId) {
       toast.error('Selecione um cliente e adicione itens à venda');
       return;
@@ -431,6 +428,14 @@ export function SaleForm() {
     const paymentMethod = activePaymentMethods.find(m => m.id === paymentMethodId);
     if (!paymentMethod) {
       toast.error('Forma de pagamento inválida');
+      return;
+    }
+
+    const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
+                           paymentMethod.name.toLowerCase().includes('credito ao cliente');
+
+    if (!currentOpenRegister && !isClientCredit) {
+      toast.error('É necessário abrir o caixa antes de realizar vendas!');
       return;
     }
 
@@ -558,29 +563,28 @@ export function SaleForm() {
         }
       }
 
-      // Create financial entry (RECEITA - receivable = income)
+      // Create financial entry only for real money payments. Client credit is non-cash.
       // Build description with item names for financial entry
       const financialItemNames = saleInfo.items.map(item => item.name).join(', ');
       const financialDescription = `Venda: ${financialItemNames} - ${selectedClient?.name}`;
       
-      await supabase.from('financial_entries').insert({
-        type: 'receivable',
-        description: financialDescription,
-        amount: paymentAmount,
-        due_date: paymentDate,
-        paid_date: paymentDate,
-        status: 'paid',
-        payment_method_id: paymentMethodId,
-        client_id: selectedClientId,
-        installments: selectedCardBrand && isCreditCard ? installments : null,
-        created_by: user?.id,
-      });
+      if (!isClientCredit) {
+        await supabase.from('financial_entries').insert({
+          type: 'receivable',
+          description: financialDescription,
+          amount: paymentAmount,
+          due_date: paymentDate,
+          paid_date: paymentDate,
+          status: 'paid',
+          payment_method_id: paymentMethodId,
+          client_id: selectedClientId,
+          installments: selectedCardBrand && isCreditCard ? installments : null,
+          created_by: user?.id,
+        });
+      }
 
       // Create cash transaction if register is open
-      // Skip cash transaction for "Crédito ao Cliente" as it's a courtesy
-      const isClientCredit = paymentMethod.name.toLowerCase().includes('crédito ao cliente') || 
-                             paymentMethod.name.toLowerCase().includes('credito ao cliente');
-      
+      // Skip cash transaction for "Crédito ao Cliente" because it uses existing balance.
       // Build description with item names
       const itemNames = saleInfo.items.map(item => item.name).join(', ');
       const saleDescription = `${itemNames} - ${selectedClient?.name}`;
@@ -697,13 +701,13 @@ export function SaleForm() {
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertTitle className="text-amber-700 dark:text-amber-400">Caixa Fechado</AlertTitle>
           <AlertDescription className="text-amber-600 dark:text-amber-300">
-            Para realizar vendas, é necessário abrir o caixa primeiro. Vá até a aba "Controle do Caixa" para abrir.
+            Para pagamentos com entrada financeira, abra o caixa primeiro. Pagamentos por crédito ao cliente não entram no caixa.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Main Sales Form */}
-      <Card className={!currentOpenRegister ? 'opacity-50 pointer-events-none' : ''}>
+      <Card className={!currentOpenRegister ? 'opacity-90' : ''}>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl flex items-center gap-2">
             <ShoppingCart className="h-6 w-6" />
@@ -950,7 +954,14 @@ export function SaleForm() {
                   
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
-                    <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                    <Select value={paymentMethodId} onValueChange={(value) => {
+                      const methodName = activePaymentMethods.find(m => m.id === value)?.name.toLowerCase() || '';
+                      setPaymentMethodId(value);
+                      setCardBrandId('');
+                      if (methodName.includes('crédito ao cliente') || methodName.includes('credito ao cliente')) {
+                        setPaymentAmount(Math.min(saleInfo.total, clientCreditBalance));
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>

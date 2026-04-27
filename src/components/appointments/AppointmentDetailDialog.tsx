@@ -82,7 +82,8 @@ interface AppointmentDetailDialogProps {
     courtesyCredit?: number, // Cortesia: brinde sem entrada financeira
     cashRegisterId?: string,
     usedClientCredit?: number,
-    discountApplied?: number // Desconto aplicado
+    discountApplied?: number, // Desconto aplicado
+    usedClientCreditMethod?: string
   ) => void;
 }
 
@@ -157,11 +158,13 @@ export function AppointmentDetailDialog({
 
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
+    if (isClientCreditMethod(methodName)) return false;
     const lower = methodName.toLowerCase();
     return lower.includes('crédito') || lower.includes('débito') || lower.includes('cartão');
   };
 
   const isMethodCredit = (methodName: string) => {
+    if (isClientCreditMethod(methodName)) return false;
     return methodName.toLowerCase().includes('crédito');
   };
 
@@ -550,7 +553,14 @@ export function AppointmentDetailDialog({
         installments: 1
       };
     } else {
-      newPayments[index][field] = value;
+      const methodName = activePaymentMethods.find(m => m.id === newPayments[index].methodId)?.name || newPayments[index].method;
+      if (isClientCreditMethod(methodName)) {
+        const maxCreditUse = Math.min(availableClientCredit, remainingAfterDiscount);
+        const typedValue = parseFloat(value) || 0;
+        newPayments[index][field] = Math.min(Math.max(typedValue, 0), maxCreditUse).toString();
+      } else {
+        newPayments[index][field] = value;
+      }
     }
     setPayments(newPayments);
   };
@@ -618,6 +628,10 @@ export function AppointmentDetailDialog({
   };
 
   const submitPayment = () => {
+    const clientCreditPaymentMethod = payments.find(p => {
+      const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
+      return isClientCreditMethod(methodName) && (parseFloat(p.amount) || 0) > 0;
+    });
     const validPayments = payments
       .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
@@ -642,7 +656,8 @@ export function AppointmentDetailDialog({
         finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
         currentOpenRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
-        discount > 0 ? discount : undefined // Desconto aplicado
+        discount > 0 ? discount : undefined, // Desconto aplicado
+        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
@@ -1119,10 +1134,11 @@ export function AppointmentDetailDialog({
                   
                   <p className="text-sm font-medium">Registrar Pagamento</p>
                   
-                  {payments.map((payment, index) => {
+      {payments.map((payment, index) => {
                     const selectedMethod = activePaymentMethods.find(m => m.id === payment.methodId);
                     const isCard = selectedMethod ? isMethodCard(selectedMethod.name) : false;
                     const isCredit = selectedMethod ? isMethodCredit(selectedMethod.name) : false;
+                    const isClientCreditSelected = selectedMethod ? isClientCreditMethod(selectedMethod.name) : false;
                     const applicableBrands = payment.methodId ? getApplicableCardBrands(payment.methodId) : [];
                     const maxInstallments = payment.methodId ? getMaxInstallments(payment.methodId) : 1;
                     const paymentAmount = parseFloat(payment.amount) || 0;
@@ -1167,11 +1183,11 @@ export function AppointmentDetailDialog({
                               step="0.01"
                               placeholder="0,00"
                               value={payment.amount}
-                              max={isClientCreditMethod(selectedMethod?.name || '') ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
+                              max={isClientCreditSelected ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
                               onChange={(e) => updatePayment(index, 'amount', e.target.value)}
                             />
-                            {isClientCreditMethod(selectedMethod?.name || '') && (
-                              <p className="mt-1 text-[10px] text-muted-foreground">Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>
+                            {isClientCreditSelected && (
+                              <p className="mt-1 text-[10px] text-muted-foreground">Saldo disponível: R$ {availableClientCredit.toFixed(2)} • Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>
                             )}
                           </div>
                           {payments.length > 1 && (

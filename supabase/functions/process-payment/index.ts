@@ -188,6 +188,16 @@ serve(async (req) => {
       ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
       : (appointment.service?.price || 0);
 
+    if (body.used_client_credit && body.used_client_credit > 0) {
+      const currentBalance = Number(appointment.client?.credit_balance || 0);
+      if (!appointment.client?.id || body.used_client_credit > currentBalance) {
+        return new Response(
+          JSON.stringify({ success: false, errors: [{ field: 'used_client_credit', message: 'Crédito utilizado maior que o saldo disponível do cliente' }] }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // 3. Verify cash register is open if provided
     if (body.cash_register_id) {
       const { data: cashRegister, error: cashError } = await supabase

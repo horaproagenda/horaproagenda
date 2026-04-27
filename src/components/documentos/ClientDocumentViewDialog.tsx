@@ -77,39 +77,50 @@ export function ClientDocumentViewDialog({
 
   const handleDownloadPdf = () => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const margin = 18;
+    const margin = 22;
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const maxWidth = pageWidth - margin * 2;
-    const removeAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    let y = 22;
+    const normalizePdfText = (value: string) => value.replace(/\r\n/g, '\n').replace(/\t/g, '  ');
+    const addFooter = () => {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.text(`Página ${pdf.getNumberOfPages()}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+    };
+    let y = 24;
 
-    pdf.setLineWidth(0.3);
-    pdf.rect(10, 10, pageWidth - 20, pageHeight - 20);
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(14);
-    pdf.text(removeAccents(document.title), pageWidth / 2, y, { align: 'center', maxWidth });
-    y += 10;
+    pdf.setFontSize(16);
+    pdf.text(normalizePdfText(document.title || 'Documento'), pageWidth / 2, y, { align: 'center', maxWidth });
+    y += 9;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
-    pdf.text(removeAccents(`Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
+    pdf.text(normalizePdfText(`Cliente: ${client?.name || 'Não informado'}`), margin, y);
+    y += 5;
+    pdf.text(normalizePdfText(`Gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
+    if (document.signed_at) {
+      y += 5;
+      pdf.text(normalizePdfText(`Assinado em ${format(new Date(document.signed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}${document.signed_by ? ` por ${document.signed_by}` : ''}`), margin, y);
+    }
     y += 8;
+    pdf.setDrawColor(180);
     pdf.line(margin, y, pageWidth - margin, y);
-    y += 8;
+    y += 10;
 
-    const lines = pdf.splitTextToSize(removeAccents(document.content || ''), maxWidth);
+    const lines = pdf.splitTextToSize(normalizePdfText(document.content || ''), maxWidth);
     pdf.setFontSize(10);
     lines.forEach((line: string) => {
-      if (y > pageHeight - 32) {
+      if (y > pageHeight - 24) {
+        addFooter();
         pdf.addPage();
-        pdf.rect(10, 10, pageWidth - 20, pageHeight - 20);
         y = 22;
       }
       pdf.text(line, margin, y);
       y += 5;
     });
+    addFooter();
 
-    const fileName = removeAccents(`${document.title} - ${client?.name || 'cliente'}.pdf`).replace(/[^a-zA-Z0-9 ._-]/g, '');
+    const fileName = `${document.title} - ${client?.name || 'cliente'}.pdf`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 ._-]/g, '');
     pdf.save(fileName);
   };
 
@@ -254,8 +265,8 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
 
         <ScrollArea className="flex-1 h-[62vh] px-6 py-4">
           {document.content ? (
-            <div className="mx-auto w-full max-w-[620px] rounded-sm border bg-card p-4 shadow-sm">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6">
+            <div className="mx-auto w-full max-w-[620px] min-h-[780px] rounded-sm border bg-background p-6 shadow-sm">
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">
                 {document.content}
               </pre>
             </div>

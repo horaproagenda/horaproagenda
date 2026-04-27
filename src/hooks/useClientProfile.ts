@@ -175,7 +175,12 @@ export function useClientProfile(clientId: string) {
         .select(`
           *,
           service:services(*),
-          package_appointment:package_appointments!appointments_package_appointment_id_fkey(*, package:service_packages(*))
+          professional:professionals(*),
+          room:rooms(*),
+          package_appointment:package_appointments!appointments_package_appointment_id_fkey(
+            *,
+            package:service_packages(*, professional:professionals(*), room:rooms(*), service:services(*))
+          )
         `)
         .eq('client_id', clientId)
         .order('start_time', { ascending: false });
@@ -205,7 +210,8 @@ export function useClientProfile(clientId: string) {
           service:services(name, price),
           package:service_packages(name, total_price),
           payment_method:payment_methods(id, name),
-          bank:banks(name)
+          bank:banks(name),
+          boleto_installments(*)
         `)
         .eq('client_id', clientId)
         .order('sale_date', { ascending: false });
@@ -443,66 +449,74 @@ export function useClientProfile(clientId: string) {
     return methodIdOrName;
   };
 
-  // Build payment history from BOTH sales AND appointments
-  // Sales are the primary source; appointments with direct payments (not linked to sales) are secondary
+  // Build payment history only from payments that were effectively registered.
+  // Pending purchases/parcelas are intentionally excluded from this customer-facing history.
   const saleLinkedServiceIds = new Set<string>();
   clientSales.forEach(sale => {
     if (sale.service_id) saleLinkedServiceIds.add(sale.service_id);
   });
 
   const paymentHistory: PaymentHistoryItem[] = [
-    // From sales (purchases through caixa)
-    ...clientSales.map(sale => {
+    ...clientSales.flatMap(sale => {
       const isCancelled = sale.notes?.includes('CANCELADO') || sale.final_amount === 0;
-      const totalPrice = sale.original_amount || sale.final_amount || 0;
-      const amountPaid = sale.paid_at ? (sale.final_amount || 0) : 0;
-      const pendingAmount = sale.paid_at ? 0 : totalPrice;
-      const status: 'paid' | 'partial' | 'pending' | 'cancelled' = 
-        isCancelled ? 'cancelled' :
-        sale.paid_at ? 'paid' : 'pending';
-      
-      const displayDate = sale.sale_date || sale.paid_at?.split('T')[0] || sale.created_at.split('T')[0];
-      
-      return {
-        id: sale.id,
-        date: displayDate,
-        description: isCancelled ? `${sale.description || sale.service?.name || sale.package?.name || 'Venda'} (CANCELADO)` : sale.description || sale.service?.name || sale.package?.name || 'Venda',
-        serviceName: sale.service?.name || sale.package?.name || sale.description || '-',
-        amount: amountPaid,
-        totalPrice,
-        pendingAmount,
-        paymentMethod: sale.payment_method?.name || '-',
-        source: 'sale' as const,
-        status,
-        saleId: isCancelled ? undefined : sale.id,
-        serviceId: sale.service_id || undefined,
-        packageId: sale.package_id || undefined,
-      };
+      if (isCancelled) return [];
+
+      const serviceName = sale.service?.name || sale.package?.name || sale.description || '-';
+      const totalPrice = Number(sale.original_amount || sale.package?.total_price || sale.service?.price || sale.final_amount || 0);
+      const basePayment = sale.paid_at
+        ? [{
+            id: sale.id,
+            date: sale.paid_at.split('T')[0] || sale.sale_date || sale.created_at.split('T')[0],
+            amount: Number(sale.final_amount || 0),
+            paymentMethod: sale.payment_method?.name || '-',
+            suffix: '',
+          }]
+        : [];
+
+      const boletoPayments = ((sale as any).boleto_installments || [])
+        .filter((installment: any) => installment.status === 'paid' && installment.paid_date)
+        .map((installment: any) => ({
+          id: `${sale.id}-boleto-${installment.id}`,
+          date: installment.paid_date,
+          amount: Number(installment.amount || 0),
+          paymentMethod: `Boleto ${installment.installment_number}/${installment.total_installments}`,
+          suffix: ` - Parcela ${installment.installment_number}/${installment.total_installments}`,
+        }));
+
+      return [...basePayment, ...boletoPayments]
+        .filter(payment => payment.amount > 0)
+        .map(payment => ({
+          id: payment.id,
+          date: payment.date,
+          description: `${serviceName}${payment.suffix}`,
+          serviceName,
+          amount: payment.amount,
+          totalPrice,
+          pendingAmount: Math.max(0, totalPrice - payment.amount),
+          paymentMethod: payment.paymentMethod,
+          source: 'sale' as const,
+          status: 'paid' as const,
+          saleId: sale.id,
+          serviceId: sale.service_id || undefined,
+          packageId: sale.package_id || undefined,
+        }));
     }),
-    // From appointments with direct payments (not already covered by a sale)
     ...appointments
       .filter(a => {
-        // Only include appointments that have payment info and aren't already covered by a sale
-        // Skip if the appointment's service already has a sale entry for this client
         if (a.service_id && saleLinkedServiceIds.has(a.service_id)) return false;
-        // Include if has amount_paid > 0 or has a payment status
-        return (a.amount_paid && a.amount_paid > 0) || a.payment_status === 'paid' || a.payment_status === 'partial';
+        return (a.amount_paid || 0) > 0;
       })
       .map(a => {
-        const servicePrice = a.service?.price || 0;
-        const amountPaid = a.amount_paid || 0;
-        const isPaid = a.payment_status === 'paid' || (amountPaid >= servicePrice && servicePrice > 0);
-        const isPartial = a.payment_status === 'partial' || (amountPaid > 0 && amountPaid < servicePrice);
-        const isCancelled = a.status === 'cancelled';
-        
+        const servicePrice = Number(a.service?.price || 0);
+        const amountPaid = Number(a.amount_paid || 0);
         const paymentMethodNames = (a.payment_methods || [])
           .map(m => getPaymentMethodName(m))
           .filter(Boolean)
           .join(', ');
-        
+
         return {
           id: `apt-${a.id}`,
-          date: a.start_time.split('T')[0],
+          date: a.updated_at?.split('T')[0] || a.start_time.split('T')[0],
           description: a.service?.name || 'Atendimento',
           serviceName: a.service?.name || 'Atendimento',
           amount: amountPaid,
@@ -510,7 +524,7 @@ export function useClientProfile(clientId: string) {
           pendingAmount: Math.max(0, servicePrice - amountPaid),
           paymentMethod: paymentMethodNames || '-',
           source: 'appointment' as const,
-          status: isCancelled ? 'cancelled' as const : isPaid ? 'paid' as const : isPartial ? 'partial' as const : 'pending' as const,
+          status: 'paid' as const,
         };
       }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

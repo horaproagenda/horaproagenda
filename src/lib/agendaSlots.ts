@@ -55,15 +55,6 @@ export function mergeAgendaTimeSlots({
     });
   };
 
-  const isDateInCurrentView = (date: Date) => {
-    if (viewType === 'week') {
-      if (hideSunday && getDay(date) === 0) return false;
-      return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).some(day => isSameDay(date, day));
-    }
-    if (viewType === 'month') return isSameMonth(date, monthStart);
-    return isSameDay(date, selectedDate);
-  };
-
   appointments.forEach(appointment => {
     if (appointment.status === 'rescheduled') return;
     addVisibleStartSlots(appointment.start_time, appointment.end_time);

@@ -109,12 +109,15 @@ export function SaleForm() {
   const isCardPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
+    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
     return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
   }, [selectedPaymentMethod]);
 
   const isCreditCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
-    return selectedPaymentMethod.name.toLowerCase().includes('crédito');
+    const name = selectedPaymentMethod.name.toLowerCase();
+    if (name.includes('crédito ao cliente') || name.includes('credito ao cliente')) return false;
+    return name.includes('crédito');
   }, [selectedPaymentMethod]);
 
   const isDebitCard = useMemo(() => {

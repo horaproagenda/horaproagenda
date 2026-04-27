@@ -956,8 +956,8 @@ const Agenda = () => {
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
             const absence = getAbsenceAtSlot(selectedDate, time);
-            const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
-            const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
+            const isStart = apt && isVisibleRangeStart(selectedDate, time, apt.start_time, apt.end_time);
+            const isAbsenceStart = absence && isVisibleRangeStart(selectedDate, time, absence.start_time, absence.end_time);
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
@@ -1141,8 +1141,8 @@ const Agenda = () => {
               {weekDays.map(day => {
                 const apt = getAppointmentAtSlot(day, time);
                 const absence = getAbsenceAtSlot(day, time);
-                const isStart = apt && format(new Date(apt.start_time), 'HH:mm') === time;
-                const isAbsenceStart = absence && format(new Date(absence.start_time), 'HH:mm') === time;
+                const isStart = apt && isVisibleRangeStart(day, time, apt.start_time, apt.end_time);
+                const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
                 const color = prof?.agenda_color || '#3B82F6';

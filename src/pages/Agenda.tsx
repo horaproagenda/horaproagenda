@@ -962,7 +962,7 @@ const Agenda = () => {
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
-            const color = prof?.agenda_color || '#3B82F6';
+            const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
             
             // Calculate slot height based on duration
             const slotDuration = settings?.slot_interval || 30;
@@ -1006,11 +1006,7 @@ const Agenda = () => {
                         dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
-                      style={{ 
-                        backgroundColor: `${color}15`,
-                        borderLeft: `2px solid ${color}`,
-                        minHeight: `${slotsSpan * 28 - 4}px`
-                      }}
+                      style={{ ...statusStyle, minHeight: `${slotsSpan * 28 - 4}px` }}
                       draggable={dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
                       onDragEnd={handleDragEnd}
@@ -1146,7 +1142,7 @@ const Agenda = () => {
                 const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
-                const color = prof?.agenda_color || '#3B82F6';
+                const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
                 const isDragging = draggedAppointment?.id === apt?.id;
 
                 return (
@@ -1170,7 +1166,7 @@ const Agenda = () => {
                           dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
                           isDragging && 'opacity-50 ring-2 ring-primary'
                         )}
-                        style={{ backgroundColor: color }}
+                        style={statusStyle}
                         draggable={dragAndDropEnabled}
                         onDragStart={(e) => handleDragStart(e, apt)}
                         onDragEnd={handleDragEnd}

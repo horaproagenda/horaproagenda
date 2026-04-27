@@ -531,6 +531,7 @@ export function SaleForm() {
             const sessions = Array.from({ length: template.total_sessions }, (_, i) => ({
               package_id: newPackage.id,
               session_number: i + 1,
+              original_session_number: i + 1,
               status: 'pending',
             }));
 

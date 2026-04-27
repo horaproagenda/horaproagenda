@@ -116,6 +116,7 @@ export function useSingleSales() {
             const sessions = Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
               package_id: clientPackage.id,
               session_number: i + 1,
+              original_session_number: i + 1,
               status: 'pending',
               notes: 'Pacote pago integralmente via Caixa',
             }));

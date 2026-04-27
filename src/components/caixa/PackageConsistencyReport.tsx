@@ -143,6 +143,7 @@ export function PackageConsistencyReport() {
         const sessions = Array.from({ length: templatePackage.total_sessions }, (_, idx) => ({
           package_id: clientPackage.id,
           session_number: idx + 1,
+          original_session_number: idx + 1,
           status: 'pending',
         }));
 

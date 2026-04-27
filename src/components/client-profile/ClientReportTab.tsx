@@ -22,11 +22,13 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -89,6 +91,7 @@ const getMonthOptions = () => {
 
 export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
   const queryClient = useQueryClient();
+  const { equipment } = useEquipment();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<PaymentHistoryItem | null>(null);
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
@@ -121,12 +124,37 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     [paymentHistory, selectedMonth]
   );
 
+  const equipmentNameMap = useMemo(() => new Map(equipment.map(item => [item.id, item.name])), [equipment]);
+
+  const getEquipmentNames = (items: string[] = []) => items
+    .map(item => equipmentNameMap.get(item) || item)
+    .filter(Boolean)
+    .join(', ');
+
+  const chronologicalPackageNumbers = useMemo(() => {
+    const grouped = new Map<string, Appointment[]>();
+    appointments.forEach((apt) => {
+      const packageId = apt.package_appointment?.package?.id || apt.package_appointment?.package_id;
+      if (!packageId) return;
+      grouped.set(packageId, [...(grouped.get(packageId) || []), apt]);
+    });
+
+    const map = new Map<string, number>();
+    grouped.forEach((items) => {
+      items
+        .slice()
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .forEach((apt, index) => map.set(apt.id, index + 1));
+    });
+    return map;
+  }, [appointments]);
+
   const filteredAppointments = useMemo(() => 
     appointments.filter(a => {
       const matchesMonth = filterByMonth(a.start_time);
       const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
       return matchesMonth && matchesStatus;
-    }),
+    }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
     [appointments, selectedMonth, selectedStatus]
   );
 
@@ -435,6 +463,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
             <p className="text-xs text-muted-foreground py-2">Nenhum pagamento registrado neste período</p>
           ) : (
             <div className="overflow-x-auto">
+              <div className="min-w-[980px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -469,6 +498,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                 </TableBody>
               </Table>
             </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -483,7 +513,8 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollArea className="max-h-[460px] rounded border">
+              <div className="min-w-[980px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -503,33 +534,42 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   {filteredAppointments.map(appointment => {
                     const status = statusConfig[appointment.status] || statusConfig.scheduled;
                     const packageData = appointment.package_appointment?.package;
-                    const serviceName = packageData?.name || appointment.service?.name || packageData?.service?.name || '-';
+                    const isPackage = Boolean(packageData);
+                    const packageSession = appointment.package_appointment;
+                    const serviceName = isPackage ? (appointment.service?.name || packageData?.service?.name || packageData?.name || '-') : (appointment.service?.name || '-');
+                    const packageName = packageData?.name || null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
                     const roomName = appointment.room?.name || packageData?.room?.name || appointment.service?.room?.name || '-';
                     const equipmentList = appointment.service?.equipment?.length
                       ? appointment.service.equipment
                       : packageData?.equipment || [];
+                    const equipmentNames = getEquipmentNames(equipmentList);
                     const packageId = packageData?.id;
                     const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
+                    const chronologicalNumber = chronologicalPackageNumbers.get(appointment.id);
+                    const preservedNumber = packageSession?.original_session_number || packageSession?.session_number;
 
                     return (
                       <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
                         <TableCell className="text-xs py-2">
                           <div className="font-medium">{serviceName}</div>
-                          {packageData && <div className="text-[10px] text-muted-foreground">Pacote: {packageData.name}</div>}
+                          {packageName && <div className="text-[10px] text-primary font-medium">Pacote: {packageName}</div>}
                         </TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap">{format(new Date(appointment.end_time), 'HH:mm')}</TableCell>
                         <TableCell className="text-xs py-2">{professionalName}</TableCell>
                         <TableCell className="text-xs py-2">{roomName}</TableCell>
-                        <TableCell className="text-xs py-2">{equipmentList.length ? equipmentList.join(', ') : '-'}</TableCell>
+                        <TableCell className="text-xs py-2">{equipmentNames || '-'}</TableCell>
                         <TableCell className="py-2">
-                          {appointment.package_appointment ? (
+                          {packageSession ? (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
-                              {appointment.package_appointment.session_number}/{packageData?.total_sessions || '-'}
+                              Aplicação {preservedNumber}/{packageData?.total_sessions || '-'}
                             </Badge>
                           ) : '-'}
+                          {packageSession && chronologicalNumber && chronologicalNumber !== preservedNumber && (
+                            <div className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">Ordem por data: {chronologicalNumber}</div>
+                          )}
                         </TableCell>
                         <TableCell className="py-2">
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 whitespace-nowrap">{status.label}</Badge>
@@ -566,7 +606,9 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                   })}
                 </TableBody>
               </Table>
-            </div>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           )}
         </CardContent>
       </Card>

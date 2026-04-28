@@ -290,9 +290,9 @@ const Agenda = () => {
   // CRITICAL: Always exclude 'rescheduled' status from display so time slots are freed
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
-      // ALWAYS exclude rescheduled appointments from the grid
-      // They should not occupy time slots
-      if (apt.status === 'rescheduled') {
+      // Exclude truly released reschedules, but keep package sessions that were auto-shifted
+      // so previously scheduled package sessions do not disappear from the agenda.
+      if (apt.status === 'rescheduled' && apt.package_appointment?.status !== 'scheduled') {
         return false;
       }
       

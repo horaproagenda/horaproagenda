@@ -348,21 +348,27 @@ export function PackageSessionsManager({
     }
 
     const baseDate = new Date(`${newDate}T${newTime}:00`);
+    const selectedOrder = selectedSession.sequence_order || selectedSession.session_number;
     const pendingSessions = sessions.filter(s => 
-      s.session_number >= selectedSession.session_number && 
+      (s.sequence_order || s.session_number) >= selectedOrder && 
       s.status !== 'completed' && 
       s.status !== 'missed' &&
       s.appointment?.status !== 'completed' &&
       s.appointment?.status !== 'missed'
     );
 
-    const preview = pendingSessions.map((session, index) => ({
-      sessionNumber: session.session_number,
-      date: addDays(baseDate, massRescheduleInterval * index)
-    }));
+    let accumulatedDays = 0;
+    const preview = pendingSessions.map((session, index) => {
+      const date = addDays(baseDate, accumulatedDays);
+      const interval = packageInfo?.package_type === 'sequential'
+        ? session.interval_after_days || 0
+        : massRescheduleInterval;
+      accumulatedDays += index === pendingSessions.length - 1 ? 0 : interval;
+      return { sessionNumber: session.session_number, date };
+    });
 
     setMassReschedulePreview(preview);
-  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions]);
+  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type]);
 
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;
@@ -581,6 +587,9 @@ Até breve! ✨`;
               </div>
               <div>
                 <p className="text-sm font-medium">Sessão {session.session_number}</p>
+                {session.service?.name && (
+                  <p className="text-xs font-medium text-primary">{session.service.name}</p>
+                )}
                 {session.appointment?.start_time ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -690,7 +699,7 @@ Até breve! ✨`;
 
                 {massRescheduleEnabled && (
                   <div className="space-y-3 pt-2 border-t">
-                    <div>
+                    {packageInfo?.package_type !== 'sequential' && <div>
                       <Label className="text-xs">Intervalo entre sessões (dias)</Label>
                       <Select
                         value={massRescheduleInterval.toString()}
@@ -707,7 +716,7 @@ Até breve! ✨`;
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div>}
 
                     {/* Conflict Alert with Auto-resolve */}
                     {hasAnyConflict && (

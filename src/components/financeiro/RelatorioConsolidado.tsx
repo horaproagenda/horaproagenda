@@ -342,7 +342,7 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={entry.source === 'caixa' ? 'secondary' : 'outline'}>
-                          {entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? 'Crédito cliente' : 'Financeiro'}
+                          {entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -356,7 +356,7 @@ export function RelatorioConsolidado() {
                               : 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
                           )}
                         >
-                          {entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? 'Sem caixa' : 'Saída'}
+                          {entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída'}
                         </Badge>
                       </TableCell>
                       <TableCell>

@@ -32,6 +32,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
+import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -94,6 +95,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const { propagateSeriesDates } = useRecurringAppointments();
   const { deleteAppointment, updateAppointment } = useAppointments();
 
@@ -116,8 +118,15 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const filteredPaymentHistory = useMemo(() => 
     paymentHistory
       .filter(p => p.status === 'paid' && Number(p.amount || 0) > 0)
-      .filter(p => filterByMonth(p.date)),
-    [paymentHistory, selectedMonth]
+      .filter(p => filterByMonth(p.date))
+      .filter(p => {
+        if (paymentTypeFilter === 'all') return true;
+        const isClientCredit = isClientCreditPaymentMethod(p.paymentMethod);
+        if (paymentTypeFilter === 'client_credit') return isClientCredit;
+        if (paymentTypeFilter === 'non_cash') return isClientCredit;
+        return true;
+      }),
+    [paymentHistory, selectedMonth, paymentTypeFilter]
   );
 
   const equipmentNameMap = useMemo(() => new Map(equipment.map(item => [item.id, item.name])), [equipment]);
@@ -370,6 +379,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               ))}
             </SelectContent>
           </Select>
+          <Select value={paymentTypeFilter} onValueChange={setPaymentTypeFilter}>
+            <SelectTrigger className="w-[170px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Todos pagamentos</SelectItem>
+              <SelectItem value="client_credit" className="text-xs">{CLIENT_CREDIT_SOURCE_LABEL}</SelectItem>
+              <SelectItem value="non_cash" className="text-xs">{NON_CASH_PAYMENT_LABEL}</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-xs text-muted-foreground">
             {filteredAppointments.length} agendamento(s)
           </span>
@@ -463,7 +482,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                       </TableCell>
                       <TableCell className="text-xs py-1.5 text-right">R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-xs py-1.5 whitespace-nowrap">{getPaymentMethodName(payment.paymentMethod)}</TableCell>
+                      <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                        {getPaymentMethodName(payment.paymentMethod)}
+                        {isClientCreditPaymentMethod(payment.paymentMethod) && (
+                          <Badge variant="outline" className="ml-1 text-[10px]">{NON_CASH_PAYMENT_LABEL}</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="py-1.5">
                         {payment.saleId && (
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancelDialog(payment)}>

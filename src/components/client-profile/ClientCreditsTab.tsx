@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Briefcase, CheckCircle, Eye, WalletCards } from 'lucide-react';
+import { Package, Briefcase, CheckCircle, Eye, WalletCards, Download, FileText, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientServices } from '@/hooks/useClientServices';
@@ -12,7 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { exportToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getClientCreditTransactionTypeLabel } from '@/lib/clientCreditPayment';
 import { buildPackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
@@ -54,12 +59,21 @@ interface ClientCreditTransaction {
   previous_balance: number;
   new_balance: number;
   description: string;
+  appointment_id?: string | null;
+  sale_id?: string | null;
+  appointment?: { start_time: string; service?: { name: string } | null } | null;
+  sale?: { sale_date: string; service?: { name: string } | null; package?: { name: string } | null } | null;
 }
+
+const CREDIT_PAGE_SIZE = 25;
 
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const queryClient = useQueryClient();
   const { clientServices, isLoading: loadingServices } = useClientServices(clientId);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [creditSearch, setCreditSearch] = useState('');
+  const [creditPage, setCreditPage] = useState(1);
+  const [selectedCreditTransaction, setSelectedCreditTransaction] = useState<ClientCreditTransaction | null>(null);
 
   // Fetch client packages with accurate session counts from package_appointments
   const { data: clientPackages = [], isLoading: loadingPackages } = useQuery({
@@ -179,20 +193,54 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   });
 
   const { data: creditTransactions = [] } = useQuery({
-    queryKey: ['client_credit_transactions', clientId],
+    queryKey: ['client_credit_transactions', clientId, creditSearch],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
+      const trimmedSearch = creditSearch.trim();
+      if (trimmedSearch) {
+        query = query.or(`description.ilike.%${trimmedSearch}%,transaction_type.ilike.%${trimmedSearch}%`);
+      }
+
+      const { data, error } = await query.range(0, CREDIT_PAGE_SIZE * creditPage - 1);
+
       if (error) throw error;
-      return (data || []) as ClientCreditTransaction[];
+      const rows = (data || []) as ClientCreditTransaction[];
+      const appointmentIds = rows.map(row => row.appointment_id).filter(Boolean) as string[];
+      const saleIds = rows.map(row => row.sale_id).filter(Boolean) as string[];
+
+      const [appointmentsResult, salesResult] = await Promise.all([
+        appointmentIds.length
+          ? supabase.from('appointments').select('id, start_time, service:services(name)').in('id', appointmentIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        saleIds.length
+          ? supabase.from('single_sales').select('id, sale_date, service:services(name), package:service_packages(name)').in('id', saleIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+
+      if (appointmentsResult.error) throw appointmentsResult.error;
+      if (salesResult.error) throw salesResult.error;
+
+      const appointmentMap = new Map((appointmentsResult.data || []).map((appointment: any) => [appointment.id, appointment]));
+      const saleMap = new Map((salesResult.data || []).map((sale: any) => [sale.id, sale]));
+
+      return rows.map(row => ({
+        ...row,
+        appointment: row.appointment_id ? appointmentMap.get(row.appointment_id) || null : null,
+        sale: row.sale_id ? saleMap.get(row.sale_id) || null : null,
+      })) as ClientCreditTransaction[];
     },
     enabled: !!clientId,
     staleTime: 0,
   });
+
+  useEffect(() => {
+    setCreditPage(1);
+  }, [creditSearch, clientId]);
 
   const isLoading = loadingPackages || loadingServices;
   const packageSequenceMap = useMemo(
@@ -229,6 +277,55 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const pendingSessions = packageDetails?.filter(s => {
     return s.status === 'pending' && !s.appointment_id;
   }).length || 0;
+
+  const creditExportRows = creditTransactions.map(transaction => [
+    format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
+    getClientCreditTransactionTypeLabel(transaction.transaction_type),
+    transaction.description,
+    formatCurrency(Number(transaction.amount || 0)),
+    formatCurrency(Number(transaction.previous_balance || 0)),
+    formatCurrency(Number(transaction.new_balance || 0)),
+  ]);
+
+  const exportCreditCSV = () => exportToCSV({
+    filename: 'historico_credito_cliente',
+    headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
+    rows: creditExportRows,
+    successMessage: 'Histórico de crédito exportado em CSV!',
+  });
+
+  const exportCreditPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('Histórico de Crédito ao Cliente', 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 14, 21);
+    autoTable(doc, {
+      startY: 28,
+      head: [['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo']],
+      body: creditExportRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 98, 255] },
+      columnStyles: { 2: { cellWidth: 86 }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+    });
+    doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const getTransactionOrigin = (transaction: ClientCreditTransaction) => {
+    if (transaction.appointment_id) return 'Atendimento';
+    if (transaction.sale_id) return 'Venda/Documento';
+    return 'Ajuste manual';
+  };
+
+  const getTransactionReference = (transaction: ClientCreditTransaction) => {
+    if (transaction.appointment) {
+      return `${transaction.appointment.service?.name || 'Atendimento'} • ${format(new Date(transaction.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`;
+    }
+    if (transaction.sale) {
+      return `${transaction.sale.package?.name || transaction.sale.service?.name || 'Venda'} • ${format(new Date(`${transaction.sale.sale_date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}`;
+    }
+    return transaction.id;
+  };
 
   return (
     <div className="space-y-3 animate-fade-in">
@@ -316,14 +413,34 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       {/* Client Credit Balance History */}
       <Card>
         <CardContent className="p-3">
-          <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-            <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
-          </h3>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={exportCreditCSV} disabled={creditTransactions.length === 0}>
+                <Download className="h-3 w-3 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={exportCreditPDF} disabled={creditTransactions.length === 0}>
+                <FileText className="h-3 w-3 mr-1" /> PDF
+              </Button>
+            </div>
+          </div>
+          <div className="relative mb-2 max-w-sm">
+            <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={creditSearch}
+              onChange={(event) => setCreditSearch(event.target.value)}
+              placeholder="Buscar por tipo ou descrição..."
+              className="h-8 pl-7 text-xs"
+            />
+          </div>
           {creditTransactions.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2">Nenhuma movimentação de crédito registrada</p>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[720px]">
+            <>
+              <div className="overflow-x-auto">
+                <div className="min-w-[720px]">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -337,13 +454,13 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                   </TableHeader>
                   <TableBody>
                     {creditTransactions.map(transaction => (
-                      <TableRow key={transaction.id} className="hover:bg-muted/30">
+                      <TableRow key={transaction.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setSelectedCreditTransaction(transaction)}>
                         <TableCell className="text-xs py-1.5 whitespace-nowrap">
                           {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-xs py-1.5 whitespace-nowrap">
                           <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
-                            {transaction.transaction_type === 'credit_used' ? 'Crédito usado' : transaction.transaction_type === 'credit_added' ? 'Adição' : 'Ajuste'}
+                            {getClientCreditTransactionTypeLabel(transaction.transaction_type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
@@ -354,8 +471,16 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
-            </div>
+              {creditTransactions.length >= CREDIT_PAGE_SIZE * creditPage && (
+                <div className="mt-2 flex justify-center">
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setCreditPage(page => page + 1)}>
+                    Carregar mais
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -408,6 +533,38 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!selectedCreditTransaction} onOpenChange={(open) => !open && setSelectedCreditTransaction(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <WalletCards className="h-4 w-4" /> Detalhes da transação
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCreditTransaction && (
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] text-muted-foreground">Saldo anterior</p>
+                  <p className="font-semibold">{formatCurrency(Number(selectedCreditTransaction.previous_balance || 0))}</p>
+                </div>
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] text-muted-foreground">Novo saldo</p>
+                  <p className="font-semibold text-primary">{formatCurrency(Number(selectedCreditTransaction.new_balance || 0))}</p>
+                </div>
+              </div>
+              <div className="rounded-md border p-2 space-y-1">
+                <p><span className="text-muted-foreground">Data:</span> {format(new Date(selectedCreditTransaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+                <p><span className="text-muted-foreground">Tipo:</span> {getClientCreditTransactionTypeLabel(selectedCreditTransaction.transaction_type)}</p>
+                <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(Number(selectedCreditTransaction.amount || 0))}</p>
+                <p><span className="text-muted-foreground">Origem:</span> {getTransactionOrigin(selectedCreditTransaction)}</p>
+                <p><span className="text-muted-foreground">Referência:</span> {getTransactionReference(selectedCreditTransaction)}</p>
+                <p><span className="text-muted-foreground">Descrição:</span> {selectedCreditTransaction.description}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Package Details Dialog */}
       <Dialog open={!!selectedPackageId} onOpenChange={(open) => !open && setSelectedPackageId(null)}>

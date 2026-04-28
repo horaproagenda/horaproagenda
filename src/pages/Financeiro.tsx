@@ -26,6 +26,7 @@ import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
+import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -54,6 +55,7 @@ export default function Financeiro() {
         'categorias': 'categorias',
         'formas': 'formas-pagamento',
         'comissoes': 'comissoes',
+        'relatorio': 'relatorio',
         'metas': 'metas',
         'precificacao': 'precificacao',
       };
@@ -169,6 +171,10 @@ export default function Financeiro() {
               <Percent className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Comissões</span>
             </TabsTrigger>
+            <TabsTrigger value="relatorio" className="gap-1.5 text-xs tracking-wide h-8">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Relatório</span>
+            </TabsTrigger>
             <TabsTrigger value="metas" className="gap-1.5 text-xs tracking-wide h-8">
               <Target className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Metas</span>
@@ -210,6 +216,10 @@ export default function Financeiro() {
               dateRange={commissionDateRange}
               dateRangeLabel="Mês Atual"
             />
+          </TabsContent>
+
+          <TabsContent value="relatorio" className="page-enter">
+            <RelatorioConsolidado />
           </TabsContent>
 
           <TabsContent value="metas" className="page-enter">

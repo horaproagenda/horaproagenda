@@ -24,6 +24,8 @@ export interface ClientPackage {
   description: string | null;
   created_at: string;
   payment_methods?: string[] | null; // Indicates package was paid via caixa when set
+  package_type?: 'standard' | 'sequential';
+  steps?: Array<{ service_id?: string | null; sequence_order?: number; interval_after_days?: number }>;
 }
 
 export interface PackageSession {
@@ -33,6 +35,9 @@ export interface PackageSession {
   status: string;
   appointment_id: string | null;
   scheduled_date: string | null;
+  service_id?: string | null;
+  sequence_order?: number | null;
+  interval_after_days?: number | null;
 }
 
 export function useClientPackages(clientId: string | null) {
@@ -252,6 +257,7 @@ export function useClientPackages(clientId: string | null) {
         .select('*')
         .eq('package_id', packageId)
         .eq('status', 'pending')
+        .order('sequence_order', { ascending: true })
         .order('session_number', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -259,13 +265,19 @@ export function useClientPackages(clientId: string | null) {
       if (fetchError) throw fetchError;
       if (!pendingSession) throw new Error('Não há sessões pendentes neste pacote');
 
+      const { data: appointmentSchedule } = await supabase
+        .from('appointments')
+        .select('start_time')
+        .eq('id', appointmentId)
+        .single();
+
       // Update the session with the appointment
       const { error: updateSessionError } = await supabase
         .from('package_appointments')
         .update({
           appointment_id: appointmentId,
           status: 'scheduled',
-          scheduled_date: new Date().toISOString(),
+          scheduled_date: appointmentSchedule?.start_time || new Date().toISOString(),
         })
         .eq('id', pendingSession.id);
 
@@ -310,6 +322,7 @@ export function useClientPackages(clientId: string | null) {
         .from('appointments')
         .update({
           package_appointment_id: pendingSession.id,
+          service_id: pendingSession.service_id || null,
           payment_status: isPackagePaid ? 'paid' : 'pending',
           notes: finalNotes,
         })

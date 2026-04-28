@@ -178,7 +178,7 @@ export function useClientPackages(clientId: string | null) {
       }
 
       // Create the client-specific package
-      const { data: newPackage, error: packageError } = await supabase
+      const { data: newPackage, error: packageError } = await (supabase as any)
         .from('service_packages')
         .insert({
           name: data.templateData.name,
@@ -223,7 +223,7 @@ export function useClientPackages(clientId: string | null) {
         status: 'pending',
       }));
 
-      const { error: sessionsError } = await supabase
+      const { error: sessionsError } = await (supabase as any)
         .from('package_appointments')
         .insert(sessions);
 

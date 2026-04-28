@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useClientPackages } from '@/hooks/useClientPackages';
 import { useClientServices } from '@/hooks/useClientServices';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -124,6 +125,7 @@ export function NewAppointmentDialog({
   const { clients } = useClients();
   const { services } = useServices();
   const { packages } = useServicePackages();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
   const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
@@ -151,9 +153,34 @@ export function NewAppointmentDialog({
     if (dayOfWeek === 6 && !workSaturdays) return false; // Saturday
     return true;
   }, [workSundays, workSaturdays]);
+  const catalogPackages = useMemo(() => {
+    const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
+    const templatePackages = packageTemplates
+      .filter(template => template.is_active)
+      .map(template => ({
+        ...template,
+        template_id: template.id,
+        total_price: template.price,
+        service_id: template.service_id || null,
+        client_id: null,
+        sessions_scheduled: 0,
+        auto_schedule: false,
+        preferred_day_of_week: null,
+        preferred_time: null,
+        payment_method: null,
+        payment_methods: [],
+        payment_type: null,
+        whatsapp_reminder: false,
+        category: null,
+        updated_by: null,
+      }));
+
+    return [...legacyPackages, ...templatePackages] as any[];
+  }, [packages, packageTemplates]);
+
   const selectedServiceData = services.find(s => s.id === selectedService);
   // Look for package in both templates and client packages (paid packages)
-  const selectedPackageData = packages.find(p => p.id === selectedService) 
+  const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);
   const currentDuration = serviceType === 'service' 
     ? (selectedServiceData?.duration || manualDuration) 
@@ -162,7 +189,7 @@ export function NewAppointmentDialog({
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
   const activeEquipment = equipment.filter(e => e.is_active);
-  const activePackages = packages.filter(p => p.is_active && !p.client_id);
+  const activePackages = catalogPackages;
 
   // Check if selected package is already a client package (paid)
   const isClientPackageSelected = clientPackages.some(p => p.id === selectedService);

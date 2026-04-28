@@ -126,7 +126,7 @@ export function NewAppointmentDialog({
   const { services } = useServices();
   const { packages } = useServicePackages();
   const { templates: packageTemplates } = usePackageTemplates();
-  const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
+  const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession, getRemainingSessionCount, getSchedulableSessionCount } = useClientPackages(selectedClient || null);
   const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
@@ -202,8 +202,12 @@ export function NewAppointmentDialog({
     : null;
 
   const packageRemainingSessions = existingClientPackage
-    ? existingClientPackage.total_sessions - existingClientPackage.sessions_scheduled
+    ? getRemainingSessionCount(existingClientPackage)
     : selectedPackageData?.total_sessions || 0;
+  const existingPackageHasStarted = existingClientPackage
+    ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
+      ?? existingClientPackage.sessions_scheduled > 0
+    : false;
 
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
@@ -255,10 +259,10 @@ export function NewAppointmentDialog({
       console.log('Client packages available for scheduling:', availablePackages.map(p => ({
         id: p.id,
         name: p.name,
-        remaining: p.total_sessions - p.sessions_scheduled
+        remaining: getSchedulableSessionCount(p)
       })));
     }
-  }, [selectedClient, availablePackages]);
+  }, [selectedClient, availablePackages, getSchedulableSessionCount]);
   // Auto-fill professional and room from service or package data
   // Auto-fill professional, room, and equipment from service or package data
   useEffect(() => {
@@ -809,7 +813,7 @@ export function NewAppointmentDialog({
         }
 
         // If auto-schedule is enabled and it's the first appointment (either new package or existing with 0 sessions scheduled)
-        const isFirstAppointment = !existingClientPackage || existingClientPackage.sessions_scheduled === 0;
+        const isFirstAppointment = !existingClientPackage || !existingPackageHasStarted;
         const packageData = existingClientPackage || selectedPackageData;
         const totalSessions = packageData?.total_sessions || 1;
         
@@ -1135,7 +1139,7 @@ Até breve! ✨`;
                       {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                         .map((pkg, index) => {
-                          const remaining = pkg.total_sessions - pkg.sessions_scheduled;
+                          const remaining = getSchedulableSessionCount(pkg);
                           // Check if there are other packages with same name to show identifier
                           const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
@@ -1176,7 +1180,7 @@ Até breve! ✨`;
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {remaining} de {pkg.total_sessions} sessões disponíveis
+                                {remaining} de {pkg.total_sessions} sessões para agendar
                               </div>
                             </div>
                           );
@@ -1461,7 +1465,7 @@ Até breve! ✨`;
 
                   {/* Show auto-schedule options for new package OR first appointment of existing package */}
                   {((!existingClientPackage && selectedClient) || 
-                    (existingClientPackage && selectedClient && existingClientPackage.sessions_scheduled === 0)) && (
+                    (existingClientPackage && selectedClient && !existingPackageHasStarted)) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">

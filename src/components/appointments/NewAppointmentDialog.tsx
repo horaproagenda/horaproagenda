@@ -1465,7 +1465,7 @@ Até breve! ✨`;
 
                   {/* Show auto-schedule options for new package OR first appointment of existing package */}
                   {((!existingClientPackage && selectedClient) || 
-                    (existingClientPackage && selectedClient && existingClientPackage.sessions_scheduled === 0)) && (
+                    (existingClientPackage && selectedClient && !existingPackageHasStarted)) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">

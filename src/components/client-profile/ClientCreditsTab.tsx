@@ -278,23 +278,55 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     return s.status === 'pending' && !s.appointment_id;
   }).length || 0;
 
-  const creditExportRows = creditTransactions.map(transaction => [
+  const buildCreditExportRows = (transactions: ClientCreditTransaction[]) => transactions.map(transaction => [
     format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
     getClientCreditTransactionTypeLabel(transaction.transaction_type),
-    transaction.description,
+    transaction.description || '-',
     formatCurrency(Number(transaction.amount || 0)),
     formatCurrency(Number(transaction.previous_balance || 0)),
     formatCurrency(Number(transaction.new_balance || 0)),
   ]);
 
-  const exportCreditCSV = () => exportToCSV({
-    filename: 'historico_credito_cliente',
-    headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
-    rows: creditExportRows,
-    successMessage: 'Histórico de crédito exportado em CSV!',
-  });
+  const fetchCreditTransactionsForExport = async () => {
+    const pageSize = 1000;
+    let from = 0;
+    let allRows: ClientCreditTransaction[] = [];
 
-  const exportCreditPDF = () => {
+    while (true) {
+      let query = (supabase as any)
+        .from('client_credit_transactions')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      const trimmedSearch = creditSearch.trim();
+      if (trimmedSearch) {
+        query = query.or(`description.ilike.%${trimmedSearch}%,transaction_type.ilike.%${trimmedSearch}%`);
+      }
+
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw error;
+      const rows = (data || []) as ClientCreditTransaction[];
+      allRows = [...allRows, ...rows];
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return allRows;
+  };
+
+  const exportCreditCSV = async () => {
+    const rows = buildCreditExportRows(await fetchCreditTransactionsForExport());
+    exportToCSV({
+      filename: 'historico_credito_cliente',
+      headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
+      rows,
+      successMessage: 'Histórico de crédito exportado em CSV!',
+    });
+  };
+
+  const exportCreditPDF = async () => {
+    const creditExportRows = buildCreditExportRows(await fetchCreditTransactionsForExport());
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     doc.setFontSize(14);
     doc.text('Histórico de Crédito ao Cliente', 14, 14);
@@ -306,7 +338,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       body: creditExportRows,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 2: { cellWidth: 86 }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 28 }, 2: { cellWidth: 92 }, 3: { halign: 'right', cellWidth: 32 }, 4: { halign: 'right', cellWidth: 36 }, 5: { halign: 'right', cellWidth: 36 } },
     });
     doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
@@ -324,7 +356,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     if (transaction.sale) {
       return `${transaction.sale.package?.name || transaction.sale.service?.name || 'Venda'} • ${format(new Date(`${transaction.sale.sale_date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}`;
     }
-    return transaction.id;
+    if (transaction.appointment_id) return `Atendimento não localizado (${transaction.appointment_id})`;
+    if (transaction.sale_id) return `Documento/venda não localizado (${transaction.sale_id})`;
+    return 'Referência não vinculada';
   };
 
   return (
@@ -558,7 +592,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 <p><span className="text-muted-foreground">Tipo:</span> {getClientCreditTransactionTypeLabel(selectedCreditTransaction.transaction_type)}</p>
                 <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(Number(selectedCreditTransaction.amount || 0))}</p>
                 <p><span className="text-muted-foreground">Origem:</span> {getTransactionOrigin(selectedCreditTransaction)}</p>
-                <p><span className="text-muted-foreground">Referência:</span> {getTransactionReference(selectedCreditTransaction)}</p>
+                <p><span className="text-muted-foreground">Referência do documento/atendimento:</span> {getTransactionReference(selectedCreditTransaction)}</p>
                 <p><span className="text-muted-foreground">Descrição:</span> {selectedCreditTransaction.description}</p>
               </div>
             </div>

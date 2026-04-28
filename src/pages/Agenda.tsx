@@ -103,6 +103,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { exportToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -628,6 +630,26 @@ const Agenda = () => {
       });
     }
 
+    const exportRows = appointmentsToExport.map(apt => {
+      const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
+      const paymentLabel = isClientCredit ? `${CLIENT_CREDIT_SOURCE_LABEL} / ${NON_CASH_PAYMENT_LABEL}` : paymentMap[apt.payment_status || 'pending'] || apt.payment_status || 'Pendente';
+      return [
+        format(new Date(apt.start_time), 'dd/MM/yyyy'),
+        format(new Date(apt.start_time), 'HH:mm'),
+        format(new Date(apt.end_time), 'HH:mm'),
+        apt.client?.name || '-',
+        apt.client?.phone || '-',
+        apt.service?.name || (apt.package_appointment?.package?.name ? `Pacote: ${apt.package_appointment.package.name}` : '-'),
+        apt.professional?.name || apt.service?.professional?.name || '-',
+        apt.room?.name || apt.service?.room?.name || '-',
+        statusMap[apt.status] || apt.status,
+        paymentLabel,
+        apt.service?.price || apt.package_appointment?.package?.total_price || 0,
+        apt.amount_paid || 0,
+        apt.notes || '',
+      ];
+    });
+
     exportToCSV({
       filename: `agendamentos_${viewType}`,
       headers: [
@@ -645,23 +667,35 @@ const Agenda = () => {
         'Valor Pago',
         'Observações',
       ],
-      rows: appointmentsToExport.map(apt => [
-        format(new Date(apt.start_time), 'dd/MM/yyyy'),
-        format(new Date(apt.start_time), 'HH:mm'),
-        format(new Date(apt.end_time), 'HH:mm'),
-        apt.client?.name || '-',
-        apt.client?.phone || '-',
-        apt.service?.name || (apt.package_appointment?.package?.name ? `Pacote: ${apt.package_appointment.package.name}` : '-'),
-        apt.professional?.name || apt.service?.professional?.name || '-',
-        apt.room?.name || apt.service?.room?.name || '-',
-        statusMap[apt.status] || apt.status,
-        paymentMap[apt.payment_status || 'pending'] || apt.payment_status || 'Pendente',
-        apt.service?.price || apt.package_appointment?.package?.total_price || 0,
-        apt.amount_paid || 0,
-        apt.notes || '',
-      ]),
+      rows: exportRows,
       successMessage: `${appointmentsToExport.length} agendamentos exportados com sucesso!`,
     });
+  };
+
+  const handleExportAppointmentsPDF = () => {
+    let appointmentsToExport = filteredByFilters;
+    if (viewType === 'day' || viewType === 'professional') appointmentsToExport = filteredAppointments;
+    if (viewType === 'week') appointmentsToExport = filteredByFilters.filter(apt => weekDays.some(day => isSameDay(new Date(apt.start_time), day)));
+    if (viewType === 'month') appointmentsToExport = filteredByFilters.filter(apt => isSameMonth(new Date(apt.start_time), monthStart));
+    const rows = appointmentsToExport.map(apt => {
+      const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
+      return [
+        format(new Date(apt.start_time), 'dd/MM/yyyy'),
+        format(new Date(apt.start_time), 'HH:mm'),
+        apt.client?.name || '-',
+        apt.service?.name || apt.package_appointment?.package?.name || '-',
+        apt.professional?.name || apt.service?.professional?.name || '-',
+        isClientCredit ? `${CLIENT_CREDIT_SOURCE_LABEL} / ${NON_CASH_PAYMENT_LABEL}` : apt.payment_status || 'Pendente',
+        `R$ ${Number(apt.amount_paid || 0).toFixed(2)}`,
+      ];
+    });
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('Agenda filtrada', 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Filtro de pagamento: ${paymentFilter === 'client_credit' ? CLIENT_CREDIT_SOURCE_LABEL : paymentFilter === 'non_cash' ? NON_CASH_PAYMENT_LABEL : paymentFilter}`, 14, 21);
+    autoTable(doc, { startY: 28, head: [['Data', 'Hora', 'Cliente', 'Serviço', 'Profissional', 'Pagamento', 'Valor pago']], body: rows, styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 98, 255] }, columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 18 }, 5: { cellWidth: 56 }, 6: { halign: 'right' } } });
+    doc.save(`agenda_filtrada_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -1865,6 +1899,10 @@ const Agenda = () => {
               <DropdownMenuItem onClick={handleExportAppointments} className="text-xs gap-2">
                 <Download className="h-3.5 w-3.5" />
                 Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportAppointmentsPDF} className="text-xs gap-2">
+                <Download className="h-3.5 w-3.5" />
+                Exportar PDF
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setImportDialogOpen(true)}

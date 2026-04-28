@@ -147,6 +147,7 @@ export interface ServicePackage {
   room?: Room;
   service?: Service;
   appointments?: PackageAppointment[];
+  steps?: PackageTemplateStep[];
 }
 
 export type PackageAppointmentStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled' | 'missed' | 'rescheduled';

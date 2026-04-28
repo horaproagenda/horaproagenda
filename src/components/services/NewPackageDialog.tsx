@@ -190,6 +190,15 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
               )}
             />
 
+            <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
+              <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
+                Pacote padrão
+              </Button>
+              <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
+                Sequencial
+              </Button>
+            </div>
+
             {/* Sessions, Interval, Duration */}
             <div className="grid grid-cols-3 gap-3">
               <FormField
@@ -197,9 +206,9 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 name="total_sessions"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Sessões *</FormLabel>
+                    <FormLabel className="text-xs">{packageType === 'sequential' ? 'Etapas' : 'Sessões'} *</FormLabel>
                     <FormControl>
-                      <Input type="number" min={1} max={100} className="h-8 text-sm" {...field} />
+                      <Input type="number" min={1} max={100} className="h-8 text-sm" disabled={packageType === 'sequential'} value={packageType === 'sequential' ? steps.length : field.value} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage className="text-[10px]" />
                   </FormItem>
@@ -237,6 +246,42 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 )}
               />
             </div>
+
+            {packageType === 'sequential' && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs">Sequência de serviços</FormLabel>
+                  <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={addStep}>
+                    <Plus className="h-3 w-3" /> Etapa
+                  </Button>
+                </div>
+                {steps.map((step, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_88px_28px] gap-2 items-end">
+                    <div>
+                      <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
+                      <Select value={step.service_id || '_none'} onValueChange={(value) => updateStep(index, { service_id: value === '_none' ? '' : value })}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Serviço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Selecione</SelectItem>
+                          {activeServices.map(service => (
+                            <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <FormLabel className="text-[10px]">Após (dias)</FormLabel>
+                      <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={steps.length === 1} onClick={() => removeStep(index)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Professional & Room */}
             <div className="grid grid-cols-2 gap-3">

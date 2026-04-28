@@ -126,7 +126,7 @@ export function NewAppointmentDialog({
   const { services } = useServices();
   const { packages } = useServicePackages();
   const { templates: packageTemplates } = usePackageTemplates();
-  const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
+  const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession, getRemainingSessionCount, getSchedulableSessionCount } = useClientPackages(selectedClient || null);
   const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
@@ -202,7 +202,7 @@ export function NewAppointmentDialog({
     : null;
 
   const packageRemainingSessions = existingClientPackage
-    ? existingClientPackage.total_sessions - existingClientPackage.sessions_scheduled
+    ? getRemainingSessionCount(existingClientPackage)
     : selectedPackageData?.total_sessions || 0;
 
   // Reset form and apply prefilled values when dialog opens

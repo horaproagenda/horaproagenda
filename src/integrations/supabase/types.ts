@@ -1469,6 +1469,36 @@ export type Database = {
           },
         ]
       }
+      package_template_steps: {
+        Row: {
+          created_at: string
+          id: string
+          interval_after_days: number
+          sequence_order: number
+          service_id: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interval_after_days?: number
+          sequence_order: number
+          service_id: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interval_after_days?: number
+          sequence_order?: number
+          service_id?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       package_templates: {
         Row: {
           created_at: string
@@ -1479,6 +1509,7 @@ export type Database = {
           interval_days: number | null
           is_active: boolean
           name: string
+          package_type: string
           payment_type: string | null
           price: number
           professional_id: string | null
@@ -1495,6 +1526,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name: string
+          package_type?: string
           payment_type?: string | null
           price: number
           professional_id?: string | null
@@ -1511,6 +1543,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name?: string
+          package_type?: string
           payment_type?: string | null
           price?: number
           professional_id?: string | null

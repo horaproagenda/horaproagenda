@@ -118,7 +118,10 @@ export function PackageSessionsManager({
         .order('sequence_order', { ascending: true });
 
       if (error) throw error;
-      setSessions(data || []);
+      setSessions((data || []).map((session: any) => ({
+        ...session,
+        service: Array.isArray(session.service) ? session.service[0] : session.service,
+      })) as PackageSession[]);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {

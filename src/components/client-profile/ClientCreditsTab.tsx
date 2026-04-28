@@ -197,12 +197,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     queryFn: async () => {
       let query = (supabase as any)
         .from('client_credit_transactions')
-        .select(`
-          id, created_at, transaction_type, amount, previous_balance, new_balance, description,
-          appointment_id, sale_id,
-          appointment:appointments(start_time, service:services(name)),
-          sale:single_sales(sale_date, service:services(name), package:service_packages(name))
-        `)
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
@@ -214,7 +209,30 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       const { data, error } = await query.range(0, CREDIT_PAGE_SIZE * creditPage - 1);
 
       if (error) throw error;
-      return (data || []) as ClientCreditTransaction[];
+      const rows = (data || []) as ClientCreditTransaction[];
+      const appointmentIds = rows.map(row => row.appointment_id).filter(Boolean) as string[];
+      const saleIds = rows.map(row => row.sale_id).filter(Boolean) as string[];
+
+      const [appointmentsResult, salesResult] = await Promise.all([
+        appointmentIds.length
+          ? supabase.from('appointments').select('id, start_time, service:services(name)').in('id', appointmentIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        saleIds.length
+          ? supabase.from('single_sales').select('id, sale_date, service:services(name), package:service_packages(name)').in('id', saleIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+
+      if (appointmentsResult.error) throw appointmentsResult.error;
+      if (salesResult.error) throw salesResult.error;
+
+      const appointmentMap = new Map((appointmentsResult.data || []).map((appointment: any) => [appointment.id, appointment]));
+      const saleMap = new Map((salesResult.data || []).map((sale: any) => [sale.id, sale]));
+
+      return rows.map(row => ({
+        ...row,
+        appointment: row.appointment_id ? appointmentMap.get(row.appointment_id) || null : null,
+        sale: row.sale_id ? saleMap.get(row.sale_id) || null : null,
+      })) as ClientCreditTransaction[];
     },
     enabled: !!clientId,
     staleTime: 0,

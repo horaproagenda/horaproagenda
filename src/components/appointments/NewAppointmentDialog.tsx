@@ -281,6 +281,16 @@ export function NewAppointmentDialog({
   // Calculate preview dates for auto-scheduling
   const packageSequenceSteps = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
+      return packageData.appointments
+        .map(session => ({
+          service_id: session.service_id,
+          sequence_order: session.sequence_order || session.session_number,
+          interval_after_days: session.interval_after_days || 0,
+        }))
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+    }
+
     return packageData?.package_type === 'sequential' && packageData.steps?.length
       ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
       : [];

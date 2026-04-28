@@ -296,6 +296,51 @@ export function useAppointments() {
         if (pkgScheduleError) {
           console.error('Error preserving package session schedule:', pkgScheduleError);
         }
+
+        if (updates.start_time) {
+          const { data: currentSession } = await (supabase as any)
+            .from('package_appointments')
+            .select('*, package:service_packages(id, package_type, duration)')
+            .eq('id', data.package_appointment_id)
+            .single();
+
+          if (currentSession?.package?.package_type === 'sequential') {
+            const { data: packageSessions } = await (supabase as any)
+              .from('package_appointments')
+              .select('*, service:services(duration)')
+              .eq('package_id', currentSession.package_id)
+              .order('sequence_order', { ascending: true });
+
+            const orderedSessions = (packageSessions || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+            const currentIndex = orderedSessions.findIndex((session: any) => session.id === data.package_appointment_id);
+            let nextStart = new Date(updates.start_time);
+
+            for (let index = currentIndex; index >= 0 && index < orderedSessions.length; index += 1) {
+              const session = orderedSessions[index];
+              if (index > currentIndex) {
+                const previousSession = orderedSessions[index - 1];
+                nextStart = new Date(nextStart.getTime() + Number(previousSession.interval_after_days || 0) * 24 * 60 * 60 * 1000);
+              }
+
+              await supabase
+                .from('package_appointments')
+                .update({ scheduled_date: nextStart.toISOString(), status: session.status === 'completed' ? 'completed' : 'scheduled' })
+                .eq('id', session.id);
+
+              if (session.appointment_id && session.status !== 'completed' && session.status !== 'missed') {
+                const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);
+                await supabase
+                  .from('appointments')
+                  .update({
+                    start_time: nextStart.toISOString(),
+                    end_time: new Date(nextStart.getTime() + duration * 60 * 1000).toISOString(),
+                    status: index === currentIndex ? (updates.status || data.status) : 'rescheduled',
+                  })
+                  .eq('id', session.appointment_id);
+              }
+            }
+          }
+        }
       }
 
       // If status changed to cancelled/missed/rescheduled, clean up financial entries

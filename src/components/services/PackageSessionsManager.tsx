@@ -30,9 +30,16 @@ import { useWhatsapp } from '@/hooks/useWhatsapp';
 interface PackageSession {
   id: string;
   session_number: number;
+  sequence_order?: number | null;
+  interval_after_days?: number | null;
+  service_id?: string | null;
   status: string;
   scheduled_date: string | null;
   appointment_id: string | null;
+  service?: {
+    name: string;
+    duration: number;
+  } | null;
   appointment?: {
     start_time: string;
     end_time: string;
@@ -81,7 +88,7 @@ export function PackageSessionsManager({
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
   
   // Conflict checking state
-  const [packageInfo, setPackageInfo] = useState<{ professional_id: string | null; room_id: string | null; duration: number } | null>(null);
+  const [packageInfo, setPackageInfo] = useState<{ professional_id: string | null; room_id: string | null; duration: number; package_type?: string | null } | null>(null);
   const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
   const [professionalAbsences, setProfessionalAbsences] = useState<any[]>([]);
   const [previewConflicts, setPreviewConflicts] = useState<Map<number, ConflictInfo>>(new Map());
@@ -100,6 +107,7 @@ export function PackageSessionsManager({
         .from('package_appointments')
         .select(`
           *,
+          service:services(name, duration),
           appointment:appointments (
             start_time,
             end_time,
@@ -107,7 +115,7 @@ export function PackageSessionsManager({
           )
         `)
         .eq('package_id', packageId)
-        .order('session_number', { ascending: true });
+        .order('sequence_order', { ascending: true });
 
       if (error) throw error;
       setSessions(data || []);
@@ -122,7 +130,7 @@ export function PackageSessionsManager({
     try {
       const { data: pkg, error } = await supabase
         .from('service_packages')
-        .select('professional_id, room_id, duration')
+        .select('professional_id, room_id, duration, package_type')
         .eq('id', packageId)
         .single();
 

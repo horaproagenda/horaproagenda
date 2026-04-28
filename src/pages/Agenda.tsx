@@ -114,6 +114,7 @@ import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
+import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -320,7 +321,14 @@ const Agenda = () => {
         }
       }
       if (paymentFilter !== 'all') {
-        if (apt.payment_status !== paymentFilter) {
+        const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
+        if (paymentFilter === 'client_credit' && !isClientCredit) {
+          return false;
+        }
+        if (paymentFilter === 'non_cash' && !isClientCredit) {
+          return false;
+        }
+        if (!['client_credit', 'non_cash'].includes(paymentFilter) && apt.payment_status !== paymentFilter) {
           return false;
         }
       }

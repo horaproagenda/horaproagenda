@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useClientPackages } from '@/hooks/useClientPackages';
 import { useClientServices } from '@/hooks/useClientServices';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -124,6 +125,7 @@ export function NewAppointmentDialog({
   const { clients } = useClients();
   const { services } = useServices();
   const { packages } = useServicePackages();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { clientPackages, availablePackages, findClientPackageByTemplate, createClientPackage, incrementPackageSession } = useClientPackages(selectedClient || null);
   const { availableServices: clientPaidServices, markServiceAsUsed } = useClientServices(selectedClient || null);
   const { professionals } = useProfessionals();
@@ -151,9 +153,34 @@ export function NewAppointmentDialog({
     if (dayOfWeek === 6 && !workSaturdays) return false; // Saturday
     return true;
   }, [workSundays, workSaturdays]);
+  const catalogPackages = useMemo(() => {
+    const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
+    const templatePackages = packageTemplates
+      .filter(template => template.is_active)
+      .map(template => ({
+        ...template,
+        template_id: template.id,
+        total_price: template.price,
+        service_id: template.service_id || null,
+        client_id: null,
+        sessions_scheduled: 0,
+        auto_schedule: false,
+        preferred_day_of_week: null,
+        preferred_time: null,
+        payment_method: null,
+        payment_methods: [],
+        payment_type: null,
+        whatsapp_reminder: false,
+        category: null,
+        updated_by: null,
+      }));
+
+    return [...legacyPackages, ...templatePackages] as any[];
+  }, [packages, packageTemplates]);
+
   const selectedServiceData = services.find(s => s.id === selectedService);
   // Look for package in both templates and client packages (paid packages)
-  const selectedPackageData = packages.find(p => p.id === selectedService) 
+  const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);
   const currentDuration = serviceType === 'service' 
     ? (selectedServiceData?.duration || manualDuration) 
@@ -162,7 +189,7 @@ export function NewAppointmentDialog({
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
   const activeEquipment = equipment.filter(e => e.is_active);
-  const activePackages = packages.filter(p => p.is_active && !p.client_id);
+  const activePackages = catalogPackages;
 
   // Check if selected package is already a client package (paid)
   const isClientPackageSelected = clientPackages.some(p => p.id === selectedService);
@@ -279,6 +306,23 @@ export function NewAppointmentDialog({
   }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
 
   // Calculate preview dates for auto-scheduling
+  const packageSequenceSteps = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
+      return packageData.appointments
+        .map(session => ({
+          service_id: session.service_id,
+          sequence_order: session.sequence_order || session.session_number,
+          interval_after_days: session.interval_after_days || 0,
+        }))
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+    }
+
+    return packageData?.package_type === 'sequential' && packageData.steps?.length
+      ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+      : [];
+  }, [existingClientPackage, selectedPackageData]);
+
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     
@@ -286,11 +330,15 @@ export function NewAppointmentDialog({
     const totalSessions = packageData?.total_sessions || 1;
     if (totalSessions <= 1) return [];
 
-    const intervalDays = packageData?.interval_days || 7;
     const dates: Date[] = [appointmentTimes.startTime];
+    let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
-      const futureDate = addDays(appointmentTimes.startTime, intervalDays * i);
+      const previousStep = packageSequenceSteps[i - 1];
+      const intervalDays = packageSequenceSteps.length > 0
+        ? Number(previousStep?.interval_after_days || 0)
+        : Number(packageData?.interval_days || 7);
+      const futureDate = addDays(currentDate, intervalDays);
       
       // Adjust to preferred day of week if set
       if (preferredDayOfWeek !== null) {
@@ -306,10 +354,11 @@ export function NewAppointmentDialog({
       }
 
       dates.push(new Date(futureDate));
+      currentDate = futureDate;
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, preferredDayOfWeek, preferredTime]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -715,6 +764,9 @@ export function NewAppointmentDialog({
               duration: selectedPackageData.duration || 60,
               interval_days: selectedPackageData.interval_days || 7,
               total_price: selectedPackageData.total_price,
+              package_type: selectedPackageData.package_type || 'standard',
+              service_id: selectedPackageData.service_id || null,
+              steps: selectedPackageData.steps || [],
               professional_id: selectedProfessional || selectedPackageData.professional_id,
               room_id: selectedRoom || selectedPackageData.room_id,
               equipment: selectedPackageData.equipment || [],
@@ -728,7 +780,8 @@ export function NewAppointmentDialog({
 
         // Create the first/next appointment
         // For packages, use the package's service_id if available, otherwise null
-        const packageServiceId = selectedPackageData?.service_id || null;
+        const firstSequenceStep = packageSequenceSteps[0];
+        const packageServiceId = firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
         
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
@@ -773,16 +826,19 @@ export function NewAppointmentDialog({
           for (let i = 1; i <= sessionsToCreate; i++) {
             // Use editable dates instead of calculated dates
             const futureDate = editablePreviewDates[i];
+            const futureServiceId = packageSequenceSteps[i]?.service_id || packageServiceId;
+            const futureService = services.find(service => service.id === futureServiceId);
+            const futureDuration = futureService?.duration || duration;
             
             const futureEnd = new Date(futureDate);
-            futureEnd.setMinutes(futureEnd.getMinutes() + duration);
+            futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
 
             try {
               // Wait for each appointment to be fully created before proceeding
               // This ensures the Edge Function can properly detect conflicts
               const futureAppointment = await createAppointment.mutateAsync({
                 client_id: selectedClient,
-                service_id: packageServiceId,
+                service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
                 notes: `${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession

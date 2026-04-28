@@ -390,22 +390,35 @@ export function PackageSessionsManager({
     setIsSaving(true);
     try {
       const newDateTime = new Date(`${newDate}T${newTime}:00`);
+      const selectedOrder = selectedSession.sequence_order || selectedSession.session_number;
 
       if (massRescheduleEnabled && massReschedulePreview.length > 0) {
-        // Mass reschedule all pending sessions
+        const ignoredAppointments = sessions
+          .filter(session => (session.sequence_order || session.session_number) >= selectedOrder)
+          .map(session => session.appointment_id);
+        let previousScheduledDate: Date | null = null;
+
         for (const preview of massReschedulePreview) {
           const session = sessions.find(s => s.session_number === preview.sessionNumber);
           if (!session) continue;
+          const duration = session.service?.duration || packageInfo?.duration || 60;
+          const proposedDate = previousScheduledDate
+            ? addDays(previousScheduledDate, sessions.find(s => (s.sequence_order || s.session_number) === ((session.sequence_order || session.session_number) - 1))?.interval_after_days || intervalDays)
+            : preview.date;
+          const safeDate = findNextAvailablePackageSlot(proposedDate, duration, existingAppointments, {
+            professional_id: packageInfo?.professional_id,
+            room_id: packageInfo?.room_id,
+            ignoreAppointmentIds: ignoredAppointments,
+          });
+          previousScheduledDate = safeDate;
 
-          // If there's an existing appointment, update it
           if (session.appointment_id) {
-            const duration = session.service?.duration || packageInfo?.duration || 60;
             const { error: aptError } = await supabase
               .from('appointments')
               .update({
-                start_time: preview.date.toISOString(),
-                end_time: addMinutes(preview.date, duration).toISOString(),
-                status: 'rescheduled',
+                start_time: safeDate.toISOString(),
+                end_time: addMinutes(safeDate, duration).toISOString(),
+                status: 'scheduled',
               })
               .eq('id', session.appointment_id);
 
@@ -416,7 +429,7 @@ export function PackageSessionsManager({
           const { error: sessionError } = await supabase
             .from('package_appointments')
             .update({
-              scheduled_date: preview.date.toISOString(),
+              scheduled_date: safeDate.toISOString(),
               status: 'scheduled',
             })
             .eq('id', session.id);
@@ -424,7 +437,7 @@ export function PackageSessionsManager({
           if (sessionError) throw sessionError;
         }
 
-        toast.success(`${massReschedulePreview.length} sessões reagendadas com sucesso!`);
+        toast.success(`${massReschedulePreview.length} sessões reagendadas sem conflitos!`);
 
         // Send WhatsApp notification
         if (sendWhatsappNotification && clientPhone && clientName) {

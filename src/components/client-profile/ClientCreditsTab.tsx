@@ -516,6 +516,38 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
         </CardContent>
       </Card>
 
+      <Dialog open={!!selectedCreditTransaction} onOpenChange={(open) => !open && setSelectedCreditTransaction(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <WalletCards className="h-4 w-4" /> Detalhes da transação
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCreditTransaction && (
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] text-muted-foreground">Saldo anterior</p>
+                  <p className="font-semibold">{formatCurrency(Number(selectedCreditTransaction.previous_balance || 0))}</p>
+                </div>
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] text-muted-foreground">Novo saldo</p>
+                  <p className="font-semibold text-primary">{formatCurrency(Number(selectedCreditTransaction.new_balance || 0))}</p>
+                </div>
+              </div>
+              <div className="rounded-md border p-2 space-y-1">
+                <p><span className="text-muted-foreground">Data:</span> {format(new Date(selectedCreditTransaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+                <p><span className="text-muted-foreground">Tipo:</span> {getClientCreditTransactionTypeLabel(selectedCreditTransaction.transaction_type)}</p>
+                <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(Number(selectedCreditTransaction.amount || 0))}</p>
+                <p><span className="text-muted-foreground">Origem:</span> {getTransactionOrigin(selectedCreditTransaction)}</p>
+                <p><span className="text-muted-foreground">Referência:</span> {getTransactionReference(selectedCreditTransaction)}</p>
+                <p><span className="text-muted-foreground">Descrição:</span> {selectedCreditTransaction.description}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Package Details Dialog */}
       <Dialog open={!!selectedPackageId} onOpenChange={(open) => !open && setSelectedPackageId(null)}>
         <DialogContent className="max-w-md">

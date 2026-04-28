@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Briefcase, CheckCircle, Eye, WalletCards } from 'lucide-react';
+import { Package, Briefcase, CheckCircle, Eye, WalletCards, Download, FileText, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClientServices } from '@/hooks/useClientServices';
@@ -12,7 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { exportToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { getClientCreditTransactionTypeLabel } from '@/lib/clientCreditPayment';
 import { buildPackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
@@ -54,7 +59,13 @@ interface ClientCreditTransaction {
   previous_balance: number;
   new_balance: number;
   description: string;
+  appointment_id?: string | null;
+  sale_id?: string | null;
+  appointment?: { start_time: string; service?: { name: string } | null } | null;
+  sale?: { sale_date: string; service?: { name: string } | null; package?: { name: string } | null } | null;
 }
+
+const CREDIT_PAGE_SIZE = 25;
 
 export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const queryClient = useQueryClient();

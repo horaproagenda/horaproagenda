@@ -26,6 +26,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
 
 interface PackageSession {
   id: string;
@@ -45,6 +46,19 @@ interface PackageSession {
     end_time: string;
     status: string;
   } | null;
+}
+
+interface PackageSessionHistoryItem {
+  id: string;
+  package_appointment_id: string;
+  previous_scheduled_date: string | null;
+  new_scheduled_date: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  changed_by: string | null;
+  change_reason: string;
+  created_at: string;
+  changed_by_name?: string | null;
 }
 
 interface PackageSessionsManagerProps {
@@ -92,6 +106,7 @@ export function PackageSessionsManager({
   const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
   const [professionalAbsences, setProfessionalAbsences] = useState<any[]>([]);
   const [previewConflicts, setPreviewConflicts] = useState<Map<number, ConflictInfo>>(new Map());
+  const [sessionHistory, setSessionHistory] = useState<Record<string, PackageSessionHistoryItem[]>>({});
 
   const { sendMessage: sendWhatsappMessage } = useWhatsapp();
 
@@ -118,10 +133,34 @@ export function PackageSessionsManager({
         .order('sequence_order', { ascending: true });
 
       if (error) throw error;
-      setSessions((data || []).map((session: any) => ({
+      const normalizedSessions = (data || []).map((session: any) => ({
         ...session,
         service: Array.isArray(session.service) ? session.service[0] : session.service,
-      })) as PackageSession[]);
+      })) as PackageSession[];
+      setSessions(normalizedSessions);
+
+      const sessionIds = normalizedSessions.map(session => session.id);
+      if (sessionIds.length > 0) {
+        const { data: historyData } = await (supabase as any)
+          .from('package_appointment_history')
+          .select('*')
+          .in('package_appointment_id', sessionIds)
+          .order('created_at', { ascending: false });
+
+        const userIds = Array.from(new Set((historyData || []).map((item: any) => item.changed_by).filter(Boolean))) as string[];
+        const { data: profiles } = userIds.length > 0
+          ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+          : { data: [] as any[] };
+        const profileNames = new Map((profiles || []).map((profile: any) => [profile.id, profile.full_name]));
+        const groupedHistory = (historyData || []).reduce((acc: Record<string, PackageSessionHistoryItem[]>, item: any) => {
+          const entry = { ...item, changed_by_name: profileNames.get(item.changed_by) || 'Sistema' };
+          acc[item.package_appointment_id] = [...(acc[item.package_appointment_id] || []), entry];
+          return acc;
+        }, {});
+        setSessionHistory(groupedHistory);
+      } else {
+        setSessionHistory({});
+      }
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -171,6 +210,10 @@ export function PackageSessionsManager({
 
     const duration = packageInfo.duration || 60;
     const endTime = addMinutes(dateTime, duration);
+    const selectedOrder = selectedSession?.sequence_order || selectedSession?.session_number || 0;
+    const cascadeIgnoredAppointments = sessions
+      .filter(session => (session.sequence_order || session.session_number) >= selectedOrder)
+      .map(session => session.appointment_id);
 
     // Check professional absences
     if (packageInfo.professional_id && professionalAbsences.length > 0) {
@@ -192,48 +235,19 @@ export function PackageSessionsManager({
       }
     }
 
-    // Check existing appointments (professional conflict)
-    if (packageInfo.professional_id) {
-      for (const apt of existingAppointments) {
-        if (apt.professional_id !== packageInfo.professional_id) continue;
-        
-        const aptStart = parseISO(apt.start_time);
-        const aptEnd = parseISO(apt.end_time);
-        
-        if (
-          (dateTime >= aptStart && dateTime < aptEnd) ||
-          (endTime > aptStart && endTime <= aptEnd) ||
-          (dateTime <= aptStart && endTime >= aptEnd)
-        ) {
-          return {
-            hasConflict: true,
-            reason: 'Profissional ocupado',
-            suggestedDate: findNextAvailableSlot(dateTime, duration)
-          };
-        }
-      }
-    }
+    const appointmentConflict = findSchedulingConflict(dateTime, duration, existingAppointments, {
+      professional_id: packageInfo.professional_id,
+      room_id: packageInfo.room_id,
+      ignoreAppointmentIds: [selectedSession?.appointment_id, ...cascadeIgnoredAppointments],
+    });
 
-    // Check room conflicts
-    if (packageInfo.room_id) {
-      for (const apt of existingAppointments) {
-        if (apt.room_id !== packageInfo.room_id) continue;
-        
-        const aptStart = parseISO(apt.start_time);
-        const aptEnd = parseISO(apt.end_time);
-        
-        if (
-          (dateTime >= aptStart && dateTime < aptEnd) ||
-          (endTime > aptStart && endTime <= aptEnd) ||
-          (dateTime <= aptStart && endTime >= aptEnd)
-        ) {
-          return {
-            hasConflict: true,
-            reason: 'Sala ocupada',
-            suggestedDate: findNextAvailableSlot(dateTime, duration)
-          };
-        }
-      }
+    if (appointmentConflict) {
+      const reason = appointmentConflict.professional_id === packageInfo.professional_id ? 'Profissional ocupado' : 'Sala ocupada';
+      return {
+        hasConflict: true,
+        reason,
+        suggestedDate: findNextAvailableSlot(dateTime, duration)
+      };
     }
 
     return { hasConflict: false };
@@ -376,22 +390,35 @@ export function PackageSessionsManager({
     setIsSaving(true);
     try {
       const newDateTime = new Date(`${newDate}T${newTime}:00`);
+      const selectedOrder = selectedSession.sequence_order || selectedSession.session_number;
 
       if (massRescheduleEnabled && massReschedulePreview.length > 0) {
-        // Mass reschedule all pending sessions
+        const ignoredAppointments = sessions
+          .filter(session => (session.sequence_order || session.session_number) >= selectedOrder)
+          .map(session => session.appointment_id);
+        let previousScheduledDate: Date | null = null;
+
         for (const preview of massReschedulePreview) {
           const session = sessions.find(s => s.session_number === preview.sessionNumber);
           if (!session) continue;
+          const duration = session.service?.duration || packageInfo?.duration || 60;
+          const proposedDate = previousScheduledDate
+            ? addDays(previousScheduledDate, sessions.find(s => (s.sequence_order || s.session_number) === ((session.sequence_order || session.session_number) - 1))?.interval_after_days || intervalDays)
+            : preview.date;
+          const safeDate = findNextAvailablePackageSlot(proposedDate, duration, existingAppointments, {
+            professional_id: packageInfo?.professional_id,
+            room_id: packageInfo?.room_id,
+            ignoreAppointmentIds: ignoredAppointments,
+          });
+          previousScheduledDate = safeDate;
 
-          // If there's an existing appointment, update it
           if (session.appointment_id) {
-            const duration = session.service?.duration || packageInfo?.duration || 60;
             const { error: aptError } = await supabase
               .from('appointments')
               .update({
-                start_time: preview.date.toISOString(),
-                end_time: addMinutes(preview.date, duration).toISOString(),
-                status: 'rescheduled',
+                start_time: safeDate.toISOString(),
+                end_time: addMinutes(safeDate, duration).toISOString(),
+                status: 'scheduled',
               })
               .eq('id', session.appointment_id);
 
@@ -402,7 +429,7 @@ export function PackageSessionsManager({
           const { error: sessionError } = await supabase
             .from('package_appointments')
             .update({
-              scheduled_date: preview.date.toISOString(),
+              scheduled_date: safeDate.toISOString(),
               status: 'scheduled',
             })
             .eq('id', session.id);
@@ -410,7 +437,7 @@ export function PackageSessionsManager({
           if (sessionError) throw sessionError;
         }
 
-        toast.success(`${massReschedulePreview.length} sessões reagendadas com sucesso!`);
+        toast.success(`${massReschedulePreview.length} sessões reagendadas sem conflitos!`);
 
         // Send WhatsApp notification
         if (sendWhatsappNotification && clientPhone && clientName) {
@@ -437,14 +464,24 @@ Até breve! ✨`;
         }
       } else {
         // Single session reschedule
+        const singleDuration = selectedSession.service?.duration || packageInfo?.duration || 60;
+        const conflict = findSchedulingConflict(newDateTime, singleDuration, existingAppointments, {
+          professional_id: packageInfo?.professional_id,
+          room_id: packageInfo?.room_id,
+          ignoreAppointmentIds: [selectedSession.appointment_id],
+        });
+
+        if (conflict) {
+          throw new Error(`${conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala'} já possui atendimento neste horário.`);
+        }
+
         if (selectedSession.appointment_id) {
-          const duration = selectedSession.service?.duration || packageInfo?.duration || 60;
           const { error: aptError } = await supabase
             .from('appointments')
             .update({
               start_time: newDateTime.toISOString(),
-              end_time: addMinutes(newDateTime, duration).toISOString(),
-              status: 'rescheduled',
+              end_time: addMinutes(newDateTime, singleDuration).toISOString(),
+              status: 'scheduled',
             })
             .eq('id', selectedSession.appointment_id);
 
@@ -595,15 +632,39 @@ Até breve! ✨`;
                 {session.appointment?.start_time ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(parseISO(session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    Planejada: {format(parseISO(session.scheduled_date || session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 ) : session.scheduled_date ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(parseISO(session.scheduled_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    Planejada: {format(parseISO(session.scheduled_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Não agendada</p>
+                )}
+                {session.appointment?.start_time && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Realizada/agendada: {format(parseISO(session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {sessionHistory[session.id]?.[0] && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    Última mudança por {sessionHistory[session.id][0].changed_by_name || 'Sistema'} em {format(parseISO(sessionHistory[session.id][0].created_at), "dd/MM HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {sessionHistory[session.id]?.length > 0 && (
+                  <details className="mt-1 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer">Histórico ({sessionHistory[session.id].length})</summary>
+                    <div className="mt-1 space-y-1 border-l pl-2">
+                      {sessionHistory[session.id].slice(0, 4).map(item => (
+                        <p key={item.id}>
+                          {format(parseISO(item.created_at), "dd/MM HH:mm", { locale: ptBR })} · {item.change_reason} · {item.changed_by_name || 'Sistema'}
+                        </p>
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
             </div>

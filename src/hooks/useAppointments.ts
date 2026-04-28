@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
+import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 
 // Use environment variable for URL - ensures consistency between preview and production
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -311,9 +312,22 @@ export function useAppointments() {
               .eq('package_id', currentSession.package_id)
               .order('sequence_order', { ascending: true });
 
+            const { data: packageInfo } = await (supabase as any)
+              .from('service_packages')
+              .select('professional_id, room_id')
+              .eq('id', currentSession.package_id)
+              .single();
+
+            const { data: existingAppointments } = await supabase
+              .from('appointments')
+              .select('id, start_time, end_time, professional_id, room_id, status')
+              .not('status', 'eq', 'cancelled')
+              .gte('start_time', new Date(new Date(updates.start_time).getTime() - 24 * 60 * 60 * 1000).toISOString());
+
             const orderedSessions = (packageSessions || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
             const currentIndex = orderedSessions.findIndex((session: any) => session.id === data.package_appointment_id);
             let nextStart = new Date(updates.start_time);
+            const ignoredAppointmentIds = orderedSessions.slice(currentIndex).map((session: any) => session.appointment_id);
 
             for (let index = currentIndex; index >= 0 && index < orderedSessions.length; index += 1) {
               const session = orderedSessions[index];
@@ -322,13 +336,19 @@ export function useAppointments() {
                 nextStart = new Date(nextStart.getTime() + Number(previousSession.interval_after_days || 0) * 24 * 60 * 60 * 1000);
               }
 
+              const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);
+              nextStart = findNextAvailablePackageSlot(nextStart, duration, existingAppointments || [], {
+                professional_id: packageInfo?.professional_id || data.professional_id,
+                room_id: packageInfo?.room_id || data.room_id,
+                ignoreAppointmentIds: ignoredAppointmentIds,
+              });
+
               await supabase
                 .from('package_appointments')
                 .update({ scheduled_date: nextStart.toISOString(), status: session.status === 'completed' ? 'completed' : 'scheduled' })
                 .eq('id', session.id);
 
               if (session.appointment_id && session.status !== 'completed' && session.status !== 'missed') {
-                const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);
                 await supabase
                   .from('appointments')
                   .update({

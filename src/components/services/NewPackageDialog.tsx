@@ -35,6 +35,7 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useServices } from '@/hooks/useServices';
+import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -90,8 +91,15 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
 
   const watchPrice = form.watch('price');
   const watchTotalSessions = form.watch('total_sessions');
+  const watchProfessionalId = form.watch('professional_id');
+  const watchRoomId = form.watch('room_id');
   const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
+  const packageScope = {
+    professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
+    room_id: watchRoomId && watchRoomId !== '_none' ? watchRoomId : null,
+  };
+  const compatibleServices = activeServices.filter(service => isServiceCompatibleWithPackage(service, packageScope));
 
   const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
@@ -104,6 +112,23 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
     try {
       if (packageType === 'sequential' && steps.some(step => !step.service_id)) {
         toast.error('Selecione um serviço para cada etapa do pacote sequencial.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (packageType === 'sequential' && steps.slice(0, -1).some(step => !step.interval_after_days || step.interval_after_days < 1)) {
+        toast.error('Informe intervalo de pelo menos 1 dia entre todas as etapas do pacote.');
+        setIsLoading(false);
+        return;
+      }
+
+      const incompatibleStep = steps.find(step => {
+        const service = activeServices.find(item => item.id === step.service_id);
+        return packageType === 'sequential' && !isServiceCompatibleWithPackage(service, packageScope);
+      });
+
+      if (incompatibleStep) {
+        toast.error('Há etapa com serviço incompatível com o profissional ou sala do pacote.');
         setIsLoading(false);
         return;
       }
@@ -265,7 +290,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="_none">Selecione</SelectItem>
-                          {activeServices.map(service => (
+                          {compatibleServices.map(service => (
                             <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
                           ))}
                         </SelectContent>

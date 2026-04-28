@@ -55,13 +55,13 @@ export function useRealtimeSync() {
     
     const APPOINTMENT_QUERIES = [
       'appointments', 'client-appointments', 'package_appointments',
-      'service_packages', 'client_packages', 'professional_absences',
-      'waitlist', 'recurring_appointments'
+      'package_appointment_history', 'package_details', 'service_packages',
+      'client_packages', 'professional_absences', 'waitlist', 'recurring_appointments'
     ];
     
     const SERVICE_QUERIES = [
       'services', 'service_packages', 'package_templates',
-      'service_products', 'package_template_products'
+      'package_template_steps', 'service_products', 'package_template_products'
     ];
     
     const PRODUCT_QUERIES = [
@@ -157,6 +157,32 @@ export function useRealtimeSync() {
           invalidateMultiple([
             ...APPOINTMENT_QUERIES,
             ...SERVICE_QUERIES,
+            ...CLIENT_QUERIES
+          ]);
+        }
+      )
+
+      // ============ PACKAGE APPOINTMENT HISTORY ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'package_appointment_history' },
+        () => {
+          invalidateMultiple([
+            ...APPOINTMENT_QUERIES,
+            ...SERVICE_QUERIES,
+            ...CLIENT_QUERIES
+          ]);
+        }
+      )
+
+      // ============ PACKAGE TEMPLATE STEPS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'package_template_steps' },
+        () => {
+          invalidateMultiple([
+            ...SERVICE_QUERIES,
+            ...APPOINTMENT_QUERIES,
             ...CLIENT_QUERIES
           ]);
         }

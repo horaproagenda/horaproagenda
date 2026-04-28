@@ -1900,6 +1900,10 @@ const Agenda = () => {
                 <Download className="h-3.5 w-3.5" />
                 Exportar CSV
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportAppointmentsPDF} className="text-xs gap-2">
+                <Download className="h-3.5 w-3.5" />
+                Exportar PDF
+              </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setImportDialogOpen(true)}
                 className="text-xs gap-2"

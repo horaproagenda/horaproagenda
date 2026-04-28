@@ -147,7 +147,7 @@ export function PackageSessionsManager({
           .in('package_appointment_id', sessionIds)
           .order('created_at', { ascending: false });
 
-        const userIds = Array.from(new Set((historyData || []).map((item: any) => item.changed_by).filter(Boolean)));
+        const userIds = Array.from(new Set((historyData || []).map((item: any) => item.changed_by).filter(Boolean))) as string[];
         const { data: profiles } = userIds.length > 0
           ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
           : { data: [] as any[] };

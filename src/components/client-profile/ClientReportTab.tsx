@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2 } from 'lucide-react';
+import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -33,6 +33,9 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
+import { exportToCSV as exportRowsToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -318,35 +321,38 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     setCancelDialogOpen(true);
   };
 
-  const exportToCSV = () => {
-    const headers = ['Data', 'Horário', 'Serviço', 'Categoria', 'Duração (min)', 'Valor', 'Status'];
-    const rows = filteredAppointments.map(appointment => [
-      format(new Date(appointment.start_time), 'dd/MM/yyyy'),
-      `${format(new Date(appointment.start_time), 'HH:mm')} - ${format(new Date(appointment.end_time), 'HH:mm')}`,
-      appointment.service?.name || '-',
-      appointment.service?.category || '-',
-      appointment.service?.duration?.toString() || '-',
-      `R$ ${(appointment.service?.price || 0).toFixed(2)}`,
-      getAppointmentStatusConfig(appointment.status).label,
-    ]);
-    
-    const csvContent = [
-      `Relatório - ${clientName} - ${format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy', { locale: ptBR })}`,
-      `Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
-      '',
-      headers.join(','),
-      ...rows.map(row => row.join(',')),
-      '',
-      'RESUMO',
-      `Total de procedimentos: ${summary.completed}`,
-      `Valor total: R$ ${summary.totalValue.toFixed(2)}`,
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `relatorio_${clientName.replace(/\s+/g, '_')}_${selectedMonth}.csv`;
-    link.click();
+  const paymentExportRows = filteredPaymentHistory.map(payment => [
+    format(new Date(`${payment.date}T12:00:00`), 'dd/MM/yyyy'),
+    payment.serviceName,
+    payment.description || '-',
+    `R$ ${Number(payment.totalPrice || 0).toFixed(2)}`,
+    `R$ ${Number(payment.amount || 0).toFixed(2)}`,
+    getPaymentMethodName(payment.paymentMethod),
+    isClientCreditPaymentMethod(payment.paymentMethod) ? NON_CASH_PAYMENT_LABEL : 'Com entrada no caixa',
+  ]);
+
+  const exportToCSV = () => exportRowsToCSV({
+    filename: `relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}`,
+    headers: ['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa'],
+    rows: paymentExportRows,
+    successMessage: 'Relatório filtrado exportado em CSV!',
+  });
+
+  const exportToPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text(`Relatório de Pagamentos - ${clientName}`, 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Filtro: ${paymentTypeFilter === 'client_credit' ? CLIENT_CREDIT_SOURCE_LABEL : paymentTypeFilter === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Todos pagamentos'} • Período: ${selectedMonth === 'all' ? 'Todos os meses' : format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy', { locale: ptBR })}`, 14, 21);
+    autoTable(doc, {
+      startY: 28,
+      head: [['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa']],
+      body: paymentExportRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 98, 255] },
+      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 50 }, 2: { cellWidth: 76 }, 3: { halign: 'right', cellWidth: 28 }, 4: { halign: 'right', cellWidth: 28 } },
+    });
+    doc.save(`relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -393,10 +399,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
             {filteredAppointments.length} agendamento(s)
           </span>
         </div>
-        <Button size="sm" variant="outline" onClick={exportToCSV} className="h-8 text-xs">
-          <Download className="h-3.5 w-3.5 mr-1" />
-          CSV
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
+            <Download className="h-3.5 w-3.5 mr-1" />
+            CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportToPDF} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
+            <FileText className="h-3.5 w-3.5 mr-1" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       {/* Compact Summary Cards */}

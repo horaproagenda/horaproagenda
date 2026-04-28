@@ -385,11 +385,12 @@ export function PackageSessionsManager({
 
           // If there's an existing appointment, update it
           if (session.appointment_id) {
+            const duration = session.service?.duration || packageInfo?.duration || 60;
             const { error: aptError } = await supabase
               .from('appointments')
               .update({
                 start_time: preview.date.toISOString(),
-                end_time: addDays(preview.date, 0).toISOString(),
+                end_time: addMinutes(preview.date, duration).toISOString(),
                 status: 'rescheduled',
               })
               .eq('id', session.appointment_id);
@@ -437,11 +438,12 @@ Até breve! ✨`;
       } else {
         // Single session reschedule
         if (selectedSession.appointment_id) {
+          const duration = selectedSession.service?.duration || packageInfo?.duration || 60;
           const { error: aptError } = await supabase
             .from('appointments')
             .update({
               start_time: newDateTime.toISOString(),
-              end_time: addDays(newDateTime, 0).toISOString(),
+              end_time: addMinutes(newDateTime, duration).toISOString(),
               status: 'rescheduled',
             })
             .eq('id', selectedSession.appointment_id);

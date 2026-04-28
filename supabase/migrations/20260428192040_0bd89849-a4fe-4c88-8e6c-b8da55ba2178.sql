@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Authenticated users can create package appointment history" ON public.package_appointment_history;

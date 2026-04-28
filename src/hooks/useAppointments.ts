@@ -334,7 +334,7 @@ export function useAppointments() {
                   .update({
                     start_time: nextStart.toISOString(),
                     end_time: new Date(nextStart.getTime() + duration * 60 * 1000).toISOString(),
-                    status: index === currentIndex ? (updates.status || data.status) : 'rescheduled',
+                    status: index === currentIndex ? (updates.status || data.status) : 'scheduled',
                   })
                   .eq('id', session.appointment_id);
               }

@@ -91,6 +91,7 @@ export interface PackageTemplate {
   price: number;
   duration: number;
   interval_days: number | null;
+  package_type?: 'standard' | 'sequential';
   professional_id: string | null;
   room_id: string | null;
   equipment: string[];
@@ -99,6 +100,16 @@ export interface PackageTemplate {
   updated_at: string;
   professional?: Professional;
   room?: Room;
+  steps?: PackageTemplateStep[];
+}
+
+export interface PackageTemplateStep {
+  id: string;
+  template_id: string;
+  service_id: string;
+  sequence_order: number;
+  interval_after_days: number;
+  service?: Service;
 }
 
 export interface ServicePackage {
@@ -109,6 +120,7 @@ export interface ServicePackage {
   client_id: string | null;
   template_id: string | null;
   service_id: string | null;
+  package_type?: 'standard' | 'sequential';
   total_sessions: number;
   sessions_scheduled: number;
   interval_days: number | null;
@@ -142,8 +154,11 @@ export interface PackageAppointment {
   id: string;
   package_id: string;
   appointment_id: string | null;
+  service_id?: string | null;
   session_number: number;
   original_session_number?: number;
+  sequence_order?: number | null;
+  interval_after_days?: number | null;
   scheduled_date: string | null;
   status: PackageAppointmentStatus;
   notes: string | null;

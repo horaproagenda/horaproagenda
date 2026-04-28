@@ -185,6 +185,8 @@ export function useClientPackages(clientId: string | null) {
           duration: data.templateData.duration || 60,
           interval_days: data.templateData.interval_days || 7,
           total_price: data.templateData.total_price,
+          package_type: data.templateData.package_type || 'standard',
+          service_id: data.templateData.service_id || null,
           professional_id: data.templateData.professional_id,
           room_id: data.templateData.room_id,
           equipment: data.templateData.equipment || [],
@@ -199,11 +201,22 @@ export function useClientPackages(clientId: string | null) {
 
       if (packageError) throw packageError;
 
-      // Create package_appointments for all sessions
-      const sessions = Array.from({ length: data.templateData.total_sessions }, (_, i) => ({
+      // Create package_appointments for all sessions or sequential steps
+      const templateSteps = data.templateData.package_type === 'sequential' && data.templateData.steps?.length
+        ? data.templateData.steps
+        : Array.from({ length: data.templateData.total_sessions }, (_, i) => ({
+            service_id: data.templateData.service_id || null,
+            interval_after_days: data.templateData.interval_days || 7,
+            sequence_order: i + 1,
+          }));
+
+      const sessions = templateSteps.map((step: any, i: number) => ({
         package_id: newPackage.id,
+        service_id: step.service_id || data.templateData.service_id || null,
         session_number: i + 1,
         original_session_number: i + 1,
+        sequence_order: step.sequence_order || i + 1,
+        interval_after_days: i === templateSteps.length - 1 ? 0 : step.interval_after_days || data.templateData.interval_days || 7,
         status: 'pending',
       }));
 

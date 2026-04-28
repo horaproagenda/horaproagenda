@@ -32,6 +32,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
+import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { toast } from 'sonner';
 
 interface PaymentHistoryItem {
@@ -94,6 +95,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const { propagateSeriesDates } = useRecurringAppointments();
   const { deleteAppointment, updateAppointment } = useAppointments();
 
@@ -116,8 +118,15 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
   const filteredPaymentHistory = useMemo(() => 
     paymentHistory
       .filter(p => p.status === 'paid' && Number(p.amount || 0) > 0)
-      .filter(p => filterByMonth(p.date)),
-    [paymentHistory, selectedMonth]
+      .filter(p => filterByMonth(p.date))
+      .filter(p => {
+        if (paymentTypeFilter === 'all') return true;
+        const isClientCredit = isClientCreditPaymentMethod(p.paymentMethod);
+        if (paymentTypeFilter === 'client_credit') return isClientCredit;
+        if (paymentTypeFilter === 'non_cash') return isClientCredit;
+        return true;
+      }),
+    [paymentHistory, selectedMonth, paymentTypeFilter]
   );
 
   const equipmentNameMap = useMemo(() => new Map(equipment.map(item => [item.id, item.name])), [equipment]);

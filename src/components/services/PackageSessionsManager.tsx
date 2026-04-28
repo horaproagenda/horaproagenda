@@ -321,7 +321,7 @@ export function PackageSessionsManager({
 
   const openRescheduleDialog = (session: PackageSession) => {
     setSelectedSession(session);
-    setMassRescheduleEnabled(false);
+    setMassRescheduleEnabled(packageInfo?.package_type === 'sequential');
     setMassReschedulePreview([]);
     setMassRescheduleInterval(intervalDays);
     
@@ -687,15 +687,18 @@ Até breve! ✨`;
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium flex items-center gap-2">
                       <CalendarRange className="h-4 w-4" />
-                      Reagendar em Massa
+                      {packageInfo?.package_type === 'sequential' ? 'Reagendamento automático' : 'Reagendar em Massa'}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Reagendar também as sessões pendentes seguintes
+                      {packageInfo?.package_type === 'sequential'
+                        ? 'As próximas etapas serão ajustadas pelos intervalos do pacote'
+                        : 'Reagendar também as sessões pendentes seguintes'}
                     </p>
                   </div>
                   <Switch
                     checked={massRescheduleEnabled}
                     onCheckedChange={setMassRescheduleEnabled}
+                    disabled={packageInfo?.package_type === 'sequential'}
                   />
                 </div>
 

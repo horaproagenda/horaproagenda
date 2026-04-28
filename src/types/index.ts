@@ -91,6 +91,7 @@ export interface PackageTemplate {
   price: number;
   duration: number;
   interval_days: number | null;
+  service_id?: string | null;
   package_type?: 'standard' | 'sequential';
   professional_id: string | null;
   room_id: string | null;

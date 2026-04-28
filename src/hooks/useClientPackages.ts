@@ -153,6 +153,9 @@ export function useClientPackages(clientId: string | null) {
         duration: number;
         interval_days: number;
         total_price: number;
+        package_type?: 'standard' | 'sequential';
+        service_id?: string | null;
+        steps?: Array<{ service_id?: string | null; sequence_order?: number; interval_after_days?: number }>;
         professional_id?: string | null;
         room_id?: string | null;
         equipment?: string[];

@@ -509,7 +509,7 @@ export function SaleForm() {
           const template = packageTemplates.find(t => t.id === item.originalId);
           if (template) {
             // Create service_package for the client
-            const { data: newPackage, error: pkgError } = await supabase
+            const { data: newPackage, error: pkgError } = await (supabase as any)
               .from('service_packages')
               .insert({
                 name: template.name,
@@ -551,7 +551,7 @@ export function SaleForm() {
               status: 'pending',
             }));
 
-            await supabase.from('package_appointments').insert(sessions);
+            await (supabase as any).from('package_appointments').insert(sessions);
 
             // Update single_sales with package_id
             await supabase

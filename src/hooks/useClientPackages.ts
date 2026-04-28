@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getPackageAvailabilitySummary, shouldShowPackageInSelector } from '@/lib/packageAvailability';
 
 export interface ClientPackage {
   id: string;
@@ -42,19 +43,11 @@ export interface PackageSession {
 }
 
 const getRemainingSessionCount = (pkg: Pick<ClientPackage, 'total_sessions' | 'sessions_scheduled' | 'appointments'>) => {
-  if (!pkg.appointments?.length) {
-    return Math.max(0, (pkg.total_sessions || 0) - (pkg.sessions_scheduled || 0));
-  }
-
-  return pkg.appointments.filter(session => !['completed', 'missed'].includes(session.status)).length;
+  return getPackageAvailabilitySummary(pkg).remainingSessions;
 };
 
 const getSchedulableSessionCount = (pkg: Pick<ClientPackage, 'total_sessions' | 'sessions_scheduled' | 'appointments'>) => {
-  if (!pkg.appointments?.length) {
-    return Math.max(0, (pkg.total_sessions || 0) - (pkg.sessions_scheduled || 0));
-  }
-
-  return pkg.appointments.filter(session => !['completed', 'missed'].includes(session.status) && !session.appointment_id).length;
+  return getPackageAvailabilitySummary(pkg).schedulableSessions;
 };
 
 export function useClientPackages(clientId: string | null) {
@@ -141,7 +134,10 @@ export function useClientPackages(clientId: string | null) {
       }
       
       console.log('Client packages fetched:', data?.length, 'for client:', clientId);
-      return data as ClientPackage[];
+      return (data || []).map((pkg: any) => ({
+        ...pkg,
+        appointments: (pkg.appointments || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number)),
+      })) as ClientPackage[];
     },
     enabled: !!clientId,
     staleTime: 0,
@@ -149,7 +145,7 @@ export function useClientPackages(clientId: string | null) {
   });
 
   // Filter packages with available sessions (for scheduling purposes)
-  const availablePackages = clientPackages.filter(pkg => getSchedulableSessionCount(pkg) > 0);
+  const availablePackages = clientPackages.filter(shouldShowPackageInSelector);
 
   const getPackageRemainingSessions = (packageId: string) => {
     const pkg = clientPackages.find(p => p.id === packageId);

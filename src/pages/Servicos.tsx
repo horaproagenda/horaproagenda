@@ -10,6 +10,7 @@ import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
 import { UnifiedServiceFilters } from '@/components/services/UnifiedServiceFilters';
 import { BulkImportDialog } from '@/components/services/BulkImportDialog';
 import { ManagePackageTemplatesDialog } from '@/components/services/ManagePackageTemplatesDialog';
+import { PackageAvailabilityReportDialog } from '@/components/services/PackageAvailabilityReportDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -397,6 +398,8 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <PackageAvailabilityReportDialog />
               </div>
 
               <NewPackageDialog onPackageCreated={refetchPackages}>

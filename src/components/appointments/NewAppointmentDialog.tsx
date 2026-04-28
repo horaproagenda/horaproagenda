@@ -57,6 +57,7 @@ import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -204,6 +205,9 @@ export function NewAppointmentDialog({
   const packageRemainingSessions = existingClientPackage
     ? getRemainingSessionCount(existingClientPackage)
     : selectedPackageData?.total_sessions || 0;
+  const selectedPackageAvailability = existingClientPackage
+    ? getPackageAvailabilitySummary(existingClientPackage)
+    : null;
   const existingPackageHasStarted = existingClientPackage
     ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
       ?? existingClientPackage.sessions_scheduled > 0
@@ -1139,7 +1143,8 @@ Até breve! ✨`;
                       {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                         .map((pkg, index) => {
-                          const remaining = getSchedulableSessionCount(pkg);
+                          const summary = getPackageAvailabilitySummary(pkg);
+                          const remaining = summary.schedulableSessions;
                           // Check if there are other packages with same name to show identifier
                           const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
@@ -1180,7 +1185,8 @@ Até breve! ✨`;
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {remaining} de {pkg.total_sessions} sessões para agendar
+                                Dá para agendar: {remaining} • Sessões existentes: {summary.existingSessionRecords}/{summary.totalSessions}
+                                {summary.hasInconsistentCounter ? ' • contador antigo divergente' : ''}
                               </div>
                             </div>
                           );
@@ -1455,10 +1461,17 @@ Até breve! ✨`;
                   {existingClientPackage && selectedClient && (
                     <Alert className="py-2">
                       <Info className="h-4 w-4" />
-                      <AlertDescription className="text-sm">
-                        <span className="font-medium">
-                          {packageRemainingSessions} sessão(ões) restante(s)
-                        </span> de {existingClientPackage.total_sessions} neste pacote
+                      <AlertDescription className="text-sm space-y-1">
+                        <div>
+                          <span className="font-medium">
+                            Dá para agendar: {selectedPackageAvailability?.schedulableSessions ?? packageRemainingSessions}
+                          </span>
+                          {' '}• Sessões existentes: {selectedPackageAvailability?.existingSessionRecords ?? 0}/{selectedPackageAvailability?.totalSessions ?? existingClientPackage.total_sessions}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Consumidas: {selectedPackageAvailability?.consumedSessions ?? 0} • Já agendadas: {selectedPackageAvailability?.scheduledAppointments ?? existingClientPackage.sessions_scheduled}
+                          {selectedPackageAvailability?.hasInconsistentCounter ? ' • contador antigo divergente ignorado' : ''}
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}

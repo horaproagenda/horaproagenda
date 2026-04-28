@@ -71,6 +71,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   const queryClient = useQueryClient();
   const { clientServices, isLoading: loadingServices } = useClientServices(clientId);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [creditSearch, setCreditSearch] = useState('');
+  const [creditPage, setCreditPage] = useState(1);
+  const [selectedCreditTransaction, setSelectedCreditTransaction] = useState<ClientCreditTransaction | null>(null);
 
   // Fetch client packages with accurate session counts from package_appointments
   const { data: clientPackages = [], isLoading: loadingPackages } = useQuery({
@@ -190,13 +193,25 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
   });
 
   const { data: creditTransactions = [] } = useQuery({
-    queryKey: ['client_credit_transactions', clientId],
+    queryKey: ['client_credit_transactions', clientId, creditSearch],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description')
+        .select(`
+          id, created_at, transaction_type, amount, previous_balance, new_balance, description,
+          appointment_id, sale_id,
+          appointment:appointments(start_time, service:services(name)),
+          sale:single_sales(sale_date, service:services(name), package:service_packages(name))
+        `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
+
+      const trimmedSearch = creditSearch.trim();
+      if (trimmedSearch) {
+        query = query.or(`description.ilike.%${trimmedSearch}%,transaction_type.ilike.%${trimmedSearch}%`);
+      }
+
+      const { data, error } = await query.range(0, CREDIT_PAGE_SIZE * creditPage - 1);
 
       if (error) throw error;
       return (data || []) as ClientCreditTransaction[];
@@ -204,6 +219,10 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     enabled: !!clientId,
     staleTime: 0,
   });
+
+  useEffect(() => {
+    setCreditPage(1);
+  }, [creditSearch, clientId]);
 
   const isLoading = loadingPackages || loadingServices;
   const packageSequenceMap = useMemo(

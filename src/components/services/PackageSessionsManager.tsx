@@ -210,6 +210,10 @@ export function PackageSessionsManager({
 
     const duration = packageInfo.duration || 60;
     const endTime = addMinutes(dateTime, duration);
+    const selectedOrder = selectedSession?.sequence_order || selectedSession?.session_number || 0;
+    const cascadeIgnoredAppointments = sessions
+      .filter(session => (session.sequence_order || session.session_number) >= selectedOrder)
+      .map(session => session.appointment_id);
 
     // Check professional absences
     if (packageInfo.professional_id && professionalAbsences.length > 0) {
@@ -231,48 +235,19 @@ export function PackageSessionsManager({
       }
     }
 
-    // Check existing appointments (professional conflict)
-    if (packageInfo.professional_id) {
-      for (const apt of existingAppointments) {
-        if (apt.professional_id !== packageInfo.professional_id) continue;
-        
-        const aptStart = parseISO(apt.start_time);
-        const aptEnd = parseISO(apt.end_time);
-        
-        if (
-          (dateTime >= aptStart && dateTime < aptEnd) ||
-          (endTime > aptStart && endTime <= aptEnd) ||
-          (dateTime <= aptStart && endTime >= aptEnd)
-        ) {
-          return {
-            hasConflict: true,
-            reason: 'Profissional ocupado',
-            suggestedDate: findNextAvailableSlot(dateTime, duration)
-          };
-        }
-      }
-    }
+    const appointmentConflict = findSchedulingConflict(dateTime, duration, existingAppointments, {
+      professional_id: packageInfo.professional_id,
+      room_id: packageInfo.room_id,
+      ignoreAppointmentIds: [selectedSession?.appointment_id, ...cascadeIgnoredAppointments],
+    });
 
-    // Check room conflicts
-    if (packageInfo.room_id) {
-      for (const apt of existingAppointments) {
-        if (apt.room_id !== packageInfo.room_id) continue;
-        
-        const aptStart = parseISO(apt.start_time);
-        const aptEnd = parseISO(apt.end_time);
-        
-        if (
-          (dateTime >= aptStart && dateTime < aptEnd) ||
-          (endTime > aptStart && endTime <= aptEnd) ||
-          (dateTime <= aptStart && endTime >= aptEnd)
-        ) {
-          return {
-            hasConflict: true,
-            reason: 'Sala ocupada',
-            suggestedDate: findNextAvailableSlot(dateTime, duration)
-          };
-        }
-      }
+    if (appointmentConflict) {
+      const reason = appointmentConflict.professional_id === packageInfo.professional_id ? 'Profissional ocupado' : 'Sala ocupada';
+      return {
+        hasConflict: true,
+        reason,
+        suggestedDate: findNextAvailableSlot(dateTime, duration)
+      };
     }
 
     return { hasConflict: false };

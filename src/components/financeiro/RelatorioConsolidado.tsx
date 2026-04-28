@@ -9,12 +9,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign, Download, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
+import { exportToCSV } from '@/lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ConsolidatedEntry {
   id: string;
@@ -133,6 +136,39 @@ export function RelatorioConsolidado() {
       case 'custom': return format(parseISO(customDate), "dd/MM/yyyy", { locale: ptBR });
       default: return 'Hoje';
     }
+  };
+
+  const reportExportRows = filteredData.map(entry => [
+    format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
+    entry.description,
+    entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro',
+    entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída',
+    entry.status === 'paid' ? 'Pago' : entry.status === 'pending' ? 'Pendente' : entry.status === 'overdue' ? 'Vencido' : entry.status,
+    `R$ ${entry.amount.toFixed(2)}`,
+  ]);
+
+  const handleExportFilteredCSV = () => exportToCSV({
+    filename: 'relatorio_consolidado_filtrado',
+    headers: ['Data', 'Descrição', 'Origem', 'Tipo', 'Status', 'Valor'],
+    rows: reportExportRows,
+    successMessage: 'Relatório filtrado exportado em CSV!',
+  });
+
+  const handleExportFilteredPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('Relatório Consolidado Filtrado', 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Período: ${getPeriodLabel()} • Origem: ${sourceFilter === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : sourceFilter === 'all' ? 'Todas' : sourceFilter} • Tipo: ${typeFilter === 'non_cash' ? NON_CASH_PAYMENT_LABEL : typeFilter === 'all' ? 'Todos' : typeFilter}`, 14, 21);
+    autoTable(doc, {
+      startY: 28,
+      head: [['Data', 'Descrição', 'Origem', 'Tipo', 'Status', 'Valor']],
+      body: reportExportRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 98, 255] },
+      columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 104 }, 5: { halign: 'right', cellWidth: 30 } },
+    });
+    doc.save(`relatorio_consolidado_filtrado_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -306,10 +342,20 @@ export function RelatorioConsolidado() {
       {/* Consolidated Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Movimentações Consolidadas ({filteredData.length})
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Movimentações Consolidadas ({filteredData.length})
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportFilteredCSV} disabled={filteredData.length === 0}>
+                <Download className="h-3.5 w-3.5 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportFilteredPDF} disabled={filteredData.length === 0}>
+                <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">

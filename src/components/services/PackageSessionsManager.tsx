@@ -464,14 +464,24 @@ Até breve! ✨`;
         }
       } else {
         // Single session reschedule
+        const singleDuration = selectedSession.service?.duration || packageInfo?.duration || 60;
+        const conflict = findSchedulingConflict(newDateTime, singleDuration, existingAppointments, {
+          professional_id: packageInfo?.professional_id,
+          room_id: packageInfo?.room_id,
+          ignoreAppointmentIds: [selectedSession.appointment_id],
+        });
+
+        if (conflict) {
+          throw new Error(`${conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala'} já possui atendimento neste horário.`);
+        }
+
         if (selectedSession.appointment_id) {
-          const duration = selectedSession.service?.duration || packageInfo?.duration || 60;
           const { error: aptError } = await supabase
             .from('appointments')
             .update({
               start_time: newDateTime.toISOString(),
-              end_time: addMinutes(newDateTime, duration).toISOString(),
-              status: 'rescheduled',
+              end_time: addMinutes(newDateTime, singleDuration).toISOString(),
+              status: 'scheduled',
             })
             .eq('id', selectedSession.appointment_id);
 

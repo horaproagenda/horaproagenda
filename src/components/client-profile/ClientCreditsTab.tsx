@@ -260,6 +260,55 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     return s.status === 'pending' && !s.appointment_id;
   }).length || 0;
 
+  const creditExportRows = creditTransactions.map(transaction => [
+    format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
+    getClientCreditTransactionTypeLabel(transaction.transaction_type),
+    transaction.description,
+    formatCurrency(Number(transaction.amount || 0)),
+    formatCurrency(Number(transaction.previous_balance || 0)),
+    formatCurrency(Number(transaction.new_balance || 0)),
+  ]);
+
+  const exportCreditCSV = () => exportToCSV({
+    filename: 'historico_credito_cliente',
+    headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
+    rows: creditExportRows,
+    successMessage: 'Histórico de crédito exportado em CSV!',
+  });
+
+  const exportCreditPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('Histórico de Crédito ao Cliente', 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 14, 21);
+    autoTable(doc, {
+      startY: 28,
+      head: [['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo']],
+      body: creditExportRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 98, 255] },
+      columnStyles: { 2: { cellWidth: 86 }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+    });
+    doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const getTransactionOrigin = (transaction: ClientCreditTransaction) => {
+    if (transaction.appointment_id) return 'Atendimento';
+    if (transaction.sale_id) return 'Venda/Documento';
+    return 'Ajuste manual';
+  };
+
+  const getTransactionReference = (transaction: ClientCreditTransaction) => {
+    if (transaction.appointment) {
+      return `${transaction.appointment.service?.name || 'Atendimento'} • ${format(new Date(transaction.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`;
+    }
+    if (transaction.sale) {
+      return `${transaction.sale.package?.name || transaction.sale.service?.name || 'Venda'} • ${format(new Date(`${transaction.sale.sale_date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}`;
+    }
+    return transaction.id;
+  };
+
   return (
     <div className="space-y-3 animate-fade-in">
       {/* Summary Cards - Compact */}

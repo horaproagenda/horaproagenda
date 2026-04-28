@@ -1461,10 +1461,17 @@ Até breve! ✨`;
                   {existingClientPackage && selectedClient && (
                     <Alert className="py-2">
                       <Info className="h-4 w-4" />
-                      <AlertDescription className="text-sm">
-                        <span className="font-medium">
-                          {packageRemainingSessions} sessão(ões) restante(s)
-                        </span> de {existingClientPackage.total_sessions} neste pacote
+                      <AlertDescription className="text-sm space-y-1">
+                        <div>
+                          <span className="font-medium">
+                            Dá para agendar: {selectedPackageAvailability?.schedulableSessions ?? packageRemainingSessions}
+                          </span>
+                          {' '}• Sessões existentes: {selectedPackageAvailability?.existingSessionRecords ?? 0}/{selectedPackageAvailability?.totalSessions ?? existingClientPackage.total_sessions}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Consumidas: {selectedPackageAvailability?.consumedSessions ?? 0} • Já agendadas: {selectedPackageAvailability?.scheduledAppointments ?? existingClientPackage.sessions_scheduled}
+                          {selectedPackageAvailability?.hasInconsistentCounter ? ' • contador antigo divergente ignorado' : ''}
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}

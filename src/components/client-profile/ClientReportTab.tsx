@@ -379,6 +379,16 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               ))}
             </SelectContent>
           </Select>
+          <Select value={paymentTypeFilter} onValueChange={setPaymentTypeFilter}>
+            <SelectTrigger className="w-[170px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Todos pagamentos</SelectItem>
+              <SelectItem value="client_credit" className="text-xs">{CLIENT_CREDIT_SOURCE_LABEL}</SelectItem>
+              <SelectItem value="non_cash" className="text-xs">{NON_CASH_PAYMENT_LABEL}</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-xs text-muted-foreground">
             {filteredAppointments.length} agendamento(s)
           </span>
@@ -472,7 +482,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                       </TableCell>
                       <TableCell className="text-xs py-1.5 text-right">R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-xs py-1.5 whitespace-nowrap">{getPaymentMethodName(payment.paymentMethod)}</TableCell>
+                      <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                        {getPaymentMethodName(payment.paymentMethod)}
+                        {isClientCreditPaymentMethod(payment.paymentMethod) && (
+                          <Badge variant="outline" className="ml-1 text-[10px]">{NON_CASH_PAYMENT_LABEL}</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="py-1.5">
                         {payment.saleId && (
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancelDialog(payment)}>

@@ -57,6 +57,7 @@ import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -204,6 +205,9 @@ export function NewAppointmentDialog({
   const packageRemainingSessions = existingClientPackage
     ? getRemainingSessionCount(existingClientPackage)
     : selectedPackageData?.total_sessions || 0;
+  const selectedPackageAvailability = existingClientPackage
+    ? getPackageAvailabilitySummary(existingClientPackage)
+    : null;
   const existingPackageHasStarted = existingClientPackage
     ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
       ?? existingClientPackage.sessions_scheduled > 0

@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 
 interface ConsolidatedEntry {
   id: string;
@@ -45,6 +46,7 @@ export function RelatorioConsolidado() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
   const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   // Calculate date range based on period filter
   const dateRange = useMemo(() => {
@@ -103,8 +105,9 @@ export function RelatorioConsolidado() {
     const inRange = isWithinInterval(entryDate, { start: dateRange.start, end: dateRange.end });
     if (!inRange) return false;
     if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
+    if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
     return true;
-  }), [consolidatedData, dateRange, sourceFilter]);
+  }), [consolidatedData, dateRange, sourceFilter, typeFilter]);
 
   // Calculate totals
   const totalIncome = filteredData
@@ -278,7 +281,21 @@ export function RelatorioConsolidado() {
                   <SelectItem value="all">Todas as origens</SelectItem>
                   <SelectItem value="caixa">Caixa</SelectItem>
                   <SelectItem value="financeiro">Financeiro</SelectItem>
-                  <SelectItem value="credito_cliente">Crédito ao cliente</SelectItem>
+                  <SelectItem value="credito_cliente">{CLIENT_CREDIT_SOURCE_LABEL}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm text-muted-foreground mb-1 block">Tipo</label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="income">Entrada</SelectItem>
+                  <SelectItem value="expense">Saída</SelectItem>
+                  <SelectItem value="non_cash">{NON_CASH_PAYMENT_LABEL}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

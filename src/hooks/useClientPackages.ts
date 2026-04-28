@@ -41,12 +41,20 @@ export interface PackageSession {
   interval_after_days?: number | null;
 }
 
-const getAvailableSessionCount = (pkg: Pick<ClientPackage, 'total_sessions' | 'sessions_scheduled' | 'appointments'>) => {
+const getRemainingSessionCount = (pkg: Pick<ClientPackage, 'total_sessions' | 'sessions_scheduled' | 'appointments'>) => {
   if (!pkg.appointments?.length) {
     return Math.max(0, (pkg.total_sessions || 0) - (pkg.sessions_scheduled || 0));
   }
 
   return pkg.appointments.filter(session => !['completed', 'missed'].includes(session.status)).length;
+};
+
+const getSchedulableSessionCount = (pkg: Pick<ClientPackage, 'total_sessions' | 'sessions_scheduled' | 'appointments'>) => {
+  if (!pkg.appointments?.length) {
+    return Math.max(0, (pkg.total_sessions || 0) - (pkg.sessions_scheduled || 0));
+  }
+
+  return pkg.appointments.filter(session => !['completed', 'missed'].includes(session.status) && !session.appointment_id).length;
 };
 
 export function useClientPackages(clientId: string | null) {
@@ -141,13 +149,13 @@ export function useClientPackages(clientId: string | null) {
   });
 
   // Filter packages with available sessions (for scheduling purposes)
-  const availablePackages = clientPackages.filter(pkg => getAvailableSessionCount(pkg) > 0);
+  const availablePackages = clientPackages.filter(pkg => getSchedulableSessionCount(pkg) > 0);
 
   const getPackageRemainingSessions = (packageId: string) => {
     const pkg = clientPackages.find(p => p.id === packageId);
     if (!pkg) return { total: 0, scheduled: 0, remaining: 0 };
     
-    const remaining = getAvailableSessionCount(pkg);
+    const remaining = getRemainingSessionCount(pkg);
     return {
       total: pkg.total_sessions,
       scheduled: pkg.total_sessions - remaining,
@@ -374,7 +382,8 @@ export function useClientPackages(clientId: string | null) {
     isLoading,
     refetch,
     getPackageRemainingSessions,
-    getAvailableSessionCount,
+    getRemainingSessionCount,
+    getSchedulableSessionCount,
     findClientPackageByTemplate,
     createClientPackage,
     incrementPackageSession,

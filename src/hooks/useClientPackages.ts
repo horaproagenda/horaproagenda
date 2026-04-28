@@ -153,6 +153,9 @@ export function useClientPackages(clientId: string | null) {
         duration: number;
         interval_days: number;
         total_price: number;
+        package_type?: 'standard' | 'sequential';
+        service_id?: string | null;
+        steps?: Array<{ service_id?: string | null; sequence_order?: number; interval_after_days?: number }>;
         professional_id?: string | null;
         room_id?: string | null;
         equipment?: string[];
@@ -175,7 +178,7 @@ export function useClientPackages(clientId: string | null) {
       }
 
       // Create the client-specific package
-      const { data: newPackage, error: packageError } = await supabase
+      const { data: newPackage, error: packageError } = await (supabase as any)
         .from('service_packages')
         .insert({
           name: data.templateData.name,
@@ -185,6 +188,8 @@ export function useClientPackages(clientId: string | null) {
           duration: data.templateData.duration || 60,
           interval_days: data.templateData.interval_days || 7,
           total_price: data.templateData.total_price,
+          package_type: data.templateData.package_type || 'standard',
+          service_id: data.templateData.service_id || null,
           professional_id: data.templateData.professional_id,
           room_id: data.templateData.room_id,
           equipment: data.templateData.equipment || [],
@@ -199,15 +204,26 @@ export function useClientPackages(clientId: string | null) {
 
       if (packageError) throw packageError;
 
-      // Create package_appointments for all sessions
-      const sessions = Array.from({ length: data.templateData.total_sessions }, (_, i) => ({
+      // Create package_appointments for all sessions or sequential steps
+      const templateSteps = data.templateData.package_type === 'sequential' && data.templateData.steps?.length
+        ? data.templateData.steps
+        : Array.from({ length: data.templateData.total_sessions }, (_, i) => ({
+            service_id: data.templateData.service_id || null,
+            interval_after_days: data.templateData.interval_days || 7,
+            sequence_order: i + 1,
+          }));
+
+      const sessions = templateSteps.map((step: any, i: number) => ({
         package_id: newPackage.id,
+        service_id: step.service_id || data.templateData.service_id || null,
         session_number: i + 1,
         original_session_number: i + 1,
+        sequence_order: step.sequence_order || i + 1,
+        interval_after_days: i === templateSteps.length - 1 ? 0 : step.interval_after_days || data.templateData.interval_days || 7,
         status: 'pending',
       }));
 
-      const { error: sessionsError } = await supabase
+      const { error: sessionsError } = await (supabase as any)
         .from('package_appointments')
         .insert(sessions);
 

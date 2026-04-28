@@ -13,13 +13,20 @@ export function usePackageTemplates() {
         .select(`
           *,
           professional:professionals (*),
-          room:rooms (*)
+          room:rooms (*),
+          steps:package_template_steps (
+            *,
+            service:services (*)
+          )
         `)
         .eq('is_active', true)
         .order('name', { ascending: true });
       
       if (error) throw error;
-      return (data || []) as PackageTemplate[];
+      return (data || []).map((template: any) => ({
+        ...template,
+        steps: (template.steps || []).sort((a: any, b: any) => a.sequence_order - b.sequence_order),
+      })) as PackageTemplate[];
     },
   });
 

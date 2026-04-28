@@ -30,9 +30,16 @@ import { useWhatsapp } from '@/hooks/useWhatsapp';
 interface PackageSession {
   id: string;
   session_number: number;
+  sequence_order?: number | null;
+  interval_after_days?: number | null;
+  service_id?: string | null;
   status: string;
   scheduled_date: string | null;
   appointment_id: string | null;
+  service?: {
+    name: string;
+    duration: number;
+  } | null;
   appointment?: {
     start_time: string;
     end_time: string;
@@ -81,7 +88,7 @@ export function PackageSessionsManager({
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
   
   // Conflict checking state
-  const [packageInfo, setPackageInfo] = useState<{ professional_id: string | null; room_id: string | null; duration: number } | null>(null);
+  const [packageInfo, setPackageInfo] = useState<{ professional_id: string | null; room_id: string | null; duration: number; package_type?: string | null } | null>(null);
   const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
   const [professionalAbsences, setProfessionalAbsences] = useState<any[]>([]);
   const [previewConflicts, setPreviewConflicts] = useState<Map<number, ConflictInfo>>(new Map());
@@ -100,6 +107,7 @@ export function PackageSessionsManager({
         .from('package_appointments')
         .select(`
           *,
+          service:services(name, duration),
           appointment:appointments (
             start_time,
             end_time,
@@ -107,10 +115,13 @@ export function PackageSessionsManager({
           )
         `)
         .eq('package_id', packageId)
-        .order('session_number', { ascending: true });
+        .order('sequence_order', { ascending: true });
 
       if (error) throw error;
-      setSessions(data || []);
+      setSessions((data || []).map((session: any) => ({
+        ...session,
+        service: Array.isArray(session.service) ? session.service[0] : session.service,
+      })) as PackageSession[]);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -122,7 +133,7 @@ export function PackageSessionsManager({
     try {
       const { data: pkg, error } = await supabase
         .from('service_packages')
-        .select('professional_id, room_id, duration')
+        .select('professional_id, room_id, duration, package_type')
         .eq('id', packageId)
         .single();
 
@@ -310,7 +321,7 @@ export function PackageSessionsManager({
 
   const openRescheduleDialog = (session: PackageSession) => {
     setSelectedSession(session);
-    setMassRescheduleEnabled(false);
+    setMassRescheduleEnabled(packageInfo?.package_type === 'sequential');
     setMassReschedulePreview([]);
     setMassRescheduleInterval(intervalDays);
     
@@ -337,21 +348,27 @@ export function PackageSessionsManager({
     }
 
     const baseDate = new Date(`${newDate}T${newTime}:00`);
+    const selectedOrder = selectedSession.sequence_order || selectedSession.session_number;
     const pendingSessions = sessions.filter(s => 
-      s.session_number >= selectedSession.session_number && 
+      (s.sequence_order || s.session_number) >= selectedOrder && 
       s.status !== 'completed' && 
       s.status !== 'missed' &&
       s.appointment?.status !== 'completed' &&
       s.appointment?.status !== 'missed'
     );
 
-    const preview = pendingSessions.map((session, index) => ({
-      sessionNumber: session.session_number,
-      date: addDays(baseDate, massRescheduleInterval * index)
-    }));
+    let accumulatedDays = 0;
+    const preview = pendingSessions.map((session, index) => {
+      const date = addDays(baseDate, accumulatedDays);
+      const interval = packageInfo?.package_type === 'sequential'
+        ? session.interval_after_days || 0
+        : massRescheduleInterval;
+      accumulatedDays += index === pendingSessions.length - 1 ? 0 : interval;
+      return { sessionNumber: session.session_number, date };
+    });
 
     setMassReschedulePreview(preview);
-  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions]);
+  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type]);
 
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;
@@ -368,11 +385,12 @@ export function PackageSessionsManager({
 
           // If there's an existing appointment, update it
           if (session.appointment_id) {
+            const duration = session.service?.duration || packageInfo?.duration || 60;
             const { error: aptError } = await supabase
               .from('appointments')
               .update({
                 start_time: preview.date.toISOString(),
-                end_time: addDays(preview.date, 0).toISOString(),
+                end_time: addMinutes(preview.date, duration).toISOString(),
                 status: 'rescheduled',
               })
               .eq('id', session.appointment_id);
@@ -420,11 +438,12 @@ Até breve! ✨`;
       } else {
         // Single session reschedule
         if (selectedSession.appointment_id) {
+          const duration = selectedSession.service?.duration || packageInfo?.duration || 60;
           const { error: aptError } = await supabase
             .from('appointments')
             .update({
               start_time: newDateTime.toISOString(),
-              end_time: addDays(newDateTime, 0).toISOString(),
+              end_time: addMinutes(newDateTime, duration).toISOString(),
               status: 'rescheduled',
             })
             .eq('id', selectedSession.appointment_id);
@@ -570,6 +589,9 @@ Até breve! ✨`;
               </div>
               <div>
                 <p className="text-sm font-medium">Sessão {session.session_number}</p>
+                {session.service?.name && (
+                  <p className="text-xs font-medium text-primary">{session.service.name}</p>
+                )}
                 {session.appointment?.start_time ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -665,21 +687,24 @@ Até breve! ✨`;
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium flex items-center gap-2">
                       <CalendarRange className="h-4 w-4" />
-                      Reagendar em Massa
+                      {packageInfo?.package_type === 'sequential' ? 'Reagendamento automático' : 'Reagendar em Massa'}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Reagendar também as sessões pendentes seguintes
+                      {packageInfo?.package_type === 'sequential'
+                        ? 'As próximas etapas serão ajustadas pelos intervalos do pacote'
+                        : 'Reagendar também as sessões pendentes seguintes'}
                     </p>
                   </div>
                   <Switch
                     checked={massRescheduleEnabled}
                     onCheckedChange={setMassRescheduleEnabled}
+                    disabled={packageInfo?.package_type === 'sequential'}
                   />
                 </div>
 
                 {massRescheduleEnabled && (
                   <div className="space-y-3 pt-2 border-t">
-                    <div>
+                    {packageInfo?.package_type !== 'sequential' && <div>
                       <Label className="text-xs">Intervalo entre sessões (dias)</Label>
                       <Select
                         value={massRescheduleInterval.toString()}
@@ -696,7 +721,7 @@ Até breve! ✨`;
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div>}
 
                     {/* Conflict Alert with Auto-resolve */}
                     {hasAnyConflict && (

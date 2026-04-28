@@ -509,7 +509,7 @@ export function SaleForm() {
           const template = packageTemplates.find(t => t.id === item.originalId);
           if (template) {
             // Create service_package for the client
-            const { data: newPackage, error: pkgError } = await supabase
+            const { data: newPackage, error: pkgError } = await (supabase as any)
               .from('service_packages')
               .insert({
                 name: template.name,
@@ -519,6 +519,7 @@ export function SaleForm() {
                 duration: template.duration || 60,
                 interval_days: template.interval_days || 7,
                 total_price: template.price,
+                package_type: template.package_type || 'standard',
                 professional_id: template.professional_id,
                 room_id: template.room_id,
                 equipment: template.equipment || [],
@@ -532,14 +533,25 @@ export function SaleForm() {
             if (pkgError) throw pkgError;
 
             // Create package_appointments for all sessions
-            const sessions = Array.from({ length: template.total_sessions }, (_, i) => ({
+            const templateSteps = template.package_type === 'sequential' && template.steps?.length
+              ? template.steps
+              : Array.from({ length: template.total_sessions }, (_, i) => ({
+                  service_id: null,
+                  interval_after_days: template.interval_days || 7,
+                  sequence_order: i + 1,
+                }));
+
+            const sessions = templateSteps.map((step: any, i: number) => ({
               package_id: newPackage.id,
+              service_id: step.service_id || template.service_id || null,
               session_number: i + 1,
               original_session_number: i + 1,
+              sequence_order: step.sequence_order || i + 1,
+              interval_after_days: i === templateSteps.length - 1 ? 0 : step.interval_after_days || template.interval_days || 7,
               status: 'pending',
             }));
 
-            await supabase.from('package_appointments').insert(sessions);
+            await (supabase as any).from('package_appointments').insert(sessions);
 
             // Update single_sales with package_id
             await supabase

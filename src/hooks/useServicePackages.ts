@@ -15,13 +15,20 @@ export function useServicePackages() {
           client:clients (*),
           professional:professionals (*),
           room:rooms (*),
-          service:services (*)
+          service:services (*),
+          appointments:package_appointments (
+            *,
+            service:services (*)
+          )
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      return (data || []) as ServicePackage[];
+      return (data || []).map((pkg: any) => ({
+        ...pkg,
+        appointments: (pkg.appointments || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number)),
+      })) as ServicePackage[];
     },
   });
 
@@ -49,7 +56,8 @@ export function usePackageAppointments(packageId: string | null) {
             *,
             client:clients (*),
             service:services (*)
-          )
+          ),
+          service:services (*)
         `)
         .eq('package_id', packageId)
         .order('session_number', { ascending: true });

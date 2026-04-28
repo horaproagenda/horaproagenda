@@ -279,6 +279,13 @@ export function NewAppointmentDialog({
   }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
 
   // Calculate preview dates for auto-scheduling
+  const packageSequenceSteps = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    return packageData?.package_type === 'sequential' && packageData.steps?.length
+      ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+      : [];
+  }, [existingClientPackage, selectedPackageData]);
+
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     
@@ -286,11 +293,15 @@ export function NewAppointmentDialog({
     const totalSessions = packageData?.total_sessions || 1;
     if (totalSessions <= 1) return [];
 
-    const intervalDays = packageData?.interval_days || 7;
     const dates: Date[] = [appointmentTimes.startTime];
+    let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
-      const futureDate = addDays(appointmentTimes.startTime, intervalDays * i);
+      const previousStep = packageSequenceSteps[i - 1];
+      const intervalDays = packageSequenceSteps.length > 0
+        ? Number(previousStep?.interval_after_days || 0)
+        : Number(packageData?.interval_days || 7);
+      const futureDate = addDays(currentDate, intervalDays);
       
       // Adjust to preferred day of week if set
       if (preferredDayOfWeek !== null) {
@@ -306,10 +317,11 @@ export function NewAppointmentDialog({
       }
 
       dates.push(new Date(futureDate));
+      currentDate = futureDate;
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, preferredDayOfWeek, preferredTime]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -715,6 +727,9 @@ export function NewAppointmentDialog({
               duration: selectedPackageData.duration || 60,
               interval_days: selectedPackageData.interval_days || 7,
               total_price: selectedPackageData.total_price,
+              package_type: selectedPackageData.package_type || 'standard',
+              service_id: selectedPackageData.service_id || null,
+              steps: selectedPackageData.steps || [],
               professional_id: selectedProfessional || selectedPackageData.professional_id,
               room_id: selectedRoom || selectedPackageData.room_id,
               equipment: selectedPackageData.equipment || [],
@@ -728,7 +743,8 @@ export function NewAppointmentDialog({
 
         // Create the first/next appointment
         // For packages, use the package's service_id if available, otherwise null
-        const packageServiceId = selectedPackageData?.service_id || null;
+        const firstSequenceStep = packageSequenceSteps[0];
+        const packageServiceId = firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
         
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
@@ -773,16 +789,19 @@ export function NewAppointmentDialog({
           for (let i = 1; i <= sessionsToCreate; i++) {
             // Use editable dates instead of calculated dates
             const futureDate = editablePreviewDates[i];
+            const futureServiceId = packageSequenceSteps[i]?.service_id || packageServiceId;
+            const futureService = services.find(service => service.id === futureServiceId);
+            const futureDuration = futureService?.duration || duration;
             
             const futureEnd = new Date(futureDate);
-            futureEnd.setMinutes(futureEnd.getMinutes() + duration);
+            futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
 
             try {
               // Wait for each appointment to be fully created before proceeding
               // This ensures the Edge Function can properly detect conflicts
               const futureAppointment = await createAppointment.mutateAsync({
                 client_id: selectedClient,
-                service_id: packageServiceId,
+                service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
                 notes: `${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession

@@ -26,6 +26,7 @@ export interface ClientPackage {
   payment_methods?: string[] | null; // Indicates package was paid via caixa when set
   package_type?: 'standard' | 'sequential';
   steps?: Array<{ service_id?: string | null; sequence_order?: number; interval_after_days?: number }>;
+  appointments?: PackageSession[];
 }
 
 export interface PackageSession {
@@ -110,7 +111,10 @@ export function useClientPackages(clientId: string | null) {
       
       const { data, error } = await supabase
         .from('service_packages')
-        .select('*')
+        .select(`
+          *,
+          appointments:package_appointments (*)
+        `)
         .eq('client_id', clientId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });

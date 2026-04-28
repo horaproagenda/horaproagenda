@@ -1789,6 +1789,8 @@ const Agenda = () => {
                       <SelectItem value="paid">Pago</SelectItem>
                       <SelectItem value="partial">Parcial</SelectItem>
                       <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="client_credit">{CLIENT_CREDIT_SOURCE_LABEL}</SelectItem>
+                      <SelectItem value="non_cash">{NON_CASH_PAYMENT_LABEL}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

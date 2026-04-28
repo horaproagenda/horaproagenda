@@ -25,7 +25,7 @@ export function usePackageTemplates() {
 
       const { data: steps, error: stepsError } = await (supabase as any)
         .from('package_template_steps')
-        .select('*')
+        .select('id, template_id, service_id, sequence_order, interval_after_days')
         .in('template_id', templateIds)
         .order('sequence_order', { ascending: true });
 
@@ -40,10 +40,21 @@ export function usePackageTemplates() {
         stepsByTemplate.set(step.template_id, current);
       });
 
-      return (data || []).map((template: any) => ({
-        ...template,
-        steps: (stepsByTemplate.get(template.id) || []).sort((a: any, b: any) => a.sequence_order - b.sequence_order),
-      })) as PackageTemplate[];
+      return (data || []).map((template: any) => {
+        const explicitSteps = (stepsByTemplate.get(template.id) || []).sort((a: any, b: any) => a.sequence_order - b.sequence_order);
+        const fallbackSteps = Array.from({ length: Number(template.total_sessions || 0) }, (_, index) => ({
+          id: `${template.id}-fallback-${index + 1}`,
+          template_id: template.id,
+          service_id: template.service_id || null,
+          sequence_order: index + 1,
+          interval_after_days: index === Number(template.total_sessions || 0) - 1 ? 0 : Number(template.interval_days || 7),
+        }));
+
+        return {
+          ...template,
+          steps: explicitSteps.length > 0 ? explicitSteps : fallbackSteps,
+        };
+      }) as PackageTemplate[];
     },
   });
 

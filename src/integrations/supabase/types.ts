@@ -1349,6 +1349,66 @@ export type Database = {
         }
         Relationships: []
       }
+      package_appointment_history: {
+        Row: {
+          appointment_id: string | null
+          change_reason: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          new_scheduled_date: string | null
+          new_status: string | null
+          package_appointment_id: string
+          package_id: string
+          previous_scheduled_date: string | null
+          previous_status: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          change_reason?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_scheduled_date?: string | null
+          new_status?: string | null
+          package_appointment_id: string
+          package_id: string
+          previous_scheduled_date?: string | null
+          previous_status?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          change_reason?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_scheduled_date?: string | null
+          new_status?: string | null
+          package_appointment_id?: string
+          package_id?: string
+          previous_scheduled_date?: string | null
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_appointment_history_package_appointment_id_fkey"
+            columns: ["package_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "package_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_appointment_history_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_appointments: {
         Row: {
           appointment_id: string | null

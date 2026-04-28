@@ -1143,7 +1143,8 @@ Até breve! ✨`;
                       {availablePackages
                         .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
                         .map((pkg, index) => {
-                          const remaining = getSchedulableSessionCount(pkg);
+                          const summary = getPackageAvailabilitySummary(pkg);
+                          const remaining = summary.schedulableSessions;
                           // Check if there are other packages with same name to show identifier
                           const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
@@ -1184,7 +1185,8 @@ Até breve! ✨`;
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {remaining} de {pkg.total_sessions} sessões para agendar
+                                Dá para agendar: {remaining} • Sessões existentes: {summary.existingSessionRecords}/{summary.totalSessions}
+                                {summary.hasInconsistentCounter ? ' • contador antigo divergente' : ''}
                               </div>
                             </div>
                           );

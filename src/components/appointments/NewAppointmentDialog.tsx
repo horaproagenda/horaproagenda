@@ -204,6 +204,10 @@ export function NewAppointmentDialog({
   const packageRemainingSessions = existingClientPackage
     ? getRemainingSessionCount(existingClientPackage)
     : selectedPackageData?.total_sessions || 0;
+  const existingPackageHasStarted = existingClientPackage
+    ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
+      ?? existingClientPackage.sessions_scheduled > 0
+    : false;
 
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
@@ -809,7 +813,7 @@ export function NewAppointmentDialog({
         }
 
         // If auto-schedule is enabled and it's the first appointment (either new package or existing with 0 sessions scheduled)
-        const isFirstAppointment = !existingClientPackage || existingClientPackage.sessions_scheduled === 0;
+        const isFirstAppointment = !existingClientPackage || !existingPackageHasStarted;
         const packageData = existingClientPackage || selectedPackageData;
         const totalSessions = packageData?.total_sessions || 1;
         

@@ -395,14 +395,34 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       {/* Client Credit Balance History */}
       <Card>
         <CardContent className="p-3">
-          <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-            <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
-          </h3>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <WalletCards className="h-3.5 w-3.5" /> Histórico de Crédito ao Cliente
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={exportCreditCSV} disabled={creditTransactions.length === 0}>
+                <Download className="h-3 w-3 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={exportCreditPDF} disabled={creditTransactions.length === 0}>
+                <FileText className="h-3 w-3 mr-1" /> PDF
+              </Button>
+            </div>
+          </div>
+          <div className="relative mb-2 max-w-sm">
+            <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={creditSearch}
+              onChange={(event) => setCreditSearch(event.target.value)}
+              placeholder="Buscar por tipo ou descrição..."
+              className="h-8 pl-7 text-xs"
+            />
+          </div>
           {creditTransactions.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2">Nenhuma movimentação de crédito registrada</p>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[720px]">
+            <>
+              <div className="overflow-x-auto">
+                <div className="min-w-[720px]">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -416,13 +436,13 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                   </TableHeader>
                   <TableBody>
                     {creditTransactions.map(transaction => (
-                      <TableRow key={transaction.id} className="hover:bg-muted/30">
+                      <TableRow key={transaction.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setSelectedCreditTransaction(transaction)}>
                         <TableCell className="text-xs py-1.5 whitespace-nowrap">
                           {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-xs py-1.5 whitespace-nowrap">
                           <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
-                            {transaction.transaction_type === 'credit_used' ? 'Crédito usado' : transaction.transaction_type === 'credit_added' ? 'Adição' : 'Ajuste'}
+                            {getClientCreditTransactionTypeLabel(transaction.transaction_type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
@@ -433,8 +453,16 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
-            </div>
+              {creditTransactions.length >= CREDIT_PAGE_SIZE * creditPage && (
+                <div className="mt-2 flex justify-center">
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setCreditPage(page => page + 1)}>
+                    Carregar mais
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

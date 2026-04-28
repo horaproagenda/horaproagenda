@@ -117,6 +117,7 @@ import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
+import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -293,7 +294,7 @@ const Agenda = () => {
     return appointments.filter(apt => {
       // Exclude only standalone released reschedules. Any appointment linked to a package session
       // must remain visible so old packages and sequential package sessions do not disappear.
-      if (apt.status === 'rescheduled' && !apt.package_appointment_id && !apt.package_appointment?.id) {
+      if (!shouldKeepAppointmentVisibleInAgenda(apt)) {
         return false;
       }
       

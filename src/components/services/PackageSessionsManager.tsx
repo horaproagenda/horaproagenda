@@ -632,15 +632,39 @@ Até breve! ✨`;
                 {session.appointment?.start_time ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(parseISO(session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    Planejada: {format(parseISO(session.scheduled_date || session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 ) : session.scheduled_date ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(parseISO(session.scheduled_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    Planejada: {format(parseISO(session.scheduled_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Não agendada</p>
+                )}
+                {session.appointment?.start_time && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Realizada/agendada: {format(parseISO(session.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {sessionHistory[session.id]?.[0] && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    Última mudança por {sessionHistory[session.id][0].changed_by_name || 'Sistema'} em {format(parseISO(sessionHistory[session.id][0].created_at), "dd/MM HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {sessionHistory[session.id]?.length > 0 && (
+                  <details className="mt-1 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer">Histórico ({sessionHistory[session.id].length})</summary>
+                    <div className="mt-1 space-y-1 border-l pl-2">
+                      {sessionHistory[session.id].slice(0, 4).map(item => (
+                        <p key={item.id}>
+                          {format(parseISO(item.created_at), "dd/MM HH:mm", { locale: ptBR })} · {item.change_reason} · {item.changed_by_name || 'Sistema'}
+                        </p>
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
             </div>

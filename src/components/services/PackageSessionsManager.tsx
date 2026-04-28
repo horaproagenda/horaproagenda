@@ -26,6 +26,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
 
 interface PackageSession {
   id: string;
@@ -45,6 +46,19 @@ interface PackageSession {
     end_time: string;
     status: string;
   } | null;
+}
+
+interface PackageSessionHistoryItem {
+  id: string;
+  package_appointment_id: string;
+  previous_scheduled_date: string | null;
+  new_scheduled_date: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  changed_by: string | null;
+  change_reason: string;
+  created_at: string;
+  changed_by_name?: string | null;
 }
 
 interface PackageSessionsManagerProps {
@@ -92,6 +106,7 @@ export function PackageSessionsManager({
   const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
   const [professionalAbsences, setProfessionalAbsences] = useState<any[]>([]);
   const [previewConflicts, setPreviewConflicts] = useState<Map<number, ConflictInfo>>(new Map());
+  const [sessionHistory, setSessionHistory] = useState<Record<string, PackageSessionHistoryItem[]>>({});
 
   const { sendMessage: sendWhatsappMessage } = useWhatsapp();
 
@@ -118,10 +133,34 @@ export function PackageSessionsManager({
         .order('sequence_order', { ascending: true });
 
       if (error) throw error;
-      setSessions((data || []).map((session: any) => ({
+      const normalizedSessions = (data || []).map((session: any) => ({
         ...session,
         service: Array.isArray(session.service) ? session.service[0] : session.service,
-      })) as PackageSession[]);
+      })) as PackageSession[];
+      setSessions(normalizedSessions);
+
+      const sessionIds = normalizedSessions.map(session => session.id);
+      if (sessionIds.length > 0) {
+        const { data: historyData } = await (supabase as any)
+          .from('package_appointment_history')
+          .select('*')
+          .in('package_appointment_id', sessionIds)
+          .order('created_at', { ascending: false });
+
+        const userIds = Array.from(new Set((historyData || []).map((item: any) => item.changed_by).filter(Boolean)));
+        const { data: profiles } = userIds.length > 0
+          ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+          : { data: [] as any[] };
+        const profileNames = new Map((profiles || []).map((profile: any) => [profile.id, profile.full_name]));
+        const groupedHistory = (historyData || []).reduce((acc: Record<string, PackageSessionHistoryItem[]>, item: any) => {
+          const entry = { ...item, changed_by_name: profileNames.get(item.changed_by) || 'Sistema' };
+          acc[item.package_appointment_id] = [...(acc[item.package_appointment_id] || []), entry];
+          return acc;
+        }, {});
+        setSessionHistory(groupedHistory);
+      } else {
+        setSessionHistory({});
+      }
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {

@@ -287,12 +287,13 @@ const Agenda = () => {
   }, [monthStart, hideSunday]);
 
   // Filter appointments by search, professional, room, status and payment
-  // CRITICAL: Always exclude 'rescheduled' status from display so time slots are freed
+  // Keep package-linked sessions visible even when their appointment status was marked as rescheduled,
+  // because automatic package shifts preserve the same session instead of releasing it from the agenda.
   const filteredByFilters = useMemo(() => {
     return appointments.filter(apt => {
-      // Exclude truly released reschedules, but keep package sessions that were auto-shifted
-      // so previously scheduled package sessions do not disappear from the agenda.
-      if (apt.status === 'rescheduled' && apt.package_appointment?.status !== 'scheduled') {
+      // Exclude only standalone released reschedules. Any appointment linked to a package session
+      // must remain visible so old packages and sequential package sessions do not disappear.
+      if (apt.status === 'rescheduled' && !apt.package_appointment_id && !apt.package_appointment?.id) {
         return false;
       }
       

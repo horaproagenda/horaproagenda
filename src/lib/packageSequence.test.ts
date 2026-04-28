@@ -29,4 +29,16 @@ describe('packageSequence', () => {
   it('exibe hífen quando não houver sessão de pacote', () => {
     expect(getPackageApplicationLabel(null, 10)).toBe('-');
   });
+
+  it('mantém sessões de pacote reagendadas na sequência visível da agenda', () => {
+    const appointments = [
+      { id: 'apt-old', status: 'rescheduled', start_time: '2026-04-01T19:00:00', package_appointment_id: 's1', package_appointment: { id: 's1', package_id: 'pkg', session_number: 1, status: 'rescheduled', package: { id: 'pkg', total_sessions: 2 } } },
+      { id: 'apt-next', status: 'scheduled', start_time: '2026-04-08T19:00:00', package_appointment_id: 's2', package_appointment: { id: 's2', package_id: 'pkg', session_number: 2, status: 'scheduled', package: { id: 'pkg', total_sessions: 2 } } },
+    ] as any[];
+
+    const sequence = buildAppointmentPackageSequenceMap(appointments);
+
+    expect(getAppointmentPackageApplicationLabel(appointments[0], sequence.get('apt-old'))).toBe('Aplicação 1/2');
+    expect(getAppointmentPackageApplicationLabel(appointments[1], sequence.get('apt-next'))).toBe('Aplicação 2/2');
+  });
 });

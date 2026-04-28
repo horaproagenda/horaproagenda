@@ -79,9 +79,9 @@ export function useSingleSales() {
       // 3. If it's a package sale with a client, create a client package marked as PAID
       if (sale.item_type === 'package' && sale.package_id && sale.client_id) {
         // Get the package template data (from service_packages acting as template)
-        const { data: packageTemplate } = await supabase
+        const { data: packageTemplate } = await (supabase as any)
           .from('service_packages')
-          .select('*')
+          .select('*, appointments:package_appointments(*)')
           .eq('id', sale.package_id)
           .single();
 
@@ -99,6 +99,8 @@ export function useSingleSales() {
               duration: packageTemplate.duration || 60,
               interval_days: packageTemplate.interval_days || 7,
               total_price: sale.final_amount,
+              package_type: packageTemplate.package_type || 'standard',
+              service_id: packageTemplate.service_id || null,
               professional_id: packageTemplate.professional_id,
               room_id: packageTemplate.room_id,
               equipment: packageTemplate.equipment || [],
@@ -113,10 +115,21 @@ export function useSingleSales() {
 
           if (!pkgError && clientPackage) {
             // Create pending sessions for the package - all marked as PAID since package was paid in full
-            const sessions = Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
+            const packageSteps = packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
+              ? packageTemplate.appointments.sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
+              : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
+                  service_id: packageTemplate.service_id || null,
+                  interval_after_days: packageTemplate.interval_days || 7,
+                  sequence_order: i + 1,
+                }));
+
+            const sessions = packageSteps.map((step: any, i: number) => ({
               package_id: clientPackage.id,
+              service_id: step.service_id || packageTemplate.service_id || null,
               session_number: i + 1,
               original_session_number: i + 1,
+              sequence_order: step.sequence_order || i + 1,
+              interval_after_days: i === packageSteps.length - 1 ? 0 : step.interval_after_days || packageTemplate.interval_days || 7,
               status: 'pending',
               notes: 'Pacote pago integralmente via Caixa',
             }));

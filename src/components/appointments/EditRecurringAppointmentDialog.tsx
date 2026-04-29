@@ -227,6 +227,12 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           <div className="mx-auto max-w-xl space-y-4 py-4">
             {/* Client and Service Info (read-only) */}
             <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              {isLockedByOther && (
+                <Badge variant="outline" className="mb-2 gap-1 text-xs">
+                  <Lock className="h-3 w-3" />
+                  Em edição por {activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}
+                </Badge>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{appointment?.client?.name}</span>
@@ -239,10 +245,11 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input
+                  <Input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                    disabled={isLockedByOther}
               />
             </div>
 
@@ -267,7 +274,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Profissional</Label>
-              <Select value={professionalId} onValueChange={setProfessionalId}>
+                <Select value={professionalId} onValueChange={setProfessionalId} disabled={isLockedByOther}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um profissional" />
                 </SelectTrigger>
@@ -344,7 +351,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                   Salvar
                 </Button>
               ) : (
-                <Button onClick={handleSingleSubmit} disabled={loading}>
+                <Button onClick={handleSingleSubmit} disabled={loading || isLockedByOther}>
                   {loading ? 'Salvando...' : 'Salvar'}
                 </Button>
               )}

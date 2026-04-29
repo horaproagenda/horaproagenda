@@ -814,11 +814,9 @@ export function ProductDetailDialog({
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
-                                <Input
-                                  type="number"
+                                <CurrencyInput
                                   value={purchaseEditForm.unit_price}
-                                  onChange={(e) => {
-                                    const price = parseFloat(e.target.value) || 0;
+                                  onValueChange={(price) => {
                                     setPurchaseEditForm({ 
                                       ...purchaseEditForm, 
                                       unit_price: price,
@@ -826,15 +824,11 @@ export function ProductDetailDialog({
                                     });
                                   }}
                                   className="h-8 text-xs w-24"
-                                  min="0"
-                                  step="0.01"
                                   placeholder="Unit."
                                 />
-                                <Input
-                                  type="number"
+                                <CurrencyInput
                                   value={purchaseEditForm.total_price}
-                                  onChange={(e) => {
-                                    const total = parseFloat(e.target.value) || 0;
+                                  onValueChange={(total) => {
                                     const unitPrice = purchaseEditForm.quantity > 0 ? total / purchaseEditForm.quantity : 0;
                                     setPurchaseEditForm({ 
                                       ...purchaseEditForm, 
@@ -843,8 +837,6 @@ export function ProductDetailDialog({
                                     });
                                   }}
                                   className="h-8 text-xs w-24"
-                                  min="0"
-                                  step="0.01"
                                   placeholder="Total"
                                 />
                               </div>

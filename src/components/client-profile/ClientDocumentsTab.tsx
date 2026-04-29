@@ -441,6 +441,13 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
         onOpenChange={setLinkDialogOpen}
         template={linkTemplate}
         preSelectedClientId={clientId}
+        preSelectedClient={client ? {
+          id: client.id,
+          name: client.name,
+          cpf: client.cpf,
+          phone: client.phone,
+          birthdate: client.birthdate,
+        } : undefined}
       />
     </div>
   );

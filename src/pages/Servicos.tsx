@@ -47,6 +47,7 @@ interface ServicesFilters {
 }
 
 interface PackagesFilters {
+  category: string | null;
   professional: string | null;
   room: string | null;
   sessions: string | null;
@@ -66,7 +67,7 @@ const Servicos: React.FC = () => {
     category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc'
   });
   const [packageFilters, setPackageFilters] = useLocalStorage<PackagesFilters>('servicos-package-filters', {
-    professional: null, room: null, sessions: null, status: null, sort: 'name-asc'
+    category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc'
   });
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
@@ -90,6 +91,7 @@ const Servicos: React.FC = () => {
   ])].sort();
 
   const categoriesWithServices = [...new Set(services.map(s => s.category))];
+  const categoriesWithPackages = [...new Set(packages.map(p => p.category).filter(Boolean))] as string[];
 
   const serviceClients = useMemo(() => {
     const clientIds = [...new Set(appointments.map(a => a.client_id))];
@@ -134,6 +136,7 @@ const Servicos: React.FC = () => {
 
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
+      if (packageFilters.category && pkg.category !== packageFilters.category) return false;
       if (packageFilters.professional && pkg.professional_id !== packageFilters.professional) return false;
       if (packageFilters.room && pkg.room_id !== packageFilters.room) return false;
       if (packageFilters.status === 'active' && !pkg.is_active) return false;
@@ -178,7 +181,7 @@ const Servicos: React.FC = () => {
   };
 
   const clearPackageFilters = () => {
-    setPackageFilters({ professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
+    setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
   const exportServicesCSV = () => {

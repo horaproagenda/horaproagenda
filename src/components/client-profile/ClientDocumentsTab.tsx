@@ -21,7 +21,8 @@ import {
   Eye, 
   Trash2,
   Link2,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
@@ -32,6 +33,8 @@ import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import JSZip from 'jszip';
+import { downloadBlob, getFileNameWithExtension, getSafeFileName, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -58,9 +61,7 @@ const documentTypeColors: Record<DocumentType, string> = {
 };
 
 const getSafeDownloadName = (doc: ClientDocument) => {
-  const sourceName = String(doc.file_path || doc.file_url || '').split('?')[0].split('/').pop() || '';
-  const extension = sourceName.includes('.') ? `.${sourceName.split('.').pop()}` : '';
-  return `${doc.title || 'documento'}${extension && !doc.title.toLowerCase().endsWith(extension.toLowerCase()) ? extension : ''}`;
+  return getFileNameWithExtension(doc.title || 'documento', doc.file_path || doc.file_url);
 };
 
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument, onRefresh }: ClientDocumentsTabProps) {
@@ -79,6 +80,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const [selectedDocument, setSelectedDocument] = useState<ClientDocument | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkTemplate, setLinkTemplate] = useState<{ id: string; title: string } | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
   const { templates, refetch: refetchTemplates } = useDocumentTemplates();
@@ -180,34 +182,54 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
 
   const handleDownloadFile = async (doc: ClientDocument) => {
     try {
-      let downloadUrl: string | null = null;
-      if (doc.file_path) {
-        const { data, error } = await supabase.storage
-          .from('client-documents')
-          .createSignedUrl(doc.file_path, 300);
-
-        if (error) throw error;
-        downloadUrl = data.signedUrl;
-      }
-
-      if (!downloadUrl && doc.file_url) downloadUrl = doc.file_url;
-      if (!downloadUrl) return;
-
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error(`Falha ao baixar arquivo (${response.status})`);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = window.document.createElement('a');
-      link.href = blobUrl;
-      link.download = getSafeDownloadName(doc);
-      link.rel = 'noopener noreferrer';
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
+      const blob = await getStorageBlob({
+        bucket: 'client-documents',
+        filePath: doc.file_path,
+        fileUrl: doc.file_url,
+      });
+      downloadBlob(blob, getSafeDownloadName(doc));
     } catch (error) {
       console.error('Error downloading document file:', error);
       toast.error('Sem permissão para baixar este documento.');
+    }
+  };
+
+  const handleDownloadAllFiles = async () => {
+    const downloadableDocs = documents.filter((doc) => doc.file_path || doc.file_url);
+    if (downloadableDocs.length === 0) {
+      toast.error('Nenhum documento com arquivo para baixar.');
+      return;
+    }
+
+    setDownloadingAll(true);
+    try {
+      const zip = new JSZip();
+      let addedFiles = 0;
+
+      for (const doc of downloadableDocs) {
+        try {
+          const blob = await getStorageBlob({
+            bucket: 'client-documents',
+            filePath: doc.file_path,
+            fileUrl: doc.file_url,
+          });
+          zip.file(`${String(addedFiles + 1).padStart(2, '0')}-${getSafeDownloadName(doc)}`, blob);
+          addedFiles += 1;
+        } catch (error) {
+          console.error('Error adding document to zip:', doc.id, error);
+        }
+      }
+
+      if (addedFiles === 0) throw new Error('Nenhum documento pôde ser baixado');
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(zipBlob, `${getSafeFileName(client?.name || 'cliente')}-documentos.zip`);
+      toast.success(`${addedFiles} documento(s) baixado(s).`);
+    } catch (error) {
+      console.error('Error downloading all documents:', error);
+      toast.error('Erro ao baixar todos os documentos.');
+    } finally {
+      setDownloadingAll(false);
     }
   };
 
@@ -225,7 +247,14 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{documents.length} documento(s)</span>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-2">
+          {documents.some((doc) => doc.file_path || doc.file_url) && (
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadAllFiles} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+              Baixar todos
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-7 text-xs">
               <Plus className="h-3.5 w-3.5 mr-1" />
@@ -349,7 +378,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
               </TabsContent>
             </Tabs>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Documents List */}

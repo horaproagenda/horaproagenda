@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientPhotosTabProps {
   photos: TreatmentPhoto[];
@@ -193,25 +194,12 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
 
   const handleDownloadPhoto = async (photo: TreatmentPhoto) => {
     try {
-      if (!photo.file_path) {
-        window.open(getPhotoUrl(photo), '_blank', 'noopener,noreferrer');
-        return;
-      }
-
-      const { data, error } = await supabase.storage
-        .from('client-photos')
-        .download(photo.file_path);
-
-      if (error) throw error;
-
-      const objectUrl = URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = photo.file_path.split('/').pop() || `foto-${photo.id}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
+      const blob = await getStorageBlob({
+        bucket: 'client-photos',
+        filePath: photo.file_path,
+        fileUrl: photo.file_url,
+      });
+      downloadBlob(blob, getFileNameWithExtension(`foto-${photo.id}`, photo.file_path || photo.file_url, `foto-${photo.id}.jpg`));
     } catch (error) {
       console.error('Error downloading photo:', error);
       toast.error('Erro ao baixar foto');

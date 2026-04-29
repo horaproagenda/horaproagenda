@@ -34,3 +34,12 @@ export function createDateTimeInTimeZone(date: Date, time: string, timeZone = 'A
 
   return new Date(utcTime);
 }
+
+export function formatTimeInTimeZone(value: string | Date, timeZone = 'America/Sao_Paulo'): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+}

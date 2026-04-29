@@ -57,6 +57,12 @@ const documentTypeColors: Record<DocumentType, string> = {
   other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300',
 };
 
+const getSafeDownloadName = (doc: ClientDocument) => {
+  const sourceName = String(doc.file_path || doc.file_url || '').split('?')[0].split('/').pop() || '';
+  const extension = sourceName.includes('.') ? `.${sourceName.split('.').pop()}` : '';
+  return `${doc.title || 'documento'}${extension && !doc.title.toLowerCase().endsWith(extension.toLowerCase()) ? extension : ''}`;
+};
+
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument, onRefresh }: ClientDocumentsTabProps) {
   const { hasRole } = useAuth();
   const canDeleteDocuments = hasRole('admin');
@@ -187,13 +193,18 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       if (!downloadUrl && doc.file_url) downloadUrl = doc.file_url;
       if (!downloadUrl) return;
 
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error(`Falha ao baixar arquivo (${response.status})`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = window.document.createElement('a');
-      link.href = downloadUrl;
-      link.download = doc.title || 'documento';
+      link.href = blobUrl;
+      link.download = getSafeDownloadName(doc);
       link.rel = 'noopener noreferrer';
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading document file:', error);
       toast.error('Sem permissão para baixar este documento.');

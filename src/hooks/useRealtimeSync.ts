@@ -58,6 +58,7 @@ export function useRealtimeSync() {
       'appointments', 'client-appointments', 'client', 'clients',
       'professionals', 'rooms', 'services', 'business-settings', 'business_settings',
       'professional-absences', 'professional_absences', 'waitlist', 'recurring_appointments',
+      'appointment_edit_locks',
       'service_packages', 'client_packages', 'package_appointments', 'package_details',
       'package_appointment_history', 'package_template_steps', 'dashboard-stats', 'dashboard_stats',
     ];
@@ -553,6 +554,15 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'recurring_appointments' },
         () => {
           syncFullAgenda();
+        }
+      )
+
+      // ============ APPOINTMENT EDIT LOCKS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointment_edit_locks' },
+        () => {
+          invalidateMultiple(['appointment_edit_locks']);
         }
       )
       

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -422,7 +423,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     <DollarSign className="h-5 w-5 text-success" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor</p>
-                      <p className="font-semibold">R$ {Number(service.price).toFixed(2)}</p>
+                        <p className="font-semibold">R$ {Number(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                   </div>
 
@@ -554,9 +555,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     name="price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Preço (R$) *</FormLabel>
+                        <FormLabel>Valor *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} step="0.01" {...field} />
+                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

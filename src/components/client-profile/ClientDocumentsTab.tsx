@@ -205,8 +205,73 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
   };
 
+  const buildCombinedDocumentsPdf = async (docs: ClientDocument[]) => {
+    const pdf = await PDFDocument.create();
+    const normalFont = await pdf.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 42;
+    let skippedFiles = 0;
+
+    const addTextDocument = (docItem: ClientDocument, reason?: string) => {
+      let page = pdf.addPage([pageWidth, pageHeight]);
+      let y = pageHeight - margin;
+      const drawLine = (line: string, size = 10, font = normalFont) => {
+        if (y < margin) {
+          page = pdf.addPage([pageWidth, pageHeight]);
+          y = pageHeight - margin;
+        }
+        page.drawText(removeAccents(line).slice(0, 1200), { x: margin, y, size, font, color: rgb(0.12, 0.12, 0.12) });
+        y -= size + 6;
+      };
+
+      drawLine(docItem.title || 'Documento', 15, boldFont);
+      drawLine(`Tipo: ${documentTypeLabels[docItem.type] || 'Documento'} | Criado em: ${format(new Date(docItem.created_at), 'dd/MM/yyyy', { locale: ptBR })}`, 9);
+      if (docItem.signed_at) drawLine(`Assinado em: ${format(new Date(docItem.signed_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}${docItem.signed_by ? ` por ${docItem.signed_by}` : ''}`, 9);
+      if (docItem.description) drawLine(`Descricao: ${docItem.description}`, 9);
+      y -= 8;
+
+      const content = docItem.content?.trim() || reason || 'Documento anexado ao perfil sem conteudo textual disponivel para consolidacao em PDF.';
+      wrapPdfText(content).forEach((line) => drawLine(line || ' ', 10));
+    };
+
+    for (const docItem of docs) {
+      const isPdf = String(docItem.file_path || docItem.file_url || '').split('?')[0].toLowerCase().endsWith('.pdf');
+      if (docItem.file_path || docItem.file_url) {
+        try {
+          const blob = await getStorageBlob({ bucket: 'client-documents', filePath: docItem.file_path, fileUrl: docItem.file_url });
+          if (isPdf || blob.type === 'application/pdf') {
+            const sourcePdf = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
+            const pages = await pdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
+            pages.forEach((page) => pdf.addPage(page));
+            continue;
+          }
+          skippedFiles += 1;
+          addTextDocument(docItem, 'Arquivo original nao e PDF. Baixe individualmente para acessar o formato original.');
+          continue;
+        } catch (error) {
+          skippedFiles += 1;
+          console.error('Error adding file to combined PDF:', docItem.id, error);
+          addTextDocument(docItem, 'Nao foi possivel carregar o arquivo original para este documento.');
+          continue;
+        }
+      }
+
+      addTextDocument(docItem);
+    }
+
+    if (pdf.getPageCount() === 0) throw new Error('Nenhum documento disponivel');
+    return { blob: new Blob([await pdf.save()], { type: 'application/pdf' }), skippedFiles };
+  };
+
   const handleDownloadFile = async (doc: ClientDocument) => {
     try {
+      if (!doc.file_path && !doc.file_url && doc.content) {
+        const { blob } = await buildCombinedDocumentsPdf([doc]);
+        downloadBlob(blob, `${doc.title || 'documento'}.pdf`);
+        return;
+      }
       const blob = await getStorageBlob({
         bucket: 'client-documents',
         filePath: doc.file_path,
@@ -220,36 +285,20 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleDownloadAllFiles = async () => {
-    const downloadableDocs = documents.filter((doc) => doc.file_path || doc.file_url);
+    const downloadableDocs = documents.filter((doc) => doc.file_path || doc.file_url || doc.content || doc.signed_at);
     if (downloadableDocs.length === 0) {
-      toast.error('Nenhum documento com arquivo para baixar.');
+      toast.error('Nenhum documento disponível para baixar.');
       return;
     }
 
     setDownloadingAll(true);
     try {
-      let downloadedFiles = 0;
-
-      for (const doc of downloadableDocs) {
-        try {
-          const blob = await getStorageBlob({
-            bucket: 'client-documents',
-            filePath: doc.file_path,
-            fileUrl: doc.file_url,
-          });
-          downloadBlob(blob, `${String(downloadedFiles + 1).padStart(2, '0')}-${getSafeDownloadName(doc)}`);
-          downloadedFiles += 1;
-          await new Promise((resolve) => window.setTimeout(resolve, 250));
-        } catch (error) {
-          console.error('Error downloading document:', doc.id, error);
-        }
-      }
-
-      if (downloadedFiles === 0) throw new Error('Nenhum documento pôde ser baixado');
-      toast.success(`${downloadedFiles} documento(s) baixado(s) no formato original.`);
+      const { blob, skippedFiles } = await buildCombinedDocumentsPdf(downloadableDocs);
+      downloadBlob(blob, `documentos-${client?.name || 'cliente'}.pdf`);
+      toast.success(skippedFiles > 0 ? 'PDF único gerado. Arquivos não-PDF foram listados para download individual.' : 'Todos os documentos foram baixados em um único PDF.');
     } catch (error) {
       console.error('Error downloading all documents:', error);
-      toast.error('Erro ao baixar todos os documentos.');
+      toast.error('Erro ao gerar o arquivo único com todos os documentos.');
     } finally {
       setDownloadingAll(false);
     }

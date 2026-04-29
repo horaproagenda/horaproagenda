@@ -17,6 +17,7 @@ import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientPhotosTabProps {
   photos: TreatmentPhoto[];
@@ -51,6 +52,8 @@ const getMonthOptions = () => {
 
 export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTabProps) {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const canDeletePhotos = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -99,6 +102,11 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   };
 
   const handleDeletePhoto = async (photoId: string, filePath: string | null) => {
+    if (!canDeletePhotos) {
+      toast.error('Apenas administradores podem apagar fotos.');
+      return;
+    }
+
     setDeletingId(photoId);
     try {
       // Delete from storage if path exists
@@ -158,6 +166,30 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         : (selectedPhotoIndex + 1) % filteredPhotos.length
     );
   };
+
+  useEffect(() => {
+    if (selectedPhotoIndex === null) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedPhotoIndex(null);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPhoto('previous');
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToPhoto('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhotoIndex, filteredPhotos.length]);
 
   const handleDownloadPhoto = async (photo: TreatmentPhoto) => {
     try {

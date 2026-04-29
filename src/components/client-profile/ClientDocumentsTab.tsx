@@ -390,18 +390,20 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                             </a>
                           </Button>
                         )}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                          onClick={() => {
-                            if (window.confirm('Excluir este documento?')) {
-                              handleDeleteDocument(doc.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {canDeleteDocuments && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (window.confirm('Excluir este documento?')) {
+                                handleDeleteDocument(doc.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -437,10 +439,10 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
           phone: client.phone, 
           email: client.email || undefined 
         } : undefined}
-        onDelete={(id) => {
+        onDelete={canDeleteDocuments ? (id) => {
           handleDeleteDocument(id);
           setViewDialogOpen(false);
-        }}
+        } : undefined}
       />
 
       {/* Generate Link Dialog - pre-filled with client */}

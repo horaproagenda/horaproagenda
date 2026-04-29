@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';

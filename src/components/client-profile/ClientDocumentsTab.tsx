@@ -172,6 +172,27 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
   };
 
+  const handleOpenFile = async (doc: ClientDocument) => {
+    try {
+      if (doc.file_path) {
+        const { data, error } = await supabase.storage
+          .from('client-documents')
+          .createSignedUrl(doc.file_path, 300);
+
+        if (error) throw error;
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (doc.file_url) {
+        window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Error opening document file:', error);
+      toast.error('Sem permissão para abrir este documento.');
+    }
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
@@ -383,11 +404,9 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        {doc.file_url && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
-                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
+                        {(doc.file_path || doc.file_url) && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleOpenFile(doc)}>
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {canDeleteDocuments && (

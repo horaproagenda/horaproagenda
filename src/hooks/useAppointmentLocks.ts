@@ -113,7 +113,11 @@ export function useAppointmentLocks(appointmentId?: string | null) {
     return () => window.clearInterval(interval);
   }, [appointmentId, isLockedByMe, refreshLocks, user?.id]);
 
-  useEffect(() => releaseLock, [releaseLock]);
+  useEffect(() => {
+    return () => {
+      void releaseLock();
+    };
+  }, [releaseLock]);
 
   return { activeLock, isLockedByMe, isLockedByOther, isAcquiring, acquireLock, releaseLock };
 }

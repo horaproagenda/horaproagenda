@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +28,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { ClientCredits } from '@/hooks/useClientCredits';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 import { getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { formatTimeInTimeZone } from '@/lib/timezone';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -46,6 +47,7 @@ const paymentStatusConfig = {
 
 export function AppointmentCard({ appointment, compact = false, professionals = [], onEdit, onDelete }: AppointmentCardProps) {
   const status = getAppointmentStatusConfig(appointment.status);
+  const { settings } = useBusinessSettings();
   const paymentStatus = paymentStatusConfig[appointment.payment_status as keyof typeof paymentStatusConfig || 'pending'];
   const PaymentIcon = paymentStatus.icon;
   const categoryColor = appointment.service ? getCategoryColor(appointment.service.category) : null;
@@ -68,7 +70,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   // Create softer version of the color for backgrounds
   const softHexColor = `${hexColor}15`;
   
-  const timeStr = format(new Date(appointment.start_time), 'HH:mm');
+  const timeStr = formatTimeInTimeZone(appointment.start_time, settings?.timezone);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();

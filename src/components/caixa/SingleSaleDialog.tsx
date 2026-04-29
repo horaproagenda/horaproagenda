@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -22,7 +23,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarDays, Plus, DollarSign, Percent, Package, Briefcase, CreditCard } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -134,8 +135,8 @@ export function SingleSaleDialog() {
     }
   };
 
-  const discount = parseFloat(discountAmount) || 0;
-  const original = parseFloat(originalAmount) || 0;
+  const discount = parseBrazilianCurrency(discountAmount);
+  const original = parseBrazilianCurrency(originalAmount);
 
   // Card payment detection
   const selectedPaymentMethodObj = useMemo(() => {
@@ -313,7 +314,7 @@ export function SingleSaleDialog() {
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{service.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              R$ {service.price}
+                              {formatCurrency(Number(service.price || 0))}
                             </span>
                           </div>
                           {service.category && (
@@ -338,7 +339,7 @@ export function SingleSaleDialog() {
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{pkg.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              R$ {pkg.total_price}
+                              {formatCurrency(Number(pkg.total_price || 0))}
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -374,12 +375,9 @@ export function SingleSaleDialog() {
                 <DollarSign className="h-4 w-4" />
                 Valor Original
               </Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
+              <CurrencyInput
                 value={originalAmount}
-                onChange={(e) => setOriginalAmount(e.target.value)}
+                onValueChange={(value) => setOriginalAmount(String(value))}
               />
             </div>
             <div className="space-y-2">
@@ -387,12 +385,9 @@ export function SingleSaleDialog() {
                 <Percent className="h-4 w-4" />
                 Desconto
               </Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
+              <CurrencyInput
                 value={discountAmount}
-                onChange={(e) => setDiscountAmount(e.target.value)}
+                onValueChange={(value) => setDiscountAmount(String(value))}
               />
             </div>
           </div>
@@ -402,19 +397,19 @@ export function SingleSaleDialog() {
             <div className="flex items-center justify-between">
               <span className="font-medium">Valor Final:</span>
               <span className="text-xl font-bold text-primary">
-                R$ {finalAmount.toFixed(2)}
+                {formatCurrency(finalAmount)}
               </span>
             </div>
             {cardFeeAmount > 0 && (
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>Taxa do cartão:</span>
-                <span className="text-destructive">- R$ {cardFeeAmount.toFixed(2)}</span>
+                <span className="text-destructive">- {formatCurrency(cardFeeAmount)}</span>
               </div>
             )}
             {cardFeeAmount > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span>Valor líquido:</span>
-                <span className="font-medium text-green-600">R$ {netAmount.toFixed(2)}</span>
+                <span className="font-medium text-success">{formatCurrency(netAmount)}</span>
               </div>
             )}
           </div>

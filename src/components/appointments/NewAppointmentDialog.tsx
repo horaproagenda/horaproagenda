@@ -58,6 +58,7 @@ import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
+import { createDateTimeInTimeZone } from '@/lib/timezone';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -310,15 +311,13 @@ export function NewAppointmentDialog({
       ? (selectedServiceData?.duration || 60) 
       : (selectedPackageData?.duration || 60);
     
-    const [hours, minutes] = time.split(':').map(Number);
-    const startTime = new Date(date);
-    startTime.setHours(hours, minutes, 0, 0);
+    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + duration);
 
     return { startTime, endTime };
-  }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
+  }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
 
   // Calculate preview dates for auto-scheduling
   const packageSequenceSteps = useMemo(() => {
@@ -364,8 +363,8 @@ export function NewAppointmentDialog({
 
       // Apply preferred time if set
       if (preferredTime) {
-        const [hours, minutes] = preferredTime.split(':').map(Number);
-        futureDate.setHours(hours, minutes, 0, 0);
+        const zonedFutureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
+        futureDate.setTime(zonedFutureDate.getTime());
       }
 
       dates.push(new Date(futureDate));
@@ -373,7 +372,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, settings?.timezone]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -407,15 +406,14 @@ export function NewAppointmentDialog({
 
       // Apply preferred time if set
       if (preferredTime) {
-        const [hours, minutes] = preferredTime.split(':').map(Number);
-        futureDate.setHours(hours, minutes, 0, 0);
+        futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
       }
 
       dates.push(new Date(futureDate));
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {
@@ -531,14 +529,11 @@ export function NewAppointmentDialog({
       let suggestedDate: Date | null = null;
       if (dateConflicts.length > 0) {
         // Try to find an available slot on the same day first
-        const [hours, minutes] = format(previewDate, 'HH:mm').split(':').map(Number);
         const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
         
         // Try next slots on the same day
         for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const [slotHours, slotMinutes] = timeSlots[i].split(':').map(Number);
-          const testDate = new Date(previewDate);
-          testDate.setHours(slotHours, slotMinutes, 0, 0);
+          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
           const testEnd = new Date(testDate);
           testEnd.setMinutes(testEnd.getMinutes() + duration);
           
@@ -568,7 +563,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots]);
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots, settings?.timezone]);
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
@@ -593,9 +588,7 @@ export function NewAppointmentDialog({
         
         // Try next slots on the same day
         for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const [slotHours, slotMinutes] = timeSlots[i].split(':').map(Number);
-          const testDate = new Date(previewDate);
-          testDate.setHours(slotHours, slotMinutes, 0, 0);
+          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
           const testEnd = new Date(testDate);
           testEnd.setMinutes(testEnd.getMinutes() + duration);
           
@@ -625,7 +618,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay]);
+  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone]);
 
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
@@ -676,9 +669,7 @@ export function NewAppointmentDialog({
     return timeSlots.map(slot => {
       if (!date) return { slot, isAvailable: true, conflictReason: '' };
 
-      const [hours, minutes] = slot.split(':').map(Number);
-      const slotStart = new Date(date);
-      slotStart.setHours(hours, minutes, 0, 0);
+      const slotStart = createDateTimeInTimeZone(date, slot, settings?.timezone);
       const slotEnd = new Date(slotStart);
       slotEnd.setMinutes(slotEnd.getMinutes() + duration);
 
@@ -720,7 +711,7 @@ export function NewAppointmentDialog({
 
       return { slot, isAvailable, conflictReason };
     });
-  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots]);
+  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots, settings?.timezone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -757,9 +748,7 @@ export function NewAppointmentDialog({
     }
 
     const duration = serviceOrPackage.duration || 60;
-    const [hours, minutes] = time.split(':').map(Number);
-    const startTime = new Date(date);
-    startTime.setHours(hours, minutes, 0, 0);
+    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + duration);

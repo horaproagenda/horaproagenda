@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -225,24 +226,26 @@ export function NewGoalDialog({ open, onOpenChange, editingGoal }: NewGoalDialog
               <Label htmlFor="target_value">
                 {formData.type === 'revenue' ? 'Valor da Meta (R$)' : 'Quantidade de Atendimentos'}
               </Label>
-              <div className="relative">
-                {formData.type === 'revenue' && (
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    R$
-                  </span>
-                )}
+              {formData.type === 'revenue' ? (
+                <CurrencyInput
+                  id="target_value"
+                  value={formData.target_value}
+                  onValueChange={(value) => setFormData({ ...formData, target_value: String(value) })}
+                  placeholder="100.000,00"
+                  required
+                />
+              ) : (
                 <Input
                   id="target_value"
                   type="number"
                   min="0"
-                  step={formData.type === 'revenue' ? '0.01' : '1'}
+                  step="1"
                   value={formData.target_value}
                   onChange={(e) => setFormData({ ...formData, target_value: e.target.value })}
-                  className={formData.type === 'revenue' ? 'pl-10' : ''}
-                  placeholder={formData.type === 'revenue' ? '100000.00' : '50'}
+                  placeholder="50"
                   required
                 />
-              </div>
+              )}
               {formData.type === 'revenue' && (
                 <p className="text-xs text-muted-foreground">
                   O valor será calculado automaticamente baseado nos pagamentos recebidos

@@ -1060,6 +1060,7 @@ Até breve! ✨`;
                 onChange={(e) => {
                   setServiceSearch(e.target.value);
                   setShowServiceSuggestions(true);
+                  setPackageQuickFilter('all');
                   if (!e.target.value) {
                     setSelectedService('');
                     setServiceType('service');
@@ -1067,6 +1068,30 @@ Até breve! ✨`;
                 }}
                 onFocus={() => setShowServiceSuggestions(true)}
               />
+              {showServiceSuggestions && (selectedClient || activePackages.length > 0) && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {[
+                    { value: 'all', label: 'Todos' },
+                    { value: 'standard', label: 'Pacotes' },
+                    { value: 'sequential', label: 'Sequenciais' },
+                  ].map(option => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      size="sm"
+                      variant={packageQuickFilter === option.value ? 'default' : 'outline'}
+                      className="h-7 shrink-0 px-2.5 text-xs"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setPackageQuickFilter(option.value as 'all' | 'standard' | 'sequential');
+                        setShowServiceSuggestions(true);
+                      }}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
                   {/* Client's frequent services - shown as quick suggestions */}

@@ -32,10 +32,10 @@ export function PackageAvailabilityReportDialog() {
           Diagnóstico
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col text-xs sm:text-sm">
         <DialogHeader>
-          <DialogTitle>Diagnóstico de disponibilidade dos pacotes</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Diagnóstico de disponibilidade dos pacotes</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Pacotes vendidos com total, agendadas, consumidas, passos e motivo de indisponibilidade.
           </DialogDescription>
         </DialogHeader>
@@ -46,24 +46,24 @@ export function PackageAvailabilityReportDialog() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por pacote ou cliente..."
-            className="pl-9 h-9"
+            className="pl-9 h-8 text-xs sm:text-sm"
           />
         </div>
 
         <div className="overflow-auto rounded-md border">
-          <Table>
+          <Table className="text-xs">
             <TableHeader>
               <TableRow>
-                <TableHead>Pacote</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Existem</TableHead>
-                <TableHead>Agendadas</TableHead>
-                <TableHead>Consumidas</TableHead>
-                <TableHead>Dá para agendar</TableHead>
-                <TableHead>Passos</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Motivo</TableHead>
+                <TableHead className="h-8 px-2">Pacote</TableHead>
+                <TableHead className="h-8 px-2">Cliente</TableHead>
+                <TableHead className="h-8 px-2">Total</TableHead>
+                <TableHead className="h-8 px-2">Existem</TableHead>
+                <TableHead className="h-8 px-2">Agendadas</TableHead>
+                <TableHead className="h-8 px-2">Consumidas</TableHead>
+                <TableHead className="h-8 px-2">Dá para agendar</TableHead>
+                <TableHead className="h-8 px-2">Passos</TableHead>
+                <TableHead className="h-8 px-2">Status</TableHead>
+                <TableHead className="h-8 px-2">Motivo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,19 +73,21 @@ export function PackageAvailabilityReportDialog() {
                 <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Nenhum pacote vendido encontrado</TableCell></TableRow>
               ) : rows.map(({ pkg, summary }) => (
                 <TableRow key={pkg.id}>
-                  <TableCell className="font-medium">{pkg.name}</TableCell>
-                  <TableCell>{pkg.client?.name || '-'}</TableCell>
-                  <TableCell>{summary.totalSessions}</TableCell>
-                  <TableCell>{summary.existingSessionRecords}</TableCell>
-                  <TableCell>{summary.scheduledAppointments}</TableCell>
-                  <TableCell>{summary.consumedSessions}</TableCell>
-                  <TableCell>{summary.schedulableSessions}</TableCell>
-                  <TableCell>{summary.stepsCount || (pkg.package_type === 'sequential' ? summary.existingSessionRecords : '-')}</TableCell>
-                  <TableCell>
-                    <Badge variant={pkg.is_active ? 'default' : 'secondary'}>{pkg.is_active ? 'Ativo' : 'Inativo'}</Badge>
+                  <TableCell className="px-2 py-1.5 font-medium">{pkg.name}</TableCell>
+                  <TableCell className="px-2 py-1.5">{pkg.client?.name || '-'}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.totalSessions}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.existingSessionRecords}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.scheduledAppointments}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.consumedSessions}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.schedulableSessions}</TableCell>
+                  <TableCell className="px-2 py-1.5">{summary.stepsCount || (pkg.package_type === 'sequential' ? summary.existingSessionRecords : '-')}</TableCell>
+                  <TableCell className="px-2 py-1.5">
+                    <Badge variant={summary.unavailableReason === 'Pacote completamente usado' ? 'secondary' : pkg.is_active ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                      {summary.unavailableReason === 'Pacote completamente usado' ? 'Usado' : pkg.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
                     {summary.hasInconsistentCounter && <Badge variant="outline" className="ml-1">contador</Badge>}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{summary.unavailableReason}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-xs text-muted-foreground">{summary.unavailableReason}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

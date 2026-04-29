@@ -363,9 +363,9 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               ) : canInlinePreviewFile ? (
                 isImageFile ? (
-                  <img src={filePreviewUrl || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
+                  <img src={previewSrc || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
                 ) : (
-                  <iframe src={filePreviewUrl || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
+                  <iframe src={previewSrc || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
                 )
               ) : (
                 <div className="text-center py-8">

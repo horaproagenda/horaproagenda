@@ -389,13 +389,17 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                       {stagePhotos.map((photo) => (
                         <div key={photo.id} className="group relative">
-                          <a href={getPhotoUrl(photo)} target="_blank" rel="noopener noreferrer">
+                          <button
+                            type="button"
+                            className="block w-full text-left"
+                            onClick={() => setSelectedPhotoIndex(filteredPhotos.findIndex((item) => item.id === photo.id))}
+                          >
                             <img
                               src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(photo)}
                               alt={`Foto ${stageLabels[photo.stage]}`}
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             />
-                          </a>
+                          </button>
                           <div className="flex items-center justify-between mt-0.5">
                             <p className="text-[10px] text-muted-foreground">
                               {format(new Date(photo.taken_at), 'dd/MM', { locale: ptBR })}

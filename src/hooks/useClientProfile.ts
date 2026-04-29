@@ -135,6 +135,23 @@ export function useClientProfile(clientId: string) {
       )
       .subscribe();
 
+    const photosChannel = supabase
+      .channel(`client-photos-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'treatment_photos',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+          queryClient.refetchQueries({ queryKey: ['client-photos', clientId], type: 'active' });
+        }
+      )
+      .subscribe();
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
@@ -142,6 +159,7 @@ export function useClientProfile(clientId: string) {
       supabase.removeChannel(allAppointmentsChannel);
       supabase.removeChannel(allPackagesChannel);
       supabase.removeChannel(documentsChannel);
+      supabase.removeChannel(photosChannel);
     };
   }, [clientId, queryClient]);
 
@@ -277,6 +295,8 @@ export function useClientProfile(clientId: string) {
       return data as TreatmentPhoto[];
     },
     enabled: !!clientId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch quotes

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Edit2 } from 'lucide-react';
 import {
   Select,
@@ -71,20 +71,36 @@ export function DurationSelect({
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customHours, setCustomHours] = useState('');
   const [customMinutes, setCustomMinutes] = useState('');
+  const [customError, setCustomError] = useState('');
 
   const isStandardDuration = DURATION_OPTIONS.some(opt => opt.value === value);
   const displayValue = value ? formatDuration(value) : placeholder;
 
+  useEffect(() => {
+    if (!isCustomOpen) return;
+    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    setCustomHours(String(Math.floor(safeValue / 60)));
+    setCustomMinutes(String(safeValue % 60));
+    setCustomError('');
+  }, [isCustomOpen, value]);
+
+  const sanitizeIntegerInput = (nextValue: string) => nextValue.replace(/\D/g, '').slice(0, 3);
+
   const handleCustomSubmit = () => {
-    const hours = parseInt(customHours || '0', 10);
-    const minutes = parseInt(customMinutes || '0', 10);
-    const numValue = (isNaN(hours) ? 0 : hours * 60) + (isNaN(minutes) ? 0 : minutes);
-    if (!isNaN(numValue) && numValue >= minDuration && numValue <= maxDuration) {
-      onChange(numValue);
-      setIsCustomOpen(false);
-      setCustomHours('');
-      setCustomMinutes('');
+    const hours = Number.parseInt(customHours || '0', 10);
+    const minutes = Number.parseInt(customMinutes || '0', 10);
+    const totalMinutes = (Number.isFinite(hours) ? hours * 60 : 0) + (Number.isFinite(minutes) ? minutes : 0);
+
+    if (totalMinutes < minDuration || totalMinutes > maxDuration) {
+      setCustomError(`Informe uma duração entre ${formatDuration(minDuration)} e ${formatDuration(maxDuration)}.`);
+      return;
     }
+
+    onChange(totalMinutes);
+    setIsCustomOpen(false);
+    setCustomHours('');
+    setCustomMinutes('');
+    setCustomError('');
   };
 
   return (
@@ -133,7 +149,10 @@ export function DurationSelect({
                 min={0}
                 max={Math.floor(maxDuration / 60)}
                 value={customHours}
-                onChange={(e) => setCustomHours(e.target.value)}
+                onChange={(e) => {
+                  setCustomHours(sanitizeIntegerInput(e.target.value));
+                  setCustomError('');
+                }}
                 placeholder="Horas"
                 className="h-8 text-sm"
                 onKeyDown={(e) => {
@@ -148,7 +167,10 @@ export function DurationSelect({
                 min={0}
                 max={59}
                 value={customMinutes}
-                onChange={(e) => setCustomMinutes(e.target.value)}
+                onChange={(e) => {
+                  setCustomMinutes(sanitizeIntegerInput(e.target.value));
+                  setCustomError('');
+                }}
                 placeholder="Min"
                 className="h-8 text-sm"
                 onKeyDown={(e) => {
@@ -170,6 +192,7 @@ export function DurationSelect({
             <p className="text-[10px] text-muted-foreground">
               {minDuration} a {maxDuration} min
             </p>
+            {customError && <p className="text-[10px] text-destructive">{customError}</p>}
           </div>
         </PopoverContent>
       </Popover>

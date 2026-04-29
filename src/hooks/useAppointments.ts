@@ -74,7 +74,7 @@ export function useAppointments() {
           room:rooms(id, name),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
             id, session_number, original_session_number, status,
-            package:service_packages(id, name, total_sessions)
+            package:service_packages(id, name, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)
           )
         `)
         .order('start_time', { ascending: true });

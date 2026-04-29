@@ -252,7 +252,7 @@ export function AppointmentDetailDialog({
   const totalFeesToAddToClient = useMemo(() => {
     if (!appointment) return 0;
     return payments.reduce((sum, payment) => {
-      const paymentAmount = parseFloat(payment.amount) || 0;
+      const paymentAmount = parseBrazilianCurrency(payment.amount);
       if (!payment.cardBrandId || paymentAmount <= 0) return sum;
       
       const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
@@ -361,7 +361,7 @@ export function AppointmentDetailDialog({
   const handleRescheduleAndDelete = async () => {
     if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
     
-    const newStartTime = new Date(`${rescheduleDate}T${rescheduleTime}:00`);
+    const newStartTime = createDateTimeInTimeZone(new Date(`${rescheduleDate}T12:00:00`), rescheduleTime, settings?.timezone);
     const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEndTime = new Date(newStartTime.getTime() + duration);
     
@@ -596,15 +596,15 @@ export function AppointmentDetailDialog({
 
   const paymentMethodCreditUsed = payments.reduce((sum, p) => {
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-    return isClientCreditMethod(methodName) ? sum + (parseFloat(p.amount) || 0) : sum;
+    return isClientCreditMethod(methodName) ? sum + parseBrazilianCurrency(p.amount) : sum;
   }, 0);
   const moneyPaymentAmount = payments.reduce((sum, p) => {
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-    return isClientCreditMethod(methodName) ? sum : sum + (parseFloat(p.amount) || 0);
+    return isClientCreditMethod(methodName) ? sum : sum + parseBrazilianCurrency(p.amount);
   }, 0);
   const totalPaymentAmount = moneyPaymentAmount;
   const courtesyCredit = 0; // Cortesia removed
-  const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
+  const discount = parseBrazilianCurrency(discountAmount); // Desconto aplicado
   
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
@@ -616,7 +616,7 @@ export function AppointmentDetailDialog({
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
   
   const clientCreditUsed = Math.min(
-    (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
+    (useClientCredit ? parseBrazilianCurrency(clientCreditUsedAmount) : 0) + paymentMethodCreditUsed,
     availableClientCredit,
     remainingAfterDiscount
   );

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
@@ -74,7 +75,7 @@ import {
   Download,
   WarehouseIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
@@ -269,7 +270,7 @@ export default function Produtos() {
         notes: null,
         is_active: true,
         is_for_sale: productForm.is_for_sale,
-        sale_price: productForm.sale_price,
+        sale_price: normalizeBrazilianCurrency(productForm.sale_price),
       });
       setProductDialogOpen(false);
       setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 });
@@ -288,8 +289,8 @@ export default function Produtos() {
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
         quantity: stockForm.quantity,
-        unit_price: stockForm.unit_price,
-        total_price: stockForm.total_price,
+        unit_price: normalizeBrazilianCurrency(stockForm.unit_price),
+        total_price: normalizeBrazilianCurrency(stockForm.total_price),
         supplier: product.supplier || null,
         purchase_date: stockForm.purchase_date,
         started_using_at: null,
@@ -321,8 +322,8 @@ export default function Produtos() {
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
-        unit_price: purchaseForm.unit_price,
-        total_price: purchaseForm.total_price,
+        unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
+        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
         started_using_at: null,
@@ -519,11 +520,11 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <Input type="number" value={stockForm.unit_price || ''} onChange={(e) => updateStockUnitPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={stockForm.unit_price} onValueChange={updateStockUnitPrice} className="h-8 text-sm" />
                       </div>
                       <div>
                         <Label className="text-xs">Valor Total (R$)</Label>
-                        <Input type="number" value={stockForm.total_price || ''} onChange={(e) => updateStockTotalPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={stockForm.total_price} onValueChange={updateStockTotalPrice} className="h-8 text-sm" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -584,11 +585,11 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Preço Unitário (R$)</Label>
-                        <Input type="number" value={purchaseForm.unit_price || ''} onChange={(e) => updatePurchaseUnitPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={purchaseForm.unit_price} onValueChange={updatePurchaseUnitPrice} className="h-8 text-sm" />
                       </div>
                       <div>
                         <Label className="text-xs">Preço Total (R$)</Label>
-                        <Input type="number" value={purchaseForm.total_price || ''} onChange={(e) => updatePurchaseTotalPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={purchaseForm.total_price} onValueChange={updatePurchaseTotalPrice} className="h-8 text-sm" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -713,7 +714,7 @@ export default function Produtos() {
                     {productForm.is_for_sale && (
                       <div>
                         <Label className="text-xs">Preço de Venda (R$)</Label>
-                        <Input type="number" step="0.01" min="0" value={productForm.sale_price || ''} onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-8 text-sm" />
+                        <CurrencyInput value={productForm.sale_price} onValueChange={(value) => setProductForm({ ...productForm, sale_price: value })} className="h-8 text-sm" />
                       </div>
                     )}
                     <div className="flex justify-end gap-2 pt-2">

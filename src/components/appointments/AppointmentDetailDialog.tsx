@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Calendar as DatePickerCalendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
@@ -59,7 +60,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -72,6 +73,8 @@ import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
+import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -115,6 +118,7 @@ export function AppointmentDetailDialog({
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
+  const { settings } = useBusinessSettings();
   
   // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');
@@ -227,17 +231,15 @@ export function AppointmentDetailDialog({
   // Initialize edit form when appointment changes or edit mode is activated
   useEffect(() => {
     if (appointment && isEditing) {
-      const startDate = new Date(appointment.start_time);
-      const endDate = new Date(appointment.end_time);
-      setEditDate(format(startDate, 'yyyy-MM-dd'));
-      setEditStartTime(format(startDate, 'HH:mm'));
-      setEditEndTime(format(endDate, 'HH:mm'));
+      setEditDate(formatDateInTimeZone(appointment.start_time, settings?.timezone));
+      setEditStartTime(formatTimeInTimeZone(appointment.start_time, settings?.timezone));
+      setEditEndTime(formatTimeInTimeZone(appointment.end_time, settings?.timezone));
       setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
       setEditNotes(appointment.notes || '');
     }
-  }, [appointment, isEditing]);
+  }, [appointment, isEditing, settings?.timezone]);
 
   // Reset edit mode when dialog closes
   useEffect(() => {
@@ -250,7 +252,7 @@ export function AppointmentDetailDialog({
   const totalFeesToAddToClient = useMemo(() => {
     if (!appointment) return 0;
     return payments.reduce((sum, payment) => {
-      const paymentAmount = parseFloat(payment.amount) || 0;
+      const paymentAmount = parseBrazilianCurrency(payment.amount);
       if (!payment.cardBrandId || paymentAmount <= 0) return sum;
       
       const cardBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
@@ -359,7 +361,7 @@ export function AppointmentDetailDialog({
   const handleRescheduleAndDelete = async () => {
     if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
     
-    const newStartTime = new Date(`${rescheduleDate}T${rescheduleTime}:00`);
+    const newStartTime = createDateTimeInTimeZone(new Date(`${rescheduleDate}T12:00:00`), rescheduleTime, settings?.timezone);
     const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEndTime = new Date(newStartTime.getTime() + duration);
     
@@ -410,9 +412,9 @@ export function AppointmentDetailDialog({
   const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
     if (!editDate || !startValue || serviceDuration <= 0) return;
 
-    const newStartTime = new Date(`${editDate}T${startValue}:00`);
+    const newStartTime = createDateTimeInTimeZone(new Date(`${editDate}T12:00:00`), startValue, settings?.timezone);
     const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
-    setEditEndTime(format(newEndTime, 'HH:mm'));
+    setEditEndTime(formatTimeInTimeZone(newEndTime, settings?.timezone));
   };
 
   const handleEditStartTimeChange = (value: string) => {
@@ -446,8 +448,9 @@ export function AppointmentDetailDialog({
       return;
     }
 
-    const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
-    const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
+    const editBaseDate = new Date(`${editDate}T12:00:00`);
+    const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
+    const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
     
     updateAppointment.mutate({
       id: appointment.id,
@@ -593,15 +596,15 @@ export function AppointmentDetailDialog({
 
   const paymentMethodCreditUsed = payments.reduce((sum, p) => {
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-    return isClientCreditMethod(methodName) ? sum + (parseFloat(p.amount) || 0) : sum;
+    return isClientCreditMethod(methodName) ? sum + parseBrazilianCurrency(p.amount) : sum;
   }, 0);
   const moneyPaymentAmount = payments.reduce((sum, p) => {
     const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-    return isClientCreditMethod(methodName) ? sum : sum + (parseFloat(p.amount) || 0);
+    return isClientCreditMethod(methodName) ? sum : sum + parseBrazilianCurrency(p.amount);
   }, 0);
   const totalPaymentAmount = moneyPaymentAmount;
   const courtesyCredit = 0; // Cortesia removed
-  const discount = parseFloat(discountAmount) || 0; // Desconto aplicado
+  const discount = parseBrazilianCurrency(discountAmount); // Desconto aplicado
   
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
@@ -613,7 +616,7 @@ export function AppointmentDetailDialog({
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
   
   const clientCreditUsed = Math.min(
-    (useClientCredit ? parseFloat(clientCreditUsedAmount) || 0 : 0) + paymentMethodCreditUsed,
+    (useClientCredit ? parseBrazilianCurrency(clientCreditUsedAmount) : 0) + paymentMethodCreditUsed,
     availableClientCredit,
     remainingAfterDiscount
   );
@@ -663,13 +666,13 @@ export function AppointmentDetailDialog({
   const submitPayment = () => {
     const clientCreditPaymentMethod = payments.find(p => {
       const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-      return isClientCreditMethod(methodName) && (parseFloat(p.amount) || 0) > 0;
+      return isClientCreditMethod(methodName) && parseBrazilianCurrency(p.amount) > 0;
     });
     const validPayments = payments
-      .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
+      .filter(p => p.amount && parseBrazilianCurrency(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
         method: p.methodId || p.method, 
-        amount: parseFloat(p.amount),
+        amount: normalizeBrazilianCurrency(p.amount),
         cardBrandId: p.cardBrandId,
         installments: p.installments
       }));
@@ -1108,14 +1111,9 @@ export function AppointmentDetailDialog({
                             </Button>
                           </div>
                           <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max={Math.min(availableClientCredit, remainingAmount)}
-                              placeholder="0,00"
+                            <CurrencyInput
                               value={clientCreditUsedAmount}
-                              onChange={(e) => setClientCreditUsedAmount(e.target.value)}
+                              onValueChange={(value) => setClientCreditUsedAmount(String(Math.min(value, Math.min(availableClientCredit, remainingAmount))))}
                               className="border-amber-500/30 focus:border-amber-500"
                             />
                             <Button
@@ -1130,7 +1128,7 @@ export function AppointmentDetailDialog({
                           {clientCreditUsed > 0 && (
                             <div className="flex items-center gap-2 text-xs text-success bg-success/10 p-2 rounded">
                               <CheckCircle className="h-3 w-3" />
-                              <span>R$ {clientCreditUsed.toFixed(2)} de crédito será descontado</span>
+                              <span>{formatCurrency(clientCreditUsed)} de crédito será descontado</span>
                             </div>
                           )}
                         </div>
@@ -1146,16 +1144,10 @@ export function AppointmentDetailDialog({
                         Desconto
                       </Label>
                     </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={discountAmount}
-                      onChange={(e) => setDiscountAmount(e.target.value)}
-                    />
+                    <CurrencyInput value={discountAmount} onValueChange={(value) => setDiscountAmount(String(value))} />
                     {discount > 0 && (
                       <p className="text-xs text-orange-600 mt-1">
-                        Novo valor a pagar: R$ {remainingAfterDiscount.toFixed(2)}
+                        Novo valor a pagar: {formatCurrency(remainingAfterDiscount)}
                       </p>
                     )}
                   </div>
@@ -1163,7 +1155,7 @@ export function AppointmentDetailDialog({
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                     <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                    <p className="text-xl font-bold text-primary">R$ {remainingAfterDiscount.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
                     {isPackageAppointment && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Valor total do pacote (pagamento integral obrigatório)
@@ -1180,7 +1172,7 @@ export function AppointmentDetailDialog({
                     const isClientCreditSelected = selectedMethod ? isClientCreditMethod(selectedMethod.name) : false;
                     const applicableBrands = payment.methodId ? getApplicableCardBrands(payment.methodId) : [];
                     const maxInstallments = payment.methodId ? getMaxInstallments(payment.methodId) : 1;
-                    const paymentAmount = parseFloat(payment.amount) || 0;
+                    const paymentAmount = parseBrazilianCurrency(payment.amount);
                     const feeInfo = calculateFee(payment, paymentAmount);
                     const selectedBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
 
@@ -1217,13 +1209,9 @@ export function AppointmentDetailDialog({
                           </div>
                           <div className="flex-1">
                             <Label className="text-xs">Valor (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0,00"
+                            <CurrencyInput
                               value={payment.amount}
-                              max={isClientCreditSelected ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
-                              onChange={(e) => updatePayment(index, 'amount', e.target.value)}
+                              onValueChange={(value) => updatePayment(index, 'amount', String(value))}
                             />
                             {isClientCreditSelected && (
                               <p className="mt-1 text-[10px] text-muted-foreground">Saldo disponível: R$ {availableClientCredit.toFixed(2)} • Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>

@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -36,7 +37,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface SaleItem {
@@ -386,7 +387,7 @@ export function SaleForm() {
 
   const handleDiscountChange = (value: number) => {
     if (!saleInfo) return;
-    const newDiscount = Math.min(value, saleInfo.subtotal);
+    const newDiscount = Math.min(normalizeBrazilianCurrency(value), saleInfo.subtotal);
     setDiscount(newDiscount);
     const newTotal = saleInfo.subtotal - newDiscount;
     setSaleInfo({
@@ -831,7 +832,7 @@ export function SaleForm() {
                     ) : (
                       availableItems.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.name} - R$ {item.price.toFixed(2)}
+                          {item.name} - {formatCurrency(item.price)}
                         </SelectItem>
                       ))
                     )}
@@ -866,7 +867,7 @@ export function SaleForm() {
               </div>
 
               <div className="space-y-2">
-                <Label>Valor: R$ {itemTotal.toFixed(2)}</Label>
+                <Label>Valor: {formatCurrency(itemTotal)}</Label>
                 <Button onClick={handleAddItem} disabled={!selectedItemId} className="w-full">
                   <Plus className="h-4 w-4 mr-1" />
                   Incluir
@@ -912,8 +913,8 @@ export function SaleForm() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">R$ {item.unitPrice.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-medium">R$ {item.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                           <TableCell>
                             <Button
                               size="icon"
@@ -933,20 +934,12 @@ export function SaleForm() {
                   <div className="flex items-center gap-4">
                     <Label>Desconto:</Label>
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">R$</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={saleInfo.subtotal}
-                        value={discount}
-                        onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
-                        className="w-28"
-                      />
+                      <CurrencyInput value={discount} onValueChange={handleDiscountChange} className="w-32" />
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-muted-foreground">Subtotal: R$ {saleInfo.subtotal.toFixed(2)}</div>
-                    <div className="text-2xl font-bold text-primary">Total: R$ {saleInfo.total.toFixed(2)}</div>
+                    <div className="text-sm text-muted-foreground">Subtotal: {formatCurrency(saleInfo.subtotal)}</div>
+                    <div className="text-2xl font-bold text-primary">Total: {formatCurrency(saleInfo.total)}</div>
                   </div>
                 </div>
               </div>
@@ -1029,7 +1022,7 @@ export function SaleForm() {
                         <SelectContent>
                           {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
                             <SelectItem key={n} value={n.toString()}>
-                              {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                              {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1052,7 +1045,7 @@ export function SaleForm() {
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
                               <SelectItem key={n} value={n.toString()}>
-                                {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                                {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1080,7 +1073,7 @@ export function SaleForm() {
                       {boletoInstallments}x Boleto
                     </Badge>
                     <span className="text-muted-foreground">
-                      Parcela: R$ {(paymentAmount / boletoInstallments).toFixed(2)}
+                      Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
                     </span>
                     <span className="text-muted-foreground">
                       • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
@@ -1117,16 +1110,16 @@ export function SaleForm() {
                       Taxa {selectedCardBrand.name}: {feeInfo.feePercentage.toFixed(2)}%
                     </Badge>
                     <span className="text-muted-foreground">
-                      Valor da taxa: R$ {feeInfo.feeAmount.toFixed(2)}
+                      Valor da taxa: {formatCurrency(feeInfo.feeAmount)}
                     </span>
                     {selectedCardBrand.fee_behavior === 'add_to_client' && (
                       <span className="text-foreground font-medium">
-                        • Cliente paga: <strong className="text-primary">R$ {feeInfo.totalWithFee.toFixed(2)}</strong>
+                        • Cliente paga: <strong className="text-primary">{formatCurrency(feeInfo.totalWithFee)}</strong>
                       </span>
                     )}
                     {selectedCardBrand.fee_behavior === 'deduct_from_provider' && (
                       <span className="text-muted-foreground">
-                        • Valor líquido: <strong className="text-foreground">R$ {feeInfo.netAmount.toFixed(2)}</strong>
+                        • Valor líquido: <strong className="text-foreground">{formatCurrency(feeInfo.netAmount)}</strong>
                       </span>
                     )}
                   </div>
@@ -1135,15 +1128,11 @@ export function SaleForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Valor {isClientCreditPayment ? `(máx: ${formatCurrency(clientCreditBalance)})` : ''}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={isClientCreditPayment ? clientCreditBalance : undefined}
-                      step={0.01}
+                    <CurrencyInput
                       value={paymentAmount}
-                      onChange={(e) => {
-                        const nextValue = parseFloat(e.target.value) || 0;
-                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : nextValue);
+                      onValueChange={(nextValue) => {
+                        const normalizedValue = normalizeBrazilianCurrency(nextValue);
+                        setPaymentAmount(isClientCreditPayment ? Math.min(normalizedValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : normalizedValue);
                       }}
                     />
                   </div>

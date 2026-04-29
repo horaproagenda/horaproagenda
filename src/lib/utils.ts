@@ -49,8 +49,20 @@ export function parseBrazilianCurrency(value: string | number | null | undefined
   return Number(sanitized) || 0;
 }
 
+export function parseBrazilianCurrencyToCents(value: string | number | null | undefined): number {
+  return Math.round(parseBrazilianCurrency(value) * 100);
+}
+
+export function centsToBrazilianCurrency(cents: number | null | undefined): number {
+  return (Number(cents) || 0) / 100;
+}
+
+export function normalizeBrazilianCurrency(value: string | number | null | undefined): number {
+  return centsToBrazilianCurrency(parseBrazilianCurrencyToCents(value));
+}
+
 export function formatCurrencyInput(value: number | string | null | undefined): string {
-  const numericValue = typeof value === 'number' ? value : parseBrazilianCurrency(value);
+  const numericValue = normalizeBrazilianCurrency(value);
   return numericValue.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

@@ -115,6 +115,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+      setSelectedPhotoIndex(null);
       toast.success('Foto excluída com sucesso!');
     } catch (error) {
       console.error('Error deleting photo:', error);
@@ -228,7 +229,8 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       for (const fileToUpload of filesToUpload) {
         const timestamp = Date.now();
         const safeName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const path = `${clientId}/photos/${timestamp}-${safeName}`;
+        const uniqueId = crypto.randomUUID?.() || `${timestamp}-${Math.random().toString(36).slice(2)}`;
+        const path = `${clientId}/photos/${timestamp}-${uniqueId}-${safeName}`;
         const result = await uploadFile(fileToUpload, path);
 
         await onAddPhoto({

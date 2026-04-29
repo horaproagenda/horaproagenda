@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -206,9 +207,9 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Preço (R$) *</FormLabel>
+                    <FormLabel className="text-xs">Valor *</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step="0.01" className="h-8 text-sm" {...field} />
+                      <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
                     </FormControl>
                     <FormMessage className="text-[10px]" />
                   </FormItem>

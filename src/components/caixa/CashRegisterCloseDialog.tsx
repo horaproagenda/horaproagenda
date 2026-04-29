@@ -3,6 +3,7 @@ import { format, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-f
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -412,13 +413,10 @@ export function CashRegisterCloseDialog({
             {/* Counted Balance Input */}
             <div className="space-y-2">
               <Label htmlFor="closingBalance">Valor Contado em Caixa (R$)</Label>
-              <Input
+              <CurrencyInput
                 id="closingBalance"
-                type="number"
-                min={0}
-                step={0.01}
                 value={closingBalance}
-                onChange={(e) => setClosingBalance(e.target.value)}
+                onValueChange={(value) => setClosingBalance(String(value))}
                 placeholder="0,00"
                 className="text-lg"
               />

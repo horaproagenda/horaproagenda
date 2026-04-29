@@ -47,9 +47,10 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           }}
           onFocus={(event) => {
             setIsEditing(true);
+            const input = event.currentTarget;
             if (normalizeBrazilianCurrency(value) === 0) {
               setDisplayValue('');
-              window.requestAnimationFrame(() => event.currentTarget.setSelectionRange(0, 0));
+              window.requestAnimationFrame(() => input.setSelectionRange?.(0, 0));
             }
             onFocus?.(event);
           }}

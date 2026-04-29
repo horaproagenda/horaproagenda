@@ -3,6 +3,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -485,11 +486,9 @@ export function ProductDetailDialog({
                   {editForm.is_for_sale && (
                     <div className="w-48">
                       <Label>Preço de Venda (R$)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <CurrencyInput
                         value={editForm.sale_price || ''}
-                        onChange={(e) => setEditForm({ ...editForm, sale_price: parseFloat(e.target.value) || 0 })}
+                        onValueChange={(value) => setEditForm({ ...editForm, sale_price: value })}
                       />
                     </div>
                   )}
@@ -815,11 +814,9 @@ export function ProductDetailDialog({
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
-                                <Input
-                                  type="number"
+                                <CurrencyInput
                                   value={purchaseEditForm.unit_price}
-                                  onChange={(e) => {
-                                    const price = parseFloat(e.target.value) || 0;
+                                  onValueChange={(price) => {
                                     setPurchaseEditForm({ 
                                       ...purchaseEditForm, 
                                       unit_price: price,
@@ -827,15 +824,11 @@ export function ProductDetailDialog({
                                     });
                                   }}
                                   className="h-8 text-xs w-24"
-                                  min="0"
-                                  step="0.01"
                                   placeholder="Unit."
                                 />
-                                <Input
-                                  type="number"
+                                <CurrencyInput
                                   value={purchaseEditForm.total_price}
-                                  onChange={(e) => {
-                                    const total = parseFloat(e.target.value) || 0;
+                                  onValueChange={(total) => {
                                     const unitPrice = purchaseEditForm.quantity > 0 ? total / purchaseEditForm.quantity : 0;
                                     setPurchaseEditForm({ 
                                       ...purchaseEditForm, 
@@ -844,8 +837,6 @@ export function ProductDetailDialog({
                                     });
                                   }}
                                   className="h-8 text-xs w-24"
-                                  min="0"
-                                  step="0.01"
                                   placeholder="Total"
                                 />
                               </div>

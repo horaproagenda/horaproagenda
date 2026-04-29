@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -466,17 +467,21 @@ export function PrecificacaoServicos() {
                     {profitType === 'percentage' ? 'Margem de Lucro (%)' : 'Lucro Desejado (R$)'}
                   </Label>
                   <div className="relative">
-                    <Input
-                      type="number"
-                      min={0}
-                      step={profitType === 'percentage' ? 1 : 0.01}
-                      value={profitValue}
-                      onChange={(e) => setProfitValue(parseFloat(e.target.value) || 0)}
-                      className="h-9 pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                      {profitType === 'percentage' ? '%' : 'R$'}
-                    </span>
+                    {profitType === 'fixed' ? (
+                      <CurrencyInput value={profitValue} onValueChange={setProfitValue} className="h-9" />
+                    ) : (
+                      <>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={profitValue}
+                          onChange={(e) => setProfitValue(parseFloat(e.target.value) || 0)}
+                          className="h-9 pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -613,11 +618,9 @@ export function PrecificacaoServicos() {
                             </div>
                             <div className="w-24 space-y-1">
                               <Label className="text-[10px]">Valor (R$)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
+                              <CurrencyInput
                                 value={newCostAmount}
-                                onChange={(e) => setNewCostAmount(e.target.value)}
+                                onValueChange={(value) => setNewCostAmount(String(value))}
                                 placeholder="0,00"
                                 className="h-7 text-xs"
                               />

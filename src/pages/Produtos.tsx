@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
@@ -74,7 +75,7 @@ import {
   Download,
   WarehouseIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
@@ -269,7 +270,7 @@ export default function Produtos() {
         notes: null,
         is_active: true,
         is_for_sale: productForm.is_for_sale,
-        sale_price: productForm.sale_price,
+        sale_price: normalizeBrazilianCurrency(productForm.sale_price),
       });
       setProductDialogOpen(false);
       setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 });
@@ -288,8 +289,8 @@ export default function Produtos() {
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
         quantity: stockForm.quantity,
-        unit_price: stockForm.unit_price,
-        total_price: stockForm.total_price,
+        unit_price: normalizeBrazilianCurrency(stockForm.unit_price),
+        total_price: normalizeBrazilianCurrency(stockForm.total_price),
         supplier: product.supplier || null,
         purchase_date: stockForm.purchase_date,
         started_using_at: null,
@@ -321,8 +322,8 @@ export default function Produtos() {
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
-        unit_price: purchaseForm.unit_price,
-        total_price: purchaseForm.total_price,
+        unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
+        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
         started_using_at: null,

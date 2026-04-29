@@ -44,6 +44,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -276,7 +277,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <DollarSign className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor Total</p>
-                      <p className="font-semibold">R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="font-semibold">{formatCurrency(Number(pkg.price || 0))}</p>
                     </div>
                   </div>
 
@@ -308,7 +309,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <DollarSign className="h-5 w-5 text-blue-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor por Aplicação</p>
-                      <p className="font-semibold">R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="font-semibold">{formatCurrency(Number(pkg.price || 0) / Math.max(1, Number(pkg.total_sessions || 1)))}</p>
                     </div>
                   </div>
                 </div>

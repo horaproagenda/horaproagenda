@@ -53,6 +53,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 interface ServiceAppointment {
   id: string;
@@ -423,7 +424,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     <DollarSign className="h-5 w-5 text-success" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor</p>
-                        <p className="font-semibold">R$ {Number(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="font-semibold">{formatCurrency(Number(service.price || 0))}</p>
                     </div>
                   </div>
 

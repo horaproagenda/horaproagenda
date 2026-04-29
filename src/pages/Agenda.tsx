@@ -79,7 +79,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
@@ -799,7 +799,7 @@ const Agenda = () => {
     const remainingToPay = Math.max(0, priceAfterDiscount - existingPaid);
 
     if (creditUsed > Math.min(availableCredit, remainingToPay)) {
-      toast.error(`Crédito ao cliente limitado a R$ ${Math.min(availableCredit, remainingToPay).toFixed(2)} para este pagamento.`);
+      toast.error(`Crédito ao cliente limitado a ${formatCurrency(Math.min(availableCredit, remainingToPay))} para este pagamento.`);
       return;
     }
     

@@ -209,6 +209,55 @@ const Servicos: React.FC = () => {
     });
   };
 
+  const renderPackageCards = (items: PackageTemplate[]) => (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map((pkg, index) => (
+        <Card
+          key={pkg.id}
+          style={{ animationDelay: `${index * 30}ms` }}
+          className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
+          onClick={() => setSelectedPackage(pkg)}
+        >
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
+                <Package className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
+                {pkg.category && <p className="text-[10px] text-muted-foreground truncate">{pkg.category}</p>}
+              </div>
+            </div>
+            <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
+              {pkg.is_active ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Layers className="h-3 w-3" />
+              <span>{pkg.total_sessions} aplicações</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>{pkg.duration || 60}min</span>
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t flex items-center justify-between">
+            <div className="flex items-center gap-1 text-sm font-semibold">
+              <DollarSign className="h-3.5 w-3.5 text-success" />
+              <span>R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/aplicação
+            </span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <AppLayout title="Serviços" subtitle="Catálogo de procedimentos e pacotes">
       <div className="space-y-3">

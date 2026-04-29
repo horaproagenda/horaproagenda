@@ -17,6 +17,7 @@ import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientPhotosTabProps {
   photos: TreatmentPhoto[];
@@ -51,6 +52,8 @@ const getMonthOptions = () => {
 
 export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTabProps) {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const canDeletePhotos = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -99,6 +102,11 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   };
 
   const handleDeletePhoto = async (photoId: string, filePath: string | null) => {
+    if (!canDeletePhotos) {
+      toast.error('Apenas administradores podem apagar fotos.');
+      return;
+    }
+
     setDeletingId(photoId);
     try {
       // Delete from storage if path exists
@@ -158,6 +166,30 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         : (selectedPhotoIndex + 1) % filteredPhotos.length
     );
   };
+
+  useEffect(() => {
+    if (selectedPhotoIndex === null) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedPhotoIndex(null);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPhoto('previous');
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToPhoto('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhotoIndex, filteredPhotos.length]);
 
   const handleDownloadPhoto = async (photo: TreatmentPhoto) => {
     try {
@@ -408,26 +440,28 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                     <Download className="mr-1 h-3.5 w-3.5" />
                     Baixar
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={deletingId === selectedPhoto.id}>
-                        <Trash2 className="mr-1 h-3.5 w-3.5" />
-                        Apagar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
-                        <AlertDialogDescription>Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id, selectedPhoto.file_path)} className="bg-destructive hover:bg-destructive/90">
-                          Excluir
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {canDeletePhotos && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={deletingId === selectedPhoto.id}>
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Apagar
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
+                          <AlertDialogDescription>Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id, selectedPhoto.file_path)} className="bg-destructive hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             </div>
@@ -475,35 +509,37 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                             <p className="text-[10px] text-muted-foreground">
                               {format(new Date(photo.taken_at), 'dd/MM', { locale: ptBR })}
                             </p>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  disabled={deletingId === photo.id}
-                                >
-                                  <Trash2 className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDeletePhoto(photo.id, photo.file_path)}
-                                    className="bg-destructive hover:bg-destructive/90"
+                            {canDeletePhotos && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    disabled={deletingId === photo.id}
                                   >
-                                    Excluir
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeletePhoto(photo.id, photo.file_path)}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </div>
                       ))}

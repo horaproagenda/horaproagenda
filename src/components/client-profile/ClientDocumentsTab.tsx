@@ -31,6 +31,7 @@ import { ClientDocumentViewDialog } from '@/components/documentos/ClientDocument
 import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -57,6 +58,8 @@ const documentTypeColors: Record<DocumentType, string> = {
 };
 
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument, onRefresh }: ClientDocumentsTabProps) {
+  const { hasRole } = useAuth();
+  const canDeleteDocuments = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<DocumentType>('anamnese');
@@ -127,6 +130,11 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleDeleteDocument = async (docId: string) => {
+    if (!canDeleteDocuments) {
+      toast.error('Apenas administradores podem apagar documentos.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('client_documents')
@@ -161,6 +169,27 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       setLinkDialogOpen(true);
     } else {
       toast.error('Este documento não está vinculado a um modelo. Crie um modelo primeiro.');
+    }
+  };
+
+  const handleOpenFile = async (doc: ClientDocument) => {
+    try {
+      if (doc.file_path) {
+        const { data, error } = await supabase.storage
+          .from('client-documents')
+          .createSignedUrl(doc.file_path, 300);
+
+        if (error) throw error;
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (doc.file_url) {
+        window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Error opening document file:', error);
+      toast.error('Sem permissão para abrir este documento.');
     }
   };
 
@@ -375,25 +404,25 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        {doc.file_url && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
-                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
+                        {(doc.file_path || doc.file_url) && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleOpenFile(doc)}>
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                          onClick={() => {
-                            if (window.confirm('Excluir este documento?')) {
-                              handleDeleteDocument(doc.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {canDeleteDocuments && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (window.confirm('Excluir este documento?')) {
+                                handleDeleteDocument(doc.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -429,10 +458,10 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
           phone: client.phone, 
           email: client.email || undefined 
         } : undefined}
-        onDelete={(id) => {
+        onDelete={canDeleteDocuments ? (id) => {
           handleDeleteDocument(id);
           setViewDialogOpen(false);
-        }}
+        } : undefined}
       />
 
       {/* Generate Link Dialog - pre-filled with client */}

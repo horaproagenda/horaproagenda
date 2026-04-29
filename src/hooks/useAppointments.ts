@@ -436,6 +436,12 @@ export function useAppointments() {
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
+      if (error instanceof AppointmentConflictError) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'all' });
+        toast.warning(error.message);
+        return;
+      }
       toast.error('Erro ao atualizar agendamento: ' + error.message);
     },
   });

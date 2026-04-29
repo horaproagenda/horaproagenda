@@ -20,6 +20,7 @@ export function useGlobalRefresh() {
     'package_appointments',
     'recurring_appointments',
     'professional_absences',
+    'professional-absences',
     
     // Clients
     'clients',
@@ -73,11 +74,13 @@ export function useGlobalRefresh() {
     
     // Settings & Config
     'business_settings',
+    'business-settings',
     'whatsapp_templates',
     'whatsapp_connection',
     
     // Dashboard & Stats
     'dashboard-stats',
+    'dashboard_stats',
     'monthly-sales',
     'new-clients',
     'services-distribution',
@@ -156,8 +159,9 @@ export function useGlobalRefresh() {
     const moduleKeys: Record<string, string[]> = {
       agenda: [
         'appointments', 'client-appointments', 'package_appointments',
-        'professional_absences', 'professionals', 'rooms', 'clients',
-        'services', 'service_packages', 'waitlist'
+        'professional_absences', 'professional-absences', 'professionals', 'rooms', 'clients',
+        'services', 'service_packages', 'client_packages', 'package_details',
+        'business-settings', 'business_settings', 'waitlist', 'recurring_appointments'
       ],
       financial: [
         'financial_entries', 'financial_categories', 'payment_methods',

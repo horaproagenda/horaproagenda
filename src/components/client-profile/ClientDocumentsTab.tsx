@@ -160,7 +160,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
 
   const handleSendByLink = (doc: ClientDocument) => {
     // Find the template for this document
-    const templateId = (doc as any).template_id;
+    const templateId = doc.template_id;
     if (templateId) {
       const template = templates.find(t => t.id === templateId);
       if (template) {
@@ -422,8 +422,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            {isSigned && (doc as any).signed_at && (
-                              <span> · Assinado em {format(new Date((doc as any).signed_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            {isSigned && doc.signed_at && (
+                              <span> · Assinado em {format(new Date(doc.signed_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                             )}
                           </p>
                         </div>

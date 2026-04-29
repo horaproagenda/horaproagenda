@@ -1276,8 +1276,8 @@ Até breve! ✨`;
                       </div>
                     ))}
                   {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   activePackages.filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   (!selectedClient || clientPackages.filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0) && (
+                   visibleCatalogPackages.length === 0 &&
+                   (!selectedClient || visibleClientPackages.length === 0) && (
                     <div className="p-2 text-muted-foreground text-sm">Nenhum serviço ou pacote encontrado</div>
                    )}
                 </div>

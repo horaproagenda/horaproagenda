@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { formatDurationClock } from '@/lib/duration';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -59,6 +60,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
+import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -311,10 +313,7 @@ export function NewAppointmentDialog({
       ? (selectedServiceData?.duration || 60) 
       : (selectedPackageData?.duration || 60);
     
-    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
-
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + duration);
+    const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, time, duration, settings?.timezone);
 
     return { startTime, endTime };
   }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
@@ -669,45 +668,9 @@ export function NewAppointmentDialog({
     return timeSlots.map(slot => {
       if (!date) return { slot, isAvailable: true, conflictReason: '' };
 
-      const slotStart = createDateTimeInTimeZone(date, slot, settings?.timezone);
-      const slotEnd = new Date(slotStart);
-      slotEnd.setMinutes(slotEnd.getMinutes() + duration);
-
-      let isAvailable = true;
-      let conflictReason = '';
-
-      // Check for professional absences
-      if (selectedProfessional) {
-        absences.forEach(absence => {
-          const absenceStart = new Date(absence.start_time);
-          const absenceEnd = new Date(absence.end_time);
-          const overlaps = slotStart < absenceEnd && slotEnd > absenceStart;
-          if (overlaps && absence.professional_id === selectedProfessional) {
-            isAvailable = false;
-            conflictReason = 'Profissional ausente';
-          }
-        });
-      }
-
-      appointments.forEach(apt => {
-        const aptStart = new Date(apt.start_time);
-        const aptEnd = new Date(apt.end_time);
-
-        const overlaps = slotStart < aptEnd && slotEnd > aptStart;
-        if (!overlaps) return;
-
-        const aptProfId = apt.professional_id || apt.service?.professional_id;
-        const aptRoomId = apt.room_id || apt.service?.room_id;
-
-        if (selectedProfessional && aptProfId === selectedProfessional) {
-          isAvailable = false;
-          conflictReason = 'Profissional ocupado';
-        }
-        if (selectedRoom && aptRoomId === selectedRoom) {
-          isAvailable = false;
-          conflictReason = 'Sala ocupada';
-        }
-      });
+      const { startTime: slotStart, endTime: slotEnd } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
+      const conflictReason = getAvailabilityConflictReason(slotStart, slotEnd, { appointments, absences, selectedProfessional, selectedRoom });
+      const isAvailable = !conflictReason;
 
       return { slot, isAvailable, conflictReason };
     });

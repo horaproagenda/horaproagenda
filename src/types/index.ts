@@ -200,6 +200,7 @@ export interface Appointment {
   payment_methods: string[];
   amount_paid: number;
   notes: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -212,6 +213,20 @@ export interface Appointment {
   package_appointment?: PackageAppointment;
   created_by_profile?: { full_name: string } | null;
   updated_by_profile?: { full_name: string } | null;
+}
+
+export interface AppointmentEditLock {
+  id: string;
+  appointment_id: string;
+  user_id: string;
+  user_email: string | null;
+  holder_name: string | null;
+  session_id: string;
+  locked_at: string;
+  expires_at: string;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';

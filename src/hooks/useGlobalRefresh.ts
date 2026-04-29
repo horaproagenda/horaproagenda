@@ -11,6 +11,7 @@ const ALL_QUERY_KEYS = [
   'recurring_appointments',
   'professional_absences',
   'professional-absences',
+  'appointment_edit_locks',
   
   // Clients
   'clients',
@@ -162,6 +163,7 @@ export function useGlobalRefresh() {
         'professional_absences', 'professional-absences', 'professionals', 'rooms', 'clients',
         'services', 'service_packages', 'client_packages', 'package_details',
         'business-settings', 'business_settings', 'waitlist', 'recurring_appointments'
+        , 'appointment_edit_locks'
       ],
       financial: [
         'financial_entries', 'financial_categories', 'payment_methods',

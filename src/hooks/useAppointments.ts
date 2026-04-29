@@ -43,6 +43,13 @@ export interface AppointmentUpdate {
   status?: AppointmentStatus;
 }
 
+class AppointmentConflictError extends Error {
+  constructor() {
+    super('Este agendamento foi alterado por outro usuário. A agenda será atualizada com a versão mais recente.');
+    this.name = 'AppointmentConflictError';
+  }
+}
+
 interface EdgeFunctionError {
   field: string;
   message: string;
@@ -257,20 +264,27 @@ export function useAppointments() {
   });
 
   const updateAppointment = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: AppointmentUpdate }) => {
+    mutationFn: async ({ id, updates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase
+
+      let updateQuery = supabase
         .from('appointments')
         .update({
           ...updates,
           updated_by: user?.id,
         })
-        .eq('id', id)
-        .select('*, package_appointment_id')
-        .single();
+        .eq('id', id);
+
+      if (typeof expectedVersion === 'number') {
+        updateQuery = updateQuery.eq('version', expectedVersion);
+      }
+
+      const { data, error } = await updateQuery
+        .select('*, package_appointment_id, version')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new AppointmentConflictError();
 
       // If status changed to completed and this appointment is linked to a package session,
       // update the package_appointment status as well
@@ -422,6 +436,12 @@ export function useAppointments() {
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
+      if (error instanceof AppointmentConflictError) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'all' });
+        toast.warning(error.message);
+        return;
+      }
       toast.error('Erro ao atualizar agendamento: ' + error.message);
     },
   });

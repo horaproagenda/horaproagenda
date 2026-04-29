@@ -56,6 +56,7 @@ import {
   Save,
   X,
   ExternalLink,
+  Lock,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -67,6 +68,7 @@ import { useServices } from '@/hooks/useServices';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
@@ -106,6 +108,7 @@ export function AppointmentDetailDialog({
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
+  const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activeServices } = useServices();
@@ -368,6 +371,7 @@ export function AppointmentDetailDialog({
         end_time: newEndTime.toISOString(),
         status: 'scheduled',
       },
+      expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
         setShowDeleteDialog(false);
@@ -389,10 +393,15 @@ export function AppointmentDetailDialog({
   };
 
   const handleStatusChange = (newStatus: AppointmentStatus) => {
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
     setSelectedStatus(newStatus);
     updateAppointment.mutate({
       id: appointment.id,
       updates: { status: newStatus },
+      expectedVersion: appointment.version,
     });
   };
 
@@ -432,6 +441,11 @@ export function AppointmentDetailDialog({
   };
 
   const handleSaveEdit = () => {
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
+
     const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
     const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
     
@@ -445,6 +459,7 @@ export function AppointmentDetailDialog({
         room_id: editRoomId,
         notes: editNotes || undefined,
       },
+      expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
         // Check if we need to propagate dates to following appointments
@@ -473,12 +488,23 @@ export function AppointmentDetailDialog({
         
         setIsEditing(false);
         setPropagateDates(false);
+        void releaseLock();
       },
     });
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    void releaseLock();
+  };
+
+  const handleStartEdit = async () => {
+    const locked = await acquireLock();
+    if (!locked) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
+    setIsEditing(true);
   };
 
   const professionalId = appointment.professional_id || appointment.service?.professional_id;
@@ -728,12 +754,18 @@ export function AppointmentDetailDialog({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {isLockedByOther && (
+                  <Badge variant="outline" className="h-7 gap-1 text-xs">
+                    <Lock className="h-3 w-3" />
+                    {activeLock?.holder_name || activeLock?.user_email || 'Em edição'}
+                  </Badge>
+                )}
                 {canEdit && !isEditing && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleStartEdit} disabled={isLockedByOther || isAcquiring}>
                     <Edit className="h-4 w-4" />
                   </Button>
                 )}
-                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}>
+                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)} disabled={isLockedByOther}>
                   <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
                     <SelectValue />
                   </SelectTrigger>

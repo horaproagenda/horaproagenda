@@ -16,10 +16,11 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin } from 'lucide-react';
+import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
 
 interface EditRecurringAppointmentDialogProps {
   appointment: Appointment | null;
@@ -33,6 +34,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
   const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
+  const { activeLock, isLockedByOther, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
 
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -91,8 +93,20 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     }
   }, [appointment, rooms]);
 
+  useEffect(() => {
+    if (!open || !appointment) return;
+    void acquireLock();
+    return () => {
+      void releaseLock();
+    };
+  }, [acquireLock, appointment, open, releaseLock]);
+
   const handleSingleSubmit = async () => {
     if (!appointment) return;
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -107,8 +121,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           professional_id: professionalId === 'none' ? null : professionalId,
           room_id: roomId === 'none' ? null : roomId,
         },
+        expectedVersion: appointment.version,
       });
 
+      await releaseLock();
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -211,6 +227,12 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           <div className="mx-auto max-w-xl space-y-4 py-4">
             {/* Client and Service Info (read-only) */}
             <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              {isLockedByOther && (
+                <Badge variant="outline" className="mb-2 gap-1 text-xs">
+                  <Lock className="h-3 w-3" />
+                  Em edição por {activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}
+                </Badge>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{appointment?.client?.name}</span>
@@ -223,10 +245,11 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input
+                  <Input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                    disabled={isLockedByOther}
               />
             </div>
 
@@ -237,6 +260,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
+                  disabled={isLockedByOther}
                 />
               </div>
               <div className="space-y-2">
@@ -245,13 +269,14 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
+                  disabled={isLockedByOther}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Profissional</Label>
-              <Select value={professionalId} onValueChange={setProfessionalId}>
+                <Select value={professionalId} onValueChange={setProfessionalId} disabled={isLockedByOther}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um profissional" />
                 </SelectTrigger>
@@ -270,7 +295,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Sala</Label>
-              <Select value={roomId} onValueChange={setRoomId}>
+              <Select value={roomId} onValueChange={setRoomId} disabled={isLockedByOther}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma sala" />
                 </SelectTrigger>
@@ -314,7 +339,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 variant="destructive" 
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
-                disabled={loading}
+                disabled={loading || isLockedByOther}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Excluir
@@ -324,11 +349,11 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 Cancelar
               </Button>
               {isRecurringSeries && hasDateChanged ? (
-                <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading}>
+                <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading || isLockedByOther}>
                   Salvar
                 </Button>
               ) : (
-                <Button onClick={handleSingleSubmit} disabled={loading}>
+                <Button onClick={handleSingleSubmit} disabled={loading || isLockedByOther}>
                   {loading ? 'Salvando...' : 'Salvar'}
                 </Button>
               )}

@@ -203,6 +203,18 @@ const Agenda = () => {
     setSelectedDate(new Date(state.appointmentDate || appointmentToReopen.start_time));
     navigate('/agenda', { replace: true, state: null });
   }, [appointments, location.state, navigate]);
+
+  useEffect(() => {
+    if (!selectedAppointment) return;
+    const latestAppointment = appointments.find((apt) => apt.id === selectedAppointment.id);
+    if (latestAppointment && latestAppointment.updated_at !== selectedAppointment.updated_at) {
+      setSelectedAppointment(latestAppointment);
+    }
+    if (!latestAppointment && detailDialogOpen) {
+      setDetailDialogOpen(false);
+      setSelectedAppointment(null);
+    }
+  }, [appointments, detailDialogOpen, selectedAppointment]);
   
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
@@ -973,6 +985,7 @@ const Agenda = () => {
         start_time: pendingMove.newStartTime.toISOString(),
         end_time: pendingMove.newEndTime.toISOString(),
       },
+      expectedVersion: pendingMove.appointment.version,
     });
 
     setPendingMove(null);

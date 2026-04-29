@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_edit_locks: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          expires_at: string
+          holder_name: string | null
+          id: string
+          last_seen_at: string
+          locked_at: string
+          session_id: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          expires_at?: string
+          holder_name?: string | null
+          id?: string
+          last_seen_at?: string
+          locked_at?: string
+          session_id: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          expires_at?: string
+          holder_name?: string | null
+          id?: string
+          last_seen_at?: string
+          locked_at?: string
+          session_id?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointment_product_consumption: {
         Row: {
           appointment_id: string
@@ -79,6 +121,7 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
           updated_by: string | null
+          version: number
         }
         Insert: {
           amount_paid?: number | null
@@ -99,6 +142,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
           updated_by?: string | null
+          version?: number
         }
         Update: {
           amount_paid?: number | null
@@ -119,6 +163,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
           updated_by?: string | null
+          version?: number
         }
         Relationships: [
           {

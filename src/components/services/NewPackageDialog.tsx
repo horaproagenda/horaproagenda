@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -40,7 +41,8 @@ import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
-  total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
+  category: z.string().trim().min(1, 'Selecione uma categoria'),
+  total_sessions: z.coerce.number().min(1, 'Mínimo 1 aplicação').max(100, 'Máximo 100 aplicações'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
@@ -61,6 +63,10 @@ interface NewPackageDialogProps {
   children?: React.ReactNode;
 }
 
+const categories = [
+  'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
+];
+
 export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +85,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
     defaultValues: {
       name: '',
       description: '',
+      category: '',
       total_sessions: 10,
       interval_days: 7,
       duration: 60,
@@ -143,6 +150,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         .insert({
           name: data.name,
           description: data.description || null,
+          category: data.category,
           total_sessions: packageType === 'sequential' ? steps.length : data.total_sessions,
           interval_days: packageType === 'sequential' ? steps[0]?.interval_after_days || data.interval_days : data.interval_days,
           duration: sequentialDuration,
@@ -200,20 +208,41 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-            {/* Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Nome *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: 10 Sessões de Laser" className="h-8 text-sm" {...field} />
-                  </FormControl>
-                  <FormMessage className="text-[10px]" />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Nome *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: 10 aplicações de laser" className="h-8 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Categoria *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((cat) => <SelectItem key={cat} value={cat} className="text-sm">{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
               <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
@@ -231,7 +260,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 name="total_sessions"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">{packageType === 'sequential' ? 'Etapas' : 'Sessões'} *</FormLabel>
+                    <FormLabel className="text-xs">{packageType === 'sequential' ? 'Etapas' : 'Aplicações'} *</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} max={100} className="h-8 text-sm" disabled={packageType === 'sequential'} value={packageType === 'sequential' ? steps.length : field.value} onChange={field.onChange} />
                     </FormControl>
@@ -366,11 +395,11 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 <FormItem>
                   <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0} step="0.01" className="h-8 text-sm" {...field} />
+                    <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
                   </FormControl>
                   {watchTotalSessions > 0 && watchPrice > 0 && (
                     <p className="text-[10px] text-muted-foreground">
-                      R$ {pricePerSession.toFixed(2)}/sessão
+                      R$ {pricePerSession.toFixed(2).replace('.', ',')}/aplicação
                     </p>
                   )}
                   <FormMessage className="text-[10px]" />

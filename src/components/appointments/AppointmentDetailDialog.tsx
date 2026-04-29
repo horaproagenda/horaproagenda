@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
+import { formatDurationClock } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -805,7 +806,7 @@ export function AppointmentDetailDialog({
                     options={activeServices.map((service) => ({
                       value: service.id,
                       label: service.name,
-                      sublabel: `${service.category} • ${service.duration} min`,
+                      sublabel: `${service.category} • ${formatDurationClock(service.duration)}`,
                     }))}
                   />
                 </div>
@@ -937,14 +938,14 @@ export function AppointmentDetailDialog({
 
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(appointment.start_time), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                  <span>{format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    {format(new Date(appointment.start_time), 'HH:mm')} - {format(new Date(appointment.end_time), 'HH:mm')}
-                    <span className="text-muted-foreground ml-1">({appointment.service?.duration} min)</span>
+                    {formatTimeInTimeZone(appointment.start_time, settings?.timezone)} - {formatTimeInTimeZone(appointment.end_time, settings?.timezone)}
+                    <span className="text-muted-foreground ml-1">({formatDurationClock(appointment.service?.duration || 0)})</span>
                   </span>
                 </div>
 

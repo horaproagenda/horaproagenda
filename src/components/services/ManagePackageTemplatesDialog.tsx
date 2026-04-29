@@ -38,6 +38,10 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { PackageTemplate } from '@/types';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { DurationSelect } from '@/components/ui/duration-select';
+import { formatCurrency } from '@/lib/utils';
+import { formatDurationClock } from '@/lib/duration';
 
 const templateSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -236,7 +240,7 @@ export function ManagePackageTemplatesDialog() {
                       <FormItem>
                         <FormLabel>Valor (R$) *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} step="0.01" {...field} />
+                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -250,9 +254,9 @@ export function ManagePackageTemplatesDialog() {
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Duração (min) *</FormLabel>
+                        <FormLabel>Duração *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={15} step={15} {...field} />
+                          <DurationSelect value={field.value} onChange={field.onChange} minDuration={15} maxDuration={480} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -357,10 +361,10 @@ export function ManagePackageTemplatesDialog() {
                             {template.total_sessions} sessões
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            R$ {Number(template.price).toFixed(2)}
+                            {formatCurrency(Number(template.price || 0))}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            {template.duration} min
+                            {formatDurationClock(template.duration)}
                           </Badge>
                         </div>
                         {template.professional && (

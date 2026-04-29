@@ -2,22 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-
-function formatDurationClock(minutes: number): string {
-  const safeMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
-  const hours = Math.floor(safeMinutes / 60);
-  const mins = safeMinutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-}
-
-function parseDurationClock(value: string): number | null {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const mins = Number(match[2]);
-  if (mins > 59) return null;
-  return hours * 60 + mins;
-}
+import { formatDurationClock, parseDurationClock } from '@/lib/duration';
 
 interface DurationSelectProps {
   value: number;

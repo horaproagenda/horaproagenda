@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { formatDurationClock } from '@/lib/duration';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -59,6 +60,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
+import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -311,10 +313,7 @@ export function NewAppointmentDialog({
       ? (selectedServiceData?.duration || 60) 
       : (selectedPackageData?.duration || 60);
     
-    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
-
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + duration);
+    const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, time, duration, settings?.timezone);
 
     return { startTime, endTime };
   }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
@@ -669,45 +668,9 @@ export function NewAppointmentDialog({
     return timeSlots.map(slot => {
       if (!date) return { slot, isAvailable: true, conflictReason: '' };
 
-      const slotStart = createDateTimeInTimeZone(date, slot, settings?.timezone);
-      const slotEnd = new Date(slotStart);
-      slotEnd.setMinutes(slotEnd.getMinutes() + duration);
-
-      let isAvailable = true;
-      let conflictReason = '';
-
-      // Check for professional absences
-      if (selectedProfessional) {
-        absences.forEach(absence => {
-          const absenceStart = new Date(absence.start_time);
-          const absenceEnd = new Date(absence.end_time);
-          const overlaps = slotStart < absenceEnd && slotEnd > absenceStart;
-          if (overlaps && absence.professional_id === selectedProfessional) {
-            isAvailable = false;
-            conflictReason = 'Profissional ausente';
-          }
-        });
-      }
-
-      appointments.forEach(apt => {
-        const aptStart = new Date(apt.start_time);
-        const aptEnd = new Date(apt.end_time);
-
-        const overlaps = slotStart < aptEnd && slotEnd > aptStart;
-        if (!overlaps) return;
-
-        const aptProfId = apt.professional_id || apt.service?.professional_id;
-        const aptRoomId = apt.room_id || apt.service?.room_id;
-
-        if (selectedProfessional && aptProfId === selectedProfessional) {
-          isAvailable = false;
-          conflictReason = 'Profissional ocupado';
-        }
-        if (selectedRoom && aptRoomId === selectedRoom) {
-          isAvailable = false;
-          conflictReason = 'Sala ocupada';
-        }
-      });
+      const { startTime: slotStart, endTime: slotEnd } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
+      const conflictReason = getAvailabilityConflictReason(slotStart, slotEnd, { appointments, absences, selectedProfessional, selectedRoom });
+      const isAvailable = !conflictReason;
 
       return { slot, isAvailable, conflictReason };
     });
@@ -1113,7 +1076,7 @@ Até breve! ✨`;
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                            {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -1151,7 +1114,7 @@ Até breve! ✨`;
                               </Badge>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {paidService.service?.duration}min • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
+                              {formatDurationClock(paidService.service?.duration || 0)} • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
                             </div>
                           </div>
                         ))}
@@ -1250,7 +1213,7 @@ Até breve! ✨`;
                           <Badge variant="outline" className="text-xs">Serviço</Badge>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                          {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                         </div>
                       </div>
                     ))}
@@ -1298,7 +1261,7 @@ Até breve! ✨`;
               {selectedServiceData && serviceType === 'service' && (
                 <div className="mt-2 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {selectedServiceData.duration} minutos • 
+                    Duração: {formatDurationClock(selectedServiceData.duration)} • 
                     Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
                     {selectedServiceData.return_days && ` • Retorno: ${selectedServiceData.return_days} dias`}
                   </p>
@@ -1495,7 +1458,7 @@ Até breve! ✨`;
               {selectedPackageData && serviceType === 'package' && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {selectedPackageData.duration || 60} minutos • 
+                    Duração: {formatDurationClock(selectedPackageData.duration || 60)} • 
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>

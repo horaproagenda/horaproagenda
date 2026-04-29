@@ -40,6 +40,15 @@ export function useRealtimeSync() {
       });
     };
 
+    const refetchMultiple = (keys: string[]) => {
+      keys.forEach(key => {
+        queryClient.refetchQueries({
+          queryKey: [key],
+          type: 'active',
+        });
+      });
+    };
+
     // Conjuntos de queries por contexto
     const FINANCIAL_QUERIES = [
       'financial_entries', 'financial_categories', 'payment_methods',
@@ -63,6 +72,19 @@ export function useRealtimeSync() {
       'services', 'service_packages', 'package_templates',
       'package_template_steps', 'service_products', 'package_template_products'
     ];
+
+    const PACKAGE_SYNC_QUERIES = [
+      ...APPOINTMENT_QUERIES,
+      ...SERVICE_QUERIES,
+      ...CLIENT_QUERIES,
+      'appointments',
+      'agenda-packages-sync',
+    ];
+
+    const syncPackagesWithAgenda = () => {
+      invalidateMultiple(PACKAGE_SYNC_QUERIES);
+      refetchMultiple(PACKAGE_SYNC_QUERIES);
+    };
     
     const PRODUCT_QUERIES = [
       'products', 'product_purchases', 'suppliers',

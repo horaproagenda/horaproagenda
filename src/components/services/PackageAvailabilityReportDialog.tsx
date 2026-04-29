@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
@@ -61,7 +62,20 @@ export function PackageAvailabilityReportDialog() {
                 <TableHead className="h-8 px-2">Agendadas</TableHead>
                 <TableHead className="h-8 px-2">Consumidas</TableHead>
                 <TableHead className="h-8 px-2">Dá para agendar</TableHead>
-                <TableHead className="h-8 px-2">Passos</TableHead>
+                <TableHead className="h-8 px-2">
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-help items-center underline decoration-dotted underline-offset-2">
+                          Passos
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56 text-xs">
+                        Etapas/aplicações configuradas na sequência do pacote.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
                 <TableHead className="h-8 px-2">Status</TableHead>
                 <TableHead className="h-8 px-2">Motivo</TableHead>
               </TableRow>

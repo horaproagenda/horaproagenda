@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -556,7 +557,7 @@ export function ContasAPagar() {
                         <div className="text-sm text-muted-foreground p-2 bg-background rounded border">
                           {form.split_value ? (
                             <span>
-                              Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
+                          Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
                               <br />
                               Total: R$ {parseFloat(form.amount).toFixed(2)} em {form.recurring_count}x
                             </span>
@@ -583,11 +584,9 @@ export function ContasAPagar() {
                     </div>
                     <div>
                       <Label>Valor</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <CurrencyInput
                         value={form.amount}
-                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                        onValueChange={(value) => setForm({ ...form, amount: String(value) })}
                         placeholder="0,00"
                       />
                     </div>

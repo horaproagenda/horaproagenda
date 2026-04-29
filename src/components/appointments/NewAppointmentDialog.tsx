@@ -1209,13 +1209,13 @@ Até breve! ✨`;
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                                  <Badge variant="outline" className="text-xs gap-1">
-                                    <Package className="h-3 w-3" />
+                                  <Badge variant="secondary" className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-semibold gap-1 border border-border shadow-sm">
+                                    <Package className="h-3.5 w-3.5" />
                                     Pacote
                                   </Badge>
                                   {pkg.package_type === 'sequential' && (
-                                    <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
-                                      <Repeat className="h-3 w-3" />
+                                    <Badge className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-bold gap-1 bg-primary text-primary-foreground border border-primary shadow-sm ring-1 ring-primary/30">
+                                      <Repeat className="h-3.5 w-3.5" />
                                       Sequencial
                                     </Badge>
                                   )}
@@ -1282,13 +1282,13 @@ Até breve! ✨`;
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{pkg.name}</span>
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            <Badge variant="secondary" className="text-xs gap-1">
-                              <Package className="h-3 w-3" />
+                            <Badge variant="secondary" className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-semibold gap-1 border border-border shadow-sm">
+                              <Package className="h-3.5 w-3.5" />
                               Pacote
                             </Badge>
                             {pkg.package_type === 'sequential' && (
-                              <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
-                                <Repeat className="h-3 w-3" />
+                              <Badge className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-bold gap-1 bg-primary text-primary-foreground border border-primary shadow-sm ring-1 ring-primary/30">
+                                <Repeat className="h-3.5 w-3.5" />
                                 Sequencial
                               </Badge>
                             )}

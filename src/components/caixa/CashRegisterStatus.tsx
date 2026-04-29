@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -281,12 +282,10 @@ export function CashRegisterStatus({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Valor Inicial (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 placeholder="0,00"
                 value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
+                onValueChange={(value) => setOpeningBalance(String(value))}
               />
             </div>
             <div className="flex gap-2 justify-end">
@@ -355,12 +354,10 @@ export function CashRegisterStatus({
 
             <div className="space-y-2">
               <Label>Saldo Final (R$) *</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 placeholder="0,00"
                 value={closingBalance}
-                onChange={(e) => setClosingBalance(e.target.value)}
+                onValueChange={(value) => setClosingBalance(String(value))}
               />
             </div>
 
@@ -387,12 +384,10 @@ export function CashRegisterStatus({
                     <Banknote className="h-3 w-3" />
                     Dinheiro (R$)
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     placeholder="0,00"
                     value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
+                    onValueChange={(value) => setCashAmount(String(value))}
                   />
                 </div>
                 <div className="space-y-1">
@@ -400,12 +395,10 @@ export function CashRegisterStatus({
                     <Receipt className="h-3 w-3" />
                     Cheques (R$)
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     placeholder="0,00"
                     value={checkAmount}
-                    onChange={(e) => setCheckAmount(e.target.value)}
+                    onValueChange={(value) => setCheckAmount(String(value))}
                   />
                 </div>
               </div>
@@ -440,13 +433,11 @@ export function CashRegisterStatus({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <CurrencyInput
                       placeholder="Valor"
                       className="w-24"
                       value={deposit.amount || ''}
-                      onChange={(e) => updateBankDeposit(index, 'amount', parseFloat(e.target.value) || 0)}
+                      onValueChange={(value) => updateBankDeposit(index, 'amount', value)}
                     />
                     <Button
                       type="button"

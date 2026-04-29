@@ -32,10 +32,14 @@ export function useRealtimeSync() {
 
     // Função helper para invalidar múltiplas queries específicas
     const invalidateMultiple = (keys: string[]) => {
-      keys.forEach(key => {
+      Array.from(new Set(keys)).forEach(key => {
         queryClient.invalidateQueries({ 
           queryKey: [key],
           refetchType: 'all',
+        });
+        queryClient.refetchQueries({
+          queryKey: [key],
+          type: 'active',
         });
       });
     };
@@ -50,22 +54,35 @@ export function useRealtimeSync() {
     };
 
     // Conjuntos de queries por contexto
+    const AGENDA_CORE_QUERIES = [
+      'appointments', 'client-appointments', 'client', 'clients',
+      'professionals', 'rooms', 'services', 'business-settings', 'business_settings',
+      'professional-absences', 'professional_absences', 'waitlist', 'recurring_appointments',
+      'service_packages', 'client_packages', 'package_appointments', 'package_details',
+      'package_appointment_history', 'package_template_steps', 'dashboard-stats', 'dashboard_stats',
+    ];
+
+    const syncFullAgenda = () => {
+      invalidateMultiple(AGENDA_CORE_QUERIES);
+    };
+
     const FINANCIAL_QUERIES = [
       'financial_entries', 'financial_categories', 'payment_methods',
-      'banks', 'cash_registers', 'cash_transactions', 'card_brands',
-      'card_brand_fees', 'dashboard-stats', 'goals'
+      'banks', 'cash_registers', 'cash_transactions', 'cash_register_entries', 'card_brands',
+      'card_brand_fees', 'dashboard-stats', 'dashboard_stats', 'goals'
     ];
     
     const CLIENT_QUERIES = [
       'clients', 'client', 'client_services', 'client_packages',
       'clients_credits', 'client_credits', 'client-appointments',
-      'client-sales', 'quotes', 'client_documents', 'treatment_photos'
+      'client-sales', 'quotes', 'client-quotes', 'client_documents', 'client-documents',
+      'treatment_photos', 'client-photos'
     ];
     
     const APPOINTMENT_QUERIES = [
       'appointments', 'client-appointments', 'package_appointments',
       'package_appointment_history', 'package_details', 'service_packages',
-      'client_packages', 'professional_absences', 'waitlist', 'recurring_appointments'
+      'client_packages', 'professional_absences', 'professional-absences', 'waitlist', 'recurring_appointments'
     ];
     
     const SERVICE_QUERIES = [
@@ -100,6 +117,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         (payload) => {
+          syncFullAgenda();
           invalidateMultiple([
             ...APPOINTMENT_QUERIES,
             ...CLIENT_QUERIES,
@@ -128,6 +146,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'clients' },
         (payload) => {
+          syncFullAgenda();
           invalidateMultiple([
             ...CLIENT_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -145,6 +164,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'services' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...SERVICE_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -158,6 +178,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_packages' },
         (payload) => {
+          syncFullAgenda();
           syncPackagesWithAgenda();
           invalidateMultiple(FINANCIAL_QUERIES);
           
@@ -176,6 +197,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_appointments' },
         () => {
+          syncFullAgenda();
           syncPackagesWithAgenda();
         }
       )
@@ -185,6 +207,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_appointment_history' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...APPOINTMENT_QUERIES,
             ...SERVICE_QUERIES,
@@ -198,6 +221,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_template_steps' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...SERVICE_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -211,6 +235,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'single_sales' },
         (payload) => {
+          syncFullAgenda();
           invalidateAll();
           
           if (payload.eventType === 'INSERT') {
@@ -224,6 +249,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'client_services' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...CLIENT_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -297,7 +323,7 @@ export function useRealtimeSync() {
         () => {
           invalidateMultiple([
             'payment_methods', 'appointments', 'single_sales',
-            'financial_entries', 'cash_transactions'
+            'financial_entries', 'cash_transactions', ...AGENDA_CORE_QUERIES
           ]);
         }
       )
@@ -359,6 +385,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'professionals' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             'professionals', ...APPOINTMENT_QUERIES,
             ...SERVICE_QUERIES, ...CLIENT_QUERIES
@@ -371,7 +398,8 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'professional_absences' },
         () => {
-          invalidateMultiple(['professional_absences', 'professionals', 'appointments']);
+          syncFullAgenda();
+          invalidateMultiple(['professional_absences', 'professional-absences', 'professionals', 'appointments']);
         }
       )
       
@@ -380,6 +408,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rooms' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['rooms', ...APPOINTMENT_QUERIES, ...SERVICE_QUERIES]);
         }
       )
@@ -389,6 +418,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'equipment' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['equipment', 'rooms', 'services']);
         }
       )
@@ -483,7 +513,8 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'business_settings' },
         () => {
-          invalidateMultiple(['business_settings']);
+          syncFullAgenda();
+          invalidateMultiple(['business_settings', 'business-settings']);
           toast.info('Configurações atualizadas', { duration: 2000 });
         }
       )
@@ -511,7 +542,17 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'waitlist' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['waitlist']);
+        }
+      )
+
+      // ============ RECURRING APPOINTMENTS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recurring_appointments' },
+        () => {
+          syncFullAgenda();
         }
       )
       

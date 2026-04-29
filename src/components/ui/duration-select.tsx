@@ -13,7 +13,7 @@ function formatDurationClock(minutes: number): string {
 function parseDurationClock(value: string): number | null {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return null;
-  const hours = Math.floor(minutes / 60);
+  const hours = Number(match[1]);
   const mins = Number(match[2]);
   if (mins > 59) return null;
   return hours * 60 + mins;

@@ -1,17 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { CurrencyInput } from './currency-input';
 
 function CurrencyInputHarness({ onCentsChange }: { onCentsChange: (cents: number) => void }) {
-  let currentValue = 0;
+  const [currentValue, setCurrentValue] = useState(0);
 
   return (
     <CurrencyInput
       aria-label="Valor"
       value={currentValue}
-      onValueChange={(value) => {
-        currentValue = value;
-      }}
+      onValueChange={setCurrentValue}
       onCentsChange={onCentsChange}
     />
   );

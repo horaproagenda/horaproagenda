@@ -69,6 +69,8 @@ export function ClientDocumentViewDialog({
   const [emailInput, setEmailInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [fileObjectUrl, setFileObjectUrl] = useState<string | null>(null);
+  const [fileMimeType, setFileMimeType] = useState<string | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
@@ -79,8 +81,11 @@ export function ClientDocumentViewDialog({
 
   useEffect(() => {
     let cancelled = false;
+    let objectUrl: string | null = null;
 
     const loadSignedFileUrl = async () => {
+      setFileObjectUrl(null);
+      setFileMimeType(null);
       if (!open || !document?.file_path) {
         setFilePreviewUrl(document?.file_url || null);
         return;
@@ -93,7 +98,16 @@ export function ClientDocumentViewDialog({
           .createSignedUrl(document.file_path, 900);
 
         if (error) throw error;
-        if (!cancelled) setFilePreviewUrl(data.signedUrl);
+        const response = await fetch(data.signedUrl);
+        if (!response.ok) throw new Error(`Falha ao carregar arquivo (${response.status})`);
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+
+        if (!cancelled) {
+          setFilePreviewUrl(data.signedUrl);
+          setFileObjectUrl(objectUrl);
+          setFileMimeType(blob.type || null);
+        }
       } catch (error) {
         console.error('Error loading document file:', error);
         if (!cancelled) {
@@ -109,14 +123,16 @@ export function ClientDocumentViewDialog({
 
     return () => {
       cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [open, document?.file_path, document?.file_url]);
 
   if (!document) return null;
 
   const fileName = String(document.file_path || document.file_url || document.title || '').toLowerCase();
-  const canInlinePreviewFile = !!filePreviewUrl && /\.(pdf|png|jpe?g|webp|gif)(\?|$)/i.test(fileName);
-  const isImageFile = !!filePreviewUrl && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileName);
+  const previewSrc = fileObjectUrl || filePreviewUrl;
+  const canInlinePreviewFile = !!previewSrc && (/\.(pdf|png|jpe?g|webp|gif)(\?|$)/i.test(fileName) || !!fileMimeType?.match(/^(application\/pdf|image\/)/));
+  const isImageFile = !!previewSrc && (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileName) || !!fileMimeType?.startsWith('image/'));
 
   const handleDownloadPdf = () => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -347,9 +363,9 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               ) : canInlinePreviewFile ? (
                 isImageFile ? (
-                  <img src={filePreviewUrl || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
+                  <img src={previewSrc || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
                 ) : (
-                  <iframe src={filePreviewUrl || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
+                  <iframe src={previewSrc || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
                 )
               ) : (
                 <div className="text-center py-8">

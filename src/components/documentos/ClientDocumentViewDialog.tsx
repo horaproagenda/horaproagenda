@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/popover';
 import { 
   Printer, 
+  Download,
   FileSignature, 
   ExternalLink, 
   Trash2,
@@ -67,6 +68,8 @@ export function ClientDocumentViewDialog({
 }: ClientDocumentViewDialogProps) {
   const [emailInput, setEmailInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -74,7 +77,46 @@ export function ClientDocumentViewDialog({
   
   const { sendMessage, isLoading: whatsappLoading } = useWhatsapp();
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSignedFileUrl = async () => {
+      if (!open || !document?.file_path) {
+        setFilePreviewUrl(document?.file_url || null);
+        return;
+      }
+
+      setIsLoadingFile(true);
+      try {
+        const { data, error } = await supabase.storage
+          .from('client-documents')
+          .createSignedUrl(document.file_path, 900);
+
+        if (error) throw error;
+        if (!cancelled) setFilePreviewUrl(data.signedUrl);
+      } catch (error) {
+        console.error('Error loading document file:', error);
+        if (!cancelled) {
+          setFilePreviewUrl(null);
+          toast.error('Sem permissão para visualizar este documento.');
+        }
+      } finally {
+        if (!cancelled) setIsLoadingFile(false);
+      }
+    };
+
+    loadSignedFileUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, document?.file_path, document?.file_url]);
+
   if (!document) return null;
+
+  const fileName = String(document.file_path || document.file_url || document.title || '').toLowerCase();
+  const canInlinePreviewFile = !!filePreviewUrl && /\.(pdf|png|jpe?g|webp|gif)(\?|$)/i.test(fileName);
+  const isImageFile = !!filePreviewUrl && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileName);
 
   const handleDownloadPdf = () => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -129,24 +171,31 @@ export function ClientDocumentViewDialog({
     window.open('https://assinador.iti.br/', '_blank');
   };
 
-  const handleOpenFile = async () => {
+  const handleDownloadFile = async () => {
     try {
+      let downloadUrl = filePreviewUrl;
       if (document.file_path) {
         const { data, error } = await supabase.storage
           .from('client-documents')
           .createSignedUrl(document.file_path, 300);
 
         if (error) throw error;
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-        return;
+        downloadUrl = data.signedUrl;
       }
 
-      if (document.file_url) {
-        window.open(document.file_url, '_blank', 'noopener,noreferrer');
-      }
+      if (!downloadUrl && document.file_url) downloadUrl = document.file_url;
+      if (!downloadUrl) return;
+
+      const link = window.document.createElement('a');
+      link.href = downloadUrl;
+      link.download = document.title || 'documento';
+      link.rel = 'noopener noreferrer';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
     } catch (error) {
-      console.error('Error opening document file:', error);
-      toast.error('Sem permissão para abrir este documento.');
+      console.error('Error downloading document file:', error);
+      toast.error('Sem permissão para baixar este documento.');
     }
   };
 
@@ -292,16 +341,28 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                 {document.content}
               </pre>
             </div>
-          ) : document.file_url ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Este documento é um arquivo externo.
-              </p>
-              <Button onClick={handleOpenFile}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Abrir Arquivo
-              </Button>
+          ) : document.file_path || document.file_url ? (
+            <div className="mx-auto flex min-h-[620px] w-full max-w-[620px] items-center justify-center rounded-sm border bg-background p-3 shadow-sm">
+              {isLoadingFile ? (
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              ) : canInlinePreviewFile ? (
+                isImageFile ? (
+                  <img src={filePreviewUrl || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
+                ) : (
+                  <iframe src={filePreviewUrl || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
+                )
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Pré-visualização indisponível para este tipo de arquivo.
+                  </p>
+                  <Button onClick={handleDownloadFile}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar arquivo
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -408,6 +469,12 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                     </PopoverContent>
                   </Popover>
                 </>
+              )}
+              {(document.file_path || document.file_url) && (
+                <Button variant="outline" size="sm" onClick={handleDownloadFile}>
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Baixar Arquivo
+                </Button>
               )}
               
               <Button variant="outline" size="sm" onClick={handleOpenGovBr}>

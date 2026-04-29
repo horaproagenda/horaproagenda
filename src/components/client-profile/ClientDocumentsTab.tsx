@@ -15,7 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   Plus, 
   FileText, 
-  ExternalLink, 
+  Download, 
   Upload, 
   FileSignature, 
   Eye, 
@@ -172,24 +172,31 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
   };
 
-  const handleOpenFile = async (doc: ClientDocument) => {
+  const handleDownloadFile = async (doc: ClientDocument) => {
     try {
+      let downloadUrl: string | null = null;
       if (doc.file_path) {
         const { data, error } = await supabase.storage
           .from('client-documents')
           .createSignedUrl(doc.file_path, 300);
 
         if (error) throw error;
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-        return;
+        downloadUrl = data.signedUrl;
       }
 
-      if (doc.file_url) {
-        window.open(doc.file_url, '_blank', 'noopener,noreferrer');
-      }
+      if (!downloadUrl && doc.file_url) downloadUrl = doc.file_url;
+      if (!downloadUrl) return;
+
+      const link = window.document.createElement('a');
+      link.href = downloadUrl;
+      link.download = doc.title || 'documento';
+      link.rel = 'noopener noreferrer';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
     } catch (error) {
-      console.error('Error opening document file:', error);
-      toast.error('Sem permissão para abrir este documento.');
+      console.error('Error downloading document file:', error);
+      toast.error('Sem permissão para baixar este documento.');
     }
   };
 
@@ -405,8 +412,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {(doc.file_path || doc.file_url) && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleOpenFile(doc)}>
-                            <ExternalLink className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleDownloadFile(doc)} title="Baixar documento">
+                            <Download className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {canDeleteDocuments && (

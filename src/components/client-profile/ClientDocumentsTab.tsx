@@ -390,7 +390,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
             <ScrollArea className="h-[300px]">
               <div className="space-y-1.5 pr-2">
                 {documents.map((doc) => {
-                  const isSigned = !!(doc as any).signed_at;
+                  const isSigned = !!doc.signed_at;
                   
                   return (
                     <div

@@ -117,6 +117,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         (payload) => {
+          syncFullAgenda();
           invalidateMultiple([
             ...APPOINTMENT_QUERIES,
             ...CLIENT_QUERIES,
@@ -145,6 +146,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'clients' },
         (payload) => {
+          syncFullAgenda();
           invalidateMultiple([
             ...CLIENT_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -162,6 +164,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'services' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...SERVICE_QUERIES,
             ...APPOINTMENT_QUERIES,

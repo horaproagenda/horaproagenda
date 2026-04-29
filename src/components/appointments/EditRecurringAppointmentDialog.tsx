@@ -16,10 +16,11 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
+import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin } from 'lucide-react';
+import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
 
 interface EditRecurringAppointmentDialogProps {
   appointment: Appointment | null;
@@ -33,6 +34,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
   const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
+  const { activeLock, isLockedByOther, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
 
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -91,8 +93,20 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     }
   }, [appointment, rooms]);
 
+  useEffect(() => {
+    if (!open || !appointment) return;
+    void acquireLock();
+    return () => {
+      void releaseLock();
+    };
+  }, [acquireLock, appointment, open, releaseLock]);
+
   const handleSingleSubmit = async () => {
     if (!appointment) return;
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -107,8 +121,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           professional_id: professionalId === 'none' ? null : professionalId,
           room_id: roomId === 'none' ? null : roomId,
         },
+        expectedVersion: appointment.version,
       });
 
+      await releaseLock();
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating appointment:', error);

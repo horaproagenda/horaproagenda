@@ -23,15 +23,20 @@ export function DurationSelect({
 }: DurationSelectProps) {
   const [displayValue, setDisplayValue] = useState(formatDurationClock(value));
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    setDisplayValue(formatDurationClock(value));
-  }, [value]);
+    if (!isEditing) setDisplayValue(formatDurationClock(value));
+  }, [value, isEditing]);
 
   const normalizeInput = (nextValue: string) => {
-    const digits = nextValue.replace(/\D/g, '').slice(0, 4);
+    const cleaned = nextValue.replace(/[^\d:]/g, '').slice(0, 5);
+    const [hours = '', minutes = ''] = cleaned.split(':');
+    if (cleaned.includes(':')) return `${hours.slice(0, 2)}:${minutes.slice(0, 2)}`;
+
+    const digits = cleaned.replace(/\D/g, '').slice(0, 4);
     if (digits.length <= 2) return digits;
-    return `${digits.slice(0, -2).padStart(2, '0')}:${digits.slice(-2)}`;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
   };
 
   const validateAndCommit = (nextValue: string) => {
@@ -46,6 +51,7 @@ export function DurationSelect({
     onChange(parsed);
     setDisplayValue(formatDurationClock(parsed));
     setError('');
+    setIsEditing(false);
     return true;
   };
 
@@ -57,13 +63,15 @@ export function DurationSelect({
           inputMode="numeric"
           value={displayValue}
           placeholder={placeholder}
+          onFocus={() => setIsEditing(true)}
           onChange={(event) => {
             const nextValue = normalizeInput(event.target.value);
             setDisplayValue(nextValue);
             setError('');
-            if (/^\d{2}:\d{2}$/.test(nextValue)) validateAndCommit(nextValue);
           }}
-          onBlur={() => validateAndCommit(displayValue)}
+          onBlur={() => {
+            if (!validateAndCommit(displayValue)) setIsEditing(false);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();

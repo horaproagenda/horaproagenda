@@ -323,7 +323,7 @@ export function useRealtimeSync() {
         () => {
           invalidateMultiple([
             'payment_methods', 'appointments', 'single_sales',
-            'financial_entries', 'cash_transactions'
+            'financial_entries', 'cash_transactions', ...AGENDA_CORE_QUERIES
           ]);
         }
       )
@@ -385,6 +385,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'professionals' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             'professionals', ...APPOINTMENT_QUERIES,
             ...SERVICE_QUERIES, ...CLIENT_QUERIES
@@ -397,7 +398,8 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'professional_absences' },
         () => {
-          invalidateMultiple(['professional_absences', 'professionals', 'appointments']);
+          syncFullAgenda();
+          invalidateMultiple(['professional_absences', 'professional-absences', 'professionals', 'appointments']);
         }
       )
       

@@ -48,7 +48,7 @@ export const getPackageAvailabilitySummary = (pkg: PackageAvailabilityInput) => 
   } else if (totalSessions === 0) {
     unavailableReason = 'Sem sessões configuradas';
   } else if (schedulableSessions === 0 && consumedSessions >= totalSessions) {
-    unavailableReason = 'Todas as sessões foram consumidas';
+    unavailableReason = 'Pacote completamente usado';
   } else if (schedulableSessions === 0 && scheduledAppointments > 0) {
     unavailableReason = 'Todas as sessões disponíveis já têm agendamento';
   } else if (schedulableSessions === 0) {

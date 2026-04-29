@@ -16,10 +16,7 @@ export function useServicePackages() {
           professional:professionals (*),
           room:rooms (*),
           service:services (*),
-          appointments:package_appointments (
-            *,
-            service:services (*)
-          )
+          appointments:package_appointments (*)
         `)
         .order('created_at', { ascending: false });
       
@@ -56,8 +53,7 @@ export function usePackageAppointments(packageId: string | null) {
             *,
             client:clients (*),
             service:services (*)
-          ),
-          service:services (*)
+          )
         `)
         .eq('package_id', packageId)
         .order('session_number', { ascending: true });

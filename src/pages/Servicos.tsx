@@ -170,6 +170,9 @@ const Servicos: React.FC = () => {
     return result;
   }, [packages, packageFilters, searchTerm]);
 
+  const nonSequentialPackages = filteredPackages.filter(pkg => pkg.package_type !== 'sequential');
+  const sequentialPackages = filteredPackages.filter(pkg => pkg.package_type === 'sequential');
+
   const handleCategoryCreated = (category: string) => {
     const updatedCategories = [...customCategories, category];
     setCustomCategories(updatedCategories);

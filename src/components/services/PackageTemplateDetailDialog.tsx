@@ -233,7 +233,10 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                 <div className="rounded-lg bg-primary/10 p-2">
                   <Package className="h-6 w-6 text-primary" />
                 </div>
-                <DialogTitle className="text-xl">{pkg.name}</DialogTitle>
+                <div>
+                  <DialogTitle className="text-xl">{pkg.name}</DialogTitle>
+                  {pkg.category && <p className="text-xs text-muted-foreground mt-1">{pkg.category}</p>}
+                </div>
               </div>
               <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
                 {pkg.is_active ? 'Ativo' : 'Inativo'}

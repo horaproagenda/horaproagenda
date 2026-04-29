@@ -542,7 +542,17 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'waitlist' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['waitlist']);
+        }
+      )
+
+      // ============ RECURRING APPOINTMENTS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recurring_appointments' },
+        () => {
+          syncFullAgenda();
         }
       )
       

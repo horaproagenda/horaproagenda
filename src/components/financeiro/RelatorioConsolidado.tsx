@@ -173,7 +173,7 @@ export function RelatorioConsolidado() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Entradas</p>
                 <p className="text-2xl font-bold text-green-600">
-                  R$ {totalIncome.toFixed(2)}
+                  {formatCurrency(totalIncome)}
                 </p>
               </div>
               <ArrowUpCircle className="h-8 w-8 text-green-500" />
@@ -187,7 +187,7 @@ export function RelatorioConsolidado() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Saídas</p>
                 <p className="text-2xl font-bold text-red-600">
-                  R$ {totalExpense.toFixed(2)}
+                  {formatCurrency(totalExpense)}
                 </p>
               </div>
               <ArrowDownCircle className="h-8 w-8 text-red-500" />
@@ -209,7 +209,7 @@ export function RelatorioConsolidado() {
                   "text-2xl font-bold",
                   balance >= 0 ? "text-blue-600" : "text-orange-600"
                 )}>
-                  R$ {balance.toFixed(2)}
+                  {formatCurrency(balance)}
                 </p>
               </div>
               <TrendingUp className={cn(
@@ -229,7 +229,7 @@ export function RelatorioConsolidado() {
                   {openCashRegisters.length}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  R$ {totalCashBalance.toFixed(2)}
+                  {formatCurrency(totalCashBalance)}
                 </p>
               </div>
               <Wallet className="h-8 w-8 text-purple-500" />
@@ -418,7 +418,7 @@ export function RelatorioConsolidado() {
                         "text-right font-medium",
                         entry.type === 'income' ? 'text-green-600' : entry.type === 'non_cash' ? 'text-blue-600' : 'text-red-600'
                       )}>
-                        {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} R$ {entry.amount.toFixed(2)}
+                        {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} {formatCurrency(entry.amount)}
                       </TableCell>
                     </TableRow>
                   ))

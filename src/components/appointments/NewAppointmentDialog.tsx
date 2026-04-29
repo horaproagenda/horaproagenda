@@ -529,14 +529,11 @@ export function NewAppointmentDialog({
       let suggestedDate: Date | null = null;
       if (dateConflicts.length > 0) {
         // Try to find an available slot on the same day first
-        const [hours, minutes] = format(previewDate, 'HH:mm').split(':').map(Number);
         const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
         
         // Try next slots on the same day
         for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const [slotHours, slotMinutes] = timeSlots[i].split(':').map(Number);
-          const testDate = new Date(previewDate);
-          testDate.setHours(slotHours, slotMinutes, 0, 0);
+          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
           const testEnd = new Date(testDate);
           testEnd.setMinutes(testEnd.getMinutes() + duration);
           
@@ -566,7 +563,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots]);
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots, settings?.timezone]);
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
@@ -591,9 +588,7 @@ export function NewAppointmentDialog({
         
         // Try next slots on the same day
         for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const [slotHours, slotMinutes] = timeSlots[i].split(':').map(Number);
-          const testDate = new Date(previewDate);
-          testDate.setHours(slotHours, slotMinutes, 0, 0);
+          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
           const testEnd = new Date(testDate);
           testEnd.setMinutes(testEnd.getMinutes() + duration);
           
@@ -623,7 +618,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay]);
+  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone]);
 
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
@@ -716,7 +711,7 @@ export function NewAppointmentDialog({
 
       return { slot, isAvailable, conflictReason };
     });
-  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots]);
+  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots, settings?.timezone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

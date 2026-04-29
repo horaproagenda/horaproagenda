@@ -21,7 +21,8 @@ import {
   Eye, 
   Trash2,
   Link2,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
@@ -246,7 +247,14 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{documents.length} documento(s)</span>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-2">
+          {documents.some((doc) => doc.file_path || doc.file_url) && (
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadAllFiles} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+              Baixar todos
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-7 text-xs">
               <Plus className="h-3.5 w-3.5 mr-1" />
@@ -370,7 +378,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
               </TabsContent>
             </Tabs>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Documents List */}

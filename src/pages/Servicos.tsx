@@ -47,6 +47,7 @@ interface ServicesFilters {
 }
 
 interface PackagesFilters {
+  category: string | null;
   professional: string | null;
   room: string | null;
   sessions: string | null;
@@ -66,7 +67,7 @@ const Servicos: React.FC = () => {
     category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc'
   });
   const [packageFilters, setPackageFilters] = useLocalStorage<PackagesFilters>('servicos-package-filters', {
-    professional: null, room: null, sessions: null, status: null, sort: 'name-asc'
+    category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc'
   });
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
@@ -90,6 +91,7 @@ const Servicos: React.FC = () => {
   ])].sort();
 
   const categoriesWithServices = [...new Set(services.map(s => s.category))];
+  const categoriesWithPackages = [...new Set(packages.map(p => p.category).filter(Boolean))] as string[];
 
   const serviceClients = useMemo(() => {
     const clientIds = [...new Set(appointments.map(a => a.client_id))];
@@ -134,6 +136,7 @@ const Servicos: React.FC = () => {
 
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
+      if (packageFilters.category && pkg.category !== packageFilters.category) return false;
       if (packageFilters.professional && pkg.professional_id !== packageFilters.professional) return false;
       if (packageFilters.room && pkg.room_id !== packageFilters.room) return false;
       if (packageFilters.status === 'active' && !pkg.is_active) return false;
@@ -167,6 +170,9 @@ const Servicos: React.FC = () => {
     return result;
   }, [packages, packageFilters, searchTerm]);
 
+  const nonSequentialPackages = filteredPackages.filter(pkg => pkg.package_type !== 'sequential');
+  const sequentialPackages = filteredPackages.filter(pkg => pkg.package_type === 'sequential');
+
   const handleCategoryCreated = (category: string) => {
     const updatedCategories = [...customCategories, category];
     setCustomCategories(updatedCategories);
@@ -178,7 +184,7 @@ const Servicos: React.FC = () => {
   };
 
   const clearPackageFilters = () => {
-    setPackageFilters({ professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
+    setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
   const exportServicesCSV = () => {
@@ -195,13 +201,62 @@ const Servicos: React.FC = () => {
   const exportPackagesCSV = () => {
     exportToCSV({
       filename: 'pacotes',
-      headers: ['Nome', 'Preço', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Preço', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Tipo', 'Status'],
       rows: filteredPackages.map(p => [
-        p.name, Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.package_type === 'sequential' ? 'Sequencial' : 'Não sequencial', p.is_active ? 'Ativo' : 'Inativo'
       ]),
       successMessage: 'Pacotes exportados com sucesso!',
     });
   };
+
+  const renderPackageCards = (items: PackageTemplate[]) => (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map((pkg, index) => (
+        <Card
+          key={pkg.id}
+          style={{ animationDelay: `${index * 30}ms` }}
+          className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
+          onClick={() => setSelectedPackage(pkg)}
+        >
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
+                <Package className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
+                {pkg.category && <p className="text-[10px] text-muted-foreground truncate">{pkg.category}</p>}
+              </div>
+            </div>
+            <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
+              {pkg.is_active ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Layers className="h-3 w-3" />
+              <span>{pkg.total_sessions} aplicações</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>{pkg.duration || 60}min</span>
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t flex items-center justify-between">
+            <div className="flex items-center gap-1 text-sm font-semibold">
+              <DollarSign className="h-3.5 w-3.5 text-success" />
+              <span>R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/aplicação
+            </span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <AppLayout title="Serviços" subtitle="Catálogo de procedimentos e pacotes">
@@ -357,11 +412,11 @@ const Servicos: React.FC = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <UnifiedServiceFilters
                   type="packages"
-                  categories={[]}
+                  categories={categoriesWithPackages}
                   professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
                   rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
                   clients={[]}
-                  selectedCategory={null}
+                  selectedCategory={packageFilters.category}
                   selectedProfessional={packageFilters.professional}
                   selectedRoom={packageFilters.room}
                   selectedClient={null}
@@ -369,7 +424,7 @@ const Servicos: React.FC = () => {
                   selectedSessions={packageFilters.sessions}
                   searchTerm=""
                   sortBy={packageFilters.sort}
-                  onCategoryChange={() => {}}
+                  onCategoryChange={(v) => setPackageFilters(prev => ({ ...prev, category: v }))}
                   onProfessionalChange={(v) => setPackageFilters(prev => ({ ...prev, professional: v }))}
                   onRoomChange={(v) => setPackageFilters(prev => ({ ...prev, room: v }))}
                   onClientChange={() => {}}
@@ -431,50 +486,19 @@ const Servicos: React.FC = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredPackages.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredPackages.map((pkg, index) => (
-                  <Card
-                    key={pkg.id}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
-                    onClick={() => setSelectedPackage(pkg)}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
-                          <Package className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
-                        </div>
-                      </div>
-                      <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
-                        {pkg.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Layers className="h-3 w-3" />
-                        <span>{pkg.total_sessions} sessões</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{pkg.duration || 60}min</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-sm font-semibold">
-                        <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                        <span>R$ {Number(pkg.price).toFixed(0)}</span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        R$ {(Number(pkg.price) / pkg.total_sessions).toFixed(0)}/sessão
-                      </span>
-                    </div>
-                  </Card>
-                ))}
+              <div className="space-y-5">
+                {nonSequentialPackages.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-sm font-semibold">Pacotes não sequenciais</h3>
+                    {renderPackageCards(nonSequentialPackages)}
+                  </section>
+                )}
+                {sequentialPackages.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-sm font-semibold">Pacotes sequenciais</h3>
+                    {renderPackageCards(sequentialPackages)}
+                  </section>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">

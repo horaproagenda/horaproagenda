@@ -69,17 +69,21 @@ export function DurationSelect({
   placeholder = 'Selecione a duração',
 }: DurationSelectProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
-  const [customValue, setCustomValue] = useState('');
+  const [customHours, setCustomHours] = useState('');
+  const [customMinutes, setCustomMinutes] = useState('');
 
   const isStandardDuration = DURATION_OPTIONS.some(opt => opt.value === value);
   const displayValue = value ? formatDuration(value) : placeholder;
 
   const handleCustomSubmit = () => {
-    const numValue = parseInt(customValue, 10);
+    const hours = parseInt(customHours || '0', 10);
+    const minutes = parseInt(customMinutes || '0', 10);
+    const numValue = (isNaN(hours) ? 0 : hours * 60) + (isNaN(minutes) ? 0 : minutes);
     if (!isNaN(numValue) && numValue >= minDuration && numValue <= maxDuration) {
       onChange(numValue);
       setIsCustomOpen(false);
-      setCustomValue('');
+      setCustomHours('');
+      setCustomMinutes('');
     }
   };
 
@@ -123,15 +127,30 @@ export function DurationSelect({
         <PopoverContent className="w-56 p-3" align="start" side="bottom">
           <div className="space-y-2">
             <p className="text-xs font-medium">Duração personalizada</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
               <Input
                 type="number"
-                min={minDuration}
-                max={maxDuration}
-                value={customValue}
-                onChange={(e) => setCustomValue(e.target.value)}
-                placeholder="Minutos"
-                className="flex-1 h-8 text-sm"
+                min={0}
+                max={Math.floor(maxDuration / 60)}
+                value={customHours}
+                onChange={(e) => setCustomHours(e.target.value)}
+                placeholder="Horas"
+                className="h-8 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCustomSubmit();
+                  }
+                }}
+              />
+              <Input
+                type="number"
+                min={0}
+                max={59}
+                value={customMinutes}
+                onChange={(e) => setCustomMinutes(e.target.value)}
+                placeholder="Min"
+                className="h-8 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();

@@ -87,6 +87,7 @@ export interface PackageTemplate {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   total_sessions: number;
   price: number;
   duration: number;

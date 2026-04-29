@@ -33,7 +33,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
-import { supabase } from '@/integrations/supabase/client';
+import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentViewDialogProps {
   open: boolean;
@@ -83,35 +83,32 @@ export function ClientDocumentViewDialog({
     let cancelled = false;
     let objectUrl: string | null = null;
 
-    const loadSignedFileUrl = async () => {
+    const loadFileBlob = async () => {
       setFileObjectUrl(null);
+      setFilePreviewUrl(null);
       setFileMimeType(null);
-      if (!open || !document?.file_path) {
+      if (!open || (!document?.file_path && !document?.file_url)) {
         setFilePreviewUrl(document?.file_url || null);
         return;
       }
 
       setIsLoadingFile(true);
       try {
-        const { data, error } = await supabase.storage
-          .from('client-documents')
-          .createSignedUrl(document.file_path, 900);
-
-        if (error) throw error;
-        if (!cancelled) setFilePreviewUrl(data.signedUrl);
-
-        const response = await fetch(data.signedUrl);
-        if (!response.ok) throw new Error(`Falha ao carregar arquivo (${response.status})`);
-        const blob = await response.blob();
+        const blob = await getStorageBlob({
+          bucket: 'client-documents',
+          filePath: document.file_path,
+          fileUrl: document.file_url,
+        });
         objectUrl = URL.createObjectURL(blob);
 
         if (!cancelled) {
           setFileObjectUrl(objectUrl);
+          setFilePreviewUrl(objectUrl);
           setFileMimeType(blob.type || null);
         }
       } catch (error) {
         console.error('Error loading document file:', error);
-        if (!cancelled && !filePreviewUrl) {
+        if (!cancelled) {
           setFilePreviewUrl(null);
           toast.error('Sem permissão para visualizar este documento.');
         }
@@ -120,7 +117,7 @@ export function ClientDocumentViewDialog({
       }
     };
 
-    loadSignedFileUrl();
+    loadFileBlob();
 
     return () => {
       cancelled = true;
@@ -190,31 +187,12 @@ export function ClientDocumentViewDialog({
 
   const handleDownloadFile = async () => {
     try {
-      let downloadUrl = filePreviewUrl;
-      if (document.file_path) {
-        const { data, error } = await supabase.storage
-          .from('client-documents')
-          .createSignedUrl(document.file_path, 300);
-
-        if (error) throw error;
-        downloadUrl = data.signedUrl;
-      }
-
-      if (!downloadUrl && document.file_url) downloadUrl = document.file_url;
-      if (!downloadUrl) return;
-
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error(`Falha ao baixar arquivo (${response.status})`);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = window.document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${document.title || 'documento'}${fileName.endsWith('.pdf') ? '.pdf' : ''}`;
-      link.rel = 'noopener noreferrer';
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
+      const blob = await getStorageBlob({
+        bucket: 'client-documents',
+        filePath: document.file_path,
+        fileUrl: document.file_url,
+      });
+      downloadBlob(blob, getFileNameWithExtension(document.title || 'documento', document.file_path || document.file_url));
     } catch (error) {
       console.error('Error downloading document file:', error);
       toast.error('Sem permissão para baixar este documento.');

@@ -1076,7 +1076,7 @@ Até breve! ✨`;
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                            {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -1114,7 +1114,7 @@ Até breve! ✨`;
                               </Badge>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {paidService.service?.duration}min • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
+                              {formatDurationClock(paidService.service?.duration || 0)} • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
                             </div>
                           </div>
                         ))}
@@ -1213,7 +1213,7 @@ Até breve! ✨`;
                           <Badge variant="outline" className="text-xs">Serviço</Badge>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {service.duration}min • R$ {Number(service.price).toFixed(2)}
+                          {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                         </div>
                       </div>
                     ))}
@@ -1261,7 +1261,7 @@ Até breve! ✨`;
               {selectedServiceData && serviceType === 'service' && (
                 <div className="mt-2 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {selectedServiceData.duration} minutos • 
+                    Duração: {formatDurationClock(selectedServiceData.duration)} • 
                     Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
                     {selectedServiceData.return_days && ` • Retorno: ${selectedServiceData.return_days} dias`}
                   </p>
@@ -1458,7 +1458,7 @@ Até breve! ✨`;
               {selectedPackageData && serviceType === 'package' && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {selectedPackageData.duration || 60} minutos • 
+                    Duração: {formatDurationClock(selectedPackageData.duration || 60)} • 
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>

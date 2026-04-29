@@ -2,6 +2,92 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+// Lista COMPLETA de todas as query keys do sistema
+const ALL_QUERY_KEYS = [
+  // Agenda & Appointments
+  'appointments',
+  'client-appointments',
+  'package_appointments',
+  'recurring_appointments',
+  'professional_absences',
+  'professional-absences',
+  
+  // Clients
+  'clients',
+  'client',
+  'client_services',
+  'client_packages',
+  'clients_credits',
+  'client_credits',
+  
+  // Services & Packages
+  'services',
+  'service_packages',
+  'package_templates',
+  'service_products',
+  'package_template_products',
+  
+  // Financial
+  'financial_entries',
+  'financial_categories',
+  'payment_methods',
+  'banks',
+  'card_brands',
+  'card_brand_fees',
+  
+  // Cash Register
+  'cash_registers',
+  'cash_transactions',
+  
+  // Sales
+  'sales',
+  'single_sales',
+  'client-sales',
+  
+  // Products
+  'products',
+  'product_purchases',
+  'suppliers',
+  'appointment_product_consumption',
+  
+  // Professionals & Staff
+  'professionals',
+  'rooms',
+  'equipment',
+  'user_roles',
+  
+  // Documents & Photos
+  'quotes',
+  'client_documents',
+  'treatment_photos',
+  'document_templates',
+  
+  // Settings & Config
+  'business_settings',
+  'business-settings',
+  'whatsapp_templates',
+  'whatsapp_connection',
+  
+  // Dashboard & Stats
+  'dashboard-stats',
+  'dashboard_stats',
+  'monthly-sales',
+  'new-clients',
+  'services-distribution',
+  'total-clients',
+  'daily-cashflow',
+  
+  // Goals & Reminders
+  'goals',
+  'reminders',
+  
+  // Waitlist
+  'waitlist',
+  
+  // Audit
+  'audit_logs',
+];
+
 /**
  * Hook para atualização global de TODOS os dados do sistema
  * 
@@ -11,92 +97,6 @@ import { toast } from 'sonner';
 export function useGlobalRefresh() {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Lista COMPLETA de todas as query keys do sistema
-  const ALL_QUERY_KEYS = [
-    // Agenda & Appointments
-    'appointments',
-    'client-appointments',
-    'package_appointments',
-    'recurring_appointments',
-    'professional_absences',
-    'professional-absences',
-    
-    // Clients
-    'clients',
-    'client',
-    'client_services',
-    'client_packages',
-    'clients_credits',
-    'client_credits',
-    
-    // Services & Packages
-    'services',
-    'service_packages',
-    'package_templates',
-    'service_products',
-    'package_template_products',
-    
-    // Financial
-    'financial_entries',
-    'financial_categories',
-    'payment_methods',
-    'banks',
-    'card_brands',
-    'card_brand_fees',
-    
-    // Cash Register
-    'cash_registers',
-    'cash_transactions',
-    
-    // Sales
-    'sales',
-    'single_sales',
-    'client-sales',
-    
-    // Products
-    'products',
-    'product_purchases',
-    'suppliers',
-    'appointment_product_consumption',
-    
-    // Professionals & Staff
-    'professionals',
-    'rooms',
-    'equipment',
-    'user_roles',
-    
-    // Documents & Photos
-    'quotes',
-    'client_documents',
-    'treatment_photos',
-    'document_templates',
-    
-    // Settings & Config
-    'business_settings',
-    'business-settings',
-    'whatsapp_templates',
-    'whatsapp_connection',
-    
-    // Dashboard & Stats
-    'dashboard-stats',
-    'dashboard_stats',
-    'monthly-sales',
-    'new-clients',
-    'services-distribution',
-    'total-clients',
-    'daily-cashflow',
-    
-    // Goals & Reminders
-    'goals',
-    'reminders',
-    
-    // Waitlist
-    'waitlist',
-    
-    // Audit
-    'audit_logs',
-  ];
 
   const refreshAll = useCallback(async () => {
     if (isRefreshing) return;

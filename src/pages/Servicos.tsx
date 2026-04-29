@@ -415,6 +415,37 @@ const Servicos: React.FC = () => {
 
           {/* Packages Tab */}
           <TabsContent value="packages" className="mt-3 space-y-3 page-enter">
+            <div className="flex justify-center">
+              <div className="inline-flex w-full max-w-md items-center justify-center rounded-lg border bg-muted/30 p-1 shadow-sm sm:w-auto">
+                <Button
+                  type="button"
+                  variant={packageTypeFilter === 'standard' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setPackageTypeFilter(packageTypeFilter === 'standard' ? 'all' : 'standard')}
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  Pacote comum
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {standardPackagesCount}
+                  </Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant={packageTypeFilter === 'sequential' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setPackageTypeFilter(packageTypeFilter === 'sequential' ? 'all' : 'sequential')}
+                >
+                  <Repeat className="h-3.5 w-3.5" />
+                  Sequencial
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {sequentialPackagesCount}
+                  </Badge>
+                </Button>
+              </div>
+            </div>
+
             {/* Line 3: Filters + New Package + Import/Export */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -493,7 +524,7 @@ const Servicos: React.FC = () => {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : filteredPackages.length > 0 ? (
+            ) : visiblePackages.length > 0 ? (
               <div className="space-y-5">
                 {nonSequentialPackages.length > 0 && (
                   <section className="space-y-2">

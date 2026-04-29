@@ -231,17 +231,15 @@ export function AppointmentDetailDialog({
   // Initialize edit form when appointment changes or edit mode is activated
   useEffect(() => {
     if (appointment && isEditing) {
-      const startDate = new Date(appointment.start_time);
-      const endDate = new Date(appointment.end_time);
-      setEditDate(format(startDate, 'yyyy-MM-dd'));
-      setEditStartTime(format(startDate, 'HH:mm'));
-      setEditEndTime(format(endDate, 'HH:mm'));
+      setEditDate(formatDateInTimeZone(appointment.start_time, settings?.timezone));
+      setEditStartTime(formatTimeInTimeZone(appointment.start_time, settings?.timezone));
+      setEditEndTime(formatTimeInTimeZone(appointment.end_time, settings?.timezone));
       setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
       setEditNotes(appointment.notes || '');
     }
-  }, [appointment, isEditing]);
+  }, [appointment, isEditing, settings?.timezone]);
 
   // Reset edit mode when dialog closes
   useEffect(() => {
@@ -414,9 +412,9 @@ export function AppointmentDetailDialog({
   const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
     if (!editDate || !startValue || serviceDuration <= 0) return;
 
-    const newStartTime = new Date(`${editDate}T${startValue}:00`);
+    const newStartTime = createDateTimeInTimeZone(new Date(`${editDate}T12:00:00`), startValue, settings?.timezone);
     const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
-    setEditEndTime(format(newEndTime, 'HH:mm'));
+    setEditEndTime(formatTimeInTimeZone(newEndTime, settings?.timezone));
   };
 
   const handleEditStartTimeChange = (value: string) => {
@@ -450,8 +448,9 @@ export function AppointmentDetailDialog({
       return;
     }
 
-    const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
-    const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
+    const editBaseDate = new Date(`${editDate}T12:00:00`);
+    const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
+    const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
     
     updateAppointment.mutate({
       id: appointment.id,

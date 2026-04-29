@@ -262,7 +262,9 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
 
     if (pdf.getPageCount() === 0) throw new Error('Nenhum documento disponivel');
-    return { blob: new Blob([await pdf.save()], { type: 'application/pdf' }), skippedFiles };
+    const pdfBytes = await pdf.save();
+    const pdfArrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer;
+    return { blob: new Blob([pdfArrayBuffer], { type: 'application/pdf' }), skippedFiles };
   };
 
   const handleDownloadFile = async (doc: ClientDocument) => {
@@ -319,7 +321,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{documents.length} documento(s)</span>
         <div className="flex items-center gap-2">
-          {documents.some((doc) => doc.file_path || doc.file_url) && (
+          {documents.some((doc) => doc.file_path || doc.file_url || doc.content || doc.signed_at) && (
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadAllFiles} disabled={downloadingAll}>
               {downloadingAll ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
               Baixar todos
@@ -523,7 +525,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        {(doc.file_path || doc.file_url) && (
+                        {(doc.file_path || doc.file_url || doc.content || doc.signed_at) && (
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleDownloadFile(doc)} title="Baixar documento">
                             <Download className="h-3.5 w-3.5" />
                           </Button>

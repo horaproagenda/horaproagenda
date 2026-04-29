@@ -371,6 +371,7 @@ export function AppointmentDetailDialog({
         end_time: newEndTime.toISOString(),
         status: 'scheduled',
       },
+      expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
         setShowDeleteDialog(false);

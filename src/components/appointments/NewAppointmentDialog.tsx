@@ -99,6 +99,7 @@ export function NewAppointmentDialog({
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
   const [serviceSearch, setServiceSearch] = useState('');
+  const [packageQuickFilter, setPackageQuickFilter] = useState<'all' | 'standard' | 'sequential'>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showServiceSuggestions, setShowServiceSuggestions] = useState(false);
@@ -191,6 +192,12 @@ export function NewAppointmentDialog({
   const activeRooms = rooms.filter(r => r.is_active);
   const activeEquipment = equipment.filter(e => e.is_active);
   const activePackages = catalogPackages;
+  const serviceSearchNormalized = serviceSearch.toLowerCase();
+  const matchesServiceSearch = (name?: string | null) => !serviceSearchNormalized || (name || '').toLowerCase().includes(serviceSearchNormalized);
+  const matchesPackageQuickFilter = (pkg: { package_type?: string | null }) =>
+    packageQuickFilter === 'all' || (packageQuickFilter === 'sequential' ? pkg.package_type === 'sequential' : pkg.package_type !== 'sequential');
+  const visibleClientPackages = availablePackages.filter(pkg => matchesServiceSearch(pkg.name) && matchesPackageQuickFilter(pkg));
+  const visibleCatalogPackages = activePackages.filter(pkg => matchesServiceSearch(pkg.name) && matchesPackageQuickFilter(pkg));
 
   // Check if selected package is already a client package (paid)
   const isClientPackageSelected = clientPackages.some(p => p.id === selectedService);
@@ -1053,6 +1060,7 @@ Até breve! ✨`;
                 onChange={(e) => {
                   setServiceSearch(e.target.value);
                   setShowServiceSuggestions(true);
+                  setPackageQuickFilter('all');
                   if (!e.target.value) {
                     setSelectedService('');
                     setServiceType('service');
@@ -1060,6 +1068,30 @@ Até breve! ✨`;
                 }}
                 onFocus={() => setShowServiceSuggestions(true)}
               />
+              {showServiceSuggestions && (selectedClient || activePackages.length > 0) && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {[
+                    { value: 'all', label: 'Todos' },
+                    { value: 'standard', label: 'Pacotes' },
+                    { value: 'sequential', label: 'Sequenciais' },
+                  ].map(option => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      size="sm"
+                      variant={packageQuickFilter === option.value ? 'default' : 'outline'}
+                      className="h-7 shrink-0 px-2.5 text-xs"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setPackageQuickFilter(option.value as 'all' | 'standard' | 'sequential');
+                        setShowServiceSuggestions(true);
+                      }}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
                   {/* Client's frequent services - shown as quick suggestions */}
@@ -1134,19 +1166,18 @@ Até breve! ✨`;
                   )}
 
                   {/* Client's packages (paid and pending) */}
-                  {selectedClient && availablePackages.length > 0 && (
+                  {selectedClient && visibleClientPackages.length > 0 && (
                     <div className="border-b-2 border-primary/20">
                       <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Package className="h-3 w-3" />
                         Pacotes do Cliente
                       </div>
-                      {availablePackages
-                        .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                      {visibleClientPackages
                         .map((pkg, index) => {
                           const summary = getPackageAvailabilitySummary(pkg);
                           const remaining = summary.schedulableSessions;
                           // Check if there are other packages with same name to show identifier
-                          const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
+                          const sameNameCount = visibleClientPackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
                           // Check if package is paid (has payment_methods set from caixa sale)
                           const isPaid = pkg.payment_methods && pkg.payment_methods.length > 0;
@@ -1219,8 +1250,7 @@ Até breve! ✨`;
                       </div>
                     ))}
                   {/* Packages (templates) */}
-                  {activePackages
-                    .filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                  {visibleCatalogPackages
                     .slice(0, 5)
                     .map(pkg => (
                       <div
@@ -1246,8 +1276,8 @@ Até breve! ✨`;
                       </div>
                     ))}
                   {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   activePackages.filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   (!selectedClient || clientPackages.filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0) && (
+                   visibleCatalogPackages.length === 0 &&
+                   (!selectedClient || visibleClientPackages.length === 0) && (
                     <div className="p-2 text-muted-foreground text-sm">Nenhum serviço ou pacote encontrado</div>
                    )}
                 </div>

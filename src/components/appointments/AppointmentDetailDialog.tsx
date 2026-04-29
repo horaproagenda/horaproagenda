@@ -666,13 +666,13 @@ export function AppointmentDetailDialog({
   const submitPayment = () => {
     const clientCreditPaymentMethod = payments.find(p => {
       const methodName = activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method;
-      return isClientCreditMethod(methodName) && (parseFloat(p.amount) || 0) > 0;
+      return isClientCreditMethod(methodName) && parseBrazilianCurrency(p.amount) > 0;
     });
     const validPayments = payments
-      .filter(p => p.amount && parseFloat(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
+      .filter(p => p.amount && parseBrazilianCurrency(p.amount) > 0 && !isClientCreditMethod(activePaymentMethods.find(m => m.id === p.methodId)?.name || p.method))
       .map(p => ({ 
         method: p.methodId || p.method, 
-        amount: parseFloat(p.amount),
+        amount: normalizeBrazilianCurrency(p.amount),
         cardBrandId: p.cardBrandId,
         installments: p.installments
       }));

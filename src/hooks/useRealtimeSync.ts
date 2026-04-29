@@ -40,6 +40,15 @@ export function useRealtimeSync() {
       });
     };
 
+    const refetchMultiple = (keys: string[]) => {
+      keys.forEach(key => {
+        queryClient.refetchQueries({
+          queryKey: [key],
+          type: 'active',
+        });
+      });
+    };
+
     // Conjuntos de queries por contexto
     const FINANCIAL_QUERIES = [
       'financial_entries', 'financial_categories', 'payment_methods',
@@ -63,6 +72,19 @@ export function useRealtimeSync() {
       'services', 'service_packages', 'package_templates',
       'package_template_steps', 'service_products', 'package_template_products'
     ];
+
+    const PACKAGE_SYNC_QUERIES = [
+      ...APPOINTMENT_QUERIES,
+      ...SERVICE_QUERIES,
+      ...CLIENT_QUERIES,
+      'appointments',
+      'agenda-packages-sync',
+    ];
+
+    const syncPackagesWithAgenda = () => {
+      invalidateMultiple(PACKAGE_SYNC_QUERIES);
+      refetchMultiple(PACKAGE_SYNC_QUERIES);
+    };
     
     const PRODUCT_QUERIES = [
       'products', 'product_purchases', 'suppliers',
@@ -136,15 +158,15 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_packages' },
         (payload) => {
-          invalidateMultiple([
-            ...SERVICE_QUERIES,
-            ...APPOINTMENT_QUERIES,
-            ...CLIENT_QUERIES,
-            ...FINANCIAL_QUERIES
-          ]);
+          syncPackagesWithAgenda();
+          invalidateMultiple(FINANCIAL_QUERIES);
           
           if (payload.eventType === 'INSERT') {
             toast.success('Novo pacote criado!', { duration: 3000 });
+          } else if (payload.eventType === 'UPDATE') {
+            toast.info('Pacote atualizado na agenda', { duration: 2000 });
+          } else if (payload.eventType === 'DELETE') {
+            toast.info('Pacote removido da agenda', { duration: 2000 });
           }
         }
       )
@@ -154,11 +176,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_appointments' },
         () => {
-          invalidateMultiple([
-            ...APPOINTMENT_QUERIES,
-            ...SERVICE_QUERIES,
-            ...CLIENT_QUERIES
-          ]);
+          syncPackagesWithAgenda();
         }
       )
 

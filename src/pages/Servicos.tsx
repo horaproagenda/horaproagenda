@@ -198,9 +198,9 @@ const Servicos: React.FC = () => {
   const exportPackagesCSV = () => {
     exportToCSV({
       filename: 'pacotes',
-      headers: ['Nome', 'Preço', 'Sessões', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Preço', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Tipo', 'Status'],
       rows: filteredPackages.map(p => [
-        p.name, Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.package_type === 'sequential' ? 'Sequencial' : 'Não sequencial', p.is_active ? 'Ativo' : 'Inativo'
       ]),
       successMessage: 'Pacotes exportados com sucesso!',
     });
@@ -360,11 +360,11 @@ const Servicos: React.FC = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <UnifiedServiceFilters
                   type="packages"
-                  categories={[]}
+                  categories={categoriesWithPackages}
                   professionals={professionals.map(p => ({ id: p.id, name: p.name }))}
                   rooms={rooms.map(r => ({ id: r.id, name: r.name }))}
                   clients={[]}
-                  selectedCategory={null}
+                  selectedCategory={packageFilters.category}
                   selectedProfessional={packageFilters.professional}
                   selectedRoom={packageFilters.room}
                   selectedClient={null}
@@ -372,7 +372,7 @@ const Servicos: React.FC = () => {
                   selectedSessions={packageFilters.sessions}
                   searchTerm=""
                   sortBy={packageFilters.sort}
-                  onCategoryChange={() => {}}
+                  onCategoryChange={(v) => setPackageFilters(prev => ({ ...prev, category: v }))}
                   onProfessionalChange={(v) => setPackageFilters(prev => ({ ...prev, professional: v }))}
                   onRoomChange={(v) => setPackageFilters(prev => ({ ...prev, room: v }))}
                   onClientChange={() => {}}

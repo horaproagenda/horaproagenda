@@ -753,12 +753,18 @@ export function AppointmentDetailDialog({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {isLockedByOther && (
+                  <Badge variant="outline" className="h-7 gap-1 text-xs">
+                    <Lock className="h-3 w-3" />
+                    {activeLock?.holder_name || activeLock?.user_email || 'Em edição'}
+                  </Badge>
+                )}
                 {canEdit && !isEditing && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleStartEdit} disabled={isLockedByOther || isAcquiring}>
                     <Edit className="h-4 w-4" />
                   </Button>
                 )}
-                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)}>
+                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)} disabled={isLockedByOther}>
                   <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
                     <SelectValue />
                   </SelectTrigger>

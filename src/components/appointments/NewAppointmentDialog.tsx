@@ -674,9 +674,7 @@ export function NewAppointmentDialog({
     return timeSlots.map(slot => {
       if (!date) return { slot, isAvailable: true, conflictReason: '' };
 
-      const [hours, minutes] = slot.split(':').map(Number);
-      const slotStart = new Date(date);
-      slotStart.setHours(hours, minutes, 0, 0);
+      const slotStart = createDateTimeInTimeZone(date, slot, settings?.timezone);
       const slotEnd = new Date(slotStart);
       slotEnd.setMinutes(slotEnd.getMinutes() + duration);
 

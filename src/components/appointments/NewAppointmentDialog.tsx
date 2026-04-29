@@ -58,6 +58,7 @@ import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
+import { createDateTimeInTimeZone } from '@/lib/timezone';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -310,15 +311,13 @@ export function NewAppointmentDialog({
       ? (selectedServiceData?.duration || 60) 
       : (selectedPackageData?.duration || 60);
     
-    const [hours, minutes] = time.split(':').map(Number);
-    const startTime = new Date(date);
-    startTime.setHours(hours, minutes, 0, 0);
+    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + duration);
 
     return { startTime, endTime };
-  }, [date, time, selectedServiceData, selectedPackageData, serviceType]);
+  }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
 
   // Calculate preview dates for auto-scheduling
   const packageSequenceSteps = useMemo(() => {
@@ -757,9 +756,7 @@ export function NewAppointmentDialog({
     }
 
     const duration = serviceOrPackage.duration || 60;
-    const [hours, minutes] = time.split(':').map(Number);
-    const startTime = new Date(date);
-    startTime.setHours(hours, minutes, 0, 0);
+    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + duration);

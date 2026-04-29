@@ -57,7 +57,25 @@ export async function getSignedPhotoUrls(
   
   if (photosWithPath.length === 0) return urlMap;
 
-  // Get signed URLs in batch
+  try {
+    const paths = photosWithPath.map((photo) => photo.file_path!);
+    const { data, error } = await supabase.storage
+      .from('client-photos')
+      .createSignedUrls(paths, 1800);
+
+    if (!error && data) {
+      data.forEach((item, index) => {
+        const path = paths[index];
+        const fallbackUrl = photosWithPath[index].file_url;
+        if (item.signedUrl) urlMap.set(path, item.signedUrl);
+        else if (fallbackUrl) urlMap.set(path, fallbackUrl);
+      });
+      return urlMap;
+    }
+  } catch (error) {
+    console.error('Error getting signed URLs in batch:', error);
+  }
+
   const promises = photosWithPath.map(async (photo) => {
     try {
       const { data, error } = await supabase.storage

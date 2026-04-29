@@ -1208,12 +1208,29 @@ Até breve! ✨`;
                                     <span className="text-xs text-muted-foreground">({packageDate})</span>
                                   )}
                                 </div>
-                                {isPaid ? (
-                                  <Badge className="text-xs bg-green-500 text-white">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    PAGO
+                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <Package className="h-3 w-3" />
+                                    Pacote
                                   </Badge>
-                                ) : (
+                                  {pkg.package_type === 'sequential' && (
+                                    <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
+                                      <Repeat className="h-3 w-3" />
+                                      Sequencial
+                                    </Badge>
+                                  )}
+                                  {isPaid ? (
+                                    <Badge className="text-xs bg-green-500 text-white">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      PAGO
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                      PENDENTE
+                                    </Badge>
+                                  )}
+                                </div>
+                                {false && (
                                   <div className="flex items-center gap-1.5">
                                     <Badge variant="outline" className="text-xs gap-1">
                                       <Package className="h-3 w-3" />

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Image, Upload, Filter, Trash2 } from 'lucide-react';
+import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +59,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
   
@@ -114,6 +115,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+      setSelectedPhotoIndex(null);
       toast.success('Foto excluída com sucesso!');
     } catch (error) {
       console.error('Error deleting photo:', error);
@@ -145,6 +147,44 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       return acc;
     }, {} as Record<TreatmentStage, TreatmentPhoto[]>);
   }, [filteredPhotos]);
+
+  const selectedPhoto = selectedPhotoIndex !== null ? filteredPhotos[selectedPhotoIndex] : null;
+
+  const goToPhoto = (direction: 'previous' | 'next') => {
+    if (selectedPhotoIndex === null || filteredPhotos.length === 0) return;
+    setSelectedPhotoIndex(
+      direction === 'previous'
+        ? (selectedPhotoIndex - 1 + filteredPhotos.length) % filteredPhotos.length
+        : (selectedPhotoIndex + 1) % filteredPhotos.length
+    );
+  };
+
+  const handleDownloadPhoto = async (photo: TreatmentPhoto) => {
+    try {
+      if (!photo.file_path) {
+        window.open(getPhotoUrl(photo), '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('client-photos')
+        .download(photo.file_path);
+
+      if (error) throw error;
+
+      const objectUrl = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = photo.file_path.split('/').pop() || `foto-${photo.id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Error downloading photo:', error);
+      toast.error('Erro ao baixar foto');
+    }
+  };
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -189,7 +229,8 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       for (const fileToUpload of filesToUpload) {
         const timestamp = Date.now();
         const safeName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const path = `${clientId}/photos/${timestamp}-${safeName}`;
+        const uniqueId = crypto.randomUUID?.() || `${timestamp}-${Math.random().toString(36).slice(2)}`;
+        const path = `${clientId}/photos/${timestamp}-${uniqueId}-${safeName}`;
         const result = await uploadFile(fileToUpload, path);
 
         await onAddPhoto({
@@ -325,6 +366,75 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         </Dialog>
       </div>
 
+      <Dialog open={selectedPhotoIndex !== null} onOpenChange={(isOpen) => !isOpen && setSelectedPhotoIndex(null)}>
+        <DialogContent className="max-w-[94vw] sm:max-w-4xl max-h-[90vh] p-3 sm:p-4">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-sm">Fotos do Cliente</DialogTitle>
+          </DialogHeader>
+          {selectedPhoto && (
+            <div className="space-y-3">
+              <div className="relative flex min-h-[52vh] max-h-[68vh] items-center justify-center rounded-md border bg-muted/20 overflow-hidden">
+                <img
+                  src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(selectedPhoto)}
+                  alt={`Foto ${stageLabels[selectedPhoto.stage]}`}
+                  className="max-h-[68vh] w-auto max-w-full object-contain"
+                />
+                {filteredPhotos.length > 1 && (
+                  <>
+                    <Button variant="secondary" size="icon" className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => goToPhoto('previous')}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => goToPhoto('next')}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${stageColors[selectedPhoto.stage]} text-[10px] px-1.5 py-0`} variant="secondary">
+                      {stageLabels[selectedPhoto.stage]}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(selectedPhoto.taken_at), 'dd/MM/yyyy', { locale: ptBR })}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{(selectedPhotoIndex ?? 0) + 1}/{filteredPhotos.length}</span>
+                  </div>
+                  {selectedPhoto.notes && <p className="mt-1 truncate text-xs text-muted-foreground">{selectedPhoto.notes}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDownloadPhoto(selectedPhoto)}>
+                    <Download className="mr-1 h-3.5 w-3.5" />
+                    Baixar
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={deletingId === selectedPhoto.id}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Apagar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
+                        <AlertDialogDescription>Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id, selectedPhoto.file_path)} className="bg-destructive hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Photos Grid */}
       <Card>
         <CardContent className="p-3">
@@ -350,13 +460,17 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                       {stagePhotos.map((photo) => (
                         <div key={photo.id} className="group relative">
-                          <a href={getPhotoUrl(photo)} target="_blank" rel="noopener noreferrer">
+                          <button
+                            type="button"
+                            className="block w-full text-left"
+                            onClick={() => setSelectedPhotoIndex(filteredPhotos.findIndex((item) => item.id === photo.id))}
+                          >
                             <img
                               src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(photo)}
                               alt={`Foto ${stageLabels[photo.stage]}`}
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             />
-                          </a>
+                          </button>
                           <div className="flex items-center justify-between mt-0.5">
                             <p className="text-[10px] text-muted-foreground">
                               {format(new Date(photo.taken_at), 'dd/MM', { locale: ptBR })}

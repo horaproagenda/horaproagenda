@@ -3068,6 +3068,15 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      can_access_client_photo: { Args: { _photo_id: string }; Returns: boolean }
+      can_access_client_record: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
+      can_access_client_storage_object: {
+        Args: { _bucket_id: string; _object_name: string }
+        Returns: boolean
+      }
       check_trial_eligibility: {
         Args: { p_cnpj?: string; p_email: string; p_phone?: string }
         Returns: Json

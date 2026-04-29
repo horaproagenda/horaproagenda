@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -327,13 +328,10 @@ export function CashRegisterPanel() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Saldo Inicial (R$)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
+                  <CurrencyInput
                     placeholder="0,00"
                     value={openingBalance}
-                    onChange={(e) => setOpeningBalance(e.target.value)}
+                    onValueChange={(value) => setOpeningBalance(String(value))}
                   />
                 </div>
               </div>
@@ -408,12 +406,9 @@ export function CashRegisterPanel() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Valor (R$)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
+                    <CurrencyInput
                       value={transactionAmount}
-                      onChange={(e) => setTransactionAmount(e.target.value)}
+                      onValueChange={(value) => setTransactionAmount(String(value))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -447,12 +442,9 @@ export function CashRegisterPanel() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Valor (R$)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
+                    <CurrencyInput
                       value={transactionAmount}
-                      onChange={(e) => setTransactionAmount(e.target.value)}
+                      onValueChange={(value) => setTransactionAmount(String(value))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -486,12 +478,9 @@ export function CashRegisterPanel() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Valor (R$)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
+                    <CurrencyInput
                       value={transactionAmount}
-                      onChange={(e) => setTransactionAmount(e.target.value)}
+                      onValueChange={(value) => setTransactionAmount(String(value))}
                     />
                   </div>
                   <div className="space-y-2">

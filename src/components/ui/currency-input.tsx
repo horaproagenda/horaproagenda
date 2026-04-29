@@ -1,14 +1,15 @@
 import * as React from 'react';
 import { Input } from '@/components/ui/input';
-import { formatCurrencyInput, parseBrazilianCurrency } from '@/lib/utils';
+import { formatCurrencyInput, normalizeBrazilianCurrency, parseBrazilianCurrencyToCents } from '@/lib/utils';
 
 interface CurrencyInputProps extends Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange' | 'onBlur'> {
   value: number | string | null | undefined;
   onValueChange: (value: number) => void;
+  onCentsChange?: (cents: number) => void;
 }
 
 export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ value, onValueChange, className, ...props }, ref) => {
+  ({ value, onValueChange, onCentsChange, className, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(formatCurrencyInput(value));
 
     React.useEffect(() => {
@@ -25,9 +26,16 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           onChange={(event) => {
             const nextValue = event.target.value.replace(/[^\d,.]/g, '');
             setDisplayValue(nextValue);
-            onValueChange(parseBrazilianCurrency(nextValue));
+            const cents = parseBrazilianCurrencyToCents(nextValue);
+            onCentsChange?.(cents);
+            onValueChange(cents / 100);
           }}
-          onBlur={() => setDisplayValue(formatCurrencyInput(displayValue))}
+          onBlur={() => {
+            const normalizedValue = normalizeBrazilianCurrency(displayValue);
+            onValueChange(normalizedValue);
+            onCentsChange?.(Math.round(normalizedValue * 100));
+            setDisplayValue(formatCurrencyInput(normalizedValue));
+          }}
           className={className ? `pl-9 ${className}` : 'pl-9'}
           {...props}
         />

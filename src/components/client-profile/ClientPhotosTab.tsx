@@ -364,6 +364,75 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         </Dialog>
       </div>
 
+      <Dialog open={selectedPhotoIndex !== null} onOpenChange={(isOpen) => !isOpen && setSelectedPhotoIndex(null)}>
+        <DialogContent className="max-w-[94vw] sm:max-w-4xl max-h-[90vh] p-3 sm:p-4">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-sm">Fotos do Cliente</DialogTitle>
+          </DialogHeader>
+          {selectedPhoto && (
+            <div className="space-y-3">
+              <div className="relative flex min-h-[52vh] max-h-[68vh] items-center justify-center rounded-md border bg-muted/20 overflow-hidden">
+                <img
+                  src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(selectedPhoto)}
+                  alt={`Foto ${stageLabels[selectedPhoto.stage]}`}
+                  className="max-h-[68vh] w-auto max-w-full object-contain"
+                />
+                {filteredPhotos.length > 1 && (
+                  <>
+                    <Button variant="secondary" size="icon" className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => goToPhoto('previous')}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => goToPhoto('next')}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${stageColors[selectedPhoto.stage]} text-[10px] px-1.5 py-0`} variant="secondary">
+                      {stageLabels[selectedPhoto.stage]}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(selectedPhoto.taken_at), 'dd/MM/yyyy', { locale: ptBR })}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{(selectedPhotoIndex ?? 0) + 1}/{filteredPhotos.length}</span>
+                  </div>
+                  {selectedPhoto.notes && <p className="mt-1 truncate text-xs text-muted-foreground">{selectedPhoto.notes}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDownloadPhoto(selectedPhoto)}>
+                    <Download className="mr-1 h-3.5 w-3.5" />
+                    Baixar
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={deletingId === selectedPhoto.id}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Apagar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
+                        <AlertDialogDescription>Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id, selectedPhoto.file_path)} className="bg-destructive hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Photos Grid */}
       <Card>
         <CardContent className="p-3">

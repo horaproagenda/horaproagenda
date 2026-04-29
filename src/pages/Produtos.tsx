@@ -520,11 +520,11 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <Input type="number" value={stockForm.unit_price || ''} onChange={(e) => updateStockUnitPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={stockForm.unit_price} onValueChange={updateStockUnitPrice} className="h-8 text-sm" />
                       </div>
                       <div>
                         <Label className="text-xs">Valor Total (R$)</Label>
-                        <Input type="number" value={stockForm.total_price || ''} onChange={(e) => updateStockTotalPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={stockForm.total_price} onValueChange={updateStockTotalPrice} className="h-8 text-sm" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -585,11 +585,11 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Preço Unitário (R$)</Label>
-                        <Input type="number" value={purchaseForm.unit_price || ''} onChange={(e) => updatePurchaseUnitPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={purchaseForm.unit_price} onValueChange={updatePurchaseUnitPrice} className="h-8 text-sm" />
                       </div>
                       <div>
                         <Label className="text-xs">Preço Total (R$)</Label>
-                        <Input type="number" value={purchaseForm.total_price || ''} onChange={(e) => updatePurchaseTotalPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" placeholder="0.00" />
+                        <CurrencyInput value={purchaseForm.total_price} onValueChange={updatePurchaseTotalPrice} className="h-8 text-sm" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -714,7 +714,7 @@ export default function Produtos() {
                     {productForm.is_for_sale && (
                       <div>
                         <Label className="text-xs">Preço de Venda (R$)</Label>
-                        <Input type="number" step="0.01" min="0" value={productForm.sale_price || ''} onChange={(e) => setProductForm({ ...productForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-8 text-sm" />
+                        <CurrencyInput value={productForm.sale_price} onValueChange={(value) => setProductForm({ ...productForm, sale_price: value })} className="h-8 text-sm" />
                       </div>
                     )}
                     <div className="flex justify-end gap-2 pt-2">

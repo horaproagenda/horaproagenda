@@ -37,6 +37,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useServices } from '@/hooks/useServices';
 import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
+import { formatCurrency } from '@/lib/utils';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -399,7 +400,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                   </FormControl>
                   {watchTotalSessions > 0 && watchPrice > 0 && (
                     <p className="text-[10px] text-muted-foreground">
-                      R$ {pricePerSession.toFixed(2).replace('.', ',')}/aplicação
+                      {formatCurrency(pricePerSession)}/aplicação
                     </p>
                   )}
                   <FormMessage className="text-[10px]" />

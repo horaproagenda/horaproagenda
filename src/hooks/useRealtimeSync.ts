@@ -32,10 +32,14 @@ export function useRealtimeSync() {
 
     // Função helper para invalidar múltiplas queries específicas
     const invalidateMultiple = (keys: string[]) => {
-      keys.forEach(key => {
+      Array.from(new Set(keys)).forEach(key => {
         queryClient.invalidateQueries({ 
           queryKey: [key],
           refetchType: 'all',
+        });
+        queryClient.refetchQueries({
+          queryKey: [key],
+          type: 'active',
         });
       });
     };
@@ -50,22 +54,35 @@ export function useRealtimeSync() {
     };
 
     // Conjuntos de queries por contexto
+    const AGENDA_CORE_QUERIES = [
+      'appointments', 'client-appointments', 'client', 'clients',
+      'professionals', 'rooms', 'services', 'business-settings', 'business_settings',
+      'professional-absences', 'professional_absences', 'waitlist', 'recurring_appointments',
+      'service_packages', 'client_packages', 'package_appointments', 'package_details',
+      'package_appointment_history', 'package_template_steps', 'dashboard-stats', 'dashboard_stats',
+    ];
+
+    const syncFullAgenda = () => {
+      invalidateMultiple(AGENDA_CORE_QUERIES);
+    };
+
     const FINANCIAL_QUERIES = [
       'financial_entries', 'financial_categories', 'payment_methods',
-      'banks', 'cash_registers', 'cash_transactions', 'card_brands',
-      'card_brand_fees', 'dashboard-stats', 'goals'
+      'banks', 'cash_registers', 'cash_transactions', 'cash_register_entries', 'card_brands',
+      'card_brand_fees', 'dashboard-stats', 'dashboard_stats', 'goals'
     ];
     
     const CLIENT_QUERIES = [
       'clients', 'client', 'client_services', 'client_packages',
       'clients_credits', 'client_credits', 'client-appointments',
-      'client-sales', 'quotes', 'client_documents', 'treatment_photos'
+      'client-sales', 'quotes', 'client-quotes', 'client_documents', 'client-documents',
+      'treatment_photos', 'client-photos'
     ];
     
     const APPOINTMENT_QUERIES = [
       'appointments', 'client-appointments', 'package_appointments',
       'package_appointment_history', 'package_details', 'service_packages',
-      'client_packages', 'professional_absences', 'waitlist', 'recurring_appointments'
+      'client_packages', 'professional_absences', 'professional-absences', 'waitlist', 'recurring_appointments'
     ];
     
     const SERVICE_QUERIES = [

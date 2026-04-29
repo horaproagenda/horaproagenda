@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -61,6 +62,31 @@ const documentTypeColors: Record<DocumentType, string> = {
 
 const getSafeDownloadName = (doc: ClientDocument) => {
   return getFileNameWithExtension(doc.title || 'documento', doc.file_path || doc.file_url);
+};
+
+const removeAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const wrapPdfText = (text: string, maxChars = 92) => {
+  const lines: string[] = [];
+  String(text || '').split('\n').forEach((paragraph) => {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      return;
+    }
+    let current = '';
+    words.forEach((word) => {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length > maxChars) {
+        if (current) lines.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    });
+    if (current) lines.push(current);
+  });
+  return lines;
 };
 
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument, onRefresh }: ClientDocumentsTabProps) {

@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Calendar as DatePickerCalendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
@@ -59,7 +60,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -72,6 +73,8 @@ import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
+import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
@@ -115,6 +118,7 @@ export function AppointmentDetailDialog({
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
+  const { settings } = useBusinessSettings();
   
   // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');

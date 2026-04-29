@@ -486,50 +486,19 @@ const Servicos: React.FC = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredPackages.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredPackages.map((pkg, index) => (
-                  <Card
-                    key={pkg.id}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
-                    onClick={() => setSelectedPackage(pkg)}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
-                          <Package className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
-                        </div>
-                      </div>
-                      <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
-                        {pkg.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Layers className="h-3 w-3" />
-                        <span>{pkg.total_sessions} sessões</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{pkg.duration || 60}min</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-sm font-semibold">
-                        <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                        <span>R$ {Number(pkg.price).toFixed(0)}</span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        R$ {(Number(pkg.price) / pkg.total_sessions).toFixed(0)}/sessão
-                      </span>
-                    </div>
-                  </Card>
-                ))}
+              <div className="space-y-5">
+                {nonSequentialPackages.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-sm font-semibold">Pacotes não sequenciais</h3>
+                    {renderPackageCards(nonSequentialPackages)}
+                  </section>
+                )}
+                {sequentialPackages.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-sm font-semibold">Pacotes sequenciais</h3>
+                    {renderPackageCards(sequentialPackages)}
+                  </section>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">

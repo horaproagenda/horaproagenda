@@ -31,6 +31,7 @@ import { ClientDocumentViewDialog } from '@/components/documentos/ClientDocument
 import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -57,6 +58,8 @@ const documentTypeColors: Record<DocumentType, string> = {
 };
 
 export function ClientDocumentsTab({ documents, clientId, client, onAddDocument, onRefresh }: ClientDocumentsTabProps) {
+  const { hasRole } = useAuth();
+  const canDeleteDocuments = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<DocumentType>('anamnese');
@@ -127,6 +130,11 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleDeleteDocument = async (docId: string) => {
+    if (!canDeleteDocuments) {
+      toast.error('Apenas administradores podem apagar documentos.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('client_documents')

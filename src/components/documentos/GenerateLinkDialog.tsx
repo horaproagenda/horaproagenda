@@ -44,9 +44,16 @@ interface GenerateLinkDialogProps {
     title: string;
   } | null;
   preSelectedClientId?: string;
+  preSelectedClient?: {
+    id: string;
+    name: string;
+    cpf?: string | null;
+    phone?: string | null;
+    birthdate?: string | null;
+  };
 }
 
-export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedClientId }: GenerateLinkDialogProps) {
+export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedClientId, preSelectedClient }: GenerateLinkDialogProps) {
   const { clients } = useClients();
   const { professionals } = useProfessionals();
   const { createLink } = useDocumentFillLinks();
@@ -61,7 +68,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
 
   const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);
   const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
-  const selectedClient = activeClients.find(c => c.id === selectedClientId);
+  const selectedClient = activeClients.find(c => c.id === selectedClientId)
+    || (preSelectedClient?.id === selectedClientId ? preSelectedClient : undefined);
   const selectedProfessional = activeProfessionals.find(p => p.id === selectedProfessionalId);
 
   // When opened from a client profile, the client is locked.

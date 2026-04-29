@@ -440,6 +440,11 @@ export function AppointmentDetailDialog({
   };
 
   const handleSaveEdit = () => {
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
+
     const newStartTime = new Date(`${editDate}T${editStartTime}:00`);
     const newEndTime = new Date(`${editDate}T${editEndTime}:00`);
     
@@ -453,6 +458,7 @@ export function AppointmentDetailDialog({
         room_id: editRoomId,
         notes: editNotes || undefined,
       },
+      expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
         // Check if we need to propagate dates to following appointments
@@ -481,12 +487,23 @@ export function AppointmentDetailDialog({
         
         setIsEditing(false);
         setPropagateDates(false);
+        void releaseLock();
       },
     });
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    void releaseLock();
+  };
+
+  const handleStartEdit = async () => {
+    const locked = await acquireLock();
+    if (!locked) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
+    setIsEditing(true);
   };
 
   const professionalId = appointment.professional_id || appointment.service?.professional_id;

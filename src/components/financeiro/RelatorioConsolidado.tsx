@@ -10,7 +10,8 @@ import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign, Download, FileText } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -113,20 +114,11 @@ export function RelatorioConsolidado() {
   }), [consolidatedData, dateRange, sourceFilter, typeFilter]);
 
   // Calculate totals
-  const totalIncome = filteredData
-    .filter((e) => e.type === 'income')
-    .reduce((sum, e) => sum + e.amount, 0);
-  const totalExpense = filteredData
-    .filter((e) => e.type === 'expense')
-    .reduce((sum, e) => sum + e.amount, 0);
-  const balance = totalIncome - totalExpense;
+  const { totalIncome, totalExpense, balance } = calculateConsolidatedReportTotals(filteredData);
 
   // Cash register summary
   const openCashRegisters = cashRegisters.filter((cr) => cr.status === 'open');
-  const totalCashBalance = openCashRegisters.reduce(
-    (sum, cr) => sum + Number(cr.opening_balance || 0) + Number(cr.total_received || 0),
-    0
-  );
+  const totalCashBalance = calculateOpenCashRegistersBalance(openCashRegisters);
 
   const getPeriodLabel = () => {
     switch (periodFilter) {
@@ -144,7 +136,7 @@ export function RelatorioConsolidado() {
     entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro',
     entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída',
     entry.status === 'paid' ? 'Pago' : entry.status === 'pending' ? 'Pendente' : entry.status === 'overdue' ? 'Vencido' : entry.status,
-    `R$ ${entry.amount.toFixed(2)}`,
+    formatCurrency(entry.amount),
   ]);
 
   const handleExportFilteredCSV = () => exportToCSV({

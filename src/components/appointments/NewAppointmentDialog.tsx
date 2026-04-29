@@ -1230,23 +1230,6 @@ Até breve! ✨`;
                                     </Badge>
                                   )}
                                 </div>
-                                {false && (
-                                  <div className="flex items-center gap-1.5">
-                                    <Badge variant="outline" className="text-xs gap-1">
-                                      <Package className="h-3 w-3" />
-                                      Pacote
-                                    </Badge>
-                                    {pkg.package_type === 'sequential' && (
-                                      <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
-                                        <Repeat className="h-3 w-3" />
-                                        Sequencial
-                                      </Badge>
-                                    )}
-                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                                      PENDENTE
-                                    </Badge>
-                                  </div>
-                                )}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 Dá para agendar: {remaining} • Sessões existentes: {summary.existingSessionRecords}/{summary.totalSessions}
@@ -1298,10 +1281,18 @@ Até breve! ✨`;
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{pkg.name}</span>
-                          <Badge variant="secondary" className="text-xs gap-1">
-                            <Package className="h-3 w-3" />
-                            Pacote
-                          </Badge>
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <Package className="h-3 w-3" />
+                              Pacote
+                            </Badge>
+                            {pkg.package_type === 'sequential' && (
+                              <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
+                                <Repeat className="h-3 w-3" />
+                                Sequencial
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}

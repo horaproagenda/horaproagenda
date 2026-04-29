@@ -99,6 +99,7 @@ export function NewAppointmentDialog({
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
   const [serviceSearch, setServiceSearch] = useState('');
+  const [packageQuickFilter, setPackageQuickFilter] = useState<'all' | 'standard' | 'sequential'>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showServiceSuggestions, setShowServiceSuggestions] = useState(false);
@@ -191,6 +192,12 @@ export function NewAppointmentDialog({
   const activeRooms = rooms.filter(r => r.is_active);
   const activeEquipment = equipment.filter(e => e.is_active);
   const activePackages = catalogPackages;
+  const serviceSearchNormalized = serviceSearch.toLowerCase();
+  const matchesServiceSearch = (name?: string | null) => !serviceSearchNormalized || (name || '').toLowerCase().includes(serviceSearchNormalized);
+  const matchesPackageQuickFilter = (pkg: { package_type?: string | null }) =>
+    packageQuickFilter === 'all' || (packageQuickFilter === 'sequential' ? pkg.package_type === 'sequential' : pkg.package_type !== 'sequential');
+  const visibleClientPackages = availablePackages.filter(pkg => matchesServiceSearch(pkg.name) && matchesPackageQuickFilter(pkg));
+  const visibleCatalogPackages = activePackages.filter(pkg => matchesServiceSearch(pkg.name) && matchesPackageQuickFilter(pkg));
 
   // Check if selected package is already a client package (paid)
   const isClientPackageSelected = clientPackages.some(p => p.id === selectedService);

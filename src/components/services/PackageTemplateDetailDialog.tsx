@@ -175,7 +175,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const onSubmit = async (data: PackageFormData) => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('package_templates')
         .update({
           name: data.name,

@@ -72,9 +72,12 @@ export function useClientPackages(clientId: string | null) {
           // Check if it's for our client
           if (payload.new && (payload.new as any).client_id === clientId) {
             console.log('Package is for this client, refreshing immediately!');
-            queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
-            queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-            queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+            queryClient.invalidateQueries({ queryKey: ['client_packages', clientId], refetchType: 'all' });
+            queryClient.invalidateQueries({ queryKey: ['client_packages'], refetchType: 'all' });
+            queryClient.invalidateQueries({ queryKey: ['service_packages'], refetchType: 'all' });
+            queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'all' });
+            queryClient.refetchQueries({ queryKey: ['client_packages', clientId], type: 'active' });
+            queryClient.refetchQueries({ queryKey: ['appointments'], type: 'active' });
           }
         }
       )

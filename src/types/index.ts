@@ -164,7 +164,6 @@ export interface PackageAppointment {
   scheduled_date: string | null;
   status: PackageAppointmentStatus;
   notes: string | null;
-  version: number;
   created_at: string;
   updated_at: string;
   appointment?: Appointment;
@@ -201,6 +200,7 @@ export interface Appointment {
   payment_methods: string[];
   amount_paid: number;
   notes: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;

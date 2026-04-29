@@ -221,6 +221,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'package_template_steps' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...SERVICE_QUERIES,
             ...APPOINTMENT_QUERIES,
@@ -234,6 +235,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'single_sales' },
         (payload) => {
+          syncFullAgenda();
           invalidateAll();
           
           if (payload.eventType === 'INSERT') {
@@ -247,6 +249,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'client_services' },
         () => {
+          syncFullAgenda();
           invalidateMultiple([
             ...CLIENT_QUERIES,
             ...APPOINTMENT_QUERIES,

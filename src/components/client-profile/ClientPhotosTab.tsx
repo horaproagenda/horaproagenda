@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Image, Upload, Filter, Trash2 } from 'lucide-react';
+import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +59,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
   
@@ -145,6 +146,44 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       return acc;
     }, {} as Record<TreatmentStage, TreatmentPhoto[]>);
   }, [filteredPhotos]);
+
+  const selectedPhoto = selectedPhotoIndex !== null ? filteredPhotos[selectedPhotoIndex] : null;
+
+  const goToPhoto = (direction: 'previous' | 'next') => {
+    if (selectedPhotoIndex === null || filteredPhotos.length === 0) return;
+    setSelectedPhotoIndex(
+      direction === 'previous'
+        ? (selectedPhotoIndex - 1 + filteredPhotos.length) % filteredPhotos.length
+        : (selectedPhotoIndex + 1) % filteredPhotos.length
+    );
+  };
+
+  const handleDownloadPhoto = async (photo: TreatmentPhoto) => {
+    try {
+      if (!photo.file_path) {
+        window.open(getPhotoUrl(photo), '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('client-photos')
+        .download(photo.file_path);
+
+      if (error) throw error;
+
+      const objectUrl = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = photo.file_path.split('/').pop() || `foto-${photo.id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Error downloading photo:', error);
+      toast.error('Erro ao baixar foto');
+    }
+  };
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);

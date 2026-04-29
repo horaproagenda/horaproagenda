@@ -9,12 +9,27 @@ interface CurrencyInputProps extends Omit<React.ComponentProps<typeof Input>, 'v
 }
 
 export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ value, onValueChange, onCentsChange, className, ...props }, ref) => {
+  ({ value, onValueChange, onCentsChange, className, onFocus, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(formatCurrencyInput(value));
+    const [isEditing, setIsEditing] = React.useState(false);
 
     React.useEffect(() => {
+      if (isEditing) return;
       setDisplayValue(formatCurrencyInput(value));
-    }, [value]);
+    }, [isEditing, value]);
+
+    const formatTypingValue = (nextValue: string) => {
+      const sanitized = nextValue.replace(/[^\d,]/g, '');
+      const [rawInteger = '', rawDecimal] = sanitized.split(',', 2);
+      const integerDigits = rawInteger.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+      const formattedInteger = integerDigits ? Number(integerDigits).toLocaleString('pt-BR') : '';
+
+      if (sanitized.includes(',')) {
+        return `${formattedInteger || '0'},${(rawDecimal || '').replace(/\D/g, '').slice(0, 2)}`;
+      }
+
+      return formattedInteger;
+    };
 
     return (
       <div className="relative">
@@ -24,17 +39,26 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           inputMode="decimal"
           value={displayValue}
           onChange={(event) => {
-            const nextValue = event.target.value.replace(/[^\d,.]/g, '');
+            const nextValue = formatTypingValue(event.target.value);
             setDisplayValue(nextValue);
             const cents = parseBrazilianCurrencyToCents(nextValue);
             onCentsChange?.(cents);
             onValueChange(cents / 100);
+          }}
+          onFocus={(event) => {
+            setIsEditing(true);
+            if (normalizeBrazilianCurrency(value) === 0) {
+              setDisplayValue('');
+              window.requestAnimationFrame(() => event.currentTarget.setSelectionRange(0, 0));
+            }
+            onFocus?.(event);
           }}
           onBlur={() => {
             const normalizedValue = normalizeBrazilianCurrency(displayValue);
             onValueChange(normalizedValue);
             onCentsChange?.(Math.round(normalizedValue * 100));
             setDisplayValue(formatCurrencyInput(normalizedValue));
+            setIsEditing(false);
           }}
           className={className ? `pl-9 ${className}` : 'pl-9'}
           {...props}

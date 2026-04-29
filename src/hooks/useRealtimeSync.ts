@@ -408,6 +408,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rooms' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['rooms', ...APPOINTMENT_QUERIES, ...SERVICE_QUERIES]);
         }
       )
@@ -417,6 +418,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'equipment' },
         () => {
+          syncFullAgenda();
           invalidateMultiple(['equipment', 'rooms', 'services']);
         }
       )
@@ -511,7 +513,8 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'business_settings' },
         () => {
-          invalidateMultiple(['business_settings']);
+          syncFullAgenda();
+          invalidateMultiple(['business_settings', 'business-settings']);
           toast.info('Configurações atualizadas', { duration: 2000 });
         }
       )

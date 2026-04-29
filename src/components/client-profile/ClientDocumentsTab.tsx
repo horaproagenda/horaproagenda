@@ -33,8 +33,7 @@ import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import JSZip from 'jszip';
-import { downloadBlob, getFileNameWithExtension, getSafeFileName, getStorageBlob } from '@/lib/storageFileAccess';
+import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentsTabProps {
   documents: ClientDocument[];
@@ -161,7 +160,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
 
   const handleSendByLink = (doc: ClientDocument) => {
     // Find the template for this document
-    const templateId = (doc as any).template_id;
+    const templateId = doc.template_id;
     if (templateId) {
       const template = templates.find(t => t.id === templateId);
       if (template) {
@@ -203,8 +202,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
 
     setDownloadingAll(true);
     try {
-      const zip = new JSZip();
-      let addedFiles = 0;
+      let downloadedFiles = 0;
 
       for (const doc of downloadableDocs) {
         try {
@@ -213,18 +211,16 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
             filePath: doc.file_path,
             fileUrl: doc.file_url,
           });
-          zip.file(`${String(addedFiles + 1).padStart(2, '0')}-${getSafeDownloadName(doc)}`, blob);
-          addedFiles += 1;
+          downloadBlob(blob, `${String(downloadedFiles + 1).padStart(2, '0')}-${getSafeDownloadName(doc)}`);
+          downloadedFiles += 1;
+          await new Promise((resolve) => window.setTimeout(resolve, 250));
         } catch (error) {
-          console.error('Error adding document to zip:', doc.id, error);
+          console.error('Error downloading document:', doc.id, error);
         }
       }
 
-      if (addedFiles === 0) throw new Error('Nenhum documento pôde ser baixado');
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      downloadBlob(zipBlob, `${getSafeFileName(client?.name || 'cliente')}-documentos.zip`);
-      toast.success(`${addedFiles} documento(s) baixado(s).`);
+      if (downloadedFiles === 0) throw new Error('Nenhum documento pôde ser baixado');
+      toast.success(`${downloadedFiles} documento(s) baixado(s) no formato original.`);
     } catch (error) {
       console.error('Error downloading all documents:', error);
       toast.error('Erro ao baixar todos os documentos.');
@@ -394,7 +390,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
             <ScrollArea className="h-[300px]">
               <div className="space-y-1.5 pr-2">
                 {documents.map((doc) => {
-                  const isSigned = !!(doc as any).signed_at;
+                  const isSigned = !!doc.signed_at;
                   
                   return (
                     <div
@@ -426,8 +422,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            {isSigned && (doc as any).signed_at && (
-                              <span> · Assinado em {format(new Date((doc as any).signed_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            {isSigned && doc.signed_at && (
+                              <span> · Assinado em {format(new Date(doc.signed_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                             )}
                           </p>
                         </div>

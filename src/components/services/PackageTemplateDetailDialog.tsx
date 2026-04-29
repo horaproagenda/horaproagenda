@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -47,7 +48,7 @@ import { toast } from 'sonner';
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
-  total_sessions: z.coerce.number().min(1, 'Mínimo 1 sessão').max(100, 'Máximo 100 sessões'),
+  total_sessions: z.coerce.number().min(1, 'Mínimo 1 aplicação').max(100, 'Máximo 100 aplicações'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
   duration: z.coerce.number().min(5, 'Duração mínima de 5 minutos').max(480, 'Duração máxima de 8 horas'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
@@ -264,14 +265,14 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <DollarSign className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor Total</p>
-                      <p className="font-semibold">R$ {Number(pkg.price).toFixed(2)}</p>
+                      <p className="font-semibold">R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                     <Layers className="h-5 w-5 text-purple-500" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Total de Sessões</p>
+                      <p className="text-xs text-muted-foreground">Total de Aplicações</p>
                       <p className="font-semibold">{pkg.total_sessions}</p>
                     </div>
                   </div>
@@ -279,7 +280,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                     <Clock className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Duração/Sessão</p>
+                      <p className="text-xs text-muted-foreground">Duração/Aplicação</p>
                       <p className="font-semibold">{pkg.duration || 60} min</p>
                     </div>
                   </div>
@@ -295,8 +296,8 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 col-span-2">
                     <DollarSign className="h-5 w-5 text-blue-500" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Valor por Sessão</p>
-                      <p className="font-semibold">R$ {(Number(pkg.price) / pkg.total_sessions).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Valor por Aplicação</p>
+                      <p className="font-semibold">R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                   </div>
                 </div>
@@ -395,7 +396,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     name="total_sessions"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Total de Sessões</FormLabel>
+                        <FormLabel>Total de Aplicações</FormLabel>
                         <FormControl>
                           <Input type="number" {...field} />
                         </FormControl>
@@ -409,9 +410,9 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     name="price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valor (R$)</FormLabel>
+                        <FormLabel>Valor</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

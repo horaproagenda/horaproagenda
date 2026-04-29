@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowUpCircle, ArrowDownCircle, Trash2, Filter, Pencil } from 'lucide-react';
@@ -301,12 +302,10 @@ export function ExtratoFinanceiro() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-amount">Valor (R$)</Label>
-              <Input
+              <CurrencyInput
                 id="edit-amount"
-                type="number"
-                step="0.01"
                 value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
+                onValueChange={(value) => setEditAmount(String(value))}
               />
             </div>
             <div className="space-y-2">

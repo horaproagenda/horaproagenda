@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -385,44 +386,36 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="opening_balance">Valor Inicial</Label>
-                <Input
+                <CurrencyInput
                   id="opening_balance"
-                  type="number"
-                  step="0.01"
                   value={editOpeningBalance}
-                  onChange={(e) => setEditOpeningBalance(e.target.value)}
+                  onValueChange={(value) => setEditOpeningBalance(String(value))}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="closing_balance">Saldo Final</Label>
-                <Input
+                <CurrencyInput
                   id="closing_balance"
-                  type="number"
-                  step="0.01"
                   value={editClosingBalance}
-                  onChange={(e) => setEditClosingBalance(e.target.value)}
+                  onValueChange={(value) => setEditClosingBalance(String(value))}
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cash_amount">Dinheiro em Caixa</Label>
-                <Input
+                <CurrencyInput
                   id="cash_amount"
-                  type="number"
-                  step="0.01"
                   value={editCashAmount}
-                  onChange={(e) => setEditCashAmount(e.target.value)}
+                  onValueChange={(value) => setEditCashAmount(String(value))}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="check_amount">Cheques</Label>
-                <Input
+                <CurrencyInput
                   id="check_amount"
-                  type="number"
-                  step="0.01"
                   value={editCheckAmount}
-                  onChange={(e) => setEditCheckAmount(e.target.value)}
+                  onValueChange={(value) => setEditCheckAmount(String(value))}
                 />
               </div>
             </div>

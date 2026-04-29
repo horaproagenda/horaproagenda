@@ -56,6 +56,7 @@ import {
   Save,
   X,
   ExternalLink,
+  Lock,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -67,6 +68,7 @@ import { useServices } from '@/hooks/useServices';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
+import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
@@ -106,6 +108,7 @@ export function AppointmentDetailDialog({
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
+  const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activeServices } = useServices();
@@ -389,10 +392,15 @@ export function AppointmentDetailDialog({
   };
 
   const handleStatusChange = (newStatus: AppointmentStatus) => {
+    if (isLockedByOther) {
+      toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
+      return;
+    }
     setSelectedStatus(newStatus);
     updateAppointment.mutate({
       id: appointment.id,
       updates: { status: newStatus },
+      expectedVersion: appointment.version,
     });
   };
 

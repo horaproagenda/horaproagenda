@@ -32,6 +32,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientDocumentViewDialogProps {
   open: boolean;
@@ -126,6 +127,27 @@ export function ClientDocumentViewDialog({
 
   const handleOpenGovBr = () => {
     window.open('https://assinador.iti.br/', '_blank');
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      if (document.file_path) {
+        const { data, error } = await supabase.storage
+          .from('client-documents')
+          .createSignedUrl(document.file_path, 300);
+
+        if (error) throw error;
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (document.file_url) {
+        window.open(document.file_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Error opening document file:', error);
+      toast.error('Sem permissão para abrir este documento.');
+    }
   };
 
   const handleDelete = () => {
@@ -276,11 +298,9 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
               <p className="text-sm text-muted-foreground mb-4">
                 Este documento é um arquivo externo.
               </p>
-              <Button asChild>
-                <a href={document.file_url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Abrir Arquivo
-                </a>
+              <Button onClick={handleOpenFile}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Abrir Arquivo
               </Button>
             </div>
           ) : (

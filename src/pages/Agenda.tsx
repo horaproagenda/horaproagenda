@@ -799,7 +799,7 @@ const Agenda = () => {
     const remainingToPay = Math.max(0, priceAfterDiscount - existingPaid);
 
     if (creditUsed > Math.min(availableCredit, remainingToPay)) {
-      toast.error(`Crédito ao cliente limitado a R$ ${Math.min(availableCredit, remainingToPay).toFixed(2)} para este pagamento.`);
+      toast.error(`Crédito ao cliente limitado a ${formatCurrency(Math.min(availableCredit, remainingToPay))} para este pagamento.`);
       return;
     }
     

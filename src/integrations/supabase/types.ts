@@ -3125,6 +3125,14 @@ export type Database = {
         Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
       }
+      can_access_package_appointment: {
+        Args: { _package_appointment_id: string }
+        Returns: boolean
+      }
+      can_access_service_package: {
+        Args: { _package_id: string }
+        Returns: boolean
+      }
       check_trial_eligibility: {
         Args: { p_cnpj?: string; p_email: string; p_phone?: string }
         Returns: Json

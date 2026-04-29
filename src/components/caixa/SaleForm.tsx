@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -36,7 +37,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 
 interface SaleItem {
@@ -386,7 +387,7 @@ export function SaleForm() {
 
   const handleDiscountChange = (value: number) => {
     if (!saleInfo) return;
-    const newDiscount = Math.min(value, saleInfo.subtotal);
+    const newDiscount = Math.min(normalizeBrazilianCurrency(value), saleInfo.subtotal);
     setDiscount(newDiscount);
     const newTotal = saleInfo.subtotal - newDiscount;
     setSaleInfo({
@@ -831,7 +832,7 @@ export function SaleForm() {
                     ) : (
                       availableItems.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.name} - R$ {item.price.toFixed(2)}
+                          {item.name} - {formatCurrency(item.price)}
                         </SelectItem>
                       ))
                     )}
@@ -866,7 +867,7 @@ export function SaleForm() {
               </div>
 
               <div className="space-y-2">
-                <Label>Valor: R$ {itemTotal.toFixed(2)}</Label>
+                <Label>Valor: {formatCurrency(itemTotal)}</Label>
                 <Button onClick={handleAddItem} disabled={!selectedItemId} className="w-full">
                   <Plus className="h-4 w-4 mr-1" />
                   Incluir
@@ -912,8 +913,8 @@ export function SaleForm() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">R$ {item.unitPrice.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-medium">R$ {item.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                           <TableCell>
                             <Button
                               size="icon"
@@ -933,20 +934,12 @@ export function SaleForm() {
                   <div className="flex items-center gap-4">
                     <Label>Desconto:</Label>
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">R$</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={saleInfo.subtotal}
-                        value={discount}
-                        onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
-                        className="w-28"
-                      />
+                      <CurrencyInput value={discount} onValueChange={handleDiscountChange} className="w-32" />
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-muted-foreground">Subtotal: R$ {saleInfo.subtotal.toFixed(2)}</div>
-                    <div className="text-2xl font-bold text-primary">Total: R$ {saleInfo.total.toFixed(2)}</div>
+                    <div className="text-sm text-muted-foreground">Subtotal: {formatCurrency(saleInfo.subtotal)}</div>
+                    <div className="text-2xl font-bold text-primary">Total: {formatCurrency(saleInfo.total)}</div>
                   </div>
                 </div>
               </div>

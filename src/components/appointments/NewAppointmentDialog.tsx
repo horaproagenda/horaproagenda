@@ -1166,19 +1166,18 @@ Até breve! ✨`;
                   )}
 
                   {/* Client's packages (paid and pending) */}
-                  {selectedClient && availablePackages.length > 0 && (
+                  {selectedClient && visibleClientPackages.length > 0 && (
                     <div className="border-b-2 border-primary/20">
                       <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Package className="h-3 w-3" />
                         Pacotes do Cliente
                       </div>
-                      {availablePackages
-                        .filter(p => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                      {visibleClientPackages
                         .map((pkg, index) => {
                           const summary = getPackageAvailabilitySummary(pkg);
                           const remaining = summary.schedulableSessions;
                           // Check if there are other packages with same name to show identifier
-                          const sameNameCount = availablePackages.filter(p => p.name === pkg.name).length;
+                          const sameNameCount = visibleClientPackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
                           // Check if package is paid (has payment_methods set from caixa sale)
                           const isPaid = pkg.payment_methods && pkg.payment_methods.length > 0;
@@ -1251,8 +1250,7 @@ Até breve! ✨`;
                       </div>
                     ))}
                   {/* Packages (templates) */}
-                  {activePackages
-                    .filter(p => p.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                  {visibleCatalogPackages
                     .slice(0, 5)
                     .map(pkg => (
                       <div

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal, Repeat } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
@@ -71,6 +71,7 @@ const Servicos: React.FC = () => {
   });
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
+  const [packageTypeFilter, setPackageTypeFilter] = useLocalStorage<'all' | 'standard' | 'sequential'>('servicos-package-type-filter', 'all');
 
   const { services, isLoading, refetch } = useServices();
   const { templates: packages, isLoading: packagesLoading, refetch: refetchPackages } = usePackageTemplates();
@@ -170,8 +171,15 @@ const Servicos: React.FC = () => {
     return result;
   }, [packages, packageFilters, searchTerm]);
 
-  const nonSequentialPackages = filteredPackages.filter(pkg => pkg.package_type !== 'sequential');
-  const sequentialPackages = filteredPackages.filter(pkg => pkg.package_type === 'sequential');
+  const visiblePackages = filteredPackages.filter(pkg => {
+    if (packageTypeFilter === 'sequential') return pkg.package_type === 'sequential';
+    if (packageTypeFilter === 'standard') return pkg.package_type !== 'sequential';
+    return true;
+  });
+  const standardPackagesCount = filteredPackages.filter(pkg => pkg.package_type !== 'sequential').length;
+  const sequentialPackagesCount = filteredPackages.filter(pkg => pkg.package_type === 'sequential').length;
+  const nonSequentialPackages = visiblePackages.filter(pkg => pkg.package_type !== 'sequential');
+  const sequentialPackages = visiblePackages.filter(pkg => pkg.package_type === 'sequential');
 
   const handleCategoryCreated = (category: string) => {
     const updatedCategories = [...customCategories, category];

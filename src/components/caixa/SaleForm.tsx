@@ -1022,7 +1022,7 @@ export function SaleForm() {
                         <SelectContent>
                           {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
                             <SelectItem key={n} value={n.toString()}>
-                              {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                              {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1045,7 +1045,7 @@ export function SaleForm() {
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
                               <SelectItem key={n} value={n.toString()}>
-                                {n}x {paymentAmount > 0 && `R$ ${(paymentAmount / n).toFixed(2)}`}
+                                {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1073,7 +1073,7 @@ export function SaleForm() {
                       {boletoInstallments}x Boleto
                     </Badge>
                     <span className="text-muted-foreground">
-                      Parcela: R$ {(paymentAmount / boletoInstallments).toFixed(2)}
+                      Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
                     </span>
                     <span className="text-muted-foreground">
                       • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
@@ -1110,16 +1110,16 @@ export function SaleForm() {
                       Taxa {selectedCardBrand.name}: {feeInfo.feePercentage.toFixed(2)}%
                     </Badge>
                     <span className="text-muted-foreground">
-                      Valor da taxa: R$ {feeInfo.feeAmount.toFixed(2)}
+                      Valor da taxa: {formatCurrency(feeInfo.feeAmount)}
                     </span>
                     {selectedCardBrand.fee_behavior === 'add_to_client' && (
                       <span className="text-foreground font-medium">
-                        • Cliente paga: <strong className="text-primary">R$ {feeInfo.totalWithFee.toFixed(2)}</strong>
+                        • Cliente paga: <strong className="text-primary">{formatCurrency(feeInfo.totalWithFee)}</strong>
                       </span>
                     )}
                     {selectedCardBrand.fee_behavior === 'deduct_from_provider' && (
                       <span className="text-muted-foreground">
-                        • Valor líquido: <strong className="text-foreground">R$ {feeInfo.netAmount.toFixed(2)}</strong>
+                        • Valor líquido: <strong className="text-foreground">{formatCurrency(feeInfo.netAmount)}</strong>
                       </span>
                     )}
                   </div>
@@ -1128,15 +1128,11 @@ export function SaleForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Valor {isClientCreditPayment ? `(máx: ${formatCurrency(clientCreditBalance)})` : ''}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={isClientCreditPayment ? clientCreditBalance : undefined}
-                      step={0.01}
+                    <CurrencyInput
                       value={paymentAmount}
-                      onChange={(e) => {
-                        const nextValue = parseFloat(e.target.value) || 0;
-                        setPaymentAmount(isClientCreditPayment ? Math.min(nextValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : nextValue);
+                      onValueChange={(nextValue) => {
+                        const normalizedValue = normalizeBrazilianCurrency(nextValue);
+                        setPaymentAmount(isClientCreditPayment ? Math.min(normalizedValue, getClientCreditPaymentLimit(clientCreditBalance, saleInfo.total)) : normalizedValue);
                       }}
                     />
                   </div>

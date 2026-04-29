@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -520,7 +521,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                       <FormItem>
                         <FormLabel>Valor Total (R$) *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} step="0.01" {...field} />
+                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

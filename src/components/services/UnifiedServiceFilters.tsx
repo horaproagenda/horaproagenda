@@ -120,8 +120,8 @@ export function UnifiedServiceFilters({
     { value: 'name-desc', label: 'Nome Z-A' },
     { value: 'price-asc', label: 'Preço ↑' },
     { value: 'price-desc', label: 'Preço ↓' },
-    { value: 'sessions-asc', label: 'Sessões ↑' },
-    { value: 'sessions-desc', label: 'Sessões ↓' },
+    { value: 'sessions-asc', label: 'Aplicações ↑' },
+    { value: 'sessions-desc', label: 'Aplicações ↓' },
     { value: 'date-asc', label: 'Mais antigo' },
     { value: 'date-desc', label: 'Mais recente' },
   ];
@@ -285,8 +285,8 @@ export function UnifiedServiceFilters({
                 <>
                   <Separator />
                   <FilterSection
-                    title="Sessões"
-                    options={sessionsOptions.map(s => ({ id: s, label: s === '10+' ? '10 ou mais' : `${s} sessão${s !== '1' ? 's' : ''}` }))}
+                    title="Aplicações"
+                    options={sessionsOptions.map(s => ({ id: s, label: s === '10+' ? '10 ou mais' : `${s} aplicação${s !== '1' ? 'es' : ''}` }))}
                     selectedValue={selectedSessions || null}
                     onSelect={onSessionsChange}
                   />
@@ -352,7 +352,7 @@ export function UnifiedServiceFilters({
           )}
           {type === 'packages' && selectedSessions && (
             <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-              {selectedSessions} sessões
+              {selectedSessions} aplicações
               <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onSessionsChange?.(null)} />
             </Badge>
           )}

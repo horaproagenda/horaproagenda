@@ -1068,32 +1068,36 @@ Até breve! ✨`;
                 }}
                 onFocus={() => setShowServiceSuggestions(true)}
               />
-              {showServiceSuggestions && (selectedClient || activePackages.length > 0) && (
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {[
-                    { value: 'all', label: 'Todos' },
-                    { value: 'standard', label: 'Pacotes' },
-                    { value: 'sequential', label: 'Sequenciais' },
-                  ].map(option => (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      size="sm"
-                      variant={packageQuickFilter === option.value ? 'default' : 'outline'}
-                      className="h-7 shrink-0 px-2.5 text-xs"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        setPackageQuickFilter(option.value as 'all' | 'standard' | 'sequential');
-                        setShowServiceSuggestions(true);
-                      }}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
+                  {(selectedClient || activePackages.length > 0) && (
+                    <div className="border-b-2 border-primary/20">
+                      {[
+                        { value: 'all', label: 'Todos', detail: 'Serviços e pacotes' },
+                        { value: 'standard', label: 'Pacotes', detail: 'Pacotes comuns' },
+                        { value: 'sequential', label: 'Pacotes sequenciais', detail: 'Sequenciais' },
+                      ].map(option => (
+                        <div
+                          key={option.value}
+                          className="p-2 hover:bg-accent cursor-pointer border-b last:border-b-0 bg-primary/5"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setPackageQuickFilter(option.value as 'all' | 'standard' | 'sequential');
+                            setServiceSearch('');
+                            setShowServiceSuggestions(true);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-primary">{option.label}</span>
+                            <Badge variant={packageQuickFilter === option.value ? 'default' : 'secondary'} className="text-xs gap-1">
+                              <Package className="h-3 w-3" />
+                              {option.detail}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Client's frequent services - shown as quick suggestions */}
                   {selectedClient && clientFrequentServices.length > 0 && !serviceSearch && (
                     <div className="border-b-2 border-amber-500/20">

@@ -1111,14 +1111,9 @@ export function AppointmentDetailDialog({
                             </Button>
                           </div>
                           <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max={Math.min(availableClientCredit, remainingAmount)}
-                              placeholder="0,00"
+                            <CurrencyInput
                               value={clientCreditUsedAmount}
-                              onChange={(e) => setClientCreditUsedAmount(e.target.value)}
+                              onValueChange={(value) => setClientCreditUsedAmount(String(Math.min(value, Math.min(availableClientCredit, remainingAmount))))}
                               className="border-amber-500/30 focus:border-amber-500"
                             />
                             <Button
@@ -1133,7 +1128,7 @@ export function AppointmentDetailDialog({
                           {clientCreditUsed > 0 && (
                             <div className="flex items-center gap-2 text-xs text-success bg-success/10 p-2 rounded">
                               <CheckCircle className="h-3 w-3" />
-                              <span>R$ {clientCreditUsed.toFixed(2)} de crédito será descontado</span>
+                              <span>{formatCurrency(clientCreditUsed)} de crédito será descontado</span>
                             </div>
                           )}
                         </div>
@@ -1149,16 +1144,10 @@ export function AppointmentDetailDialog({
                         Desconto
                       </Label>
                     </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={discountAmount}
-                      onChange={(e) => setDiscountAmount(e.target.value)}
-                    />
+                    <CurrencyInput value={discountAmount} onValueChange={(value) => setDiscountAmount(String(value))} />
                     {discount > 0 && (
                       <p className="text-xs text-orange-600 mt-1">
-                        Novo valor a pagar: R$ {remainingAfterDiscount.toFixed(2)}
+                        Novo valor a pagar: {formatCurrency(remainingAfterDiscount)}
                       </p>
                     )}
                   </div>
@@ -1166,7 +1155,7 @@ export function AppointmentDetailDialog({
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                     <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                    <p className="text-xl font-bold text-primary">R$ {remainingAfterDiscount.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
                     {isPackageAppointment && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Valor total do pacote (pagamento integral obrigatório)
@@ -1183,7 +1172,7 @@ export function AppointmentDetailDialog({
                     const isClientCreditSelected = selectedMethod ? isClientCreditMethod(selectedMethod.name) : false;
                     const applicableBrands = payment.methodId ? getApplicableCardBrands(payment.methodId) : [];
                     const maxInstallments = payment.methodId ? getMaxInstallments(payment.methodId) : 1;
-                    const paymentAmount = parseFloat(payment.amount) || 0;
+                    const paymentAmount = parseBrazilianCurrency(payment.amount);
                     const feeInfo = calculateFee(payment, paymentAmount);
                     const selectedBrand = activeCardBrands.find(b => b.id === payment.cardBrandId);
 
@@ -1220,13 +1209,9 @@ export function AppointmentDetailDialog({
                           </div>
                           <div className="flex-1">
                             <Label className="text-xs">Valor (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0,00"
+                            <CurrencyInput
                               value={payment.amount}
-                              max={isClientCreditSelected ? Math.min(availableClientCredit, remainingAfterDiscount) : undefined}
-                              onChange={(e) => updatePayment(index, 'amount', e.target.value)}
+                              onValueChange={(value) => updatePayment(index, 'amount', String(value))}
                             />
                             {isClientCreditSelected && (
                               <p className="mt-1 text-[10px] text-muted-foreground">Saldo disponível: R$ {availableClientCredit.toFixed(2)} • Máx. R$ {Math.min(availableClientCredit, remainingAfterDiscount).toFixed(2)}</p>

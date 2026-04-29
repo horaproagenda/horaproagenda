@@ -260,6 +260,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
+                  disabled={isLockedByOther}
                 />
               </div>
               <div className="space-y-2">
@@ -268,6 +269,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
+                  disabled={isLockedByOther}
                 />
               </div>
             </div>
@@ -293,7 +295,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Sala</Label>
-              <Select value={roomId} onValueChange={setRoomId}>
+              <Select value={roomId} onValueChange={setRoomId} disabled={isLockedByOther}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma sala" />
                 </SelectTrigger>
@@ -337,7 +339,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 variant="destructive" 
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
-                disabled={loading}
+                disabled={loading || isLockedByOther}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Excluir
@@ -347,7 +349,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 Cancelar
               </Button>
               {isRecurringSeries && hasDateChanged ? (
-                <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading}>
+                <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading || isLockedByOther}>
                   Salvar
                 </Button>
               ) : (

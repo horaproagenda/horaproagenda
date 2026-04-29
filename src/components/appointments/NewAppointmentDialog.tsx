@@ -1214,9 +1214,21 @@ Até breve! ✨`;
                                     PAGO
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                                    PENDENTE
-                                  </Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className="text-xs gap-1">
+                                      <Package className="h-3 w-3" />
+                                      Pacote
+                                    </Badge>
+                                    {pkg.package_type === 'sequential' && (
+                                      <Badge className="text-xs gap-1 bg-primary text-primary-foreground">
+                                        <Repeat className="h-3 w-3" />
+                                        Sequencial
+                                      </Badge>
+                                    )}
+                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                      PENDENTE
+                                    </Badge>
+                                  </div>
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">

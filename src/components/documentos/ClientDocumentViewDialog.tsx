@@ -98,19 +98,20 @@ export function ClientDocumentViewDialog({
           .createSignedUrl(document.file_path, 900);
 
         if (error) throw error;
+        if (!cancelled) setFilePreviewUrl(data.signedUrl);
+
         const response = await fetch(data.signedUrl);
         if (!response.ok) throw new Error(`Falha ao carregar arquivo (${response.status})`);
         const blob = await response.blob();
         objectUrl = URL.createObjectURL(blob);
 
         if (!cancelled) {
-          setFilePreviewUrl(data.signedUrl);
           setFileObjectUrl(objectUrl);
           setFileMimeType(blob.type || null);
         }
       } catch (error) {
         console.error('Error loading document file:', error);
-        if (!cancelled) {
+        if (!cancelled && !filePreviewUrl) {
           setFilePreviewUrl(null);
           toast.error('Sem permissão para visualizar este documento.');
         }
@@ -202,13 +203,18 @@ export function ClientDocumentViewDialog({
       if (!downloadUrl && document.file_url) downloadUrl = document.file_url;
       if (!downloadUrl) return;
 
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error(`Falha ao baixar arquivo (${response.status})`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = window.document.createElement('a');
-      link.href = downloadUrl;
-      link.download = document.title || 'documento';
+      link.href = blobUrl;
+      link.download = `${document.title || 'documento'}${fileName.endsWith('.pdf') ? '.pdf' : ''}`;
       link.rel = 'noopener noreferrer';
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading document file:', error);
       toast.error('Sem permissão para baixar este documento.');

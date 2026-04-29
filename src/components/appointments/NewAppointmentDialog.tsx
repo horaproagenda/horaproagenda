@@ -363,8 +363,8 @@ export function NewAppointmentDialog({
 
       // Apply preferred time if set
       if (preferredTime) {
-        const [hours, minutes] = preferredTime.split(':').map(Number);
-        futureDate.setHours(hours, minutes, 0, 0);
+        const zonedFutureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
+        futureDate.setTime(zonedFutureDate.getTime());
       }
 
       dates.push(new Date(futureDate));
@@ -372,7 +372,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, settings?.timezone]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -406,15 +406,14 @@ export function NewAppointmentDialog({
 
       // Apply preferred time if set
       if (preferredTime) {
-        const [hours, minutes] = preferredTime.split(':').map(Number);
-        futureDate.setHours(hours, minutes, 0, 0);
+        futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
       }
 
       dates.push(new Date(futureDate));
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {

@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
+import { Plus, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';

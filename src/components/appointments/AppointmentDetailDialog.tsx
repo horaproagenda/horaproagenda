@@ -124,7 +124,7 @@ type AppointmentHistoryEvent = {
   title: string;
   description: string;
   amount?: number;
-  kind: 'item' | 'change' | 'refund' | 'payment';
+  kind: 'item' | 'change' | 'refund' | 'payment' | 'credit';
 };
 
 const statusConfig = appointmentStatusConfig;
@@ -160,7 +160,7 @@ export function AppointmentDetailDialog({
     queryFn: async () => {
       if (!appointment?.id) return [] as AppointmentHistoryEvent[];
 
-      const [auditResult, financialResult, cashResult] = await Promise.all([
+      const [auditResult, financialResult, cashResult, creditResult] = await Promise.all([
         supabase
           .from('audit_logs')
           .select('id, action, created_at, old_data, new_data, user_email')
@@ -176,6 +176,11 @@ export function AppointmentDetailDialog({
           .from('cash_transactions')
           .select('id, created_at, type, category, description, amount, payment_method, reference_type')
           .eq('reference_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        (supabase as any)
+          .from('client_credit_transactions')
+          .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, professional_id, professional:professionals(id, name)')
+          .eq('appointment_id', appointment.id)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -216,7 +221,20 @@ export function AppointmentDetailDialog({
         } satisfies AppointmentHistoryEvent;
       });
 
-      return [...auditEvents, ...financialEvents, ...cashEvents].sort(
+      const creditEvents = ((creditResult as any).data || []).map((entry: any) => {
+        const profName = entry.professional?.name || null;
+        const isUsed = entry.transaction_type === 'credit_used';
+        return {
+          id: `credit-${entry.id}`,
+          created_at: entry.created_at,
+          title: isUsed ? 'Crédito do cliente usado na baixa' : 'Movimento de crédito do cliente',
+          description: `${entry.description || ''}${profName ? ` • Profissional: ${profName}` : ''} • Saldo: R$ ${Number(entry.previous_balance || 0).toFixed(2)} → R$ ${Number(entry.new_balance || 0).toFixed(2)}`,
+          amount: Number(entry.amount || 0),
+          kind: 'credit',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      return [...auditEvents, ...financialEvents, ...cashEvents, ...creditEvents].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     },

@@ -26,7 +26,7 @@ export interface FinancialEntry {
   recurring_count: number | null;
   recurring_frequency: string | null;
   installments: number | null;
-  original_amount: number | null;
+  original_amount?: number | null;
   paid_by: string | null;
   created_at: string;
   updated_at: string;

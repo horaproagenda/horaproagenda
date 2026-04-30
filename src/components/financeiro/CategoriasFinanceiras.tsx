@@ -108,6 +108,7 @@ export function CategoriasFinanceiras() {
     amount: '',
     installment_amount: '',
     installments: '1',
+    overdue_tolerance_days: '0',
   });
 
   // Create default categories if none exist

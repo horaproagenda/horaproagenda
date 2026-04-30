@@ -680,6 +680,100 @@ export function AppointmentDetailDialog({
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
 
+  const receiptRows = [
+    {
+      item: appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço',
+      type: isPackageAppointment ? 'Pacote' : 'Serviço',
+      quantity: 1,
+      unitPrice: totalPrice,
+      total: totalPrice,
+    },
+    ...(appointment.additional_items || []).map((item) => ({
+      item: item.service?.name || item.product?.name || (item.item_type === 'service' ? 'Serviço adicional' : 'Produto adicional'),
+      type: item.item_type === 'service' ? 'Serviço adicional' : 'Produto',
+      quantity: Number(item.quantity || 0),
+      unitPrice: Number(item.unit_price || 0),
+      total: Number(item.total_amount || 0),
+    })),
+  ];
+
+  const normalizePdfText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const buildReceiptPdf = () => {
+    const doc = new jsPDF();
+    const clinicName = 'Clínica de Estética';
+    const receiptNumber = appointment.id.slice(0, 8).toUpperCase();
+    const paymentMethods = (appointment.payment_methods || [])
+      .map((method) => activePaymentMethods.find((item) => item.id === method)?.name || method)
+      .join(', ') || 'Não informado';
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text(normalizePdfText('Recibo de Baixa'), 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`${clinicName} • Recibo ${receiptNumber}`), 14, 28);
+    doc.text(normalizePdfText(`Horário da clínica: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, 35);
+    doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, 42);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(normalizePdfText('Cliente e agendamento'), 14, 56);
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`Cliente: ${appointment.client?.name || 'Não informado'}`), 14, 64);
+    doc.text(normalizePdfText(`Telefone: ${appointment.client?.phone || 'Não informado'}`), 14, 71);
+    doc.text(normalizePdfText(`Profissional: ${professional?.name || 'Não informado'}`), 14, 78);
+    doc.text(normalizePdfText(`Data: ${format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), 'dd/MM/yyyy')} • ${formatTimeInTimeZone(appointment.start_time, settings?.timezone)} às ${formatTimeInTimeZone(appointment.end_time, settings?.timezone)}`), 14, 85);
+
+    autoTable(doc, {
+      startY: 96,
+      head: [['Item', 'Tipo', 'Qtd.', 'Unitário', 'Total']],
+      body: receiptRows.map((row) => [
+        normalizePdfText(row.item),
+        normalizePdfText(row.type),
+        String(row.quantity),
+        formatCurrency(row.unitPrice),
+        formatCurrency(row.total),
+      ]),
+      styles: { font: 'helvetica', fontSize: 9 },
+      headStyles: { fillColor: [44, 62, 80] },
+    });
+
+    const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 120;
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`Valor original: ${formatCurrency(totalPrice)}`), 14, finalY + 12);
+    doc.text(normalizePdfText(`Serviços/produtos adicionados: ${formatCurrency(persistedAdditionalItemsTotal)}`), 14, finalY + 20);
+    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, finalY + 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(normalizePdfText(`Total final: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}`), 14, finalY + 40);
+    doc.setFontSize(11);
+    doc.text(normalizePdfText(`Valor pago: ${formatCurrency(amountPaid)}`), 14, finalY + 49);
+    return doc;
+  };
+
+  const handleDownloadReceipt = () => {
+    buildReceiptPdf().save(`recibo_${safeClient.name.replace(/\s+/g, '_')}_${appointment.id.slice(0, 8)}.pdf`);
+    toast.success('Recibo gerado para download.');
+  };
+
+  const handleSendReceipt = async () => {
+    const phone = appointment.client?.phone?.replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sem telefone cadastrado.');
+      return;
+    }
+    const pdfBlob = buildReceiptPdf().output('blob');
+    const file = new File([pdfBlob], `recibo_${appointment.id.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+    const shareData = { files: [file], title: 'Recibo de pagamento', text: `Recibo da baixa de ${safeClient.name}` };
+    if (navigator.canShare?.(shareData)) {
+      await navigator.share(shareData);
+      return;
+    }
+    const message = encodeURIComponent(`Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`);
+    window.open(`https://wa.me/55${phone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.');
+  };
+
   const addPaymentMethod = () => {
     setPayments([...payments, { method: '', amount: '' }]);
   };

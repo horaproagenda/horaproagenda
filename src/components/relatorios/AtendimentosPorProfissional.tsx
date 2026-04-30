@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -14,7 +16,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, DollarSign, Percent, Calendar, Download, ChevronRight, CheckCircle } from 'lucide-react';
+import { Users, DollarSign, Percent, Calendar, Download, ChevronRight, CheckCircle, CalendarIcon, X } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +32,8 @@ export function AtendimentosPorProfissional() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
+  const [detailDateFrom, setDetailDateFrom] = useState<Date | undefined>(undefined);
+  const [detailDateTo, setDetailDateTo] = useState<Date | undefined>(undefined);
 
   // Realtime sync
   useEffect(() => {
@@ -127,9 +131,19 @@ export function AtendimentosPorProfissional() {
   // Get monthly breakdown for selected professional
   const monthlyBreakdown = useMemo(() => {
     if (!selectedProfessional) return [];
-    const profAppts = allAppointments.filter((a: any) =>
+    let profAppts = allAppointments.filter((a: any) =>
       a.professional_id === selectedProfessional && a.status === 'completed'
     );
+
+    // Apply date range filter
+    if (detailDateFrom) {
+      profAppts = profAppts.filter((a: any) => parseISO(a.start_time) >= detailDateFrom);
+    }
+    if (detailDateTo) {
+      const endOfDay = new Date(detailDateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      profAppts = profAppts.filter((a: any) => parseISO(a.start_time) <= endOfDay);
+    }
 
     const months: { month: Date; label: string; appointments: any[] }[] = [];
     for (let i = 0; i < 12; i++) {
@@ -149,7 +163,7 @@ export function AtendimentosPorProfissional() {
       }
     }
     return months;
-  }, [selectedProfessional, allAppointments]);
+  }, [selectedProfessional, allAppointments, detailDateFrom, detailDateTo]);
 
   const selectedProf = professionals.find(p => p.id === selectedProfessional);
   const selectedProfPaidCommissions = commissionPayments.filter((cp: any) =>
@@ -274,13 +288,65 @@ export function AtendimentosPorProfissional() {
       </div>
 
       {/* Detail dialog */}
-      <Dialog open={!!selectedProfessional} onOpenChange={(open) => { if (!open) setSelectedProfessional(null); }}>
+      <Dialog open={!!selectedProfessional} onOpenChange={(open) => { if (!open) { setSelectedProfessional(null); setDetailDateFrom(undefined); setDetailDateTo(undefined); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-base">
               Atendimentos - {selectedProf?.name}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Date range filter */}
+          <div className="flex flex-wrap items-center gap-2 py-2 border-b">
+            <span className="text-xs text-muted-foreground">Período:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {detailDateFrom ? format(detailDateFrom, 'dd/MM/yyyy') : 'Data início'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={detailDateFrom}
+                  onSelect={setDetailDateFrom}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {detailDateTo ? format(detailDateTo, 'dd/MM/yyyy') : 'Data fim'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={detailDateTo}
+                  onSelect={setDetailDateTo}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {(detailDateFrom || detailDateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1 text-muted-foreground"
+                onClick={() => { setDetailDateFrom(undefined); setDetailDateTo(undefined); }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
           <ScrollArea className="flex-1 pr-2">
             <div className="space-y-4">
               {/* Commission payments history */}

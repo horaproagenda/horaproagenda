@@ -358,7 +358,7 @@ export function CashRegisterPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl flex items-center gap-2">
               <Receipt className="h-6 w-6" />
-              Caixa #{currentOpenRegister.id.slice(-6).toUpperCase()}
+              Caixa #{currentOpenRegister.register_number}
             </CardTitle>
             <Badge variant="secondary" className="bg-green-100 text-green-800 px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />

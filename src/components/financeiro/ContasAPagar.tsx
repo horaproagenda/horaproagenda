@@ -328,12 +328,16 @@ export function ContasAPagar() {
     if (!entryToPay) return;
     
     const installmentCount = parseInt(paymentInstallments) || 1;
+    const entryAmount = Number(entryToPay.amount);
+    const paid = parseFloat(paidAmount) || 0;
+    const remainder = Math.round((entryAmount - paid) * 100) / 100;
+    const isPartial = remainder > 0.01;
     
     // If boleto and user wants a reminder, create it
     if (isBoleto && createBoletoReminder && entryToPay.due_date) {
       await createReminder.mutateAsync({
         title: `Verificar pagamento de boleto: ${entryToPay.description}`,
-        description: `Verificar se o boleto "${entryToPay.description}" no valor de R$ ${Number(entryToPay.amount).toFixed(2)} foi pago. Caso positivo, dar baixa no sistema.`,
+        description: `Verificar se o boleto "${entryToPay.description}" no valor de R$ ${entryAmount.toFixed(2)} foi pago. Caso positivo, dar baixa no sistema.`,
         reminder_date: entryToPay.due_date,
         reminder_time: '09:00',
         is_recurring: false,
@@ -348,14 +352,50 @@ export function ContasAPagar() {
     
     // Only mark as paid if not boleto OR if it's boleto and user is confirming payment
     if (!isBoleto || !createBoletoReminder) {
+      // Update original entry: set paid amount and mark as paid
       await updateEntry.mutateAsync({
         id: entryToPay.id,
+        amount: paid,
         status: 'paid' as const,
         paid_date: format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
         installments: installmentCount,
+        notes: isPartial
+          ? `Pagamento parcial: R$ ${paid.toFixed(2)} de R$ ${entryAmount.toFixed(2)}. Restante: R$ ${remainder.toFixed(2)}`
+          : entryToPay.notes,
       });
+
+      // If partial payment, create a new pending entry for the remainder
+      if (isPartial) {
+        // Calculate next month's due date for the remainder
+        const nextDueDate = new Date(entryToPay.due_date + 'T12:00:00');
+        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+
+        await createEntry.mutateAsync({
+          type: 'payable',
+          description: `${entryToPay.description.replace(/\s*\(restante.*?\)$/i, '')} (restante)`,
+          amount: remainder,
+          due_date: format(nextDueDate, 'yyyy-MM-dd'),
+          category_id: entryToPay.category_id || null,
+          payment_method_id: paymentMethodId || null,
+          bank_id: paymentBankId || null,
+          client_id: entryToPay.client_id || null,
+          professional_id: entryToPay.professional_id || null,
+          notes: `Saldo restante de "${entryToPay.description}" (original: R$ ${entryAmount.toFixed(2)}, pago: R$ ${paid.toFixed(2)})`,
+          is_recurring: false,
+          recurring_day: null,
+          recurring_count: null,
+          recurring_frequency: null,
+          paid_date: null,
+          appointment_id: entryToPay.appointment_id || null,
+          installments: 1,
+          paid_by: null,
+          status: 'pending',
+        });
+        
+        toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} adicionado como pendente.`);
+      }
     } else {
       // For boleto with reminder, only update payment method but keep pending
       await updateEntry.mutateAsync({
@@ -371,6 +411,7 @@ export function ContasAPagar() {
     setPaymentMethodId('');
     setPaymentBankId('');
     setPaymentInstallments('1');
+    setPaidAmount('');
     setCreateBoletoReminder(false);
   };
 

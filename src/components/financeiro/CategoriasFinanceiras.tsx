@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -28,10 +29,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronRight, ArrowLeft, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
-import { useFinancialEntries } from '@/hooks/useFinancialEntries';
+import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
@@ -47,9 +48,18 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transferência', type: 'expense' },
 ];
 
+interface GroupedEntry {
+  baseDescription: string;
+  entries: FinancialEntry[];
+  totalAmount: number;
+  paidCount: number;
+  pendingCount: number;
+  isRecurring: boolean;
+}
+
 export function CategoriasFinanceiras() {
-  const { categories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
-  const { payables, receivables, createEntry } = useFinancialEntries();
+  const { categories, incomeCategories, expenseCategories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
+  const { payables, receivables, createEntry, updateEntry } = useFinancialEntries();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
 
@@ -79,7 +89,27 @@ export function CategoriasFinanceiras() {
     is_total_value: true,
   });
 
-  // Create default categories if none exist (deduplicated)
+  // Detail view state
+  const [detailGroup, setDetailGroup] = useState<GroupedEntry | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  // Edit entry state
+  const [editEntryDialogOpen, setEditEntryDialogOpen] = useState(false);
+  const [editScope, setEditScope] = useState<'current' | 'all' | null>(null);
+  const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
+  const [editingGroup, setEditingGroup] = useState<GroupedEntry | null>(null);
+  const [editEntryForm, setEditEntryForm] = useState({
+    description: '',
+    category_id: '',
+    bank_id: '',
+    is_recurring: false,
+    recurring_frequency: 'monthly',
+    amount: '',
+    installment_amount: '',
+    installments: '1',
+  });
+
+  // Create default categories if none exist
   useEffect(() => {
     if (categories.length === 0) {
       const seen = new Set<string>();
@@ -98,20 +128,34 @@ export function CategoriasFinanceiras() {
     }
   }, [categories.length]);
 
-  // Deduplicated active categories
-  const dedupedCategories = (() => {
-    const seen = new Map<string, any>();
-    categories.forEach(cat => {
-      const key = `${cat.name.toLowerCase().trim()}|${cat.type}`;
-      if (!seen.has(key)) {
-        seen.set(key, cat);
-      }
-    });
-    return Array.from(seen.values());
-  })();
+  // Use deduplicated categories from hook
+  const expenseCats = expenseCategories;
+  const incomeCats = incomeCategories;
 
-  const expenseCats = dedupedCategories.filter(c => c.type === 'expense');
-  const incomeCats = dedupedCategories.filter(c => c.type === 'income');
+  // Group entries by base description (remove "(1/3)", "(restante)" etc.)
+  const getBaseDescription = (desc: string) => {
+    return desc
+      .replace(/\s*\(\d+\/\d+\)\s*/g, '')
+      .replace(/\s*\(restante.*?\)\s*/gi, '')
+      .trim();
+  };
+
+  const groupEntries = (entries: FinancialEntry[]): GroupedEntry[] => {
+    const groups = new Map<string, FinancialEntry[]>();
+    entries.forEach(entry => {
+      const base = getBaseDescription(entry.description);
+      if (!groups.has(base)) groups.set(base, []);
+      groups.get(base)!.push(entry);
+    });
+    return Array.from(groups.entries()).map(([baseDesc, entries]) => ({
+      baseDescription: baseDesc,
+      entries: entries.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+      totalAmount: entries.reduce((sum, e) => sum + Number(e.amount), 0),
+      paidCount: entries.filter(e => e.status === 'paid').length,
+      pendingCount: entries.filter(e => e.status !== 'paid').length,
+      isRecurring: entries.length > 1 || entries.some(e => e.is_recurring),
+    }));
+  };
 
   const resetForm = () => {
     setForm({ name: '', is_recurring: false, recurring_frequency: 'monthly', description: '', is_active: true });
@@ -165,23 +209,12 @@ export function CategoriasFinanceiras() {
   const getNextDueDate = (baseDate: string, frequency: string, index: number): string => {
     const date = new Date(baseDate + 'T12:00:00');
     switch (frequency) {
-      case 'weekly':
-        date.setDate(date.getDate() + (7 * index));
-        break;
-      case 'biweekly':
-        date.setDate(date.getDate() + (14 * index));
-        break;
-      case 'monthly':
-        date.setMonth(date.getMonth() + index);
-        break;
-      case 'quarterly':
-        date.setMonth(date.getMonth() + (3 * index));
-        break;
-      case 'annual':
-        date.setFullYear(date.getFullYear() + index);
-        break;
-      default:
-        date.setMonth(date.getMonth() + index);
+      case 'weekly': date.setDate(date.getDate() + (7 * index)); break;
+      case 'biweekly': date.setDate(date.getDate() + (14 * index)); break;
+      case 'monthly': date.setMonth(date.getMonth() + index); break;
+      case 'quarterly': date.setMonth(date.getMonth() + (3 * index)); break;
+      case 'annual': date.setFullYear(date.getFullYear() + index); break;
+      default: date.setMonth(date.getMonth() + index);
     }
     return format(date, 'yyyy-MM-dd');
   };
@@ -192,7 +225,6 @@ export function CategoriasFinanceiras() {
     const amount = parseFloat(entryForm.amount) || 0;
     const installments = parseInt(entryForm.installments) || 1;
 
-    // Validate and calculate using the recurring utility
     const calc = calculateRecurringValues({
       amount,
       installments,
@@ -204,12 +236,10 @@ export function CategoriasFinanceiras() {
       return;
     }
 
-    // Determine type from category, not just dialog type
-    const selectedCat = dedupedCategories.find(c => c.id === selectedCategoryId);
+    const selectedCat = [...expenseCats, ...incomeCats].find(c => c.id === selectedCategoryId);
     const entryType = selectedCat?.type === 'income' ? 'receivable' : 'payable';
 
     if (entryForm.is_recurring && installments > 1) {
-      // Create one entry per installment with correct due dates
       for (let i = 0; i < installments; i++) {
         const dueDate = getNextDueDate(entryForm.due_date, entryForm.recurring_frequency, i);
         await createEntry.mutateAsync({
@@ -220,21 +250,14 @@ export function CategoriasFinanceiras() {
           category_id: selectedCategoryId,
           payment_method_id: entryForm.payment_method_id || null,
           bank_id: entryForm.bank_id || null,
-          client_id: null,
-          professional_id: null,
+          client_id: null, professional_id: null,
           notes: `Modo: ${calc.mode === 'diluted' ? 'diluído' : 'integral'} | Total: R$ ${calc.totalAmount.toFixed(2)}`,
-          is_recurring: true,
-          recurring_day: null,
-          recurring_count: installments,
+          is_recurring: true, recurring_day: null, recurring_count: installments,
           recurring_frequency: entryForm.recurring_frequency,
-          paid_date: null,
-          appointment_id: null,
-          installments: installments,
-          paid_by: null,
-          status: 'pending',
+          paid_date: null, appointment_id: null, installments, paid_by: null, status: 'pending',
         });
       }
-      toast.success(`${installments} parcelas criadas (${calc.mode === 'diluted' ? 'diluído' : 'integral'}): R$ ${calc.perInstallmentAmount.toFixed(2)}/parcela, total R$ ${calc.totalAmount.toFixed(2)}`);
+      toast.success(`${installments} parcelas criadas`);
     } else {
       await createEntry.mutateAsync({
         type: entryType,
@@ -244,18 +267,12 @@ export function CategoriasFinanceiras() {
         category_id: selectedCategoryId,
         payment_method_id: entryForm.payment_method_id || null,
         bank_id: entryForm.bank_id || null,
-        client_id: null,
-        professional_id: null,
+        client_id: null, professional_id: null,
         notes: null,
         is_recurring: entryForm.is_recurring,
-        recurring_day: null,
-        recurring_count: null,
+        recurring_day: null, recurring_count: null,
         recurring_frequency: entryForm.is_recurring ? entryForm.recurring_frequency : null,
-        paid_date: null,
-        appointment_id: null,
-        installments: 1,
-        paid_by: null,
-        status: 'pending',
+        paid_date: null, appointment_id: null, installments: 1, paid_by: null, status: 'pending',
       });
     }
 
@@ -263,20 +280,148 @@ export function CategoriasFinanceiras() {
     resetEntryForm();
   };
 
+  // Open detail view for a grouped entry
+  const openDetail = (group: GroupedEntry) => {
+    setDetailGroup(group);
+    setDetailDialogOpen(true);
+  };
+
+  // Open edit entry dialog
+  const openEditEntry = (entry: FinancialEntry, group: GroupedEntry) => {
+    setEditingEntry(entry);
+    setEditingGroup(group);
+    setEditScope(null);
+    setEditEntryForm({
+      description: getBaseDescription(entry.description),
+      category_id: entry.category_id || '',
+      bank_id: entry.bank_id || '',
+      is_recurring: entry.is_recurring,
+      recurring_frequency: entry.recurring_frequency || 'monthly',
+      amount: Number(entry.amount).toFixed(2),
+      installment_amount: Number(entry.amount).toFixed(2),
+      installments: String(entry.installments || 1),
+    });
+    setEditEntryDialogOpen(true);
+  };
+
+  const handleEditEntry = async () => {
+    if (!editingEntry || !editScope) return;
+
+    if (editScope === 'current') {
+      await updateEntry.mutateAsync({
+        id: editingEntry.id,
+        description: editEntryForm.description,
+        category_id: editEntryForm.category_id || null,
+        bank_id: editEntryForm.bank_id || null,
+        is_recurring: editEntryForm.is_recurring,
+        recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
+        amount: parseFloat(editEntryForm.amount) || 0,
+        installments: parseInt(editEntryForm.installments) || 1,
+      });
+      toast.success('Conta atualizada com sucesso');
+    } else if (editScope === 'all' && editingGroup) {
+      for (const entry of editingGroup.entries) {
+        const suffix = entry.description.match(/\s*\(\d+\/\d+\)\s*$/)?.[0] || '';
+        await updateEntry.mutateAsync({
+          id: entry.id,
+          description: editEntryForm.description + suffix,
+          category_id: editEntryForm.category_id || null,
+          bank_id: editEntryForm.bank_id || null,
+          is_recurring: editEntryForm.is_recurring,
+          recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
+          amount: parseFloat(editEntryForm.amount) || 0,
+          installments: parseInt(editEntryForm.installments) || 1,
+        });
+      }
+      toast.success(`${editingGroup.entries.length} contas atualizadas`);
+    }
+
+    setEditEntryDialogOpen(false);
+    setEditingEntry(null);
+    setEditingGroup(null);
+    setEditScope(null);
+  };
+
   // Group entries by category
   const expensesByCategory = expenseCats.map(cat => ({
     ...cat,
     entries: payables.filter(e => e.category_id === cat.id),
+    groups: groupEntries(payables.filter(e => e.category_id === cat.id)),
     total: payables.filter(e => e.category_id === cat.id).reduce((sum, e) => sum + Number(e.amount), 0),
   }));
 
   const incomesByCategory = incomeCats.map(cat => ({
     ...cat,
     entries: receivables.filter(e => e.category_id === cat.id),
+    groups: groupEntries(receivables.filter(e => e.category_id === cat.id)),
     total: receivables.filter(e => e.category_id === cat.id).reduce((sum, e) => sum + Number(e.amount), 0),
   }));
 
   const isIncome = entryDialogType === 'income';
+
+  const getStatusBadge = (entry: FinancialEntry) => {
+    if (entry.status === 'paid') {
+      const isPartial = entry.notes?.includes('Pagamento parcial');
+      if (isPartial) return <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">Parcial</Badge>;
+      return <Badge className="bg-green-100 text-green-700 text-[10px]">Pago</Badge>;
+    }
+    const dueDate = parseISO(entry.due_date + 'T12:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (today > dueDate) return <Badge className="bg-red-100 text-red-700 text-[10px]">Atrasada</Badge>;
+    return <Badge variant="outline" className="text-[10px]">Pendente</Badge>;
+  };
+
+  const renderCategoryEntries = (cat: any) => {
+    if (cat.groups.length === 0) {
+      return <p className="text-muted-foreground text-sm pl-4">Nenhum lançamento nesta categoria</p>;
+    }
+    return (
+      <div className="space-y-1 pl-4">
+        {cat.groups.map((group: GroupedEntry) => (
+          <div
+            key={group.baseDescription}
+            className="flex items-center justify-between py-2 px-2 border-b last:border-0 rounded hover:bg-muted/50 cursor-pointer transition-colors"
+            onClick={() => openDetail(group)}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm truncate">{group.baseDescription}</span>
+              {group.isRecurring && (
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  {group.entries.length}x
+                </Badge>
+              )}
+              {group.paidCount > 0 && group.pendingCount > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-700 text-[10px] shrink-0">
+                  {group.paidCount}/{group.entries.length} pagas
+                </Badge>
+              )}
+              {group.paidCount === group.entries.length && (
+                <Badge className="bg-green-100 text-green-700 text-[10px] shrink-0">Quitado</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-sm font-medium ${cat.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                R$ {group.totalAmount.toFixed(2)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditEntry(group.entries[0], group);
+                }}
+                title="Editar conta"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -299,9 +444,7 @@ export function CategoriasFinanceiras() {
                   <div>
                     <Label>Tipo</Label>
                     <Select value={newCatType} onValueChange={(v) => setNewCatType(v as 'income' | 'expense')}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="expense">Despesa</SelectItem>
                         <SelectItem value="income">Receita</SelectItem>
@@ -351,7 +494,7 @@ export function CategoriasFinanceiras() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        {/* Dialog for creating entry (income or expense) in a category */}
+        {/* Dialog for creating entry */}
         <Dialog open={entryDialogOpen} onOpenChange={(open) => { setEntryDialogOpen(open); if (!open) resetEntryForm(); }}>
           <DialogContent className="max-h-[90vh]">
             <DialogHeader>
@@ -462,6 +605,238 @@ export function CategoriasFinanceiras() {
           </DialogContent>
         </Dialog>
 
+        {/* Detail Dialog */}
+        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailDialogOpen(false)}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                Detalhes: {detailGroup?.baseDescription}
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[70vh]">
+              {detailGroup && (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold">R$ {detailGroup.totalAmount.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Pagas</p>
+                      <p className="text-lg font-bold text-green-600">{detailGroup.paidCount}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Pendentes</p>
+                      <p className="text-lg font-bold text-orange-600">{detailGroup.pendingCount}</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Entries list */}
+                  <div className="space-y-2">
+                    {detailGroup.entries.map((entry) => (
+                      <div key={entry.id} className="rounded-lg border p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{entry.description}</span>
+                          {getStatusBadge(entry)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>
+                            <span className="block">Vencimento</span>
+                            <span className="text-foreground font-medium">
+                              {format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block">Valor</span>
+                            <span className="text-foreground font-medium">
+                              R$ {Number(entry.amount).toFixed(2)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block">Forma de Pagamento</span>
+                            <span className="text-foreground font-medium">
+                              {entry.payment_method?.name || '-'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block">Conta Bancária</span>
+                            <span className="text-foreground font-medium">
+                              {entry.bank?.name || '-'}
+                            </span>
+                          </div>
+                          {entry.paid_date && (
+                            <div>
+                              <span className="block">Data do Pagamento</span>
+                              <span className="text-foreground font-medium">
+                                {format(parseISO(entry.paid_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                              </span>
+                            </div>
+                          )}
+                          {entry.original_amount && (
+                            <div>
+                              <span className="block">Valor Original</span>
+                              <span className="text-foreground font-medium">
+                                R$ {Number(entry.original_amount).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="block">Categoria</span>
+                            <span className="text-foreground font-medium">
+                              {entry.category?.name || '-'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block">Parcelas</span>
+                            <span className="text-foreground font-medium">
+                              {entry.installments || 1}x
+                            </span>
+                          </div>
+                        </div>
+                        {entry.notes && (
+                          <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mt-1">
+                            {entry.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Entry Dialog */}
+        <Dialog open={editEntryDialogOpen} onOpenChange={(open) => { setEditEntryDialogOpen(open); if (!open) setEditScope(null); }}>
+          <DialogContent className="max-w-md max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Editar Conta</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[70vh] pr-4">
+              {!editScope ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Como deseja editar "<strong>{editEntryForm.description}</strong>"?
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2"
+                    onClick={() => setEditScope('current')}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar apenas esta conta
+                  </Button>
+                  {editingGroup && editingGroup.entries.length > 1 && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => setEditScope('all')}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Editar todas ({editingGroup.entries.length} contas)
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    {editScope === 'current' ? 'Editando apenas esta conta' : `Editando todas as ${editingGroup?.entries.length} contas`}
+                  </p>
+                  <div>
+                    <Label>Nome da Conta</Label>
+                    <Input
+                      value={editEntryForm.description}
+                      onChange={(e) => setEditEntryForm({ ...editEntryForm, description: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Categoria</Label>
+                    <Select value={editEntryForm.category_id} onValueChange={(v) => setEditEntryForm({ ...editEntryForm, category_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {[...expenseCats, ...incomeCats].map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Conta Bancária</Label>
+                    <Select value={editEntryForm.bank_id} onValueChange={(v) => setEditEntryForm({ ...editEntryForm, bank_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {activeBanks.map((bank) => (
+                          <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editEntryForm.is_recurring}
+                      onCheckedChange={(checked) => setEditEntryForm({ ...editEntryForm, is_recurring: checked })}
+                    />
+                    <Label>Conta recorrente</Label>
+                  </div>
+                  {editEntryForm.is_recurring && (
+                    <div>
+                      <Label>Frequência</Label>
+                      <Select value={editEntryForm.recurring_frequency} onValueChange={(v) => setEditEntryForm({ ...editEntryForm, recurring_frequency: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="biweekly">Quinzenal</SelectItem>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                          <SelectItem value="quarterly">Trimestral</SelectItem>
+                          <SelectItem value="annual">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Valor</Label>
+                      <CurrencyInput
+                        value={editEntryForm.amount}
+                        onValueChange={(value) => setEditEntryForm({ ...editEntryForm, amount: String(value) })}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label>Parcelas</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={editEntryForm.installments}
+                        onChange={(e) => setEditEntryForm({ ...editEntryForm, installments: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  {parseInt(editEntryForm.installments) > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                      Valor por parcela: R$ {(parseFloat(editEntryForm.amount || '0') / parseInt(editEntryForm.installments || '1')).toFixed(2)}
+                    </p>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setEditScope(null)}>Voltar</Button>
+                    <Button onClick={handleEditEntry}>
+                      <Check className="h-4 w-4 mr-2" />
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
         <ScrollArea className="h-[500px]">
           {/* Income Categories */}
           {incomeCats.length > 0 && (
@@ -475,7 +850,7 @@ export function CategoriasFinanceiras() {
                         <div className="flex items-center gap-2">
                           <Badge variant="default">Receita</Badge>
                           <span className="font-medium">{cat.name}</span>
-                          <span className="text-muted-foreground text-sm">({cat.entries.length})</span>
+                          <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-green-600">R$ {cat.total.toFixed(2)}</span>
@@ -492,18 +867,7 @@ export function CategoriasFinanceiras() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      {cat.entries.length > 0 ? (
-                        <div className="space-y-2 pl-4">
-                          {cat.entries.map((entry) => (
-                            <div key={entry.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                              <span>{entry.description}</span>
-                              <span className="text-green-600">R$ {Number(entry.amount).toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground text-sm pl-4">Nenhuma receita nesta categoria</p>
-                      )}
+                      {renderCategoryEntries(cat)}
                     </AccordionContent>
                   </AccordionItem>
                 ))}
@@ -523,7 +887,7 @@ export function CategoriasFinanceiras() {
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">Despesa</Badge>
                           <span className="font-medium">{cat.name}</span>
-                          <span className="text-muted-foreground text-sm">({cat.entries.length})</span>
+                          <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-red-600">R$ {cat.total.toFixed(2)}</span>
@@ -540,18 +904,7 @@ export function CategoriasFinanceiras() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      {cat.entries.length > 0 ? (
-                        <div className="space-y-2 pl-4">
-                          {cat.entries.map((expense) => (
-                            <div key={expense.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                              <span>{expense.description}</span>
-                              <span className="text-red-600">R$ {Number(expense.amount).toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground text-sm pl-4">Nenhuma despesa nesta categoria</p>
-                      )}
+                      {renderCategoryEntries(cat)}
                     </AccordionContent>
                   </AccordionItem>
                 ))}

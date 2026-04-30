@@ -29,9 +29,11 @@ import { useRooms } from '@/hooks/useRooms';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useInfiniteList } from '@/hooks/useInfiniteList';
 import { exportToCSV } from '@/lib/exportUtils';
 import { Service, PackageTemplate } from '@/types';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
+import { getCategoryColor } from '@/lib/categoryColors';
 
 const defaultCategories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',

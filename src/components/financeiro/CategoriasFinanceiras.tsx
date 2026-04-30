@@ -167,7 +167,7 @@ export function CategoriasFinanceiras() {
     setEntryForm({
       description: '', amount: '', due_date: format(new Date(), 'yyyy-MM-dd'),
       payment_method_id: '', bank_id: '', is_recurring: false, recurring_frequency: 'monthly',
-      installments: '1', is_total_value: true,
+      installments: '1', is_total_value: true, overdue_tolerance_days: '0',
     });
     setSelectedCategoryId(null);
   };

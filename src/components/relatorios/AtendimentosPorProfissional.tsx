@@ -295,6 +295,58 @@ export function AtendimentosPorProfissional() {
               Atendimentos - {selectedProf?.name}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Date range filter */}
+          <div className="flex flex-wrap items-center gap-2 py-2 border-b">
+            <span className="text-xs text-muted-foreground">Período:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {detailDateFrom ? format(detailDateFrom, 'dd/MM/yyyy') : 'Data início'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={detailDateFrom}
+                  onSelect={setDetailDateFrom}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {detailDateTo ? format(detailDateTo, 'dd/MM/yyyy') : 'Data fim'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={detailDateTo}
+                  onSelect={setDetailDateTo}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {(detailDateFrom || detailDateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1 text-muted-foreground"
+                onClick={() => { setDetailDateFrom(undefined); setDetailDateTo(undefined); }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
           <ScrollArea className="flex-1 pr-2">
             <div className="space-y-4">
               {/* Commission payments history */}

@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Check, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
@@ -59,7 +59,6 @@ export function ContasAPagar() {
   const { createReminder } = useReminders();
   
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<any>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     date: ['month'],
     status: ['pending'],
@@ -67,8 +66,6 @@ export function ContasAPagar() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<any>(null);
   const [deleteRecurring, setDeleteRecurring] = useState(false);
-  const [editRecurring, setEditRecurring] = useState(false);
-  const [showEditRecurringOption, setShowEditRecurringOption] = useState(false);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [entryToPay, setEntryToPay] = useState<any>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
@@ -76,12 +73,12 @@ export function ContasAPagar() {
   const [paymentInstallments, setPaymentInstallments] = useState<string>('1');
   const [paidAmount, setPaidAmount] = useState<string>('');
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
+  const [isEditingPayment, setIsEditingPayment] = useState(false);
   
   const [form, setForm] = useState({
     description: '',
     amount: '',
     due_date: format(new Date(), 'yyyy-MM-dd'),
-    paid_date: '',
     category_id: '',
     payment_method_id: '',
     bank_id: '',
@@ -144,12 +141,12 @@ export function ContasAPagar() {
       return true;
     });
   }, [payables, selectedFilters]);
+
   const resetForm = () => {
     setForm({
       description: '',
       amount: '',
       due_date: format(new Date(), 'yyyy-MM-dd'),
-      paid_date: '',
       category_id: '',
       payment_method_id: '',
       bank_id: '',
@@ -159,29 +156,6 @@ export function ContasAPagar() {
       recurring_count: '1',
       split_value: false,
     });
-    setEditingEntry(null);
-  };
-
-  const openEdit = (entry: any) => {
-    setEditingEntry(entry);
-    setForm({
-      description: entry.description.replace(/\s*\(\d+\/\d+\)$/, ''), // Remove number suffix for editing
-      amount: entry.amount.toString(),
-      due_date: entry.due_date,
-      paid_date: entry.paid_date || '',
-      category_id: entry.category_id || '',
-      payment_method_id: entry.payment_method_id || '',
-      bank_id: entry.bank_id || '',
-      is_recurring: entry.is_recurring || false,
-      recurring_frequency: entry.recurring_frequency || 'monthly',
-      installments: entry.installments?.toString() || '1',
-      recurring_count: entry.recurring_count?.toString() || '1',
-      split_value: false,
-    });
-    // Show recurring option if entry is part of a recurring series
-    setShowEditRecurringOption(entry.is_recurring);
-    setEditRecurring(false);
-    setDialogOpen(true);
   };
 
   const getNextDueDate = (baseDate: string, frequency: string, index: number): string => {
@@ -214,101 +188,61 @@ export function ContasAPagar() {
     
     const amountPerEntry = calc.perInstallmentAmount;
 
-    if (editingEntry) {
-      // Update this entry
-      await updateEntry.mutateAsync({ 
-        id: editingEntry.id, 
-        type: 'payable',
-        description: form.description,
-        amount: amountPerEntry,
-        due_date: form.due_date,
-        paid_date: form.paid_date || null,
-        category_id: form.category_id || null,
-        payment_method_id: form.payment_method_id || null,
-        bank_id: form.bank_id || null,
-        is_recurring: form.is_recurring,
-        recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
-        recurring_count: form.is_recurring ? recurringCount : null,
-        installments: parseInt(form.installments) || 1,
-        status: form.paid_date ? 'paid' as const : 'pending' as const,
-      });
-
-      // If editRecurring is true, also update all future related entries
-      if (editRecurring && editingEntry.is_recurring) {
-        const baseDescription = editingEntry.description.replace(/\s*\(\d+\/\d+\)$/, '');
-        const relatedEntries = payables.filter(e => 
-          e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
-          e.id !== editingEntry.id &&
-          parseISO(e.due_date) > parseISO(editingEntry.due_date)
-        );
-        
-        for (const entry of relatedEntries) {
-          await updateEntry.mutateAsync({
-            id: entry.id,
-            description: form.description,
-            amount: amountPerEntry,
-            category_id: form.category_id || null,
-            payment_method_id: form.payment_method_id || null,
-            bank_id: form.bank_id || null,
-          });
-        }
-      }
-    } else {
-      if (form.is_recurring && recurringCount > 1) {
-        for (let i = 0; i < recurringCount; i++) {
-          const dueDate = getNextDueDate(form.due_date, form.recurring_frequency, i);
-          await createEntry.mutateAsync({
-            type: 'payable',
-            description: `${form.description} (${i + 1}/${recurringCount})`,
-            amount: amountPerEntry,
-            due_date: dueDate,
-            paid_date: null,
-            category_id: form.category_id || null,
-            payment_method_id: form.payment_method_id || null,
-            bank_id: form.bank_id || null,
-            client_id: null,
-            professional_id: null,
-            notes: null,
-            is_recurring: true,
-            recurring_day: null,
-            recurring_count: recurringCount,
-            recurring_frequency: form.recurring_frequency,
-            appointment_id: null,
-            installments: parseInt(form.installments) || 1,
-            paid_by: null,
-            status: 'pending',
-          });
-        }
-      } else {
+    if (form.is_recurring && recurringCount > 1) {
+      for (let i = 0; i < recurringCount; i++) {
+        const dueDate = getNextDueDate(form.due_date, form.recurring_frequency, i);
         await createEntry.mutateAsync({
           type: 'payable',
-          description: form.description,
+          description: `${form.description} (${i + 1}/${recurringCount})`,
           amount: amountPerEntry,
-          due_date: form.due_date,
-          paid_date: form.paid_date || null,
+          due_date: dueDate,
+          paid_date: null,
           category_id: form.category_id || null,
           payment_method_id: form.payment_method_id || null,
           bank_id: form.bank_id || null,
           client_id: null,
           professional_id: null,
           notes: null,
-          is_recurring: form.is_recurring,
+          is_recurring: true,
           recurring_day: null,
-          recurring_count: form.is_recurring ? recurringCount : null,
-          recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
+          recurring_count: recurringCount,
+          recurring_frequency: form.recurring_frequency,
           appointment_id: null,
           installments: parseInt(form.installments) || 1,
           paid_by: null,
-          status: form.paid_date ? 'paid' : 'pending',
+          status: 'pending',
         });
       }
+    } else {
+      await createEntry.mutateAsync({
+        type: 'payable',
+        description: form.description,
+        amount: amountPerEntry,
+        due_date: form.due_date,
+        paid_date: null,
+        category_id: form.category_id || null,
+        payment_method_id: form.payment_method_id || null,
+        bank_id: form.bank_id || null,
+        client_id: null,
+        professional_id: null,
+        notes: null,
+        is_recurring: form.is_recurring,
+        recurring_day: null,
+        recurring_count: form.is_recurring ? recurringCount : null,
+        recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
+        appointment_id: null,
+        installments: parseInt(form.installments) || 1,
+        paid_by: null,
+        status: 'pending',
+      });
     }
     setDialogOpen(false);
     resetForm();
   };
 
-  const openPayDialog = (entry: any) => {
+  const openPayDialog = (entry: any, editMode = false) => {
     setEntryToPay(entry);
+    setIsEditingPayment(editMode);
     setPaymentMethodId(entry.payment_method_id || '');
     setPaymentBankId(entry.bank_id || '');
     setPaymentInstallments(entry.installments?.toString() || '1');
@@ -328,9 +262,24 @@ export function ContasAPagar() {
   const handleConfirmPayment = async () => {
     if (!entryToPay) return;
     
-    const installmentCount = parseInt(paymentInstallments) || 1;
-    const entryAmount = Number(entryToPay.amount);
     const paid = parseFloat(paidAmount) || 0;
+
+    // If editing an already-paid entry's payment details
+    if (isEditingPayment) {
+      await updateEntry.mutateAsync({
+        id: entryToPay.id,
+        amount: paid,
+        payment_method_id: paymentMethodId || null,
+        bank_id: paymentBankId || null,
+        installments: parseInt(paymentInstallments) || 1,
+      });
+      setPayDialogOpen(false);
+      setEntryToPay(null);
+      setIsEditingPayment(false);
+      return;
+    }
+
+    const entryAmount = Number(entryToPay.amount);
     const remainder = Math.round((entryAmount - paid) * 100) / 100;
     const isPartial = remainder > 0.01;
     
@@ -351,9 +300,7 @@ export function ContasAPagar() {
       });
     }
     
-    // Only mark as paid if not boleto OR if it's boleto and user is confirming payment
     if (!isBoleto || !createBoletoReminder) {
-      // Update original entry: set paid amount and mark as paid
       await updateEntry.mutateAsync({
         id: entryToPay.id,
         amount: paid,
@@ -361,13 +308,12 @@ export function ContasAPagar() {
         paid_date: format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
-        installments: installmentCount,
+        installments: parseInt(paymentInstallments) || 1,
         notes: isPartial
           ? `Pagamento parcial: R$ ${paid.toFixed(2)} de R$ ${entryAmount.toFixed(2)}. Restante: R$ ${remainder.toFixed(2)}`
           : entryToPay.notes,
       });
 
-      // If partial payment, create a new pending entry for the remainder
       if (isPartial) {
         await createEntry.mutateAsync({
           type: 'payable',
@@ -394,12 +340,11 @@ export function ContasAPagar() {
         toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} permanece pendente até ser quitado.`);
       }
     } else {
-      // For boleto with reminder, only update payment method but keep pending
       await updateEntry.mutateAsync({
         id: entryToPay.id,
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
-        installments: installmentCount,
+        installments: parseInt(paymentInstallments) || 1,
       });
     }
     
@@ -412,18 +357,6 @@ export function ContasAPagar() {
     setCreateBoletoReminder(false);
   };
 
-  const handleMarkAsPaid = async (entry: any) => {
-    openPayDialog(entry);
-  };
-
-  const handleChangeStatus = async (entry: any, newStatus: 'pending' | 'paid') => {
-    await updateEntry.mutateAsync({
-      id: entry.id,
-      status: newStatus,
-      paid_date: newStatus === 'paid' ? format(new Date(), 'yyyy-MM-dd') : null,
-    });
-  };
-
   const openDeleteDialog = (entry: any) => {
     setEntryToDelete(entry);
     setDeleteRecurring(false);
@@ -434,7 +367,6 @@ export function ContasAPagar() {
     if (!entryToDelete) return;
 
     if (deleteRecurring && entryToDelete.is_recurring) {
-      // Delete all recurring entries with similar description
       const baseDescription = entryToDelete.description.replace(/\s*\(\d+\/\d+\)$/, '');
       const relatedEntries = payables.filter(e => 
         e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
@@ -452,18 +384,23 @@ export function ContasAPagar() {
     setEntryToDelete(null);
   };
 
-  const getStatusBadge = (entry: any) => {
+  const getStatusDisplay = (entry: any) => {
     if (entry.status === 'paid') {
-      return <Badge className="bg-green-500 hover:bg-green-600">Pago</Badge>;
+      // Check if it was a partial payment
+      const isPartial = entry.notes?.includes('Pagamento parcial');
+      if (isPartial) {
+        return <span className="text-sm font-semibold text-yellow-600">Parcialmente Pago</span>;
+      }
+      return <span className="text-sm font-semibold text-green-600">Pago</span>;
     }
     const dueDate = parseISO(entry.due_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     if (isAfter(today, dueDate)) {
-      return <Badge variant="destructive">Vencido</Badge>;
+      return <span className="text-sm font-semibold text-red-600">Atrasada</span>;
     }
-    return <Badge variant="secondary">Pendente</Badge>;
+    return <span className="text-sm font-semibold text-muted-foreground">Pendente</span>;
   };
 
   return (
@@ -471,7 +408,6 @@ export function ContasAPagar() {
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle>Contas a Pagar</CardTitle>
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Advanced Filters */}
           <AdvancedFilters
             groups={filterGroups}
             selectedFilters={selectedFilters}
@@ -486,27 +422,17 @@ export function ContasAPagar() {
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh]">
               <DialogHeader>
-                <DialogTitle>{editingEntry ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
+                <DialogTitle>Nova Conta a Pagar</DialogTitle>
               </DialogHeader>
               <ScrollArea className="max-h-[70vh] pr-4">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Data de Vencimento</Label>
-                      <Input
-                        type="date"
-                        value={form.due_date}
-                        onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Data de Pagamento</Label>
-                      <Input
-                        type="date"
-                        value={form.paid_date}
-                        onChange={(e) => setForm({ ...form, paid_date: e.target.value })}
-                      />
-                    </div>
+                  <div>
+                    <Label>Data de Vencimento</Label>
+                    <Input
+                      type="date"
+                      value={form.due_date}
+                      onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                    />
                   </div>
                   <div>
                     <Label>Nome da Conta</Label>
@@ -525,19 +451,6 @@ export function ContasAPagar() {
                       <SelectContent>
                         {expenseCategories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Forma de Pagamento</Label>
-                    <Select value={form.payment_method_id} onValueChange={(v) => setForm({ ...form, payment_method_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a forma" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activePaymentMethods.map((pm) => (
-                          <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -602,7 +515,7 @@ export function ContasAPagar() {
                         <div className="text-sm text-muted-foreground p-2 bg-background rounded border">
                           {form.split_value ? (
                             <span>
-                          Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
+                              Valor por parcela: <strong>R$ {(parseFloat(form.amount) / parseInt(form.recurring_count)).toFixed(2)}</strong>
                               <br />
                               Total: R$ {parseFloat(form.amount).toFixed(2)} em {form.recurring_count}x
                             </span>
@@ -635,21 +548,9 @@ export function ContasAPagar() {
                         placeholder="0,00"
                       />
                     </div>
-                    </div>
-                  {/* Option to edit all following entries for recurring entries */}
-                  {editingEntry && showEditRecurringOption && (
-                    <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-                      <Switch
-                        checked={editRecurring}
-                        onCheckedChange={setEditRecurring}
-                      />
-                      <Label className="text-sm">
-                        Editar também as parcelas seguintes
-                      </Label>
-                    </div>
-                  )}
+                  </div>
                   <Button onClick={handleSubmit} className="w-full">
-                    {editingEntry ? 'Salvar' : 'Adicionar'}
+                    Adicionar
                   </Button>
                 </div>
               </ScrollArea>
@@ -664,8 +565,8 @@ export function ContasAPagar() {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Forma de Pagamento</TableHead>
-                <TableHead>Parcela</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Forma Pgto</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -683,35 +584,41 @@ export function ContasAPagar() {
                   <TableRow key={entry.id}>
                     <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{entry.description}</TableCell>
-                    <TableCell>{entry.payment_method?.name || '-'}</TableCell>
-                    <TableCell>{entry.installments || 1}x</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {entry.category?.name || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {entry.payment_method?.name || '-'}
+                    </TableCell>
                     <TableCell className="text-red-600 font-medium">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>
                     <TableCell>
-                      <Select 
-                        value={entry.status} 
-                        onValueChange={(v: 'pending' | 'paid') => handleChangeStatus(entry, v)}
-                      >
-                        <SelectTrigger className="w-[110px] h-7 text-xs">
-                          {getStatusBadge(entry)}
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pendente</SelectItem>
-                          <SelectItem value="paid">Pago</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {getStatusDisplay(entry)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {entry.status === 'pending' && (
-                          <Button variant="ghost" size="icon" onClick={() => handleMarkAsPaid(entry)} title="Marcar como pago">
-                            <Check className="h-4 w-4 text-green-600" />
+                        {entry.status !== 'paid' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => openPayDialog(entry)} 
+                            className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                          >
+                            <DollarSign className="h-3.5 w-3.5" />
+                            Dar Baixa
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {entry.status === 'paid' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => openPayDialog(entry, true)} 
+                            title="Editar pagamento"
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(entry)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -754,20 +661,22 @@ export function ContasAPagar() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Payment Confirmation Dialog */}
+      {/* Payment / Edit Payment Dialog */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar Pagamento</DialogTitle>
+            <DialogTitle>{isEditingPayment ? 'Editar Pagamento' : 'Dar Baixa'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground mb-2">
                 Conta: <span className="font-medium text-foreground">{entryToPay?.description}</span>
               </p>
-              <p className="text-sm text-muted-foreground">
-                Valor total: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
-              </p>
+              {!isEditingPayment && (
+                <p className="text-sm text-muted-foreground">
+                  Valor total: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -777,7 +686,7 @@ export function ContasAPagar() {
                 onValueChange={(value) => setPaidAmount(String(value))}
                 placeholder="0,00"
               />
-              {entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
+              {!isEditingPayment && entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
                 <p className="text-xs text-orange-600 mt-1">
                   ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} permanecerá pendente até ser quitado.
                 </p>
@@ -812,7 +721,6 @@ export function ContasAPagar() {
               </Select>
             </div>
 
-            {/* Installments for boleto and card */}
             {showInstallments && maxInstallments > 1 && (
               <div>
                 <Label>Número de Parcelas</Label>
@@ -831,8 +739,7 @@ export function ContasAPagar() {
               </div>
             )}
 
-            {/* Boleto reminder option */}
-            {isBoleto && (
+            {!isEditingPayment && isBoleto && (
               <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-400">
@@ -861,7 +768,11 @@ export function ContasAPagar() {
               </Button>
               <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
                 <Check className="h-4 w-4 mr-2" />
-                {isBoleto && createBoletoReminder ? 'Salvar e Criar Lembrete' : 'Confirmar Pagamento'}
+                {isEditingPayment 
+                  ? 'Salvar Alterações'
+                  : isBoleto && createBoletoReminder 
+                    ? 'Salvar e Criar Lembrete' 
+                    : 'Confirmar Pagamento'}
               </Button>
             </div>
           </div>

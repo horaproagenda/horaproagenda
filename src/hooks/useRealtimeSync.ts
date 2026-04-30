@@ -343,7 +343,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         () => {
-          invalidateMultiple(PRODUCT_QUERIES);
+          invalidateMultiple([...PRODUCT_QUERIES, ...FINANCIAL_QUERIES]);
         }
       )
       

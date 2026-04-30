@@ -339,18 +339,12 @@ const Servicos: React.FC = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredServices.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredServices.map((service, index) => (
-                  <div
-                    key={service.id}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-fade-in cursor-pointer h-full"
-                    onClick={() => setSelectedService(service)}
-                  >
-                    <ServiceCard service={service} onEdit={setSelectedService} onDelete={refetch} />
-                  </div>
-                ))}
-              </div>
+              <ServicesGrid
+                items={filteredServices}
+                onSelect={setSelectedService}
+                onEdit={setSelectedService}
+                onDelete={refetch}
+              />
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />

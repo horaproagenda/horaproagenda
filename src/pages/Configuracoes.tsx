@@ -86,6 +86,45 @@ const Configuracoes = () => {
           {/* Stock Alert Settings */}
           <StockAlertSettings />
 
+          {/* Financial Settings */}
+          <Card className="card-hover">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Configurações Financeiras</CardTitle>
+                  <CardDescription className="text-xs">Regras de atraso e contas a pagar</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm">Dias de tolerância para marcar como atrasada</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Quantos dias após o vencimento uma conta é marcada como "Atrasada". 0 = no dia do vencimento.
+                </p>
+                <Input
+                  type="number"
+                  min="0"
+                  max="90"
+                  value={overdueDaysThreshold}
+                  onChange={(e) => setOverdueDaysThreshold(parseInt(e.target.value) || 0)}
+                  className="w-24"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  updateSettings.mutate({ overdue_days_threshold: overdueDaysThreshold } as any);
+                }}
+              >
+                Salvar
+              </Button>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">
               <CardHeader className="pb-3">

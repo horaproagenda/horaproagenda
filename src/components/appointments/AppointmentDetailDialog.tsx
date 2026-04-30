@@ -1775,6 +1775,52 @@ export function AppointmentDetailDialog({
               </>
             )}
 
+            <Separator />
+            <Tabs defaultValue="items" className="space-y-3">
+              <TabsList className="grid w-full grid-cols-3 h-9">
+                <TabsTrigger value="items" className="text-xs">Itens</TabsTrigger>
+                <TabsTrigger value="changes" className="text-xs">Mudanças</TabsTrigger>
+                <TabsTrigger value="refunds" className="text-xs">Estornos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="items" className="space-y-2 mt-0">
+                {receiptRows.map((row, index) => (
+                  <div key={`${row.type}-${index}`} className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30 text-sm">
+                    <div>
+                      <p className="font-medium">{row.item}</p>
+                      <p className="text-xs text-muted-foreground">{row.type} • qtd. {row.quantity}</p>
+                    </div>
+                    <span className="font-semibold">{formatCurrency(row.total)}</span>
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="changes" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma mudança registrada.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{event.title}</p>
+                      <span className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM HH:mm')}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="refunds" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'refund').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum estorno registrado.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'refund').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border border-destructive/20 bg-destructive/5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-destructive">{event.title}</p>
+                      <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {event.description}</p>
+                  </div>
+                ))}
+              </TabsContent>
+            </Tabs>
+
             {/* Created/Updated By Info */}
             <Separator />
             <div className="text-xs text-muted-foreground space-y-1">

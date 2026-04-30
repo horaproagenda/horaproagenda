@@ -889,6 +889,8 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
 
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();

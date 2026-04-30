@@ -39,7 +39,7 @@ export function useCashRegisters() {
   // Track if initial load is done to avoid notifications on mount
   const initialLoadDone = useRef(false);
 
-  // Realtime sync for cash_registers and cash_transactions with visual notifications
+  // Realtime sync for cash_registers, cash_transactions, and appointments
   useEffect(() => {
     const channel = supabase
       .channel('cash_realtime_sync')
@@ -66,6 +66,19 @@ export function useCashRegisters() {
             toast.warning(`${label} registrada`, { description: `R$ ${amount} — ${tx.description || label}`, icon: '💸' });
           }
         }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'appointments' }, () => {
+        // When appointment payment status changes, refresh cash data
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_register_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       })
       .subscribe();
 

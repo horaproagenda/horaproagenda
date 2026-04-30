@@ -770,9 +770,22 @@ export function ContasAPagar() {
                 Conta: <span className="font-medium text-foreground">{entryToPay?.description}</span>
               </p>
               <p className="text-sm text-muted-foreground">
-                Valor: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
+                Valor total: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
               </p>
             </div>
+
+            <div>
+              <Label>Valor pago</Label>
+              <CurrencyInput
+                value={paidAmount}
+                onValueChange={(value) => setPaidAmount(String(value))}
+                placeholder="0,00"
+              />
+              {entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
+                <p className="text-xs text-orange-600 mt-1">
+                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} ficará pendente para o próximo mês.
+                </p>
+              )}
             
             <div>
               <Label>Forma de Pagamento</Label>

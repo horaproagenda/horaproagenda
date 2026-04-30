@@ -845,6 +845,19 @@ export function CategoriasFinanceiras() {
                       Valor por parcela: R$ {(parseFloat(editEntryForm.amount || '0') / parseInt(editEntryForm.installments || '1')).toFixed(2)}
                     </p>
                   )}
+                  <div>
+                    <Label>Dias de tolerância (atraso)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editEntryForm.overdue_tolerance_days}
+                      onChange={(e) => setEditEntryForm({ ...editEntryForm, overdue_tolerance_days: e.target.value })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Dias após o vencimento antes de marcar como "Atrasada"
+                    </p>
+                  </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setEditScope(null)}>Voltar</Button>
                     <Button onClick={handleEditEntry}>

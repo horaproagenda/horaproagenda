@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format, addDays } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -29,11 +32,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check } from 'lucide-react';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { useCardBrands, type CardBrand } from '@/hooks/useCardBrands';
+import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário',
@@ -51,8 +58,9 @@ export function FormasPagamento() {
   const { paymentMethods, isLoading, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
   const { banks, activeBanks, createBank, updateBank, deleteBank } = useBanks();
   const { cardBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
+  const { installments: allBoletoInstallments, isLoading: loadingBoletos, markAsPaid } = useAllBoletoInstallments();
+  const queryClient = useQueryClient();
 
-  // Track if we already tried to init defaults to prevent duplicates
   const [defaultsInitialized, setDefaultsInitialized] = useState(false);
 
   // Payment Method Dialog
@@ -63,16 +71,6 @@ export function FormasPagamento() {
     description: '',
     is_active: true,
     max_installments: 1,
-  });
-
-  // Boleto Parcelado Config
-  const [boletoConfig, setBoletoConfig] = useState({
-    bank_id: '',
-    is_recurring: false,
-    installments: '1',
-    grace_days: '0',
-    interval_days: '30',
-    fee: '0',
   });
 
   // Card Brand Dialog
@@ -88,8 +86,9 @@ export function FormasPagamento() {
     { installment_number: 1, fee_percentage: 0 },
   ]);
 
-  // Create default payment methods only if none exist AND data has loaded
-  // With unique constraint in DB, duplicates will fail silently now
+  // Boleto tab filter
+  const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('pending');
+
   useEffect(() => {
     if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {
       setDefaultsInitialized(true);
@@ -183,6 +182,51 @@ export function FormasPagamento() {
     }
   };
 
+  // Boleto installments data
+  const filteredBoletos = allBoletoInstallments.filter((b: any) => {
+    if (boletoFilter === 'all') return true;
+    if (boletoFilter === 'pending') return b.status === 'pending';
+    if (boletoFilter === 'overdue') {
+      if (b.status !== 'pending') return false;
+      const dueDate = new Date(b.due_date + 'T12:00:00');
+      return dueDate < new Date();
+    }
+    if (boletoFilter === 'paid') return b.status === 'paid';
+    return true;
+  });
+
+  const boletoStats = {
+    total: allBoletoInstallments.length,
+    pending: allBoletoInstallments.filter((b: any) => b.status === 'pending').length,
+    overdue: allBoletoInstallments.filter((b: any) => {
+      if (b.status !== 'pending') return false;
+      return new Date(b.due_date + 'T12:00:00') < new Date();
+    }).length,
+    paid: allBoletoInstallments.filter((b: any) => b.status === 'paid').length,
+    totalPending: allBoletoInstallments
+      .filter((b: any) => b.status === 'pending')
+      .reduce((sum: number, b: any) => sum + Number(b.amount), 0),
+    totalOverdue: allBoletoInstallments
+      .filter((b: any) => b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date())
+      .reduce((sum: number, b: any) => sum + Number(b.amount), 0),
+  };
+
+  const handleBoletoPayment = async (boleto: any) => {
+    await markAsPaid.mutateAsync({ id: boleto.id });
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['reminders'] });
+    queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+    queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+  };
+
+  const getBoletoBadge = (boleto: any) => {
+    if (boleto.status === 'paid') return <Badge className="bg-green-100 text-green-700 text-[10px]">Pago</Badge>;
+    if (boleto.status === 'cancelled') return <Badge variant="secondary" className="text-[10px]">Cancelado</Badge>;
+    const dueDate = new Date(boleto.due_date + 'T12:00:00');
+    if (dueDate < new Date()) return <Badge className="bg-red-100 text-red-700 text-[10px]">Atrasado</Badge>;
+    return <Badge variant="outline" className="text-[10px]">Pendente</Badge>;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -190,18 +234,25 @@ export function FormasPagamento() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="methods" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="methods">
               <Banknote className="h-4 w-4 mr-2" />
               Métodos
             </TabsTrigger>
+            <TabsTrigger value="boleto">
+              <FileText className="h-4 w-4 mr-2" />
+              Boleto
+              {boletoStats.overdue > 0 && (
+                <Badge className="ml-1 bg-red-500 text-white text-[9px] px-1 py-0">{boletoStats.overdue}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="banks">
               <Landmark className="h-4 w-4 mr-2" />
-              Contas Bancárias
+              Bancos
             </TabsTrigger>
             <TabsTrigger value="cards">
               <CreditCard className="h-4 w-4 mr-2" />
-              Bandeiras de Cartão
+              Cartões
             </TabsTrigger>
           </TabsList>
 
@@ -297,6 +348,134 @@ export function FormasPagamento() {
                 </TableBody>
               </Table>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Boleto Bancário Tab */}
+          <TabsContent value="boleto" className="space-y-4">
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-lg font-bold">{boletoStats.total}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
+                <p className="text-xs text-muted-foreground">Pendentes</p>
+                <p className="text-lg font-bold text-orange-600">{boletoStats.pending}</p>
+                <p className="text-[10px] text-muted-foreground">R$ {boletoStats.totalPending.toFixed(2)}</p>
+              </div>
+              <div className="rounded-lg border border-red-200 p-3 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
+                <p className="text-xs text-red-600">Atrasados</p>
+                <p className="text-lg font-bold text-red-600">{boletoStats.overdue}</p>
+                <p className="text-[10px] text-red-500">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
+                <p className="text-xs text-muted-foreground">Pagos</p>
+                <p className="text-lg font-bold text-green-600">{boletoStats.paid}</p>
+              </div>
+            </div>
+
+            {boletoStats.overdue > 0 && (
+              <Alert className="border-red-500 bg-red-50 dark:bg-red-950/30">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700 dark:text-red-400 text-xs">
+                  {boletoStats.overdue} boleto(s) em atraso totalizando R$ {boletoStats.totalOverdue.toFixed(2)}.
+                  Verifique e dê baixa nos pagamentos confirmados.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {boletoFilter === 'all' ? 'Todos os boletos' :
+                 boletoFilter === 'pending' ? 'Boletos pendentes' :
+                 boletoFilter === 'overdue' ? 'Boletos atrasados' : 'Boletos pagos'}
+                {' '}({filteredBoletos.length})
+              </p>
+            </div>
+
+            <ScrollArea className="h-[350px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Parcela</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBoletos.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredBoletos.map((boleto: any) => (
+                      <TableRow key={boleto.id}>
+                        <TableCell className="text-sm">
+                          {boleto.installment_number}/{boleto.total_installments}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {boleto.sale?.client?.name || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {format(new Date(boleto.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          R$ {Number(boleto.amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>{getBoletoBadge(boleto)}</TableCell>
+                        <TableCell className="text-right">
+                          {boleto.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                              onClick={() => handleBoletoPayment(boleto)}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Dar Baixa
+                            </Button>
+                          )}
+                          {boleto.status === 'paid' && boleto.paid_date && (
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(boleto.paid_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+
+            <Separator />
+
+            <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Configuração de Boleto Bancário
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Ao vender com boleto bancário parcelado, o sistema automaticamente:
+              </p>
+              <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                <li>Cria parcelas com vencimentos a cada 30 dias</li>
+                <li>Cria lembretes para verificar pagamento na data de cada vencimento</li>
+                <li>Registra a venda como "Parcelamento no Boleto Bancário" no financeiro</li>
+                <li>Mostra alerta de boletos atrasados nos agendamentos do cliente</li>
+                <li>Sincroniza status de pagamento em tempo real entre agenda, caixa e financeiro</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-2">
+                Para configurar o número máximo de parcelas do boleto, edite a forma de pagamento "Boleto Bancário" na aba Métodos.
+              </p>
+            </div>
           </TabsContent>
 
           {/* Banks Tab */}

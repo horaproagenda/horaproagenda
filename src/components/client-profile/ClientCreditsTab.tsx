@@ -284,6 +284,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
     getClientCreditTransactionTypeLabel(transaction.transaction_type),
     transaction.description || '-',
+    transaction.professional?.name || '-',
     formatCurrency(Number(transaction.amount || 0)),
     formatCurrency(Number(transaction.previous_balance || 0)),
     formatCurrency(Number(transaction.new_balance || 0)),
@@ -297,7 +298,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     while (true) {
       let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id, professional_id, professional:professionals(id, name)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 

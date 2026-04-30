@@ -779,7 +779,7 @@ export function ContasAPagar() {
               />
               {entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
                 <p className="text-xs text-orange-600 mt-1">
-                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} ficará pendente para o próximo mês.
+                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} permanecerá pendente até ser quitado.
                 </p>
               )}
             </div>

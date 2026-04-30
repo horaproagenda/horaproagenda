@@ -216,7 +216,7 @@ export function CashRegisterHistory({ closedRegisters, isLoading }: CashRegister
                             </div>
                             <div className="text-left">
                               <p className="font-medium">
-                                {format(parseISO(register.opened_at), 'dd/MM/yyyy', { locale: ptBR })}
+                                Caixa #{(register as any).register_number || '?'} — {format(parseISO(register.opened_at), 'dd/MM/yyyy', { locale: ptBR })}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {format(parseISO(register.opened_at), 'HH:mm', { locale: ptBR })} - {' '}

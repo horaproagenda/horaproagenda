@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -23,6 +24,7 @@ export interface CashRegister {
   notes: string | null;
   opened_by: string | null;
   closed_by: string | null;
+  register_number: number;
   status: 'open' | 'closed';
   cash_amount: number | null;
   check_amount: number | null;
@@ -33,6 +35,24 @@ export interface CashRegister {
 
 export function useCashRegisters() {
   const queryClient = useQueryClient();
+
+  // Realtime sync for cash_registers and cash_transactions
+  useEffect(() => {
+    const channel = supabase
+      .channel('cash_realtime_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: cashRegisters = [], isLoading, refetch } = useQuery({
     queryKey: ['cash_registers'],
@@ -67,7 +87,7 @@ export function useCashRegisters() {
           opening_balance: openingBalance,
           opened_by: user?.id,
           status: 'open',
-        })
+        } as any)
         .select()
         .single();
 

@@ -67,7 +67,7 @@ export function ContasAReceber() {
           /^desconto\s+(de|do|da|no|na|em|sobre|aplicado|concedido)/i.test(desc);
         
         // Only treat 'credit' type as discount when it's actually a discount entry
-        const isDiscountType = e.type === 'credit' && isDiscountDescription;
+        const isDiscountType = (e.type as string) === 'credit' && isDiscountDescription;
         
         const isDiscount = isDiscountDescription || isDiscountType;
         

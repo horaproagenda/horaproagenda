@@ -322,7 +322,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     const rows = buildCreditExportRows(await fetchCreditTransactionsForExport());
     exportToCSV({
       filename: 'historico_credito_cliente',
-      headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
+      headers: ['Data', 'Tipo', 'Descrição', 'Profissional', 'Valor', 'Saldo anterior', 'Novo saldo'],
       rows,
       successMessage: 'Histórico de crédito exportado em CSV!',
     });
@@ -337,11 +337,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 14, 21);
     autoTable(doc, {
       startY: 28,
-      head: [['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo']],
+      head: [['Data', 'Tipo', 'Descrição', 'Profissional', 'Valor', 'Saldo anterior', 'Novo saldo']],
       body: creditExportRows,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 28 }, 2: { cellWidth: 92 }, 3: { halign: 'right', cellWidth: 32 }, 4: { halign: 'right', cellWidth: 36 }, 5: { halign: 'right', cellWidth: 36 } },
+      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 26 }, 2: { cellWidth: 70 }, 3: { cellWidth: 36 }, 4: { halign: 'right', cellWidth: 28 }, 5: { halign: 'right', cellWidth: 32 }, 6: { halign: 'right', cellWidth: 32 } },
     });
     doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };

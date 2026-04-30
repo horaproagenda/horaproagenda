@@ -23,6 +23,7 @@ export interface CashTransaction {
   card_fee_amount?: number;
   net_amount?: number;
   installments?: number;
+  discount_amount?: number;
 }
 
 export function useCashTransactions(cashRegisterId?: string) {

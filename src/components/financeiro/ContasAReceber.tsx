@@ -329,9 +329,16 @@ export function ContasAReceber() {
                             </Button>
                           )}
                           {item.type === 'appointment' && (
-                            <span className="text-[10px] text-muted-foreground px-1">
-                              Agenda
-                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-6 text-[10px] px-1.5 gap-0.5"
+                              onClick={() => navigate(`/agenda?appointment=${item.id}`)}
+                              title="Abrir agendamento para dar baixa"
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              Pagar
+                            </Button>
                           )}
                           {item.type === 'financial_entry' && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(item)}>

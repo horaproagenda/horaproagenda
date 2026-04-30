@@ -22,6 +22,14 @@ export interface PaymentUpdate {
   payment_methods: string[];
   amount_paid: number;
   payment_status: PaymentStatus;
+  additional_items?: Array<{
+    item_type: 'service' | 'product';
+    service_id?: string | null;
+    product_id?: string | null;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+  }>;
   client_credit?: number; // Saldo: troco em dinheiro que fica como crédito (registrado no caixa/financeiro)
   courtesy_credit?: number; // Cortesia: brinde/presente sem entrada de dinheiro
   used_client_credit?: number;
@@ -75,6 +83,11 @@ export function useAppointments() {
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
             id, session_number, original_session_number, status,
             package:service_packages(id, name, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)
+          ),
+          additional_items:appointment_additional_items(
+            id, item_type, service_id, product_id, quantity, unit_price, total_amount, notes,
+            service:services(id, name),
+            product:products(id, name)
           )
         `)
         .order('start_time', { ascending: true });
@@ -191,6 +204,7 @@ export function useAppointments() {
           payment_methods: payment.payment_methods,
           amount_paid: payment.amount_paid,
           payment_status: payment.payment_status,
+          additional_items: payment.additional_items,
           client_credit: payment.client_credit,
           courtesy_credit: payment.courtesy_credit,
           used_client_credit: payment.used_client_credit,

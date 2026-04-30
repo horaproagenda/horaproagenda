@@ -193,8 +193,32 @@ export function useAllBoletoInstallments() {
     staleTime: 0,
   });
 
+  const logAudit = async (params: {
+    boleto_installment_id?: string; sale_id?: string; event_type: string;
+    event_source?: string; previous_status?: string; new_status?: string;
+    previous_amount?: number; new_amount?: number; notes?: string; metadata?: any;
+  }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('boleto_audit_log').insert({
+      boleto_installment_id: params.boleto_installment_id || null,
+      sale_id: params.sale_id || null,
+      event_type: params.event_type,
+      event_source: params.event_source || 'user',
+      performed_by: user?.id || null,
+      previous_status: params.previous_status || null,
+      new_status: params.new_status || null,
+      previous_amount: params.previous_amount ?? null,
+      new_amount: params.new_amount ?? null,
+      notes: params.notes || null,
+      metadata: params.metadata || {},
+    });
+  };
+
   const markAsPaid = useMutation({
     mutationFn: async (params: { id: string; paidDate?: string }) => {
+      // Get current state for audit
+      const { data: current } = await supabase.from('boleto_installments').select('status, amount, sale_id').eq('id', params.id).single();
+
       const { error } = await supabase
         .from('boleto_installments')
         .update({
@@ -204,6 +228,16 @@ export function useAllBoletoInstallments() {
         .eq('id', params.id);
 
       if (error) throw error;
+
+      await logAudit({
+        boleto_installment_id: params.id,
+        sale_id: current?.sale_id,
+        event_type: 'payment',
+        previous_status: current?.status,
+        new_status: 'paid',
+        new_amount: current?.amount,
+        notes: `Baixa individual em ${params.paidDate || new Date().toISOString().split('T')[0]}`,
+      });
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -214,12 +248,29 @@ export function useAllBoletoInstallments() {
   const batchMarkAsPaid = useMutation({
     mutationFn: async (params: { ids: string[]; paidDate?: string }) => {
       const paidDate = params.paidDate || new Date().toISOString().split('T')[0];
+      
+      // Get current states for audit
+      const { data: currentItems } = await supabase.from('boleto_installments').select('id, status, amount, sale_id').in('id', params.ids);
+
       const { error } = await supabase
         .from('boleto_installments')
         .update({ status: 'paid', paid_date: paidDate })
         .in('id', params.ids);
 
       if (error) throw error;
+
+      // Log audit for each
+      for (const item of (currentItems || [])) {
+        await logAudit({
+          boleto_installment_id: item.id,
+          sale_id: item.sale_id,
+          event_type: 'batch_payment',
+          previous_status: item.status,
+          new_status: 'paid',
+          new_amount: item.amount,
+          notes: `Baixa em lote (${params.ids.length} parcelas) em ${paidDate}`,
+        });
+      }
     },
     onSuccess: (_, vars) => {
       invalidateAll(queryClient);
@@ -233,12 +284,27 @@ export function useAllBoletoInstallments() {
   const updateInstallment = useMutation({
     mutationFn: async (params: { id: string; amount?: number; due_date?: string; notes?: string }) => {
       const { id, ...updates } = params;
+
+      // Get current state for audit
+      const { data: current } = await supabase.from('boleto_installments').select('status, amount, due_date, sale_id').eq('id', id).single();
+
       const { error } = await supabase
         .from('boleto_installments')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
+
+      await logAudit({
+        boleto_installment_id: id,
+        sale_id: current?.sale_id,
+        event_type: 'edit',
+        previous_status: current?.status,
+        new_status: current?.status,
+        previous_amount: current?.amount,
+        new_amount: params.amount ?? current?.amount,
+        notes: `Edição: ${params.amount !== undefined ? `valor ${current?.amount} → ${params.amount}` : ''}${params.due_date ? ` vencimento → ${params.due_date}` : ''}`,
+      });
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -251,12 +317,24 @@ export function useAllBoletoInstallments() {
 
   const cancelInstallment = useMutation({
     mutationFn: async (id: string) => {
+      const { data: current } = await supabase.from('boleto_installments').select('status, amount, sale_id').eq('id', id).single();
+
       const { error } = await supabase
         .from('boleto_installments')
         .update({ status: 'cancelled' })
         .eq('id', id);
 
       if (error) throw error;
+
+      await logAudit({
+        boleto_installment_id: id,
+        sale_id: current?.sale_id,
+        event_type: 'cancel',
+        previous_status: current?.status,
+        new_status: 'cancelled',
+        new_amount: current?.amount,
+        notes: 'Parcela cancelada pelo usuário',
+      });
     },
     onSuccess: () => {
       invalidateAll(queryClient);

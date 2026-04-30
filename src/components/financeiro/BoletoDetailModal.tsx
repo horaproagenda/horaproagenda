@@ -90,9 +90,16 @@ export function BoletoDetailModal({
 
   const saveEdit = async () => {
     if (!editingId) return;
+    const newAmount = parseFloat(editForm.amount);
+    // Validate: updated amount + other installments shouldn't exceed sale total
+    const otherTotal = sorted.filter(i => i.id !== editingId).reduce((s, i) => s + Number(i.amount), 0);
+    if (otherTotal + newAmount > totalAmount + 0.01 && newAmount > Number(sorted.find(i => i.id === editingId)?.amount || 0)) {
+      toast.error('O novo valor faria a soma das parcelas ultrapassar o valor total do boleto.');
+      return;
+    }
     await onUpdate({
       id: editingId,
-      amount: parseFloat(editForm.amount),
+      amount: newAmount,
       due_date: editForm.due_date,
     });
     setEditingId(null);
@@ -100,6 +107,12 @@ export function BoletoDetailModal({
 
   const handleBatchPay = async () => {
     if (selectedIds.length === 0) return;
+    // Validate: sum of paid + selected must not exceed total
+    const wouldPayTotal = totalPaid + selectedTotal;
+    if (wouldPayTotal > totalAmount + 0.01) {
+      toast.error(`A soma das parcelas pagas (R$ ${wouldPayTotal.toFixed(2)}) ultrapassa o valor total (R$ ${totalAmount.toFixed(2)}). Verifique os valores.`);
+      return;
+    }
     setBatchPaying(true);
     try {
       await onBatchPay({ ids: selectedIds });

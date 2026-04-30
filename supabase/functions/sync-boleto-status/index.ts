@@ -29,6 +29,20 @@ Deno.serve(async (req) => {
       console.error('Error marking overdue boletos:', overdueError);
     }
 
+    // Log audit for each synced installment
+    if (overdueInstallments && overdueInstallments.length > 0) {
+      const auditLogs = overdueInstallments.map((inst: any) => ({
+        boleto_installment_id: inst.id,
+        sale_id: inst.sale_id,
+        event_type: 'sync',
+        event_source: 'system',
+        previous_status: 'pending',
+        new_status: 'overdue',
+        notes: `Sincronização automática: marcado como atrasado em ${today}`,
+      }));
+      await supabase.from('boleto_audit_log').insert(auditLogs);
+    }
+
     const markedOverdue = overdueInstallments?.length || 0;
     console.log(`Marked ${markedOverdue} boleto installments as overdue`);
 

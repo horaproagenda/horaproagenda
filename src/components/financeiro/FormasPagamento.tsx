@@ -20,13 +20,14 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye, History } from 'lucide-react';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { useCardBrands, type CardBrand } from '@/hooks/useCardBrands';
 import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 import { BoletoDetailModal } from './BoletoDetailModal';
+import { BoletoAuditLogDialog } from './BoletoAuditLogDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -55,10 +56,12 @@ export function FormasPagamento() {
   const [brandForm, setBrandForm] = useState({
     name: '', type: 'credit' as 'credit' | 'debit' | 'both',
     is_active: true, fee_behavior: 'deduct_from_provider' as 'add_to_client' | 'deduct_from_provider',
+    split_fee: false,
   });
   const [brandFees, setBrandFees] = useState<{ installment_number: number; fee_percentage: number }[]>([
     { installment_number: 1, fee_percentage: 0 },
   ]);
+  const [showAuditLog, setShowAuditLog] = useState(false);
   const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('pending');
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
@@ -91,12 +94,12 @@ export function FormasPagamento() {
 
   // Brand handlers
   const resetBrandForm = () => {
-    setBrandForm({ name: '', type: 'credit', is_active: true, fee_behavior: 'deduct_from_provider' });
+    setBrandForm({ name: '', type: 'credit', is_active: true, fee_behavior: 'deduct_from_provider', split_fee: false });
     setBrandFees([{ installment_number: 1, fee_percentage: 0 }]); setEditingBrand(null);
   };
   const openBrandEdit = (brand: CardBrand) => {
     setEditingBrand(brand);
-    setBrandForm({ name: brand.name, type: brand.type as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any });
+    setBrandForm({ name: brand.name, type: brand.type as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any, split_fee: (brand as any).split_fee || false });
     setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || [{ installment_number: 1, fee_percentage: 0 }]);
     setBrandDialogOpen(true);
   };
@@ -278,6 +281,10 @@ export function FormasPagamento() {
                 {' '}({filteredBoletos.length})
               </p>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAuditLog(true)}>
+                  <History className="h-3.5 w-3.5" />
+                  Histórico
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => triggerSync.mutate()} disabled={triggerSync.isPending}>
                   <RefreshCw className={`h-3.5 w-3.5 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
                   Sincronizar
@@ -422,6 +429,13 @@ export function FormasPagamento() {
                         </Select>
                       </div>
                       <div>
+                        <Label>Dividir Taxa</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Switch checked={brandForm.split_fee} onCheckedChange={checked => setBrandForm({ ...brandForm, split_fee: checked })} />
+                          <span className="text-xs text-muted-foreground">{brandForm.split_fee ? 'Taxa dividida entre as partes' : 'Taxa não dividida'}</span>
+                        </div>
+                      </div>
+                      <div>
                         <div className="flex justify-between items-center mb-2">
                           <Label>Taxas por Parcela</Label>
                           <Button variant="outline" size="sm" onClick={addFeeRow}><Plus className="h-3 w-3 mr-1" />Parcela</Button>
@@ -482,6 +496,7 @@ export function FormasPagamento() {
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
       />
+      <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
     </Card>
   );
 }

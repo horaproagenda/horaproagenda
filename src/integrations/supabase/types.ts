@@ -400,6 +400,62 @@ export type Database = {
         }
         Relationships: []
       }
+      boleto_audit_log: {
+        Row: {
+          boleto_installment_id: string | null
+          created_at: string
+          event_source: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          new_amount: number | null
+          new_status: string | null
+          notes: string | null
+          performed_by: string | null
+          previous_amount: number | null
+          previous_status: string | null
+          sale_id: string | null
+        }
+        Insert: {
+          boleto_installment_id?: string | null
+          created_at?: string
+          event_source: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          new_amount?: number | null
+          new_status?: string | null
+          notes?: string | null
+          performed_by?: string | null
+          previous_amount?: number | null
+          previous_status?: string | null
+          sale_id?: string | null
+        }
+        Update: {
+          boleto_installment_id?: string | null
+          created_at?: string
+          event_source?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          new_amount?: number | null
+          new_status?: string | null
+          notes?: string | null
+          performed_by?: string | null
+          previous_amount?: number | null
+          previous_status?: string | null
+          sale_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boleto_audit_log_boleto_installment_id_fkey"
+            columns: ["boleto_installment_id"]
+            isOneToOne: false
+            referencedRelation: "boleto_installments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boleto_installments: {
         Row: {
           amount: number
@@ -580,6 +636,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          split_fee: boolean
           type: string
           updated_at: string
           updated_by: string | null
@@ -591,6 +648,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          split_fee?: boolean
           type?: string
           updated_at?: string
           updated_by?: string | null
@@ -602,6 +660,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          split_fee?: boolean
           type?: string
           updated_at?: string
           updated_by?: string | null

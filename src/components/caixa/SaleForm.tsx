@@ -791,6 +791,13 @@ export function SaleForm() {
     setPaymentAmount(0);
     setBoletoInstallments(1);
     setBoletoFirstDueDate(format(new Date(), 'yyyy-MM-dd'));
+    setChequeBank('');
+    setChequeCashDate(format(new Date(), 'yyyy-MM-dd'));
+    setChequeNumber('');
+    setCashReceived(0);
+    setChangeMethod('cash');
+    setCardBrandId('');
+    setInstallments(1);
   };
 
   return (

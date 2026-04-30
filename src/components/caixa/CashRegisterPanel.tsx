@@ -200,12 +200,14 @@ export function CashRegisterPanel() {
     
     const total = periodSales.reduce((sum, t) => sum + Number(t.amount), 0);
     const totalFees = periodSales.reduce((sum, t) => sum + (t.card_fee_amount || 0), 0);
+    const totalDiscounts = periodSales.reduce((sum, t) => sum + (t.discount_amount || 0), 0);
     const netTotal = total - totalFees;
     
     return {
       transactions: periodSales,
       total,
       totalFees,
+      totalDiscounts,
       netTotal,
       count: periodSales.length,
     };

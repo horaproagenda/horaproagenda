@@ -341,20 +341,6 @@ const Relatorios = () => {
           c.daysSinceVisit
         ])
       });
-    } else if (activeTab === 'pacotes') {
-      exportToCSV({
-        filename: 'pacotes',
-        headers: ['Cliente', 'Pacote', 'Sessões Usadas', 'Sessões Restantes', 'Progresso %', 'Valor Total', 'Valor Utilizado'],
-        rows: packageProgress.map(p => [
-          p.client?.name || '',
-          p.name,
-          p.usedSessions,
-          p.remainingSessions,
-          Math.round(p.progress),
-          p.total_price,
-          p.valueUsed
-        ])
-      });
     }
   };
 

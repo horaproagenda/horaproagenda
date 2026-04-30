@@ -23,6 +23,7 @@ export interface CashRegister {
   notes: string | null;
   opened_by: string | null;
   closed_by: string | null;
+  register_number: number;
   status: 'open' | 'closed';
   cash_amount: number | null;
   check_amount: number | null;

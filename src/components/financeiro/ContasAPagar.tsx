@@ -311,6 +311,7 @@ export function ContasAPagar() {
     setPaymentMethodId(entry.payment_method_id || '');
     setPaymentBankId(entry.bank_id || '');
     setPaymentInstallments(entry.installments?.toString() || '1');
+    setPaidAmount(Number(entry.amount).toFixed(2));
     setCreateBoletoReminder(false);
     setPayDialogOpen(true);
   };

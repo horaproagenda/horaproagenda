@@ -288,7 +288,7 @@ export function AtendimentosPorProfissional() {
       </div>
 
       {/* Detail dialog */}
-      <Dialog open={!!selectedProfessional} onOpenChange={(open) => { if (!open) setSelectedProfessional(null); }}>
+      <Dialog open={!!selectedProfessional} onOpenChange={(open) => { if (!open) { setSelectedProfessional(null); setDetailDateFrom(undefined); setDetailDateTo(undefined); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-base">

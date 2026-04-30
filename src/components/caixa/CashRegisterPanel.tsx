@@ -64,11 +64,47 @@ import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';
 type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
+
+  // Real-time sync for sales with agenda, financeiro, card fees and discounts
+  useEffect(() => {
+    const channel = supabase
+      .channel('cash_register_panel_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_register_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const [openingBalance, setOpeningBalance] = useState('');
   const [closingBalance, setClosingBalance] = useState('');

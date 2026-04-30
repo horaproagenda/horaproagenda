@@ -85,6 +85,11 @@ import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import {
+  buildChangeDescription,
+  resolveAuthorName,
+  UUID_RE,
+} from '@/lib/appointmentHistoryFormat';
 
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;

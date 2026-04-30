@@ -114,8 +114,19 @@ export function useFinancialCategories() {
   });
 
   const activeCategories = categories.filter(c => c.is_active);
-  const incomeCategories = activeCategories.filter(c => c.type === 'income');
-  const expenseCategories = activeCategories.filter(c => c.type === 'expense');
+  
+  // Deduplicate categories by name+type (keep first occurrence)
+  const dedup = (cats: FinancialCategory[]) => {
+    const seen = new Map<string, FinancialCategory>();
+    cats.forEach(c => {
+      const key = `${c.name.toLowerCase().trim()}|${c.type}`;
+      if (!seen.has(key)) seen.set(key, c);
+    });
+    return Array.from(seen.values());
+  };
+  
+  const incomeCategories = dedup(activeCategories.filter(c => c.type === 'income'));
+  const expenseCategories = dedup(activeCategories.filter(c => c.type === 'expense'));
   const recurringCategories = activeCategories.filter(c => c.is_recurring);
 
   return {

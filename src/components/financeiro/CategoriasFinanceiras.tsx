@@ -162,39 +162,102 @@ export function CategoriasFinanceiras() {
     resetForm();
   };
 
+  const getNextDueDate = (baseDate: string, frequency: string, index: number): string => {
+    const date = new Date(baseDate + 'T12:00:00');
+    switch (frequency) {
+      case 'weekly':
+        date.setDate(date.getDate() + (7 * index));
+        break;
+      case 'biweekly':
+        date.setDate(date.getDate() + (14 * index));
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + index);
+        break;
+      case 'quarterly':
+        date.setMonth(date.getMonth() + (3 * index));
+        break;
+      case 'annual':
+        date.setFullYear(date.getFullYear() + index);
+        break;
+      default:
+        date.setMonth(date.getMonth() + index);
+    }
+    return format(date, 'yyyy-MM-dd');
+  };
+
   const handleCreateEntry = async () => {
     if (!selectedCategoryId) return;
 
     const amount = parseFloat(entryForm.amount) || 0;
     const installments = parseInt(entryForm.installments) || 1;
 
-    const perInstallmentAmount = entryForm.is_total_value
-      ? amount / installments
-      : amount;
-
-    const entryType = entryDialogType === 'income' ? 'receivable' : 'payable';
-
-    await createEntry.mutateAsync({
-      type: entryType,
-      description: entryForm.description,
-      amount: perInstallmentAmount,
-      due_date: entryForm.due_date,
-      category_id: selectedCategoryId,
-      payment_method_id: entryForm.payment_method_id || null,
-      bank_id: entryForm.bank_id || null,
-      client_id: null,
-      professional_id: null,
-      notes: null,
-      is_recurring: entryForm.is_recurring,
-      recurring_day: null,
-      recurring_count: null,
-      recurring_frequency: entryForm.is_recurring ? entryForm.recurring_frequency : null,
-      paid_date: null,
-      appointment_id: null,
-      installments: installments,
-      paid_by: null,
-      status: 'pending',
+    // Validate and calculate using the recurring utility
+    const calc = calculateRecurringValues({
+      amount,
+      installments,
+      isTotalValue: entryForm.is_total_value,
     });
+
+    if (!calc.isValid) {
+      calc.errors.forEach(err => toast.error(err));
+      return;
+    }
+
+    // Determine type from category, not just dialog type
+    const selectedCat = dedupedCategories.find(c => c.id === selectedCategoryId);
+    const entryType = selectedCat?.type === 'income' ? 'receivable' : 'payable';
+
+    if (entryForm.is_recurring && installments > 1) {
+      // Create one entry per installment with correct due dates
+      for (let i = 0; i < installments; i++) {
+        const dueDate = getNextDueDate(entryForm.due_date, entryForm.recurring_frequency, i);
+        await createEntry.mutateAsync({
+          type: entryType,
+          description: `${entryForm.description} (${i + 1}/${installments})`,
+          amount: calc.perInstallmentAmount,
+          due_date: dueDate,
+          category_id: selectedCategoryId,
+          payment_method_id: entryForm.payment_method_id || null,
+          bank_id: entryForm.bank_id || null,
+          client_id: null,
+          professional_id: null,
+          notes: `Modo: ${calc.mode === 'diluted' ? 'diluído' : 'integral'} | Total: R$ ${calc.totalAmount.toFixed(2)}`,
+          is_recurring: true,
+          recurring_day: null,
+          recurring_count: installments,
+          recurring_frequency: entryForm.recurring_frequency,
+          paid_date: null,
+          appointment_id: null,
+          installments: installments,
+          paid_by: null,
+          status: 'pending',
+        });
+      }
+      toast.success(`${installments} parcelas criadas (${calc.mode === 'diluted' ? 'diluído' : 'integral'}): R$ ${calc.perInstallmentAmount.toFixed(2)}/parcela, total R$ ${calc.totalAmount.toFixed(2)}`);
+    } else {
+      await createEntry.mutateAsync({
+        type: entryType,
+        description: entryForm.description,
+        amount: calc.perInstallmentAmount,
+        due_date: entryForm.due_date,
+        category_id: selectedCategoryId,
+        payment_method_id: entryForm.payment_method_id || null,
+        bank_id: entryForm.bank_id || null,
+        client_id: null,
+        professional_id: null,
+        notes: null,
+        is_recurring: entryForm.is_recurring,
+        recurring_day: null,
+        recurring_count: null,
+        recurring_frequency: entryForm.is_recurring ? entryForm.recurring_frequency : null,
+        paid_date: null,
+        appointment_id: null,
+        installments: 1,
+        paid_by: null,
+        status: 'pending',
+      });
+    }
 
     setEntryDialogOpen(false);
     resetEntryForm();

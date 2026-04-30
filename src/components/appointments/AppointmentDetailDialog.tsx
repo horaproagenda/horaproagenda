@@ -701,7 +701,8 @@ export function AppointmentDetailDialog({
 
   const buildReceiptPdf = () => {
     const doc = new jsPDF();
-    const clinicName = 'Clínica de Estética';
+    const clinicSettings = settings as (typeof settings & { clinic_name?: string; clinic_cnpj?: string; clinic_phone?: string; clinic_address?: string }) | null;
+    const clinicName = clinicSettings?.clinic_name || 'Clínica de Estética';
     const receiptNumber = appointment.id.slice(0, 8).toUpperCase();
     const paymentMethods = (appointment.payment_methods || [])
       .map((method) => activePaymentMethods.find((item) => item.id === method)?.name || method)
@@ -713,8 +714,22 @@ export function AppointmentDetailDialog({
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.text(normalizePdfText(`${clinicName} • Recibo ${receiptNumber}`), 14, 28);
-    doc.text(normalizePdfText(`Horário da clínica: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, 35);
-    doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, 42);
+    let infoY = 35;
+    if (clinicSettings?.clinic_cnpj) {
+      doc.text(normalizePdfText(`CNPJ: ${clinicSettings.clinic_cnpj}`), 14, infoY);
+      infoY += 7;
+    }
+    if (clinicSettings?.clinic_phone) {
+      doc.text(normalizePdfText(`Telefone: ${clinicSettings.clinic_phone}`), 14, infoY);
+      infoY += 7;
+    }
+    if (clinicSettings?.clinic_address) {
+      doc.text(normalizePdfText(`Endereço: ${clinicSettings.clinic_address}`), 14, infoY);
+      infoY += 7;
+    }
+    doc.text(normalizePdfText(`Horário da clínica: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, infoY);
+    infoY += 7;
+    doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, infoY);
 
     doc.setFont('helvetica', 'bold');
     doc.text(normalizePdfText('Cliente e agendamento'), 14, 56);

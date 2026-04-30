@@ -56,9 +56,21 @@ export function ContasAReceber() {
       .filter(e => {
         const isPending = e.status === 'pending' || e.status === 'overdue';
         const hasAmount = Number(e.amount) > 0;
-        // Exclude discount-related entries
-        const isDiscount = e.description?.toLowerCase().includes('desconto') ||
-                           e.type === 'credit' as any;
+        
+        // Precise discount detection — only exclude entries that ARE discounts,
+        // not entries that merely mention the word in passing
+        const desc = (e.description || '').toLowerCase().trim();
+        const isDiscountDescription = 
+          desc.startsWith('desconto') ||
+          desc === 'desconto' ||
+          /^desconto\s*([-–—:])/.test(desc) ||
+          /^desconto\s+(de|do|da|no|na|em|sobre|aplicado|concedido)/i.test(desc);
+        
+        // Only treat 'credit' type as discount when it's actually a discount entry
+        const isDiscountType = (e.type as string) === 'credit' && isDiscountDescription;
+        
+        const isDiscount = isDiscountDescription || isDiscountType;
+        
         return isPending && hasAmount && !isDiscount;
       })
       .map(e => ({

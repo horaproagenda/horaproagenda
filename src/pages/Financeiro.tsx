@@ -48,6 +48,7 @@ export default function Financeiro() {
     const tabParam = searchParams.get('tab');
     if (tabParam) {
       const tabMap: Record<string, string> = {
+        'dashboard': 'dashboard',
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',

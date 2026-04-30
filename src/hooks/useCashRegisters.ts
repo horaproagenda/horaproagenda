@@ -36,6 +36,24 @@ export interface CashRegister {
 export function useCashRegisters() {
   const queryClient = useQueryClient();
 
+  // Realtime sync for cash_registers and cash_transactions
+  useEffect(() => {
+    const channel = supabase
+      .channel('cash_realtime_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data: cashRegisters = [], isLoading, refetch } = useQuery({
     queryKey: ['cash_registers'],
     queryFn: async () => {

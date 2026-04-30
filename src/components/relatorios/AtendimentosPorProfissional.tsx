@@ -16,7 +16,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, DollarSign, Percent, Calendar, Download, ChevronRight, CheckCircle } from 'lucide-react';
+import { Users, DollarSign, Percent, Calendar, Download, ChevronRight, CheckCircle, CalendarIcon, X } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

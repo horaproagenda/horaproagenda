@@ -53,9 +53,6 @@ export function ContasAPagar() {
     date: ['month'],
     status: ['pending'],
   });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<any>(null);
-  const [deleteRecurring, setDeleteRecurring] = useState(false);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [entryToPay, setEntryToPay] = useState<any>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');

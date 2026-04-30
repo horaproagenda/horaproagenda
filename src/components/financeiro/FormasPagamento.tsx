@@ -424,6 +424,13 @@ export function FormasPagamento() {
                         </Select>
                       </div>
                       <div>
+                        <Label>Dividir Taxa</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Switch checked={brandForm.split_fee} onCheckedChange={checked => setBrandForm({ ...brandForm, split_fee: checked })} />
+                          <span className="text-xs text-muted-foreground">{brandForm.split_fee ? 'Taxa dividida entre as partes' : 'Taxa não dividida'}</span>
+                        </div>
+                      </div>
+                      <div>
                         <div className="flex justify-between items-center mb-2">
                           <Label>Taxas por Parcela</Label>
                           <Button variant="outline" size="sm" onClick={addFeeRow}><Plus className="h-3 w-3 mr-1" />Parcela</Button>

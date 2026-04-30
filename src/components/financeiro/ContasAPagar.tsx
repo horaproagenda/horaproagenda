@@ -41,6 +41,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, Check, Calendar, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';

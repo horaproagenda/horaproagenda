@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -59,9 +63,12 @@ import {
   X,
   ExternalLink,
   Lock,
+  FileDown,
+  Send,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDurationClock } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -109,6 +116,15 @@ type PaymentAdditionalItem = {
   item_id: string;
   quantity: string;
   unit_price: string;
+};
+
+type AppointmentHistoryEvent = {
+  id: string;
+  created_at: string;
+  title: string;
+  description: string;
+  amount?: number;
+  kind: 'item' | 'change' | 'refund' | 'payment';
 };
 
 const statusConfig = appointmentStatusConfig;

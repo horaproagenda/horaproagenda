@@ -32,6 +32,8 @@ export function AtendimentosPorProfissional() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
+  const [detailDateFrom, setDetailDateFrom] = useState<Date | undefined>(undefined);
+  const [detailDateTo, setDetailDateTo] = useState<Date | undefined>(undefined);
 
   // Realtime sync
   useEffect(() => {

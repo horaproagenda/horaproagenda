@@ -101,6 +101,15 @@ export function SaleForm() {
   const [boletoInstallments, setBoletoInstallments] = useState<number>(1);
   const [boletoFirstDueDate, setBoletoFirstDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  // Cheque state
+  const [chequeBank, setChequeBank] = useState('');
+  const [chequeCashDate, setChequeCashDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [chequeNumber, setChequeNumber] = useState('');
+
+  // Cash change (troco) state
+  const [cashReceived, setCashReceived] = useState<number>(0);
+  const [changeMethod, setChangeMethod] = useState<'cash' | 'pix' | 'credit'>('cash');
+
   // Get selected payment method details
   const selectedPaymentMethod = useMemo(
     () => activePaymentMethods.find(m => m.id === paymentMethodId),

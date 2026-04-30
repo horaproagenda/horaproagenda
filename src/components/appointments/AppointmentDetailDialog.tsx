@@ -154,6 +154,73 @@ export function AppointmentDetailDialog({
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
   const { settings } = useBusinessSettings();
+  const { data: appointmentHistory = [] } = useQuery({
+    queryKey: ['appointment-history', appointment?.id],
+    enabled: open && !!appointment?.id,
+    queryFn: async () => {
+      if (!appointment?.id) return [] as AppointmentHistoryEvent[];
+
+      const [auditResult, financialResult, cashResult] = await Promise.all([
+        supabase
+          .from('audit_logs')
+          .select('id, action, created_at, old_data, new_data, user_email')
+          .eq('table_name', 'appointments')
+          .eq('record_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('financial_entries')
+          .select('id, created_at, type, description, amount, status, paid_date, notes')
+          .eq('appointment_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('cash_transactions')
+          .select('id, created_at, type, category, description, amount, payment_method, reference_type')
+          .eq('reference_id', appointment.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (auditResult.error) throw auditResult.error;
+      if (financialResult.error) throw financialResult.error;
+      if (cashResult.error) throw cashResult.error;
+
+      const auditEvents = (auditResult.data || []).map((entry) => ({
+        id: `audit-${entry.id}`,
+        created_at: entry.created_at,
+        title: entry.action === 'payment_processed' ? 'Baixa registrada' : 'Agendamento alterado',
+        description: entry.user_email ? `Ação: ${entry.action} por ${entry.user_email}` : `Ação: ${entry.action}`,
+        amount: Number((entry.new_data as Record<string, unknown> | null)?.amount_paid || 0) || undefined,
+        kind: entry.action === 'payment_processed' ? 'payment' : 'change',
+      })) satisfies AppointmentHistoryEvent[];
+
+      const financialEvents = (financialResult.data || []).map((entry) => {
+        const isRefund = entry.type === 'payable' || entry.type === 'expense' || /devolu|estorno|desconto/i.test(entry.description || '');
+        return {
+          id: `financial-${entry.id}`,
+          created_at: entry.created_at,
+          title: isRefund ? 'Estorno/ajuste financeiro' : 'Registro financeiro',
+          description: `${entry.description}${entry.status ? ` • ${entry.status}` : ''}`,
+          amount: Number(entry.amount || 0),
+          kind: isRefund ? 'refund' : 'payment',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      const cashEvents = (cashResult.data || []).map((entry) => {
+        const isRefund = entry.type === 'expense' || entry.category === 'refund';
+        return {
+          id: `cash-${entry.id}`,
+          created_at: entry.created_at,
+          title: isRefund ? 'Estorno no caixa' : 'Movimento de caixa',
+          description: `${entry.description || 'Movimento vinculado ao agendamento'}${entry.payment_method ? ` • ${entry.payment_method}` : ''}`,
+          amount: Number(entry.amount || 0),
+          kind: isRefund ? 'refund' : 'payment',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      return [...auditEvents, ...financialEvents, ...cashEvents].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+  });
   
   // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');

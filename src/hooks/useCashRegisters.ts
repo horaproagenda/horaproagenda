@@ -36,20 +36,44 @@ export interface CashRegister {
 export function useCashRegisters() {
   const queryClient = useQueryClient();
 
-  // Realtime sync for cash_registers and cash_transactions
+  // Track if initial load is done to avoid notifications on mount
+  const initialLoadDone = useRef(false);
+
+  // Realtime sync for cash_registers and cash_transactions with visual notifications
   useEffect(() => {
     const channel = supabase
       .channel('cash_realtime_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers' }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+        if (!initialLoadDone.current) return;
+        if (payload.eventType === 'UPDATE' && (payload.new as any)?.status === 'closed') {
+          toast.info('Caixa fechado', { description: `Caixa #${(payload.new as any)?.register_number} foi fechado`, icon: '🔒' });
+        } else if (payload.eventType === 'INSERT') {
+          toast.info('Novo caixa aberto', { description: `Caixa #${(payload.new as any)?.register_number}`, icon: '🔓' });
+        }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
         queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+        if (!initialLoadDone.current) return;
+        const tx = payload.new as any;
+        if (payload.eventType === 'INSERT' && tx) {
+          const amount = Number(tx.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+          if (tx.type === 'income') {
+            toast.success('Nova entrada no caixa', { description: `R$ ${amount} — ${tx.description || tx.category || 'Entrada'}`, icon: '💰' });
+          } else if (tx.type === 'expense') {
+            const label = tx.category === 'sangria' ? 'Sangria' : tx.category === 'despesa' ? 'Despesa' : 'Saída';
+            toast.warning(`${label} registrada`, { description: `R$ ${amount} — ${tx.description || label}`, icon: '💸' });
+          }
+        }
       })
       .subscribe();
 
+    // Mark initial load as done after a short delay
+    const timer = setTimeout(() => { initialLoadDone.current = true; }, 2000);
+
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [queryClient]);

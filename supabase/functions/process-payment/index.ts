@@ -544,7 +544,7 @@ serve(async (req) => {
           cash_register_id: body.cash_register_id,
           type: 'income',
           category: 'sale',
-          description: `${serviceName} - ${clientName}`,
+          description: `${serviceName} - ${clientName}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
           amount: newCashPaymentAmount,
           payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
@@ -604,6 +604,8 @@ serve(async (req) => {
         payment_methods: body.payment_methods,
         used_client_credit: body.used_client_credit || 0,
         discount_amount: discountAmount,
+        additional_items_total: additionalItemsTotal,
+        additional_items_count: additionalItems.length,
         user_roles: roles,
       },
     });

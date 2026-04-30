@@ -26,6 +26,7 @@ export function ContasAReceber() {
   const { receivables, updateEntry, deleteEntry } = useFinancialEntries();
   const { appointments } = useAppointments();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Track previous receivable IDs/amounts for change detection
   const prevSnapshotRef = useRef<Map<string, { amount: number; status: string }>>(new Map());

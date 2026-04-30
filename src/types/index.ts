@@ -212,8 +212,23 @@ export interface Appointment {
   professional?: Professional;
   room?: Room;
   package_appointment?: PackageAppointment;
+  additional_items?: AppointmentAdditionalItem[];
   created_by_profile?: { full_name: string } | null;
   updated_by_profile?: { full_name: string } | null;
+}
+
+export interface AppointmentAdditionalItem {
+  id?: string;
+  appointment_id?: string;
+  item_type: 'service' | 'product';
+  service_id?: string | null;
+  product_id?: string | null;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  notes?: string | null;
+  service?: Pick<Service, 'id' | 'name'> | null;
+  product?: { id: string; name: string } | null;
 }
 
 export interface AppointmentEditLock {

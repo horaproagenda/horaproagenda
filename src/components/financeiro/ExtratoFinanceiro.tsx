@@ -90,16 +90,19 @@ export function ExtratoFinanceiro() {
   const unifiedEntries = useMemo(() => {
     const unified: UnifiedEntry[] = [];
 
-    // 1. Financial entries (contas a pagar, recebíveis, comissões)
+    // 1. Financial entries - only include PAID entries in the extrato (pending ones belong in Contas a Pagar)
     entries.forEach((entry: FinancialEntry) => {
+      if (entry.status !== 'paid') return;
+      
       const isIncome = entry.type === 'receivable';
       const grossAmount = Number(entry.amount);
       const isCommission = (entry.description || '').toLowerCase().includes('comiss');
+      const isPartial = (entry.notes || '').toLowerCase().includes('pagamento parcial');
       
       unified.push({
         id: `fin-${entry.id}`,
         date: entry.paid_date || entry.due_date,
-        description: entry.description,
+        description: isPartial ? `${entry.description} (parcial)` : entry.description,
         category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
         type: isIncome ? 'income' : 'expense',
         grossAmount,

@@ -369,15 +369,11 @@ export function ContasAPagar() {
 
       // If partial payment, create a new pending entry for the remainder
       if (isPartial) {
-        // Calculate next month's due date for the remainder
-        const nextDueDate = new Date(entryToPay.due_date + 'T12:00:00');
-        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-
         await createEntry.mutateAsync({
           type: 'payable',
           description: `${entryToPay.description.replace(/\s*\(restante.*?\)$/i, '')} (restante)`,
           amount: remainder,
-          due_date: format(nextDueDate, 'yyyy-MM-dd'),
+          due_date: entryToPay.due_date,
           category_id: entryToPay.category_id || null,
           payment_method_id: paymentMethodId || null,
           bank_id: paymentBankId || null,
@@ -395,7 +391,7 @@ export function ContasAPagar() {
           status: 'pending',
         });
         
-        toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} adicionado como pendente.`);
+        toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} permanece pendente até ser quitado.`);
       }
     } else {
       // For boleto with reminder, only update payment method but keep pending
@@ -783,7 +779,7 @@ export function ContasAPagar() {
               />
               {entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
                 <p className="text-xs text-orange-600 mt-1">
-                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} ficará pendente para o próximo mês.
+                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} permanecerá pendente até ser quitado.
                 </p>
               )}
             </div>

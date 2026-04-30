@@ -29,9 +29,11 @@ import { useRooms } from '@/hooks/useRooms';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useInfiniteList } from '@/hooks/useInfiniteList';
 import { exportToCSV } from '@/lib/exportUtils';
 import { Service, PackageTemplate } from '@/types';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
+import { getCategoryColor } from '@/lib/categoryColors';
 
 const defaultCategories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
@@ -54,6 +56,110 @@ interface PackagesFilters {
   status: string | null;
   sort: string;
 }
+
+interface ServicesGridProps {
+  items: Service[];
+  onSelect: (s: Service) => void;
+  onEdit: (s: Service) => void;
+  onDelete: () => void;
+}
+
+const ServicesGrid: React.FC<ServicesGridProps> = ({ items, onSelect, onEdit, onDelete }) => {
+  const { visibleItems, hasMore, sentinelRef } = useInfiniteList(items);
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {visibleItems.map((service, index) => (
+          <div
+            key={service.id}
+            style={{ animationDelay: `${index * 30}ms` }}
+            className="animate-fade-in cursor-pointer h-full"
+            onClick={() => onSelect(service)}
+          >
+            <ServiceCard service={service} onEdit={onEdit} onDelete={onDelete} />
+          </div>
+        ))}
+      </div>
+      {hasMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-xs text-muted-foreground">Carregando mais serviços...</span>
+        </div>
+      )}
+    </>
+  );
+};
+
+interface PackageCardsSectionProps {
+  items: PackageTemplate[];
+  onSelect: (p: PackageTemplate) => void;
+}
+
+const PackageCardsSection: React.FC<PackageCardsSectionProps> = ({ items, onSelect }) => {
+  const { visibleItems, hasMore, sentinelRef } = useInfiniteList(items);
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {visibleItems.map((pkg, index) => {
+          const color = getCategoryColor(pkg.category || 'Outros');
+          return (
+            <Card
+              key={pkg.id}
+              style={{ animationDelay: `${index * 30}ms`, borderLeftColor: color.hex, borderLeftWidth: '3px' }}
+              className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all flex flex-col"
+              onClick={() => onSelect(pkg)}
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="rounded-md p-1.5 shrink-0" style={{ backgroundColor: `${color.hex}20` }}>
+                    <Package className="h-3.5 w-3.5" style={{ color: color.hex }} />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
+                    {pkg.category && <p className="text-[10px] text-muted-foreground truncate">{pkg.category}</p>}
+                  </div>
+                </div>
+                <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
+                  {pkg.is_active ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Layers className="h-3 w-3" />
+                  <span>{pkg.total_sessions} aplicações</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{pkg.duration || 60}min</span>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-2 border-t flex items-center justify-between">
+                <div className="flex items-center gap-1 text-sm font-semibold">
+                  <DollarSign className="h-3.5 w-3.5 text-success" />
+                  <span>R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                  style={{ color: color.hex, backgroundColor: `${color.hex}15` }}
+                >
+                  R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/aplic.
+                </span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      {hasMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-xs text-muted-foreground">Carregando mais pacotes...</span>
+        </div>
+      )}
+    </>
+  );
+};
 
 const Servicos: React.FC = () => {
   const [activeTab, setActiveTab] = useLocalStorage<string>('servicos-tab', 'services');
@@ -218,52 +324,7 @@ const Servicos: React.FC = () => {
   };
 
   const renderPackageCards = (items: PackageTemplate[]) => (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {items.map((pkg, index) => (
-        <Card
-          key={pkg.id}
-          style={{ animationDelay: `${index * 30}ms` }}
-          className="animate-fade-in cursor-pointer p-4 hover:border-primary/30 hover:shadow-md transition-all"
-          onClick={() => setSelectedPackage(pkg)}
-        >
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
-                <Package className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-medium text-sm truncate">{pkg.name}</h4>
-                {pkg.category && <p className="text-[10px] text-muted-foreground truncate">{pkg.category}</p>}
-              </div>
-            </div>
-            <Badge variant={pkg.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
-              {pkg.is_active ? 'Ativo' : 'Inativo'}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Layers className="h-3 w-3" />
-              <span>{pkg.total_sessions} aplicações</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <span>{pkg.duration || 60}min</span>
-            </div>
-          </div>
-
-          <div className="mt-2 pt-2 border-t flex items-center justify-between">
-            <div className="flex items-center gap-1 text-sm font-semibold">
-              <DollarSign className="h-3.5 w-3.5 text-success" />
-              <span>R$ {Number(pkg.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <span className="text-[10px] text-muted-foreground">
-              R$ {(Number(pkg.price) / pkg.total_sessions).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/aplicação
-            </span>
-          </div>
-        </Card>
-      ))}
-    </div>
+    <PackageCardsSection items={items} onSelect={setSelectedPackage} />
   );
 
   return (
@@ -382,18 +443,12 @@ const Servicos: React.FC = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredServices.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredServices.map((service, index) => (
-                  <div
-                    key={service.id}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-fade-in cursor-pointer h-full"
-                    onClick={() => setSelectedService(service)}
-                  >
-                    <ServiceCard service={service} onEdit={setSelectedService} onDelete={refetch} />
-                  </div>
-                ))}
-              </div>
+              <ServicesGrid
+                items={filteredServices}
+                onSelect={setSelectedService}
+                onEdit={setSelectedService}
+                onDelete={refetch}
+              />
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />

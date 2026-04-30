@@ -61,6 +61,8 @@ interface ClientCreditTransaction {
   description: string;
   appointment_id?: string | null;
   sale_id?: string | null;
+  professional_id?: string | null;
+  professional?: { id: string; name: string } | null;
   appointment?: { start_time: string; service?: { name: string } | null } | null;
   sale?: { sale_date: string; service?: { name: string } | null; package?: { name: string } | null } | null;
 }
@@ -197,7 +199,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     queryFn: async () => {
       let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id, professional_id, professional:professionals(id, name)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 

@@ -323,7 +323,8 @@ export function CategoriasFinanceiras() {
         recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
         amount: parseFloat(editEntryForm.amount) || 0,
         installments: parseInt(editEntryForm.installments) || 1,
-      });
+        overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
+      } as any);
       toast.success('Conta atualizada com sucesso');
     } else if (editScope === 'all' && editingGroup) {
       for (const entry of editingGroup.entries) {
@@ -337,7 +338,8 @@ export function CategoriasFinanceiras() {
           recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
           amount: parseFloat(editEntryForm.amount) || 0,
           installments: parseInt(editEntryForm.installments) || 1,
-        });
+          overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
+        } as any);
       }
       toast.success(`${editingGroup.entries.length} contas atualizadas`);
     }

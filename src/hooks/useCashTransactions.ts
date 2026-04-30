@@ -151,19 +151,26 @@ export function useCashTransactions(cashRegisterId?: string) {
         let card_fee_amount: number | undefined = t.card_fee_amount || undefined;
         let net_amount: number | undefined = undefined;
         let installments: number | undefined = t.installments || undefined;
+        let discount_amount: number | undefined = undefined;
         
         // If no fee in transaction, try to find from single_sales
-        if (!card_fee_amount && t.category === 'sale' && t.reference_type === 'single_sale' && t.reference_id) {
+        if (t.category === 'sale' && t.reference_type === 'single_sale' && t.reference_id) {
           const saleInfo = salesMap.get(t.reference_id);
-          if (saleInfo?.card_fee_amount && saleInfo.card_fee_amount > 0) {
-            card_fee_amount = saleInfo.card_fee_amount;
-            installments = saleInfo.installments;
+          if (saleInfo) {
+            if (!card_fee_amount && saleInfo.card_fee_amount && saleInfo.card_fee_amount > 0) {
+              card_fee_amount = saleInfo.card_fee_amount;
+              installments = saleInfo.installments;
+            }
+            if (saleInfo.discount_amount && saleInfo.discount_amount > 0) {
+              discount_amount = saleInfo.discount_amount;
+            }
           }
         }
         
-        // Calculate net amount if there's a fee
-        if (card_fee_amount && card_fee_amount > 0) {
-          net_amount = Number(t.amount) - card_fee_amount;
+        // Calculate net amount considering fees and discounts
+        const totalDeductions = (card_fee_amount || 0);
+        if (totalDeductions > 0) {
+          net_amount = Number(t.amount) - totalDeductions;
         }
         
         return {
@@ -173,6 +180,7 @@ export function useCashTransactions(cashRegisterId?: string) {
           card_fee_amount,
           net_amount,
           installments,
+          discount_amount,
         };
       }) as CashTransaction[];
     },

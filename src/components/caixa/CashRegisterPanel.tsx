@@ -686,7 +686,7 @@ export function CashRegisterPanel() {
           </div>
         </CardHeader>
         <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-4 gap-2 mb-2">
             <div className="p-2 bg-green-50 dark:bg-green-950 rounded-md">
               <div className="text-[10px] text-muted-foreground">Valor Bruto</div>
               <div className="text-base font-bold text-green-600">
@@ -696,8 +696,17 @@ export function CashRegisterPanel() {
                 {salesSummary.count} venda(s)
               </div>
             </div>
+            <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
+              <div className="text-[10px] text-muted-foreground">Descontos</div>
+              <div className="text-base font-bold text-amber-600">
+                -R$ {salesSummary.totalDiscounts.toFixed(2)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Abatido
+              </div>
+            </div>
             <div className="p-2 bg-destructive/10 rounded-md">
-              <div className="text-[10px] text-muted-foreground">Taxas de Cartão</div>
+              <div className="text-[10px] text-muted-foreground">Taxas Cartão</div>
               <div className="text-base font-bold text-destructive">
                 -R$ {salesSummary.totalFees.toFixed(2)}
               </div>

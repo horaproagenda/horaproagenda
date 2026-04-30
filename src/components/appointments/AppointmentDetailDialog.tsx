@@ -43,6 +43,7 @@ import {
   Clock,
   DollarSign,
   CreditCard,
+  ShoppingCart,
   CheckCircle,
   AlertCircle,
   Sparkles,
@@ -67,6 +68,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
 import { useServices } from '@/hooks/useServices';
+import { useProducts } from '@/hooks/useProducts';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
@@ -90,9 +92,24 @@ interface AppointmentDetailDialogProps {
     cashRegisterId?: string,
     usedClientCredit?: number,
     discountApplied?: number, // Desconto aplicado
-    usedClientCreditMethod?: string
+    usedClientCreditMethod?: string,
+    additionalItems?: Array<{
+      item_type: 'service' | 'product';
+      service_id?: string | null;
+      product_id?: string | null;
+      quantity: number;
+      unit_price: number;
+      total_amount: number;
+    }>
   ) => void;
 }
+
+type PaymentAdditionalItem = {
+  item_type: 'service' | 'product';
+  item_id: string;
+  quantity: string;
+  unit_price: string;
+};
 
 const statusConfig = appointmentStatusConfig;
 
@@ -116,6 +133,7 @@ export function AppointmentDetailDialog({
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activeServices } = useServices();
+  const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
@@ -153,6 +171,7 @@ export function AppointmentDetailDialog({
   
   // Discount
   const [discountAmount, setDiscountAmount] = useState('');
+  const [additionalItems, setAdditionalItems] = useState<PaymentAdditionalItem[]>([]);
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);

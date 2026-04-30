@@ -629,34 +629,6 @@ export function ContasAPagar() {
         </ScrollArea>
       </CardContent>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja excluir a conta "{entryToDelete?.description}"?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {entryToDelete?.is_recurring && (
-            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-              <Switch
-                checked={deleteRecurring}
-                onCheckedChange={setDeleteRecurring}
-              />
-              <Label className="text-sm">
-                Excluir esta e todas as recorrências futuras
-              </Label>
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Payment / Edit Payment Dialog */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>

@@ -64,28 +64,26 @@ export function ServiceCard({ service, onEdit, onDelete }: ServiceCardProps) {
   return (
     <>
       <div 
-        className="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in"
+        className="group flex h-full flex-col rounded-xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-lg animate-fade-in"
         style={{ borderTopColor: categoryColor.hex, borderTopWidth: '3px' }}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-foreground">{service.name}</h4>
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-              {service.description}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* Header: title + category + actions */}
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="flex-1 min-w-0 font-semibold text-sm text-foreground line-clamp-1" title={service.name}>
+            {service.name}
+          </h4>
+          <div className="flex items-center gap-1 shrink-0">
             <Badge 
               variant="outline" 
-              className="shrink-0"
+              className="h-5 px-1.5 text-[10px] font-medium"
               style={{ backgroundColor: `${categoryColor.hex}15`, borderColor: `${categoryColor.hex}40` }}
             >
               {service.category}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MoreVertical className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreVertical className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -113,17 +111,25 @@ export function ServiceCard({ service, onEdit, onDelete }: ServiceCardProps) {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>{service.duration} min</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <DollarSign className="h-4 w-4 text-success" />
-            <span>R$ {service.price.toFixed(2)}</span>
+        {/* Description: fixed 2-line height for alignment */}
+        <p className="mt-2 text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">
+          {service.description || '\u00A0'}
+        </p>
+
+        {/* Footer: duration + price + status — pinned to bottom */}
+        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{service.duration} min</span>
+            </div>
+            <div className="flex items-center gap-1 text-sm font-semibold text-foreground">
+              <DollarSign className="h-3.5 w-3.5 text-success" />
+              <span>R$ {service.price.toFixed(2)}</span>
+            </div>
           </div>
           {!service.is_active && (
-            <Badge variant="secondary" className="ml-auto">Inativo</Badge>
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">Inativo</Badge>
           )}
         </div>
       </div>

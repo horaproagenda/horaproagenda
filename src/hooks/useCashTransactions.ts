@@ -168,10 +168,10 @@ export function useCashTransactions(cashRegisterId?: string) {
           }
         }
         
-        // Calculate net amount considering fees and discounts
-        const totalDeductions = (card_fee_amount || 0);
-        if (totalDeductions > 0) {
-          net_amount = Number(t.amount) - totalDeductions;
+        // Calculate net amount using validated calculation (always applies fees + discounts)
+        const hasDeductions = (card_fee_amount || 0) > 0 || (discount_amount || 0) > 0;
+        if (hasDeductions) {
+          net_amount = ensureNetAmount(Number(t.amount), card_fee_amount, discount_amount);
         }
         
         return {

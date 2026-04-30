@@ -344,33 +344,6 @@ export function ContasAPagar() {
     setCreateBoletoReminder(false);
   };
 
-  const openDeleteDialog = (entry: any) => {
-    setEntryToDelete(entry);
-    setDeleteRecurring(false);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!entryToDelete) return;
-
-    if (deleteRecurring && entryToDelete.is_recurring) {
-      const baseDescription = entryToDelete.description.replace(/\s*\(\d+\/\d+\)$/, '');
-      const relatedEntries = payables.filter(e => 
-        e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
-        parseISO(e.due_date) >= parseISO(entryToDelete.due_date)
-      );
-      
-      for (const entry of relatedEntries) {
-        await deleteEntry.mutateAsync(entry.id);
-      }
-    } else {
-      await deleteEntry.mutateAsync(entryToDelete.id);
-    }
-    
-    setDeleteDialogOpen(false);
-    setEntryToDelete(null);
-  };
-
   const getStatusDisplay = (entry: any) => {
     if (entry.status === 'paid') {
       // Check if it was a partial payment

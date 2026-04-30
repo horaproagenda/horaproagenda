@@ -124,7 +124,7 @@ type AppointmentHistoryEvent = {
   title: string;
   description: string;
   amount?: number;
-  kind: 'item' | 'change' | 'refund' | 'payment';
+  kind: 'item' | 'change' | 'refund' | 'payment' | 'credit';
 };
 
 const statusConfig = appointmentStatusConfig;
@@ -160,7 +160,7 @@ export function AppointmentDetailDialog({
     queryFn: async () => {
       if (!appointment?.id) return [] as AppointmentHistoryEvent[];
 
-      const [auditResult, financialResult, cashResult] = await Promise.all([
+      const [auditResult, financialResult, cashResult, creditResult] = await Promise.all([
         supabase
           .from('audit_logs')
           .select('id, action, created_at, old_data, new_data, user_email')
@@ -176,6 +176,11 @@ export function AppointmentDetailDialog({
           .from('cash_transactions')
           .select('id, created_at, type, category, description, amount, payment_method, reference_type')
           .eq('reference_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        (supabase as any)
+          .from('client_credit_transactions')
+          .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, professional_id, professional:professionals(id, name)')
+          .eq('appointment_id', appointment.id)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -216,7 +221,20 @@ export function AppointmentDetailDialog({
         } satisfies AppointmentHistoryEvent;
       });
 
-      return [...auditEvents, ...financialEvents, ...cashEvents].sort(
+      const creditEvents = ((creditResult as any).data || []).map((entry: any) => {
+        const profName = entry.professional?.name || null;
+        const isUsed = entry.transaction_type === 'credit_used';
+        return {
+          id: `credit-${entry.id}`,
+          created_at: entry.created_at,
+          title: isUsed ? 'Crédito do cliente usado na baixa' : 'Movimento de crédito do cliente',
+          description: `${entry.description || ''}${profName ? ` • Profissional: ${profName}` : ''} • Saldo: R$ ${Number(entry.previous_balance || 0).toFixed(2)} → R$ ${Number(entry.new_balance || 0).toFixed(2)}`,
+          amount: Number(entry.amount || 0),
+          kind: 'credit',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      return [...auditEvents, ...financialEvents, ...cashEvents, ...creditEvents].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     },
@@ -1794,9 +1812,10 @@ export function AppointmentDetailDialog({
 
             <Separator />
             <Tabs defaultValue="items" className="space-y-3">
-              <TabsList className="grid w-full grid-cols-3 h-9">
+              <TabsList className="grid w-full grid-cols-4 h-9">
                 <TabsTrigger value="items" className="text-xs">Itens</TabsTrigger>
                 <TabsTrigger value="changes" className="text-xs">Mudanças</TabsTrigger>
+                <TabsTrigger value="credit" className="text-xs">Crédito</TabsTrigger>
                 <TabsTrigger value="refunds" className="text-xs">Estornos</TabsTrigger>
               </TabsList>
               <TabsContent value="items" className="space-y-2 mt-0">
@@ -1811,14 +1830,33 @@ export function AppointmentDetailDialog({
                 ))}
               </TabsContent>
               <TabsContent value="changes" className="space-y-2 mt-0">
-                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').length === 0 ? (
+                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment' || event.kind === 'credit').length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhuma mudança registrada.</p>
-                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').map((event) => (
-                  <div key={event.id} className="p-2 rounded-md border text-sm">
+                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment' || event.kind === 'credit').map((event) => (
+                  <div key={event.id} className={`p-2 rounded-md border text-sm ${event.kind === 'credit' ? 'border-primary/30 bg-primary/5' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{event.title}</p>
                       <span className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM HH:mm')}</span>
                     </div>
+                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                    {event.kind === 'credit' && event.amount ? (
+                      <p className="text-xs font-semibold text-primary mt-1">Valor usado: {formatCurrency(event.amount)}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="credit" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'credit').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum movimento de crédito do cliente neste agendamento.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'credit').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border border-primary/30 bg-primary/5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-primary">{event.title}</p>
+                      <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(event.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
                     <p className="text-xs text-muted-foreground">{event.description}</p>
                   </div>
                 ))}

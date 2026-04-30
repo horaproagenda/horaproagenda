@@ -61,6 +61,8 @@ interface ClientCreditTransaction {
   description: string;
   appointment_id?: string | null;
   sale_id?: string | null;
+  professional_id?: string | null;
+  professional?: { id: string; name: string } | null;
   appointment?: { start_time: string; service?: { name: string } | null } | null;
   sale?: { sale_date: string; service?: { name: string } | null; package?: { name: string } | null } | null;
 }
@@ -197,7 +199,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     queryFn: async () => {
       let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id, professional_id, professional:professionals(id, name)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
@@ -282,6 +284,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
     getClientCreditTransactionTypeLabel(transaction.transaction_type),
     transaction.description || '-',
+    transaction.professional?.name || '-',
     formatCurrency(Number(transaction.amount || 0)),
     formatCurrency(Number(transaction.previous_balance || 0)),
     formatCurrency(Number(transaction.new_balance || 0)),
@@ -295,7 +298,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     while (true) {
       let query = (supabase as any)
         .from('client_credit_transactions')
-        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id')
+        .select('id, created_at, transaction_type, amount, previous_balance, new_balance, description, appointment_id, sale_id, professional_id, professional:professionals(id, name)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
@@ -319,7 +322,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     const rows = buildCreditExportRows(await fetchCreditTransactionsForExport());
     exportToCSV({
       filename: 'historico_credito_cliente',
-      headers: ['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo'],
+      headers: ['Data', 'Tipo', 'Descrição', 'Profissional', 'Valor', 'Saldo anterior', 'Novo saldo'],
       rows,
       successMessage: 'Histórico de crédito exportado em CSV!',
     });
@@ -334,11 +337,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 14, 21);
     autoTable(doc, {
       startY: 28,
-      head: [['Data', 'Tipo', 'Descrição', 'Valor', 'Saldo anterior', 'Novo saldo']],
+      head: [['Data', 'Tipo', 'Descrição', 'Profissional', 'Valor', 'Saldo anterior', 'Novo saldo']],
       body: creditExportRows,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 28 }, 2: { cellWidth: 92 }, 3: { halign: 'right', cellWidth: 32 }, 4: { halign: 'right', cellWidth: 36 }, 5: { halign: 'right', cellWidth: 36 } },
+      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 26 }, 2: { cellWidth: 70 }, 3: { cellWidth: 36 }, 4: { halign: 'right', cellWidth: 28 }, 5: { halign: 'right', cellWidth: 32 }, 6: { halign: 'right', cellWidth: 32 } },
     });
     doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
@@ -481,6 +484,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                       <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Tipo</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Profissional</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo anterior</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Novo saldo</TableHead>
@@ -498,6 +502,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">{transaction.professional?.name || '-'}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>
@@ -591,6 +596,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 <p><span className="text-muted-foreground">Data:</span> {format(new Date(selectedCreditTransaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
                 <p><span className="text-muted-foreground">Tipo:</span> {getClientCreditTransactionTypeLabel(selectedCreditTransaction.transaction_type)}</p>
                 <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(Number(selectedCreditTransaction.amount || 0))}</p>
+                <p><span className="text-muted-foreground">Profissional responsável:</span> {selectedCreditTransaction.professional?.name || '— (não registrado)'}</p>
                 <p><span className="text-muted-foreground">Origem:</span> {getTransactionOrigin(selectedCreditTransaction)}</p>
                 <p><span className="text-muted-foreground">Referência do documento/atendimento:</span> {getTransactionReference(selectedCreditTransaction)}</p>
                 <p><span className="text-muted-foreground">Descrição:</span> {selectedCreditTransaction.description}</p>

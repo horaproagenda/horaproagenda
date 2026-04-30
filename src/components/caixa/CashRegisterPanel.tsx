@@ -557,69 +557,69 @@ export function CashRegisterPanel() {
 
       {/* Lembrete a Receber - Full Width */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
+        <CardHeader className="pb-2 pt-3 px-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
               Lembrete a Receber
             </CardTitle>
             <PeriodTabs value={receivablesPeriod} onChange={setReceivablesPeriod} />
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
+        <CardContent className="px-3 pb-3">
+          <div className="flex items-center justify-between mb-2 p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
             <div>
-              <div className="text-3xl font-bold text-amber-600">
+              <div className="text-lg font-bold text-amber-600">
                 R$ {receivablesSummary.total.toFixed(2)}
               </div>
-              <div className="text-sm text-muted-foreground">
-                {receivablesSummary.count} lançamento(s) pendente(s)
+              <div className="text-[10px] text-muted-foreground">
+                {receivablesSummary.count} pendente(s)
               </div>
             </div>
-            <DollarSign className="h-12 w-12 text-amber-200" />
+            <DollarSign className="h-6 w-6 text-amber-200" />
           </div>
           
           {receivablesSummary.entries.length > 0 ? (
-            <ScrollArea className="h-[300px]">
-              <div className="border rounded-lg">
+            <ScrollArea className="h-[220px]">
+              <div className="border rounded-md">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
+                    <TableRow className="h-7">
+                      <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2">Cliente</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2">Vencimento</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2 text-right">Valor</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2">Status</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2 text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {receivablesSummary.entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-medium">{entry.description}</TableCell>
-                        <TableCell>{entry.client?.name || '-'}</TableCell>
-                        <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell className="text-right font-medium">R$ {Number(entry.amount).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}>
+                      <TableRow key={entry.id} className="h-7">
+                        <TableCell className="text-[11px] font-medium py-1 px-2">{entry.description}</TableCell>
+                        <TableCell className="text-[11px] py-1 px-2">{entry.client?.name || '-'}</TableCell>
+                        <TableCell className="text-[11px] py-1 px-2">{format(parseISO(entry.due_date), 'dd/MM/yy')}</TableCell>
+                        <TableCell className="text-[11px] text-right font-medium py-1 px-2">R$ {Number(entry.amount).toFixed(2)}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'} className="text-[9px] h-4 px-1">
                             {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right py-1 px-2">
                           {entry.type === 'appointment' ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 text-xs"
+                              className="h-5 text-[10px] px-1.5"
                               onClick={() => {
                                 window.location.href = `/agenda?appointment=${entry.id}`;
                               }}
                             >
-                              <DollarSign className="h-3 w-3 mr-1" />
+                              <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                               Pagar
                             </Button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <span className="text-[10px] text-muted-foreground">-</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -629,7 +629,7 @@ export function CashRegisterPanel() {
               </div>
             </ScrollArea>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-4 text-[11px] text-muted-foreground">
               Nenhum valor a receber para o período selecionado
             </div>
           )}
@@ -638,58 +638,58 @@ export function CashRegisterPanel() {
 
       {/* Vendas Recebidas - Full Width */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <CheckCircle className="h-6 w-6 text-green-500" />
+        <CardHeader className="pb-2 pt-3 px-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <CheckCircle className="h-4 w-4 text-green-500" />
               Vendas Recebidas
             </CardTitle>
             <PeriodTabs value={salesPeriod} onChange={setSalesPeriod} />
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-              <div className="text-sm text-muted-foreground">Valor Bruto</div>
-              <div className="text-2xl font-bold text-green-600">
+        <CardContent className="px-3 pb-3">
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="p-2 bg-green-50 dark:bg-green-950 rounded-md">
+              <div className="text-[10px] text-muted-foreground">Valor Bruto</div>
+              <div className="text-base font-bold text-green-600">
                 R$ {salesSummary.total.toFixed(2)}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[10px] text-muted-foreground">
                 {salesSummary.count} venda(s)
               </div>
             </div>
-            <div className="p-4 bg-destructive/10 rounded-lg">
-              <div className="text-sm text-muted-foreground">Taxas de Cartão</div>
-              <div className="text-2xl font-bold text-destructive">
+            <div className="p-2 bg-destructive/10 rounded-md">
+              <div className="text-[10px] text-muted-foreground">Taxas de Cartão</div>
+              <div className="text-base font-bold text-destructive">
                 -R$ {salesSummary.totalFees.toFixed(2)}
               </div>
-              <div className="text-xs text-muted-foreground">
-                Descontado pelas operadoras
+              <div className="text-[10px] text-muted-foreground">
+                Descontado
               </div>
             </div>
-            <div className="p-4 bg-primary/10 rounded-lg">
-              <div className="text-sm text-muted-foreground">Valor Líquido</div>
-              <div className="text-2xl font-bold text-primary">
+            <div className="p-2 bg-primary/10 rounded-md">
+              <div className="text-[10px] text-muted-foreground">Valor Líquido</div>
+              <div className="text-base font-bold text-primary">
                 R$ {salesSummary.netTotal.toFixed(2)}
               </div>
-              <div className="text-xs text-muted-foreground">
-                Valor efetivo recebido
+              <div className="text-[10px] text-muted-foreground">
+                Efetivo recebido
               </div>
             </div>
           </div>
           
           {salesSummary.transactions.length > 0 ? (
-            <ScrollArea className="h-[300px]">
-              <div className="border rounded-lg">
+            <ScrollArea className="h-[220px]">
+              <div className="border rounded-md">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Forma de Pagamento</TableHead>
-                      <TableHead>Data/Hora</TableHead>
-                      <TableHead className="text-right">Bruto</TableHead>
-                      <TableHead className="text-right">Taxa</TableHead>
-                      <TableHead className="text-right">Líquido</TableHead>
+                    <TableRow className="h-7">
+                      <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2">Pagamento</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2">Data/Hora</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2 text-right">Bruto</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2 text-right">Taxa</TableHead>
+                      <TableHead className="text-[10px] py-1 px-2 text-right">Líquido</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -700,21 +700,21 @@ export function CashRegisterPanel() {
                         : Number(transaction.amount);
                       
                       return (
-                        <TableRow key={transaction.id}>
-                          <TableCell className="font-medium">
+                        <TableRow key={transaction.id} className="h-7">
+                          <TableCell className="text-[11px] font-medium py-1 px-2">
                             {transaction.description || '-'}
                             {transaction.installments && transaction.installments > 1 && (
-                              <Badge variant="outline" className="ml-2 text-xs">
+                              <Badge variant="outline" className="ml-1 text-[9px] h-4 px-1">
                                 {transaction.installments}x
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell>{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
-                          <TableCell>{format(parseISO(transaction.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">
+                          <TableCell className="text-[11px] py-1 px-2">{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
+                          <TableCell className="text-[11px] py-1 px-2">{format(parseISO(transaction.created_at), 'dd/MM/yy HH:mm')}</TableCell>
+                          <TableCell className="text-[11px] text-right font-medium text-green-600 py-1 px-2">
                             R$ {Number(transaction.amount).toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-[11px] text-right py-1 px-2">
                             {hasFee ? (
                               <span className="text-destructive font-medium">
                                 -R$ {transaction.card_fee_amount!.toFixed(2)}
@@ -723,7 +723,7 @@ export function CashRegisterPanel() {
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-primary">
+                          <TableCell className="text-[11px] text-right font-bold text-primary py-1 px-2">
                             R$ {netAmount.toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -734,7 +734,7 @@ export function CashRegisterPanel() {
               </div>
             </ScrollArea>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-4 text-[11px] text-muted-foreground">
               Nenhuma venda para o período selecionado
             </div>
           )}

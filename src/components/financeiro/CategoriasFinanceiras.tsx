@@ -87,6 +87,7 @@ export function CategoriasFinanceiras() {
     recurring_frequency: 'monthly',
     installments: '1',
     is_total_value: true,
+    overdue_tolerance_days: '0',
   });
 
   // Detail view state

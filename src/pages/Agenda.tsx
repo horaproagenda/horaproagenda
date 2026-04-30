@@ -771,7 +771,15 @@ const Agenda = () => {
     cashRegisterId?: string,
     usedClientCredit?: number,
     discountApplied?: number, // Desconto aplicado
-    usedClientCreditMethod?: string
+    usedClientCreditMethod?: string,
+    additionalItems: Array<{
+      item_type: 'service' | 'product';
+      service_id?: string | null;
+      product_id?: string | null;
+      quantity: number;
+      unit_price: number;
+      total_amount: number;
+    }> = []
   ) => {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
@@ -781,9 +789,12 @@ const Agenda = () => {
     const packageData = appointment.package_appointment?.package;
     
     // For package appointments, use the FULL package price, not per session
-    const totalPrice = isPackageAppointment 
+    const baseTotalPrice = isPackageAppointment 
       ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
+    const existingAdditionalTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+    const newAdditionalTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+    const totalPrice = baseTotalPrice + existingAdditionalTotal + newAdditionalTotal;
 
     const paymentTotal = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
     const saldoToAdd = clientCredit || 0; // Saldo: real money as credit (registered in cash/financial)
@@ -872,6 +883,7 @@ const Agenda = () => {
         payment_methods: newMethods,
         amount_paid: amountToSendToBackend,
         payment_status: paymentStatus,
+        additional_items: additionalItems,
         client_credit: saldoToAdd > 0 ? saldoToAdd : undefined, // Saldo: registered in cash/financial
         courtesy_credit: courtesyToAdd > 0 ? courtesyToAdd : undefined, // Cortesia: NOT registered in cash/financial
         used_client_credit: creditUsed > 0 ? creditUsed : undefined,

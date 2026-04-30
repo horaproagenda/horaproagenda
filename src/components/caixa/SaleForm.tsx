@@ -686,25 +686,34 @@ export function SaleForm() {
 
       // Create boleto installments if payment is boleto with installments
       if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
-        const saleId = saleRecord.id;
-        const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
-        const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
+        const { data: lastSales } = await supabase
+          .from('single_sales')
+          .select('id')
+          .eq('client_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-        const records = Array.from({ length: boletoInstallments }, (_, i) => {
-          const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
-          dueDate.setDate(dueDate.getDate() + i * 30);
-          return {
-            sale_id: saleId,
-            installment_number: i + 1,
-            total_installments: boletoInstallments,
-            amount: i === 0 ? installmentAmount + remainder : installmentAmount,
-            due_date: format(dueDate, 'yyyy-MM-dd'),
-            status: 'pending' as const,
-            created_by: user?.id || null,
-          };
-        });
+        const saleId = lastSales?.[0]?.id;
+        if (saleId) {
+          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
+          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
 
-        await supabase.from('boleto_installments').insert(records);
+          const records = Array.from({ length: boletoInstallments }, (_, i) => {
+            const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
+            dueDate.setDate(dueDate.getDate() + i * 30);
+            return {
+              sale_id: saleId,
+              installment_number: i + 1,
+              total_installments: boletoInstallments,
+              amount: i === 0 ? installmentAmount + remainder : installmentAmount,
+              due_date: format(dueDate, 'yyyy-MM-dd'),
+              status: 'pending' as const,
+              created_by: user?.id || null,
+            };
+          });
+
+          await supabase.from('boleto_installments').insert(records);
+        }
       }
 
       // Invalidate all relevant queries for full sync

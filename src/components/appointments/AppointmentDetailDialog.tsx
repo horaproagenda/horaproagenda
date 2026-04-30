@@ -558,6 +558,21 @@ export function AppointmentDetailDialog({
   const totalPrice = isPackageAppointment 
     ? (isPackagePaid ? 0 : packagePrice)
     : servicePrice;
+  const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+  const paymentAdditionalItems = additionalItems
+    .map((item) => {
+      const quantity = Math.max(0, Number(item.quantity) || 0);
+      const unitPrice = parseBrazilianCurrency(item.unit_price);
+      return {
+        ...item,
+        quantity,
+        unit_price_value: unitPrice,
+        total_amount: quantity * unitPrice,
+      };
+    })
+    .filter((item) => item.item_id && item.quantity > 0 && item.unit_price_value >= 0);
+  const additionalItemsTotal = paymentAdditionalItems.reduce((sum, item) => sum + item.total_amount, 0);
+  const finalAppointmentTotal = totalPrice + persistedAdditionalItemsTotal + additionalItemsTotal;
   
   // Calculate amount paid based on actual data
   // For packages: if paid, show full package price as paid. If not paid, show appointment's amount_paid
@@ -566,7 +581,7 @@ export function AppointmentDetailDialog({
     ? (isPackagePaid ? packagePrice : (appointment.amount_paid || 0))
     : (appointment.amount_paid || 0);
   
-  const remainingAmount = Math.max(0, totalPrice - amountPaid);
+  const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal) - amountPaid);
   
   // Determine effective payment status based on actual amounts
   // This ensures consistency between displayed status and values
@@ -584,6 +599,30 @@ export function AppointmentDetailDialog({
 
   const addPaymentMethod = () => {
     setPayments([...payments, { method: '', amount: '' }]);
+  };
+
+  const addAdditionalItem = (item_type: 'service' | 'product') => {
+    setAdditionalItems([...additionalItems, { item_type, item_id: '', quantity: '1', unit_price: '' }]);
+  };
+
+  const removeAdditionalItem = (index: number) => {
+    setAdditionalItems(additionalItems.filter((_, i) => i !== index));
+  };
+
+  const updateAdditionalItem = (index: number, updates: Partial<PaymentAdditionalItem>) => {
+    const newItems = [...additionalItems];
+    const nextItem = { ...newItems[index], ...updates };
+    if (updates.item_id) {
+      if (nextItem.item_type === 'service') {
+        const service = activeServices.find((s) => s.id === updates.item_id);
+        nextItem.unit_price = service ? String(service.price || 0) : nextItem.unit_price;
+      } else {
+        const product = productsForSale.find((p) => p.id === updates.item_id);
+        nextItem.unit_price = product ? String(product.sale_price || product.unit_price || 0) : nextItem.unit_price;
+      }
+    }
+    newItems[index] = nextItem;
+    setAdditionalItems(newItems);
   };
 
   const removePaymentMethod = (index: number) => {

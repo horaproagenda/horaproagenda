@@ -343,7 +343,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         () => {
-          invalidateMultiple(PRODUCT_QUERIES);
+          invalidateMultiple([...PRODUCT_QUERIES, ...FINANCIAL_QUERIES]);
         }
       )
       
@@ -581,6 +581,40 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'appointment_product_consumption' },
         () => {
           invalidateMultiple(['appointment_product_consumption', ...PRODUCT_QUERIES, ...APPOINTMENT_QUERIES]);
+        }
+      )
+      
+      // ============ CASH REGISTER ENTRIES ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_register_entries' },
+        (payload) => {
+          invalidateMultiple([
+            ...FINANCIAL_QUERIES,
+            'dashboard-stats',
+          ]);
+          
+          if (payload.eventType === 'INSERT') {
+            toast.info('💰 Nova movimentação no caixa', { duration: 2000 });
+          }
+        }
+      )
+      
+      // ============ PAYMENTS AUDIT ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments_audit' },
+        (payload) => {
+          invalidateMultiple([
+            ...FINANCIAL_QUERIES,
+            ...CLIENT_QUERIES,
+            ...APPOINTMENT_QUERIES,
+            'dashboard-stats',
+          ]);
+          
+          if (payload.eventType === 'INSERT') {
+            toast.success('✅ Pagamento registrado', { duration: 2000 });
+          }
         }
       )
       

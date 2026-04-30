@@ -757,22 +757,67 @@ export function SaleForm() {
         : `${itemNames} - ${selectedClient?.name}`;
       
       if (currentOpenRegister && !isClientCredit) {
-        // Calculate net amount for card payments
-        const netAmount = selectedCardBrand && feeInfo.feeAmount > 0 
-          ? paymentAmount - feeInfo.feeAmount 
-          : paymentAmount;
-        
-        await supabase.from('cash_transactions').insert({
-          cash_register_id: currentOpenRegister.id,
-          type: 'income',
-          category: 'sale',
-          description: saleDescription,
-          amount: paymentAmount,
-          payment_method: paymentMethod.name,
-          card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
-          installments: selectedCardBrand && isCreditCard ? installments : null,
-          created_by: user?.id,
-        });
+        // Skip cash entry for boleto/cheque - money not received yet
+        if (!isBoleto && !isCheque) {
+          await supabase.from('cash_transactions').insert({
+            cash_register_id: currentOpenRegister.id,
+            type: 'income',
+            category: 'sale',
+            description: isDinheiro ? `${saleDescription} (Dinheiro físico)` : saleDescription,
+            amount: paymentAmount,
+            payment_method: paymentMethod.name,
+            card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
+            installments: selectedCardBrand && isCreditCard ? installments : null,
+            created_by: user?.id,
+          });
+
+          // Handle cash change (troco) for Dinheiro
+          if (isDinheiro && changeAmount > 0) {
+            if (changeMethod === 'cash') {
+              // Cash change goes out of register
+              await supabase.from('cash_transactions').insert({
+                cash_register_id: currentOpenRegister.id,
+                type: 'expense',
+                category: 'change',
+                description: `Troco em dinheiro: ${selectedClient?.name}`,
+                amount: changeAmount,
+                payment_method: 'Dinheiro',
+                created_by: user?.id,
+              });
+            } else if (changeMethod === 'pix') {
+              // PIX change - recorded as outgoing PIX transfer
+              await supabase.from('cash_transactions').insert({
+                cash_register_id: currentOpenRegister.id,
+                type: 'expense',
+                category: 'change',
+                description: `Troco via PIX: ${selectedClient?.name}`,
+                amount: changeAmount,
+                payment_method: 'PIX',
+                created_by: user?.id,
+              });
+            } else if (changeMethod === 'credit') {
+              // Leave as client credit
+              const currentCredit = selectedClient?.credit_balance || 0;
+              const newBalance = currentCredit + changeAmount;
+              await supabase
+                .from('clients')
+                .update({ credit_balance: newBalance })
+                .eq('id', selectedClientId);
+
+              await (supabase as any).from('client_credit_transactions').insert({
+                client_id: selectedClientId,
+                transaction_type: 'credit_added',
+                amount: changeAmount,
+                previous_balance: currentCredit,
+                new_balance: newBalance,
+                description: `Troco deixado como crédito: ${saleDescription}`,
+                created_by: user?.id,
+              });
+
+              toast.info(`R$ ${changeAmount.toFixed(2)} adicionado como crédito ao cliente`);
+            }
+          }
+        }
       }
 
       // Deduct credit balance when using "Crédito ao Cliente"

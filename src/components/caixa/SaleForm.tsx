@@ -839,8 +839,8 @@ export function SaleForm() {
         });
       }
 
-      // Create boleto installments if payment is boleto with installments
-      if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
+      // Create boleto installments if payment is boleto (à vista or parcelado)
+      if (isBoleto && saleInfo.items.length > 0) {
         const { data: lastSales } = await supabase
           .from('single_sales')
           .select('id')

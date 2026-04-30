@@ -225,6 +225,7 @@ export function CategoriasFinanceiras() {
 
     const amount = parseFloat(entryForm.amount) || 0;
     const installments = parseInt(entryForm.installments) || 1;
+    const toleranceDays = parseInt(entryForm.overdue_tolerance_days) || 0;
 
     const calc = calculateRecurringValues({
       amount,
@@ -256,7 +257,8 @@ export function CategoriasFinanceiras() {
           is_recurring: true, recurring_day: null, recurring_count: installments,
           recurring_frequency: entryForm.recurring_frequency,
           paid_date: null, appointment_id: null, installments, paid_by: null, status: 'pending',
-        });
+          overdue_tolerance_days: toleranceDays,
+        } as any);
       }
       toast.success(`${installments} parcelas criadas`);
     } else {
@@ -274,7 +276,8 @@ export function CategoriasFinanceiras() {
         recurring_day: null, recurring_count: null,
         recurring_frequency: entryForm.is_recurring ? entryForm.recurring_frequency : null,
         paid_date: null, appointment_id: null, installments: 1, paid_by: null, status: 'pending',
-      });
+        overdue_tolerance_days: toleranceDays,
+      } as any);
     }
 
     setEntryDialogOpen(false);

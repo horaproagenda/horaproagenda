@@ -73,6 +73,7 @@ export function ContasAPagar() {
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [paymentBankId, setPaymentBankId] = useState<string>('');
   const [paymentInstallments, setPaymentInstallments] = useState<string>('1');
+  const [paidAmount, setPaidAmount] = useState<string>('');
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   
   const [form, setForm] = useState({

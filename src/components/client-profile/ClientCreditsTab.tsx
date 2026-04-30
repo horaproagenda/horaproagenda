@@ -484,6 +484,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                       <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Tipo</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Descrição</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Profissional</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo anterior</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Novo saldo</TableHead>
@@ -501,6 +502,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap">{transaction.professional?.name || '-'}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>

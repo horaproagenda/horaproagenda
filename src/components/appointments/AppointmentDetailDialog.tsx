@@ -731,16 +731,18 @@ export function AppointmentDetailDialog({
     infoY += 7;
     doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, infoY);
 
+    let cursorY = infoY + 14;
     doc.setFont('helvetica', 'bold');
-    doc.text(normalizePdfText('Cliente e agendamento'), 14, 56);
+    doc.text(normalizePdfText('Cliente e agendamento'), 14, cursorY);
+    cursorY += 8;
     doc.setFont('helvetica', 'normal');
-    doc.text(normalizePdfText(`Cliente: ${appointment.client?.name || 'Não informado'}`), 14, 64);
-    doc.text(normalizePdfText(`Telefone: ${appointment.client?.phone || 'Não informado'}`), 14, 71);
-    doc.text(normalizePdfText(`Profissional: ${professional?.name || 'Não informado'}`), 14, 78);
-    doc.text(normalizePdfText(`Data: ${format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), 'dd/MM/yyyy')} • ${formatTimeInTimeZone(appointment.start_time, settings?.timezone)} às ${formatTimeInTimeZone(appointment.end_time, settings?.timezone)}`), 14, 85);
+    doc.text(normalizePdfText(`Cliente: ${appointment.client?.name || 'Não informado'}`), 14, cursorY); cursorY += 7;
+    doc.text(normalizePdfText(`Telefone: ${appointment.client?.phone || 'Não informado'}`), 14, cursorY); cursorY += 7;
+    doc.text(normalizePdfText(`Profissional: ${professional?.name || 'Não informado'}`), 14, cursorY); cursorY += 7;
+    doc.text(normalizePdfText(`Data: ${format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), 'dd/MM/yyyy')} • ${formatTimeInTimeZone(appointment.start_time, settings?.timezone)} às ${formatTimeInTimeZone(appointment.end_time, settings?.timezone)}`), 14, cursorY);
 
     autoTable(doc, {
-      startY: 96,
+      startY: cursorY + 8,
       head: [['Item', 'Tipo', 'Qtd.', 'Unitário', 'Total']],
       body: receiptRows.map((row) => [
         normalizePdfText(row.item),

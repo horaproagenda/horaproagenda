@@ -305,6 +305,7 @@ export function CategoriasFinanceiras() {
       amount: Number(entry.amount).toFixed(2),
       installment_amount: Number(entry.amount).toFixed(2),
       installments: String(entry.installments || 1),
+      overdue_tolerance_days: String((entry as any).overdue_tolerance_days ?? 0),
     });
     setEditEntryDialogOpen(true);
   };

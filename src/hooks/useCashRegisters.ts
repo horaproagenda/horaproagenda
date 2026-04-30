@@ -68,7 +68,7 @@ export function useCashRegisters() {
           opening_balance: openingBalance,
           opened_by: user?.id,
           status: 'open',
-        })
+        } as any)
         .select()
         .single();
 

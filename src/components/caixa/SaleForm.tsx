@@ -101,6 +101,15 @@ export function SaleForm() {
   const [boletoInstallments, setBoletoInstallments] = useState<number>(1);
   const [boletoFirstDueDate, setBoletoFirstDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  // Cheque state
+  const [chequeBank, setChequeBank] = useState('');
+  const [chequeCashDate, setChequeCashDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [chequeNumber, setChequeNumber] = useState('');
+
+  // Cash change (troco) state
+  const [cashReceived, setCashReceived] = useState<number>(0);
+  const [changeMethod, setChangeMethod] = useState<'cash' | 'pix' | 'credit'>('cash');
+
   // Get selected payment method details
   const selectedPaymentMethod = useMemo(
     () => activePaymentMethods.find(m => m.id === paymentMethodId),
@@ -139,6 +148,31 @@ export function SaleForm() {
     if (!selectedPaymentMethod) return false;
     return isClientCreditPaymentMethod(selectedPaymentMethod.name);
   }, [selectedPaymentMethod]);
+
+  // Detect cheque
+  const isCheque = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('cheque');
+  }, [selectedPaymentMethod]);
+
+  // Detect cash (dinheiro)
+  const isDinheiro = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('dinheiro');
+  }, [selectedPaymentMethod]);
+
+  // Detect PIX or transfer
+  const isPixOrTransfer = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('pix') || name.includes('transferência') || name.includes('transferencia');
+  }, [selectedPaymentMethod]);
+
+  // Cash change amount
+  const changeAmount = useMemo(() => {
+    if (!isDinheiro || !saleInfo) return 0;
+    return Math.max(0, cashReceived - saleInfo.total);
+  }, [isDinheiro, cashReceived, saleInfo?.total]);
 
   // Get applicable card brands
   const applicableCardBrands = useMemo(() => {
@@ -622,11 +656,72 @@ export function SaleForm() {
               created_by: user?.id,
             });
           }
+        } else if (isCheque) {
+          // Cheque: create receivable as pending until cash date
+          await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: `Cheque nº ${chequeNumber || 'S/N'}: ${financialItemNames} - ${selectedClient?.name}`,
+            amount: paymentAmount,
+            due_date: chequeCashDate,
+            paid_date: null,
+            status: 'pending',
+            payment_method_id: paymentMethodId,
+            client_id: selectedClientId,
+            created_by: user?.id,
+            notes: `Cheque nº ${chequeNumber || 'S/N'} - Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'} - Descontar em ${format(new Date(chequeCashDate + 'T12:00:00'), 'dd/MM/yyyy')}`,
+          });
+
+          // Create reminder for the cash date
+          await supabase.from('reminders').insert({
+            title: `Descontar cheque: ${selectedClient?.name}`,
+            description: `Ir ao banco descontar cheque nº ${chequeNumber || 'S/N'} de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}". Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'}.`,
+            reminder_date: chequeCashDate,
+            reminder_time: '08:00',
+            is_recurring: false,
+            is_active: true,
+            is_completed: false,
+            category: 'financeiro',
+            priority: 'high',
+            created_by: user?.id,
+          });
+        } else if (isBoleto && boletoInstallments === 1) {
+          // Boleto à vista: receivable pending until payment confirmed
+          await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: `Boleto à vista: ${financialItemNames} - ${selectedClient?.name}`,
+            amount: paymentAmount,
+            due_date: boletoFirstDueDate,
+            paid_date: null,
+            status: 'pending',
+            payment_method_id: paymentMethodId,
+            client_id: selectedClientId,
+            created_by: user?.id,
+            notes: 'Boleto Bancário à vista',
+          });
+
+          // Create reminder
+          await supabase.from('reminders').insert({
+            title: `Verificar boleto à vista: ${selectedClient?.name}`,
+            description: `Boleto à vista de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}" vence em ${format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}.`,
+            reminder_date: boletoFirstDueDate,
+            reminder_time: '09:00',
+            is_recurring: false,
+            is_active: true,
+            is_completed: false,
+            category: 'financeiro',
+            priority: 'high',
+            created_by: user?.id,
+          });
         } else {
+          // All other methods (Dinheiro, PIX, Transferência, Cartão): immediate paid entry
+          const netAmount = selectedCardBrand && selectedCardBrand.fee_behavior === 'deduct_from_provider'
+            ? paymentAmount - feeInfo.feeAmount
+            : paymentAmount;
+
           await supabase.from('financial_entries').insert({
             type: 'receivable',
             description: financialDescription,
-            amount: paymentAmount,
+            amount: netAmount,
             due_date: paymentDate,
             paid_date: paymentDate,
             status: 'paid',
@@ -634,7 +729,22 @@ export function SaleForm() {
             client_id: selectedClientId,
             installments: selectedCardBrand && isCreditCard ? installments : null,
             created_by: user?.id,
+            notes: selectedCardBrand ? `Taxa ${selectedCardBrand.name}: ${feeInfo.feePercentage}% = R$ ${feeInfo.feeAmount.toFixed(2)}` : (isDinheiro && changeAmount > 0 ? `Troco: R$ ${changeAmount.toFixed(2)} (${changeMethod === 'cash' ? 'Dinheiro' : changeMethod === 'pix' ? 'PIX' : 'Crédito ao Cliente'})` : null),
           });
+
+          // If card has fee and deducted from provider, register the fee as expense
+          if (selectedCardBrand && feeInfo.feeAmount > 0 && selectedCardBrand.fee_behavior === 'deduct_from_provider') {
+            await supabase.from('financial_entries').insert({
+              type: 'expense',
+              description: `Taxa ${selectedCardBrand.name} (${feeInfo.feePercentage}%): ${financialItemNames}`,
+              amount: feeInfo.feeAmount,
+              due_date: paymentDate,
+              paid_date: paymentDate,
+              status: 'paid',
+              created_by: user?.id,
+              notes: `Taxa de cartão descontada do provedor - Venda: ${financialItemNames}`,
+            });
+          }
         }
       }
 
@@ -647,22 +757,67 @@ export function SaleForm() {
         : `${itemNames} - ${selectedClient?.name}`;
       
       if (currentOpenRegister && !isClientCredit) {
-        // Calculate net amount for card payments
-        const netAmount = selectedCardBrand && feeInfo.feeAmount > 0 
-          ? paymentAmount - feeInfo.feeAmount 
-          : paymentAmount;
-        
-        await supabase.from('cash_transactions').insert({
-          cash_register_id: currentOpenRegister.id,
-          type: 'income',
-          category: 'sale',
-          description: saleDescription,
-          amount: paymentAmount,
-          payment_method: paymentMethod.name,
-          card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
-          installments: selectedCardBrand && isCreditCard ? installments : null,
-          created_by: user?.id,
-        });
+        // Skip cash entry for boleto/cheque - money not received yet
+        if (!isBoleto && !isCheque) {
+          await supabase.from('cash_transactions').insert({
+            cash_register_id: currentOpenRegister.id,
+            type: 'income',
+            category: 'sale',
+            description: isDinheiro ? `${saleDescription} (Dinheiro físico)` : saleDescription,
+            amount: paymentAmount,
+            payment_method: paymentMethod.name,
+            card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
+            installments: selectedCardBrand && isCreditCard ? installments : null,
+            created_by: user?.id,
+          });
+
+          // Handle cash change (troco) for Dinheiro
+          if (isDinheiro && changeAmount > 0) {
+            if (changeMethod === 'cash') {
+              // Cash change goes out of register
+              await supabase.from('cash_transactions').insert({
+                cash_register_id: currentOpenRegister.id,
+                type: 'expense',
+                category: 'change',
+                description: `Troco em dinheiro: ${selectedClient?.name}`,
+                amount: changeAmount,
+                payment_method: 'Dinheiro',
+                created_by: user?.id,
+              });
+            } else if (changeMethod === 'pix') {
+              // PIX change - recorded as outgoing PIX transfer
+              await supabase.from('cash_transactions').insert({
+                cash_register_id: currentOpenRegister.id,
+                type: 'expense',
+                category: 'change',
+                description: `Troco via PIX: ${selectedClient?.name}`,
+                amount: changeAmount,
+                payment_method: 'PIX',
+                created_by: user?.id,
+              });
+            } else if (changeMethod === 'credit') {
+              // Leave as client credit
+              const currentCredit = selectedClient?.credit_balance || 0;
+              const newBalance = currentCredit + changeAmount;
+              await supabase
+                .from('clients')
+                .update({ credit_balance: newBalance })
+                .eq('id', selectedClientId);
+
+              await (supabase as any).from('client_credit_transactions').insert({
+                client_id: selectedClientId,
+                transaction_type: 'credit_added',
+                amount: changeAmount,
+                previous_balance: currentCredit,
+                new_balance: newBalance,
+                description: `Troco deixado como crédito: ${saleDescription}`,
+                created_by: user?.id,
+              });
+
+              toast.info(`R$ ${changeAmount.toFixed(2)} adicionado como crédito ao cliente`);
+            }
+          }
+        }
       }
 
       // Deduct credit balance when using "Crédito ao Cliente"
@@ -684,8 +839,8 @@ export function SaleForm() {
         });
       }
 
-      // Create boleto installments if payment is boleto with installments
-      if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
+      // Create boleto installments if payment is boleto (à vista or parcelado)
+      if (isBoleto && saleInfo.items.length > 0) {
         const { data: lastSales } = await supabase
           .from('single_sales')
           .select('id')
@@ -734,6 +889,8 @@ export function SaleForm() {
       queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
 
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();
@@ -757,6 +914,13 @@ export function SaleForm() {
     setPaymentAmount(0);
     setBoletoInstallments(1);
     setBoletoFirstDueDate(format(new Date(), 'yyyy-MM-dd'));
+    setChequeBank('');
+    setChequeCashDate(format(new Date(), 'yyyy-MM-dd'));
+    setChequeNumber('');
+    setCashReceived(0);
+    setChangeMethod('cash');
+    setCardBrandId('');
+    setInstallments(1);
   };
 
   return (
@@ -1089,39 +1253,139 @@ export function SaleForm() {
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
                               <SelectItem key={n} value={n.toString()}>
-                                {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
+                                {n === 1 ? 'À vista' : `${n}x ${paymentAmount > 0 ? formatCurrency(paymentAmount / n) : ''}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      {boletoInstallments > 1 && (
-                        <div className="space-y-2">
-                          <Label>1º Vencimento</Label>
-                          <Input
-                            type="date"
-                            value={boletoFirstDueDate}
-                            onChange={(e) => setBoletoFirstDueDate(e.target.value)}
-                          />
-                        </div>
-                      )}
+                      <div className="space-y-2">
+                        <Label>{boletoInstallments > 1 ? '1º Vencimento' : 'Vencimento'}</Label>
+                        <Input
+                          type="date"
+                          value={boletoFirstDueDate}
+                          onChange={(e) => setBoletoFirstDueDate(e.target.value)}
+                        />
+                      </div>
                     </>
+                  )}
+
+                  {/* Cheque Form */}
+                  {isCheque && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Nº do Cheque</Label>
+                        <Input
+                          placeholder="Número do cheque"
+                          value={chequeNumber}
+                          onChange={(e) => setChequeNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Banco para Desconto</Label>
+                        <Select value={chequeBank} onValueChange={setChequeBank}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o banco..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeBanks.map((bank) => (
+                              <SelectItem key={bank.id} value={bank.id}>
+                                {bank.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Data para Descontar</Label>
+                        <Input
+                          type="date"
+                          value={chequeCashDate}
+                          onChange={(e) => setChequeCashDate(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Cash (Dinheiro) - Received Amount */}
+                  {isDinheiro && saleInfo && (
+                    <div className="space-y-2">
+                      <Label>Valor Recebido</Label>
+                      <CurrencyInput
+                        value={cashReceived}
+                        onValueChange={(v) => setCashReceived(normalizeBrazilianCurrency(v))}
+                      />
+                    </div>
                   )}
                 </div>
 
                 {/* Boleto Info */}
-                {isBoleto && boletoInstallments > 1 && paymentAmount > 0 && (
+                {isBoleto && paymentAmount > 0 && (
                   <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-muted/50 border">
                     <Badge variant="outline" className="border-primary/30 text-primary">
                       <FileText className="h-3 w-3 mr-1" />
-                      {boletoInstallments}x Boleto
+                      {boletoInstallments === 1 ? 'Boleto à vista' : `${boletoInstallments}x Boleto`}
+                    </Badge>
+                    {boletoInstallments > 1 && (
+                      <span className="text-muted-foreground">
+                        Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">
+                      • {boletoInstallments > 1 ? '1º venc' : 'Venc'}: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Cheque Info */}
+                {isCheque && chequeBank && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <Badge variant="outline" className="border-amber-500/50 text-amber-700">
+                      Cheque nº {chequeNumber || 'S/N'}
                     </Badge>
                     <span className="text-muted-foreground">
-                      Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
+                      Banco: {activeBanks.find(b => b.id === chequeBank)?.name}
                     </span>
                     <span className="text-muted-foreground">
-                      • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                      • Descontar em: {format(new Date(chequeCashDate + 'T12:00:00'), 'dd/MM/yyyy')}
                     </span>
+                  </div>
+                )}
+
+                {/* Cash Change (Troco) */}
+                {isDinheiro && saleInfo && changeAmount > 0 && (
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                        Troco: {formatCurrency(changeAmount)}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'cash' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('cash')}
+                      >
+                        💵 Dinheiro
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'pix' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('pix')}
+                      >
+                        📱 PIX
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'credit' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('credit')}
+                      >
+                        💳 Crédito ao Cliente
+                      </Button>
+                    </div>
                   </div>
                 )}
 

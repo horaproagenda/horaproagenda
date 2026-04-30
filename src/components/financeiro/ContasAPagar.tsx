@@ -42,7 +42,7 @@ import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedF
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
 export function ContasAPagar() {
-  const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
+  const { payables, createEntry, updateEntry } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();

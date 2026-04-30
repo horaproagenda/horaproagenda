@@ -470,6 +470,7 @@ export type Database = {
           drag_and_drop_enabled: boolean
           id: string
           opening_time: string
+          overdue_days_threshold: number
           saturday_closing_time: string | null
           saturday_opening_time: string | null
           slot_interval: number
@@ -496,6 +497,7 @@ export type Database = {
           drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
+          overdue_days_threshold?: number
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
           slot_interval?: number
@@ -522,6 +524,7 @@ export type Database = {
           drag_and_drop_enabled?: boolean
           id?: string
           opening_time?: string
+          overdue_days_threshold?: number
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
           slot_interval?: number
@@ -1227,6 +1230,7 @@ export type Database = {
           installments: number | null
           is_recurring: boolean
           notes: string | null
+          original_amount: number | null
           paid_by: string | null
           paid_date: string | null
           payment_method_id: string | null
@@ -1253,6 +1257,7 @@ export type Database = {
           installments?: number | null
           is_recurring?: boolean
           notes?: string | null
+          original_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
@@ -1279,6 +1284,7 @@ export type Database = {
           installments?: number | null
           is_recurring?: boolean
           notes?: string | null
+          original_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null

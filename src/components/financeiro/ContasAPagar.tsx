@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, parseISO, isAfter, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, parseISO, isAfter, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -23,6 +24,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -30,23 +41,29 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
+import { Plus, Check, AlertCircle, DollarSign, Pencil, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { useReminders } from '@/hooks/useReminders';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function ContasAPagar() {
-  const { payables, createEntry, updateEntry } = useFinancialEntries();
+  const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
   const { createReminder } = useReminders();
+  const { settings } = useBusinessSettings();
+  const queryClient = useQueryClient();
+  
+  const overdueDaysThreshold = settings?.overdue_days_threshold ?? 0;
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
@@ -61,6 +78,13 @@ export function ContasAPagar() {
   const [paidAmount, setPaidAmount] = useState<string>('');
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   const [isEditingPayment, setIsEditingPayment] = useState(false);
+  
+  // Confirmation step
+  const [confirmationStep, setConfirmationStep] = useState(false);
+  
+  // Cancel/reverse payment
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [entryToCancel, setEntryToCancel] = useState<any>(null);
   
   const [form, setForm] = useState({
     description: '',
@@ -109,13 +133,11 @@ export function ContasAPagar() {
     const statusFilter = selectedFilters.status || ['all'];
     
     return payables.filter((entry) => {
-      // Status filter
       if (!statusFilter.includes('all')) {
         if (statusFilter.includes('pending') && entry.status === 'paid') return false;
         if (statusFilter.includes('paid') && entry.status !== 'paid') return false;
       }
       
-      // Date filter
       if (!dateFilter.includes('all')) {
         if (dateFilter.includes('today')) {
           const dueDate = parseISO(entry.due_date);
@@ -235,6 +257,7 @@ export function ContasAPagar() {
     setPaymentInstallments(entry.installments?.toString() || '1');
     setPaidAmount(Number(entry.amount).toFixed(2));
     setCreateBoletoReminder(false);
+    setConfirmationStep(false);
     setPayDialogOpen(true);
   };
 
@@ -246,10 +269,27 @@ export function ContasAPagar() {
   const showInstallments = isBoleto || isCard;
   const maxInstallments = selectedPaymentMethod?.max_installments || 1;
 
+  // Computed confirmation values
+  const paid = parseFloat(paidAmount) || 0;
+  const entryAmount = Number(entryToPay?.amount || 0);
+  const remainder = Math.round((entryAmount - paid) * 100) / 100;
+  const isPartial = remainder > 0.01;
+  const selectedBank = activeBanks.find(b => b.id === paymentBankId);
+
+  const handleGoToConfirmation = () => {
+    if (!paymentMethodId) {
+      toast.error('Selecione a forma de pagamento');
+      return;
+    }
+    if (paid <= 0) {
+      toast.error('Informe o valor pago');
+      return;
+    }
+    setConfirmationStep(true);
+  };
+
   const handleConfirmPayment = async () => {
     if (!entryToPay) return;
-    
-    const paid = parseFloat(paidAmount) || 0;
 
     // If editing an already-paid entry's payment details
     if (isEditingPayment) {
@@ -260,16 +300,17 @@ export function ContasAPagar() {
         bank_id: paymentBankId || null,
         installments: parseInt(paymentInstallments) || 1,
       });
+      // Sync related appointment
+      if (entryToPay.appointment_id) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }
       setPayDialogOpen(false);
       setEntryToPay(null);
       setIsEditingPayment(false);
+      setConfirmationStep(false);
       return;
     }
 
-    const entryAmount = Number(entryToPay.amount);
-    const remainder = Math.round((entryAmount - paid) * 100) / 100;
-    const isPartial = remainder > 0.01;
-    
     // If boleto and user wants a reminder, create it
     if (isBoleto && createBoletoReminder && entryToPay.due_date) {
       await createReminder.mutateAsync({
@@ -291,6 +332,7 @@ export function ContasAPagar() {
       await updateEntry.mutateAsync({
         id: entryToPay.id,
         amount: paid,
+        original_amount: entryAmount,
         status: 'paid' as const,
         paid_date: format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
@@ -326,6 +368,13 @@ export function ContasAPagar() {
         
         toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} permanece pendente até ser quitado.`);
       }
+
+      // Sync related appointment payment status
+      if (entryToPay.appointment_id) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }
+      // Sync reminders
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
     } else {
       await updateEntry.mutateAsync({
         id: entryToPay.id,
@@ -342,22 +391,76 @@ export function ContasAPagar() {
     setPaymentInstallments('1');
     setPaidAmount('');
     setCreateBoletoReminder(false);
+    setConfirmationStep(false);
+  };
+
+  // Cancel/reverse payment
+  const openCancelDialog = (entry: any) => {
+    setEntryToCancel(entry);
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelPayment = async () => {
+    if (!entryToCancel) return;
+    
+    const originalAmount = Number(entryToCancel.original_amount || entryToCancel.amount);
+    const wasPartial = entryToCancel.notes?.includes('Pagamento parcial');
+    
+    // Revert the paid entry to pending with original amount
+    await updateEntry.mutateAsync({
+      id: entryToCancel.id,
+      amount: originalAmount,
+      original_amount: null,
+      status: 'pending' as const,
+      paid_date: null,
+      notes: wasPartial 
+        ? `Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}. Valor original restaurado: R$ ${originalAmount.toFixed(2)}`
+        : entryToCancel.notes 
+          ? `${entryToCancel.notes} | Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}`
+          : `Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
+    });
+
+    // If partial, find and delete the "(restante)" entry that was created
+    if (wasPartial) {
+      const baseDesc = entryToCancel.description.replace(/\s*\(restante.*?\)$/i, '');
+      const remainderEntries = payables.filter(e => 
+        e.id !== entryToCancel.id &&
+        e.status === 'pending' &&
+        e.description.includes(baseDesc) &&
+        e.description.includes('(restante)')
+      );
+      
+      for (const re of remainderEntries) {
+        await deleteEntry.mutateAsync(re.id);
+      }
+    }
+
+    // Sync related appointment
+    if (entryToCancel.appointment_id) {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    }
+    queryClient.invalidateQueries({ queryKey: ['reminders'] });
+
+    toast.success('Baixa cancelada e valor restaurado com sucesso.');
+    setCancelDialogOpen(false);
+    setEntryToCancel(null);
   };
 
   const getStatusDisplay = (entry: any) => {
     if (entry.status === 'paid') {
-      // Check if it was a partial payment
-      const isPartial = entry.notes?.includes('Pagamento parcial');
-      if (isPartial) {
+      const isPartialPaid = entry.notes?.includes('Pagamento parcial');
+      if (isPartialPaid) {
         return <span className="text-sm font-semibold text-yellow-600">Parcialmente Pago</span>;
       }
       return <span className="text-sm font-semibold text-green-600">Pago</span>;
     }
-    const dueDate = parseISO(entry.due_date);
+    const dueDate = parseISO(entry.due_date + 'T12:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    if (isAfter(today, dueDate)) {
+    const overdueDate = addDays(dueDate, overdueDaysThreshold);
+    
+    if (isAfter(today, overdueDate)) {
       return <span className="text-sm font-semibold text-red-600">Atrasada</span>;
     }
     return <span className="text-sm font-semibold text-muted-foreground">Pendente</span>;
@@ -542,7 +645,7 @@ export function ContasAPagar() {
               ) : (
                 filteredPayables.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{entry.description}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {entry.category?.name || '-'}
@@ -570,14 +673,24 @@ export function ContasAPagar() {
                           </Button>
                         )}
                         {entry.status === 'paid' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openPayDialog(entry, true)} 
-                            title="Editar pagamento"
-                          >
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                          </Button>
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => openPayDialog(entry, true)} 
+                              title="Editar pagamento"
+                            >
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => openCancelDialog(entry)} 
+                              title="Cancelar baixa"
+                            >
+                              <Undo2 className="h-4 w-4 text-orange-500" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </TableCell>
@@ -589,122 +702,236 @@ export function ContasAPagar() {
         </ScrollArea>
       </CardContent>
 
+      {/* Cancel Payment Confirmation */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Baixa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja cancelar a baixa de "{entryToCancel?.description}"?
+              {entryToCancel?.notes?.includes('Pagamento parcial') && (
+                <span className="block mt-2 text-orange-600 font-medium">
+                  ⚠ O valor restante pendente também será removido e o valor original será restaurado.
+                </span>
+              )}
+              <span className="block mt-2">
+                O status voltará para <strong>Pendente</strong> e o valor original de{' '}
+                <strong>R$ {Number(entryToCancel?.original_amount || entryToCancel?.amount || 0).toFixed(2)}</strong> será restaurado.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelPayment} className="bg-orange-600 text-white hover:bg-orange-700">
+              <Undo2 className="h-4 w-4 mr-2" />
+              Confirmar Cancelamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Payment / Edit Payment Dialog */}
-      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+      {/* Payment / Edit Payment Dialog with Confirmation Step */}
+      <Dialog open={payDialogOpen} onOpenChange={(open) => {
+        setPayDialogOpen(open);
+        if (!open) setConfirmationStep(false);
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{isEditingPayment ? 'Editar Pagamento' : 'Dar Baixa'}</DialogTitle>
+            <DialogTitle>
+              {isEditingPayment 
+                ? 'Editar Pagamento' 
+                : confirmationStep 
+                  ? 'Confirmar Baixa' 
+                  : 'Dar Baixa'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Conta: <span className="font-medium text-foreground">{entryToPay?.description}</span>
-              </p>
-              {!isEditingPayment && (
-                <p className="text-sm text-muted-foreground">
-                  Valor total: <span className="font-medium text-foreground">R$ {Number(entryToPay?.amount || 0).toFixed(2)}</span>
-                </p>
-              )}
-            </div>
 
-            <div>
-              <Label>Valor pago</Label>
-              <CurrencyInput
-                value={paidAmount}
-                onValueChange={(value) => setPaidAmount(String(value))}
-                placeholder="0,00"
-              />
-              {!isEditingPayment && entryToPay && parseFloat(paidAmount) > 0 && parseFloat(paidAmount) < Number(entryToPay.amount) && (
-                <p className="text-xs text-orange-600 mt-1">
-                  ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} permanecerá pendente até ser quitado.
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <Label>Forma de Pagamento</Label>
-              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a forma de pagamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activePaymentMethods.map((pm) => (
-                    <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label>Conta Bancária (origem do pagamento)</Label>
-              <Select value={paymentBankId} onValueChange={setPaymentBankId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a conta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeBanks.map((bank) => (
-                    <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* CONFIRMATION STEP */}
+          {confirmationStep && !isEditingPayment ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Conta:</span>
+                  <span className="font-medium">{entryToPay?.description}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Valor da conta:</span>
+                  <span className="font-medium">R$ {entryAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Valor pago:</span>
+                  <span className="font-bold text-green-600">R$ {paid.toFixed(2)}</span>
+                </div>
+                {isPartial && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Restante pendente:</span>
+                    <span className="font-bold text-orange-600">R$ {remainder.toFixed(2)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Forma de pagamento:</span>
+                  <span className="font-medium">{selectedPaymentMethod?.name || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Conta bancária:</span>
+                  <span className="font-medium">{selectedBank?.name || '-'}</span>
+                </div>
+                {showInstallments && parseInt(paymentInstallments) > 1 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Parcelas:</span>
+                    <span className="font-medium">{paymentInstallments}x de R$ {(paid / parseInt(paymentInstallments)).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Data:</span>
+                  <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                </div>
+              </div>
 
-            {showInstallments && maxInstallments > 1 && (
+              {isPartial && (
+                <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/30">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-700 dark:text-orange-400 text-xs">
+                    O restante de R$ {remainder.toFixed(2)} será mantido como pendência em Contas a Pagar até ser quitado.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isBoleto && createBoletoReminder && (
+                <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400 text-xs">
+                    Um lembrete será criado para verificar o pagamento na data de vencimento.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setConfirmationStep(false)}>
+                  Voltar
+                </Button>
+                <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirmar Pagamento
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* INPUT STEP */
+            <div className="space-y-4">
               <div>
-                <Label>Número de Parcelas</Label>
-                <Select value={paymentInstallments} onValueChange={setPaymentInstallments}>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Conta: <span className="font-medium text-foreground">{entryToPay?.description}</span>
+                </p>
+                {!isEditingPayment && (
+                  <p className="text-sm text-muted-foreground">
+                    Valor total: <span className="font-medium text-foreground">R$ {entryAmount.toFixed(2)}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Valor pago</Label>
+                <CurrencyInput
+                  value={paidAmount}
+                  onValueChange={(value) => setPaidAmount(String(value))}
+                  placeholder="0,00"
+                />
+                {!isEditingPayment && entryToPay && paid > 0 && paid < entryAmount && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    ⚠ Pagamento parcial — restante de R$ {(entryAmount - paid).toFixed(2)} permanecerá pendente até ser quitado.
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <Label>Forma de Pagamento</Label>
+                <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione as parcelas" />
+                    <SelectValue placeholder="Selecione a forma de pagamento" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((num) => (
-                      <SelectItem key={num} value={num.toString()}>
-                        {num}x {num > 1 && entryToPay ? `de R$ ${(Number(entryToPay.amount) / num).toFixed(2)}` : ''}
-                      </SelectItem>
+                    {activePaymentMethods.map((pm) => (
+                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
+              
+              <div>
+                <Label>Conta Bancária (origem do pagamento)</Label>
+                <Select value={paymentBankId} onValueChange={setPaymentBankId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeBanks.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {!isEditingPayment && isBoleto && (
-              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700 dark:text-amber-400">
-                  <div className="flex items-center gap-2 mt-1">
-                    <Switch
-                      checked={createBoletoReminder}
-                      onCheckedChange={setCreateBoletoReminder}
-                    />
-                    <Label className="text-sm cursor-pointer">
-                      Criar lembrete para verificar pagamento na data de vencimento
-                    </Label>
-                  </div>
-                  {createBoletoReminder && (
-                    <p className="text-xs mt-2">
-                      Um lembrete será criado para o dia {entryToPay?.due_date ? format(parseISO(entryToPay.due_date), 'dd/MM/yyyy') : '-'} 
-                      para verificar se o boleto foi pago. A conta permanecerá pendente até a baixa manual.
-                    </p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
+              {showInstallments && maxInstallments > 1 && (
+                <div>
+                  <Label>Número de Parcelas</Label>
+                  <Select value={paymentInstallments} onValueChange={setPaymentInstallments}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione as parcelas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((num) => (
+                        <SelectItem key={num} value={num.toString()}>
+                          {num}x {num > 1 && entryToPay ? `de R$ ${(entryAmount / num).toFixed(2)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setPayDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
-                <Check className="h-4 w-4 mr-2" />
-                {isEditingPayment 
-                  ? 'Salvar Alterações'
-                  : isBoleto && createBoletoReminder 
-                    ? 'Salvar e Criar Lembrete' 
-                    : 'Confirmar Pagamento'}
-              </Button>
+              {!isEditingPayment && isBoleto && (
+                <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400">
+                    <div className="flex items-center gap-2 mt-1">
+                      <Switch
+                        checked={createBoletoReminder}
+                        onCheckedChange={setCreateBoletoReminder}
+                      />
+                      <Label className="text-sm cursor-pointer">
+                        Criar lembrete para verificar pagamento na data de vencimento
+                      </Label>
+                    </div>
+                    {createBoletoReminder && (
+                      <p className="text-xs mt-2">
+                        Um lembrete será criado para o dia {entryToPay?.due_date ? format(parseISO(entryToPay.due_date + 'T12:00:00'), 'dd/MM/yyyy') : '-'} 
+                        para verificar se o boleto foi pago. A conta permanecerá pendente até a baixa manual.
+                      </p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setPayDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                {isEditingPayment ? (
+                  <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
+                    <Check className="h-4 w-4 mr-2" />
+                    Salvar Alterações
+                  </Button>
+                ) : (
+                  <Button onClick={handleGoToConfirmation} className="bg-green-600 hover:bg-green-700">
+                    Revisar e Confirmar
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>

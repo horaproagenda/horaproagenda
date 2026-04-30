@@ -16,6 +16,7 @@ export interface BusinessSettings {
   drag_and_drop_enabled: boolean;
   auto_complete_appointments: boolean;
   timezone: string;
+  overdue_days_threshold: number;
   // Automation settings
   automation_whatsapp_reminders: boolean;
   automation_waitlist: boolean;

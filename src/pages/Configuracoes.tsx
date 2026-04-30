@@ -48,6 +48,7 @@ const Configuracoes = () => {
       setDragAndDropEnabled(settings.drag_and_drop_enabled ?? true);
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
       setTimezone(settings.timezone || 'America/Sao_Paulo');
+      setOverdueDaysThreshold(settings.overdue_days_threshold ?? 0);
     }
   }, [settings]);
 

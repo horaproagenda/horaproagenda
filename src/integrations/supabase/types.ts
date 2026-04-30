@@ -1231,6 +1231,7 @@ export type Database = {
           is_recurring: boolean
           notes: string | null
           original_amount: number | null
+          overdue_tolerance_days: number
           paid_by: string | null
           paid_date: string | null
           payment_method_id: string | null
@@ -1258,6 +1259,7 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           original_amount?: number | null
+          overdue_tolerance_days?: number
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null
@@ -1285,6 +1287,7 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           original_amount?: number | null
+          overdue_tolerance_days?: number
           paid_by?: string | null
           paid_date?: string | null
           payment_method_id?: string | null

@@ -87,6 +87,7 @@ export function CategoriasFinanceiras() {
     recurring_frequency: 'monthly',
     installments: '1',
     is_total_value: true,
+    overdue_tolerance_days: '0',
   });
 
   // Detail view state
@@ -107,6 +108,7 @@ export function CategoriasFinanceiras() {
     amount: '',
     installment_amount: '',
     installments: '1',
+    overdue_tolerance_days: '0',
   });
 
   // Create default categories if none exist
@@ -166,7 +168,7 @@ export function CategoriasFinanceiras() {
     setEntryForm({
       description: '', amount: '', due_date: format(new Date(), 'yyyy-MM-dd'),
       payment_method_id: '', bank_id: '', is_recurring: false, recurring_frequency: 'monthly',
-      installments: '1', is_total_value: true,
+      installments: '1', is_total_value: true, overdue_tolerance_days: '0',
     });
     setSelectedCategoryId(null);
   };
@@ -224,6 +226,7 @@ export function CategoriasFinanceiras() {
 
     const amount = parseFloat(entryForm.amount) || 0;
     const installments = parseInt(entryForm.installments) || 1;
+    const toleranceDays = parseInt(entryForm.overdue_tolerance_days) || 0;
 
     const calc = calculateRecurringValues({
       amount,
@@ -255,7 +258,8 @@ export function CategoriasFinanceiras() {
           is_recurring: true, recurring_day: null, recurring_count: installments,
           recurring_frequency: entryForm.recurring_frequency,
           paid_date: null, appointment_id: null, installments, paid_by: null, status: 'pending',
-        });
+          overdue_tolerance_days: toleranceDays,
+        } as any);
       }
       toast.success(`${installments} parcelas criadas`);
     } else {
@@ -273,7 +277,8 @@ export function CategoriasFinanceiras() {
         recurring_day: null, recurring_count: null,
         recurring_frequency: entryForm.is_recurring ? entryForm.recurring_frequency : null,
         paid_date: null, appointment_id: null, installments: 1, paid_by: null, status: 'pending',
-      });
+        overdue_tolerance_days: toleranceDays,
+      } as any);
     }
 
     setEntryDialogOpen(false);
@@ -300,6 +305,7 @@ export function CategoriasFinanceiras() {
       amount: Number(entry.amount).toFixed(2),
       installment_amount: Number(entry.amount).toFixed(2),
       installments: String(entry.installments || 1),
+      overdue_tolerance_days: String((entry as any).overdue_tolerance_days ?? 0),
     });
     setEditEntryDialogOpen(true);
   };
@@ -317,7 +323,8 @@ export function CategoriasFinanceiras() {
         recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
         amount: parseFloat(editEntryForm.amount) || 0,
         installments: parseInt(editEntryForm.installments) || 1,
-      });
+        overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
+      } as any);
       toast.success('Conta atualizada com sucesso');
     } else if (editScope === 'all' && editingGroup) {
       for (const entry of editingGroup.entries) {
@@ -331,7 +338,8 @@ export function CategoriasFinanceiras() {
           recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
           amount: parseFloat(editEntryForm.amount) || 0,
           installments: parseInt(editEntryForm.installments) || 1,
-        });
+          overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
+        } as any);
       }
       toast.success(`${editingGroup.entries.length} contas atualizadas`);
     }
@@ -579,6 +587,19 @@ export function CategoriasFinanceiras() {
                     <CurrencyInput value={entryForm.amount} onValueChange={(value) => setEntryForm({ ...entryForm, amount: String(value) })} placeholder="0,00" />
                   </div>
                 </div>
+                <div>
+                  <Label>Dias de tolerância (atraso)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={entryForm.overdue_tolerance_days}
+                    onChange={(e) => setEntryForm({ ...entryForm, overdue_tolerance_days: e.target.value })}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dias após o vencimento antes de marcar como "Atrasada"
+                  </p>
+                </div>
                 {parseInt(entryForm.installments) > 1 && (
                   <div>
                     <Label>Tipo de Valor</Label>
@@ -824,6 +845,19 @@ export function CategoriasFinanceiras() {
                       Valor por parcela: R$ {(parseFloat(editEntryForm.amount || '0') / parseInt(editEntryForm.installments || '1')).toFixed(2)}
                     </p>
                   )}
+                  <div>
+                    <Label>Dias de tolerância (atraso)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editEntryForm.overdue_tolerance_days}
+                      onChange={(e) => setEditEntryForm({ ...editEntryForm, overdue_tolerance_days: e.target.value })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Dias após o vencimento antes de marcar como "Atrasada"
+                    </p>
+                  </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setEditScope(null)}>Voltar</Button>
                     <Button onClick={handleEditEntry}>

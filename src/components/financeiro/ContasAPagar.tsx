@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -41,9 +42,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Check, AlertCircle, DollarSign, Pencil, Undo2 } from 'lucide-react';
+import { Plus, Check, AlertCircle, DollarSign, Pencil, Undo2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
-import { useFinancialEntries } from '@/hooks/useFinancialEntries';
+import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
@@ -62,8 +63,6 @@ export function ContasAPagar() {
   const { createReminder } = useReminders();
   const { settings } = useBusinessSettings();
   const queryClient = useQueryClient();
-  
-  const overdueDaysThreshold = settings?.overdue_days_threshold ?? 0;
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
@@ -85,6 +84,14 @@ export function ContasAPagar() {
   // Cancel/reverse payment
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [entryToCancel, setEntryToCancel] = useState<any>(null);
+
+  // Batch payment
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
+  const [batchPayDialogOpen, setBatchPayDialogOpen] = useState(false);
+  const [batchPaymentMethodId, setBatchPaymentMethodId] = useState('');
+  const [batchPaymentBankId, setBatchPaymentBankId] = useState('');
+  const [batchConfirmStep, setBatchConfirmStep] = useState(false);
   
   const [form, setForm] = useState({
     description: '',
@@ -98,6 +105,7 @@ export function ContasAPagar() {
     installments: '1',
     recurring_count: '1',
     split_value: false,
+    overdue_tolerance_days: '0',
   });
 
   // Filter groups
@@ -151,6 +159,8 @@ export function ContasAPagar() {
     });
   }, [payables, selectedFilters]);
 
+  const pendingFiltered = useMemo(() => filteredPayables.filter(e => e.status !== 'paid'), [filteredPayables]);
+
   const resetForm = () => {
     setForm({
       description: '',
@@ -164,6 +174,7 @@ export function ContasAPagar() {
       installments: '1',
       recurring_count: '1',
       split_value: false,
+      overdue_tolerance_days: '0',
     });
   };
 
@@ -188,6 +199,7 @@ export function ContasAPagar() {
   const handleSubmit = async () => {
     const totalAmount = parseFloat(form.amount) || 0;
     const recurringCount = parseInt(form.recurring_count) || 1;
+    const toleranceDays = parseInt(form.overdue_tolerance_days) || 0;
     
     const calc = calculateRecurringValues({
       amount: totalAmount,
@@ -220,7 +232,8 @@ export function ContasAPagar() {
           installments: parseInt(form.installments) || 1,
           paid_by: null,
           status: 'pending',
-        });
+          overdue_tolerance_days: toleranceDays,
+        } as any);
       }
     } else {
       await createEntry.mutateAsync({
@@ -243,7 +256,8 @@ export function ContasAPagar() {
         installments: parseInt(form.installments) || 1,
         paid_by: null,
         status: 'pending',
-      });
+        overdue_tolerance_days: toleranceDays,
+      } as any);
     }
     setDialogOpen(false);
     resetForm();
@@ -291,7 +305,6 @@ export function ContasAPagar() {
   const handleConfirmPayment = async () => {
     if (!entryToPay) return;
 
-    // If editing an already-paid entry's payment details
     if (isEditingPayment) {
       await updateEntry.mutateAsync({
         id: entryToPay.id,
@@ -300,7 +313,6 @@ export function ContasAPagar() {
         bank_id: paymentBankId || null,
         installments: parseInt(paymentInstallments) || 1,
       });
-      // Sync related appointment
       if (entryToPay.appointment_id) {
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
       }
@@ -311,7 +323,6 @@ export function ContasAPagar() {
       return;
     }
 
-    // If boleto and user wants a reminder, create it
     if (isBoleto && createBoletoReminder && entryToPay.due_date) {
       await createReminder.mutateAsync({
         title: `Verificar pagamento de boleto: ${entryToPay.description}`,
@@ -369,11 +380,9 @@ export function ContasAPagar() {
         toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} permanece pendente até ser quitado.`);
       }
 
-      // Sync related appointment payment status
       if (entryToPay.appointment_id) {
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
       }
-      // Sync reminders
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
     } else {
       await updateEntry.mutateAsync({
@@ -406,7 +415,6 @@ export function ContasAPagar() {
     const originalAmount = Number(entryToCancel.original_amount || entryToCancel.amount);
     const wasPartial = entryToCancel.notes?.includes('Pagamento parcial');
     
-    // Revert the paid entry to pending with original amount
     await updateEntry.mutateAsync({
       id: entryToCancel.id,
       amount: originalAmount,
@@ -420,7 +428,6 @@ export function ContasAPagar() {
           : `Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
     });
 
-    // If partial, find and delete the "(restante)" entry that was created
     if (wasPartial) {
       const baseDesc = entryToCancel.description.replace(/\s*\(restante.*?\)$/i, '');
       const remainderEntries = payables.filter(e => 
@@ -435,7 +442,6 @@ export function ContasAPagar() {
       }
     }
 
-    // Sync related appointment
     if (entryToCancel.appointment_id) {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
     }
@@ -458,13 +464,83 @@ export function ContasAPagar() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const overdueDate = addDays(dueDate, overdueDaysThreshold);
+    // Use per-entry tolerance, fallback to global setting
+    const toleranceDays = (entry as any).overdue_tolerance_days ?? (settings?.overdue_days_threshold ?? 0);
+    const overdueDate = addDays(dueDate, toleranceDays);
     
     if (isAfter(today, overdueDate)) {
       return <span className="text-sm font-semibold text-red-600">Atrasada</span>;
     }
     return <span className="text-sm font-semibold text-muted-foreground">Pendente</span>;
   };
+
+  // Batch payment logic
+  const toggleEntrySelection = (entryId: string) => {
+    setSelectedEntryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEntryIds.size === pendingFiltered.length) {
+      setSelectedEntryIds(new Set());
+    } else {
+      setSelectedEntryIds(new Set(pendingFiltered.map(e => e.id)));
+    }
+  };
+
+  const selectedEntries = useMemo(() => 
+    filteredPayables.filter(e => selectedEntryIds.has(e.id) && e.status !== 'paid'),
+    [filteredPayables, selectedEntryIds]
+  );
+
+  const batchTotal = useMemo(() => 
+    selectedEntries.reduce((sum, e) => sum + Number(e.amount), 0),
+    [selectedEntries]
+  );
+
+  const openBatchPayDialog = () => {
+    if (selectedEntries.length === 0) {
+      toast.error('Selecione ao menos uma conta pendente');
+      return;
+    }
+    setBatchPaymentMethodId('');
+    setBatchPaymentBankId('');
+    setBatchConfirmStep(false);
+    setBatchPayDialogOpen(true);
+  };
+
+  const handleBatchConfirm = async () => {
+    if (!batchPaymentMethodId) {
+      toast.error('Selecione a forma de pagamento');
+      return;
+    }
+    
+    for (const entry of selectedEntries) {
+      await updateEntry.mutateAsync({
+        id: entry.id,
+        status: 'paid' as const,
+        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        payment_method_id: batchPaymentMethodId || null,
+        bank_id: batchPaymentBankId || null,
+        original_amount: Number(entry.amount),
+      });
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['reminders'] });
+
+    toast.success(`${selectedEntries.length} conta(s) pagas com sucesso! Total: R$ ${batchTotal.toFixed(2)}`);
+    setBatchPayDialogOpen(false);
+    setSelectedEntryIds(new Set());
+    setBatchMode(false);
+  };
+
+  const batchSelectedPaymentMethod = activePaymentMethods.find(pm => pm.id === batchPaymentMethodId);
+  const batchSelectedBank = activeBanks.find(b => b.id === batchPaymentBankId);
 
   return (
     <Card>
@@ -476,6 +552,17 @@ export function ContasAPagar() {
             selectedFilters={selectedFilters}
             onFilterChange={handleFilterChange}
           />
+          <Button
+            variant={batchMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setBatchMode(!batchMode);
+              setSelectedEntryIds(new Set());
+            }}
+          >
+            <ListChecks className="h-4 w-4 mr-2" />
+            {batchMode ? 'Cancelar Seleção' : 'Baixa em Lote'}
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button>
@@ -530,6 +617,19 @@ export function ContasAPagar() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div>
+                    <Label>Dias de tolerância (atraso)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={form.overdue_tolerance_days}
+                      onChange={(e) => setForm({ ...form, overdue_tolerance_days: e.target.value })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Dias após o vencimento antes de marcar como "Atrasada"
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -622,10 +722,40 @@ export function ContasAPagar() {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Batch mode bar */}
+        {batchMode && (
+          <div className="flex items-center justify-between mb-4 p-3 rounded-lg border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={selectedEntryIds.size === pendingFiltered.length && pendingFiltered.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm font-medium">
+                {selectedEntryIds.size} parcela(s) selecionada(s)
+              </span>
+              {selectedEntryIds.size > 0 && (
+                <Badge variant="outline" className="text-sm">
+                  Total: R$ {batchTotal.toFixed(2)}
+                </Badge>
+              )}
+            </div>
+            <Button 
+              size="sm" 
+              onClick={openBatchPayDialog} 
+              disabled={selectedEntryIds.size === 0}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <DollarSign className="h-4 w-4 mr-1" />
+              Dar Baixa ({selectedEntryIds.size})
+            </Button>
+          </div>
+        )}
+
         <ScrollArea className="h-[500px]">
           <Table>
             <TableHeader>
               <TableRow>
+                {batchMode && <TableHead className="w-10" />}
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Categoria</TableHead>
@@ -638,13 +768,23 @@ export function ContasAPagar() {
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredPayables.map((entry) => (
                   <TableRow key={entry.id}>
+                    {batchMode && (
+                      <TableCell>
+                        {entry.status !== 'paid' && (
+                          <Checkbox
+                            checked={selectedEntryIds.has(entry.id)}
+                            onCheckedChange={() => toggleEntrySelection(entry.id)}
+                          />
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{entry.description}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -661,7 +801,7 @@ export function ContasAPagar() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {entry.status !== 'paid' && (
+                        {entry.status !== 'paid' && !batchMode && (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -729,6 +869,100 @@ export function ContasAPagar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Batch Payment Dialog */}
+      <Dialog open={batchPayDialogOpen} onOpenChange={(open) => {
+        setBatchPayDialogOpen(open);
+        if (!open) setBatchConfirmStep(false);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{batchConfirmStep ? 'Confirmar Baixa em Lote' : 'Baixa em Lote'}</DialogTitle>
+          </DialogHeader>
+
+          {batchConfirmStep ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Parcelas selecionadas:</span>
+                  <span className="font-bold">{selectedEntries.length}</span>
+                </div>
+                <Separator />
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {selectedEntries.map(e => (
+                    <div key={e.id} className="flex justify-between text-xs">
+                      <span className="truncate mr-2">{e.description}</span>
+                      <span className="font-medium shrink-0">R$ {Number(e.amount).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Valor total:</span>
+                  <span className="font-bold text-green-600">R$ {batchTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Forma de pagamento:</span>
+                  <span className="font-medium">{batchSelectedPaymentMethod?.name || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Conta bancária:</span>
+                  <span className="font-medium">{batchSelectedBank?.name || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Data:</span>
+                  <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
+                <Button onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirmar Pagamento
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-sm font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
+                <p className="text-lg font-bold text-green-600">Total: R$ {batchTotal.toFixed(2)}</p>
+              </div>
+              <div>
+                <Label>Forma de Pagamento</Label>
+                <Select value={batchPaymentMethodId} onValueChange={setBatchPaymentMethodId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {activePaymentMethods.map(pm => (
+                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Conta Bancária</Label>
+                <Select value={batchPaymentBankId} onValueChange={setBatchPaymentBankId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {activeBanks.map(bank => (
+                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setBatchPayDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  if (!batchPaymentMethodId) { toast.error('Selecione a forma de pagamento'); return; }
+                  setBatchConfirmStep(true);
+                }} className="bg-green-600 hover:bg-green-700">
+                  Revisar e Confirmar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Payment / Edit Payment Dialog with Confirmation Step */}
       <Dialog open={payDialogOpen} onOpenChange={(open) => {

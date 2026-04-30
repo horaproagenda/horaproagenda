@@ -189,7 +189,6 @@ export function AppointmentDetailDialog({
       if (cashResult.error) throw cashResult.error;
 
       // Collect all UUIDs referenced in audit data, grouped by entity, to resolve to names
-      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const idBuckets: Record<'payment_methods' | 'professionals' | 'rooms' | 'services' | 'clients', Set<string>> = {
         payment_methods: new Set(),
         professionals: new Set(),
@@ -218,133 +217,46 @@ export function AppointmentDetailDialog({
         const { data } = await supabase.from(table as any).select('id, name').in('id', ids);
         return new Map(((data as any[]) || []).map(row => [row.id, row.name]));
       };
-      const [pmMap, profMap, roomMap, svcMap, cliMap] = await Promise.all([
+      // Collect author emails to resolve to professional names
+      const authorEmails = new Set<string>();
+      for (const entry of auditResult.data || []) {
+        if (entry.user_email) authorEmails.add(entry.user_email.toLowerCase());
+      }
+      const fetchProfessionalsByEmail = async (emails: string[]): Promise<Map<string, string>> => {
+        if (!emails.length) return new Map();
+        const { data } = await supabase
+          .from('professionals')
+          .select('email, name')
+          .in('email', emails);
+        return new Map(
+          ((data as any[]) || [])
+            .filter(row => row.email)
+            .map(row => [String(row.email).toLowerCase(), row.name])
+        );
+      };
+
+      const [pmMap, profMap, roomMap, svcMap, cliMap, profByEmailMap] = await Promise.all([
         fetchNames('payment_methods', [...idBuckets.payment_methods]),
         fetchNames('professionals', [...idBuckets.professionals]),
         fetchNames('rooms', [...idBuckets.rooms]),
         fetchNames('services', [...idBuckets.services]),
         fetchNames('clients', [...idBuckets.clients]),
+        fetchProfessionalsByEmail([...authorEmails]),
       ]);
-      const NAME_MAPS: Record<string, Map<string, string>> = {
+      const nameMaps = {
         payment_methods: pmMap,
         professional_id: profMap,
         room_id: roomMap,
         service_id: svcMap,
         client_id: cliMap,
       };
-      const resolveName = (field: string, id: string): string => {
-        const map = NAME_MAPS[field];
-        return (map && map.get(id)) || id;
-      };
-
-      // Friendly labels for known appointment fields
-      const FIELD_LABELS: Record<string, string> = {
-        start_time: 'Horário de início',
-        end_time: 'Horário de término',
-        status: 'Status',
-        payment_status: 'Status de pagamento',
-        amount_paid: 'Valor pago',
-        discount_amount: 'Desconto',
-        used_client_credit: 'Crédito do cliente usado',
-        client_credit: 'Saldo gerado para o cliente',
-        notes: 'Observações',
-        professional_id: 'Profissional',
-        room_id: 'Sala',
-        service_id: 'Serviço',
-        client_id: 'Cliente',
-        payment_methods: 'Formas de pagamento',
-      };
-      const STATUS_LABELS: Record<string, string> = {
-        scheduled: 'Agendado',
-        confirmed: 'Confirmado',
-        completed: 'Concluído',
-        cancelled: 'Cancelado',
-        missed: 'Faltou',
-        rescheduled: 'Reagendado',
-      };
-      const PAYMENT_STATUS_LABELS: Record<string, string> = {
-        pending: 'Pendente',
-        partial: 'Parcial',
-        paid: 'Pago',
-      };
-      const formatValue = (field: string, value: unknown): string => {
-        if (value === null || value === undefined || value === '') return '—';
-        if (field === 'start_time' || field === 'end_time') {
-          try { return format(new Date(value as string), "dd/MM/yyyy 'às' HH:mm"); } catch { return String(value); }
-        }
-        if (field === 'status') return STATUS_LABELS[String(value)] || String(value);
-        if (field === 'payment_status') return PAYMENT_STATUS_LABELS[String(value)] || String(value);
-        if (field === 'amount_paid' || field === 'discount_amount' || field === 'used_client_credit' || field === 'client_credit') {
-          return formatCurrency(Number(value) || 0);
-        }
-        if (field === 'payment_methods' && Array.isArray(value)) {
-          return value.length ? value.map(v => typeof v === 'string' && UUID_RE.test(v) ? resolveName('payment_methods', v) : String(v)).join(', ') : '—';
-        }
-        if (['professional_id', 'room_id', 'service_id', 'client_id'].includes(field) && typeof value === 'string') {
-          return resolveName(field, value);
-        }
-        if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-        if (typeof value === 'object') return JSON.stringify(value);
-        return String(value);
-      };
-      const IGNORED_FIELDS = new Set(['updated_at', 'updated_by', 'version', 'last_seen_at']);
-
-      const buildChangeDescription = (
-        action: string,
-        oldData: Record<string, unknown> | null,
-        newData: Record<string, unknown> | null,
-      ): { title: string; description: string; isPayment: boolean } => {
-        if (action === 'INSERT') {
-          return { title: 'Agendamento criado', description: 'Registro inicial do agendamento.', isPayment: false };
-        }
-        if (action === 'DELETE') {
-          return { title: 'Agendamento excluído', description: 'Registro removido do sistema.', isPayment: false };
-        }
-        if (!oldData || !newData) {
-          return { title: 'Agendamento alterado', description: `Ação: ${action}`, isPayment: false };
-        }
-        const diffs: string[] = [];
-        const keys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
-        let isPaymentChange = false;
-        for (const key of keys) {
-          if (IGNORED_FIELDS.has(key)) continue;
-          const before = (oldData as any)[key];
-          const after = (newData as any)[key];
-          const beforeStr = JSON.stringify(before ?? null);
-          const afterStr = JSON.stringify(after ?? null);
-          if (beforeStr === afterStr) continue;
-          const label = FIELD_LABELS[key] || key;
-          if (['amount_paid', 'payment_status', 'used_client_credit', 'discount_amount', 'payment_methods'].includes(key)) {
-            isPaymentChange = true;
-          }
-          diffs.push(`${label}: ${formatValue(key, before)} → ${formatValue(key, after)}`);
-        }
-        if (diffs.length === 0) {
-          return { title: 'Agendamento atualizado', description: 'Sem alterações relevantes detectadas.', isPayment: false };
-        }
-        // Special case: payment-related update
-        const wasPaid = (oldData as any).payment_status;
-        const nowPaid = (newData as any).payment_status;
-        const paidDelta = Number((newData as any).amount_paid || 0) - Number((oldData as any).amount_paid || 0);
-        let title = 'Agendamento alterado';
-        if (isPaymentChange && paidDelta > 0) {
-          title = nowPaid === 'paid'
-            ? `Baixa de pagamento registrada (${formatCurrency(paidDelta)})`
-            : `Pagamento parcial registrado (${formatCurrency(paidDelta)})`;
-        } else if (wasPaid !== nowPaid && nowPaid) {
-          title = `Status de pagamento alterado para ${PAYMENT_STATUS_LABELS[nowPaid] || nowPaid}`;
-        } else if (diffs.length === 1) {
-          // Use the single change as the title
-          title = diffs[0];
-        }
-        return { title, description: diffs.join(' • '), isPayment: isPaymentChange };
-      };
 
       const auditEvents = (auditResult.data || []).map((entry) => {
         const oldData = (entry.old_data || null) as Record<string, unknown> | null;
         const newData = (entry.new_data || null) as Record<string, unknown> | null;
-        const { title, description, isPayment } = buildChangeDescription(entry.action, oldData, newData);
-        const author = entry.user_email ? ` • por ${entry.user_email}` : '';
+        const { title, description, isPayment } = buildChangeDescription(entry.action, oldData, newData, nameMaps);
+        const authorName = resolveAuthorName(entry.user_email, profByEmailMap);
+        const author = authorName ? ` • por ${authorName}` : '';
         return {
           id: `audit-${entry.id}`,
           created_at: entry.created_at,

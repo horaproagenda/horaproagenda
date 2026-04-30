@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Package, TrendingUp, DollarSign, Check, Clock, AlertTriangle, Download, Filter, X } from 'lucide-react';
+import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Users, TrendingUp, DollarSign, Check, Clock, AlertTriangle, Download, Filter, X } from 'lucide-react';
 import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { AtendimentosPorProfissional } from '@/components/relatorios/AtendimentosPorProfissional';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
@@ -340,20 +341,6 @@ const Relatorios = () => {
           c.daysSinceVisit
         ])
       });
-    } else if (activeTab === 'pacotes') {
-      exportToCSV({
-        filename: 'pacotes',
-        headers: ['Cliente', 'Pacote', 'Sessões Usadas', 'Sessões Restantes', 'Progresso %', 'Valor Total', 'Valor Utilizado'],
-        rows: packageProgress.map(p => [
-          p.client?.name || '',
-          p.name,
-          p.usedSessions,
-          p.remainingSessions,
-          Math.round(p.progress),
-          p.total_price,
-          p.valueUsed
-        ])
-      });
     }
   };
 
@@ -433,10 +420,9 @@ const Relatorios = () => {
                 <span className="hidden sm:inline">Sumidos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{sumidos.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="pacotes" className="gap-1.5 text-xs px-3">
-                <Package className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Pacotes</span>
-                <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{packageProgress.length}</Badge>
+              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3">
+                <Users className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Atendimentos</span>
               </TabsTrigger>
             </TabsList>
 
@@ -541,72 +527,8 @@ const Relatorios = () => {
                   )}
                 </TabsContent>
 
-                <TabsContent value="pacotes" className="space-y-4 page-enter">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Card className="card-hover">
-                      <CardContent className="p-3">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ativos</p>
-                        <p className="text-xl font-bold text-primary">{packageStats.activeCount}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="card-hover">
-                      <CardContent className="p-3">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor Vendido</p>
-                        <p className="text-lg font-bold text-emerald-600">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(packageStats.totalSold)}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="card-hover">
-                      <CardContent className="p-3">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Utilizado</p>
-                        <p className="text-lg font-bold text-blue-600">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(packageStats.totalUsed)}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="card-hover">
-                      <CardContent className="p-3">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Baixas Sessões</p>
-                        <p className="text-xl font-bold text-amber-600">{packageStats.lowSessionCount}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {packageProgress.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
-                      <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                      <p className="mt-2 text-sm text-muted-foreground">Nenhum pacote encontrado</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {packageProgress.map(pkg => (
-                        <Card key={pkg.id} className={`card-hover ${pkg.isLowSessions ? 'border-l-4 border-l-amber-500' : ''}`}>
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-medium text-sm truncate">{pkg.client?.name}</h3>
-                                  {pkg.isLowSessions && (
-                                    <Badge variant="outline" className="text-amber-600 border-amber-500 text-[10px]">
-                                      <AlertTriangle className="h-3 w-3 mr-1" />
-                                      Poucas sessões
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{pkg.name}</p>
-                              </div>
-                              <div className="text-right text-xs">
-                                <p className="font-medium">{pkg.usedSessions}/{pkg.total_sessions} sessões</p>
-                                <Progress value={pkg.progress} className="h-1.5 w-20 mt-1" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                <TabsContent value="atendimentos" className="space-y-4 page-enter">
+                  <AtendimentosPorProfissional />
                 </TabsContent>
               </>
             )}

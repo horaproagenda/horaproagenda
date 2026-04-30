@@ -15,6 +15,7 @@ import {
   Percent,
   Target,
   Calculator,
+  BarChart3,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
@@ -25,6 +26,7 @@ import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
+import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
 import { FinancialDivergenceAlert } from '@/components/financeiro/FinancialDivergenceAlert';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
@@ -46,6 +48,7 @@ export default function Financeiro() {
     const tabParam = searchParams.get('tab');
     if (tabParam) {
       const tabMap: Record<string, string> = {
+        'dashboard': 'dashboard',
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',
@@ -129,6 +132,10 @@ export default function Financeiro() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
+            <TabsTrigger value="dashboard" className="gap-1.5 text-xs tracking-wide h-8">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
             <TabsTrigger value="contas-pagar" className="gap-1.5 text-xs tracking-wide h-8">
               <ArrowDownCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">A Pagar</span>
@@ -166,6 +173,10 @@ export default function Financeiro() {
               <span className="hidden sm:inline">Precificação</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard" className="page-enter">
+            <FinancialDashboard />
+          </TabsContent>
 
           <TabsContent value="contas-pagar" className="page-enter">
             <ContasAPagar />

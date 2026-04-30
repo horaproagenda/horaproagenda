@@ -10,7 +10,6 @@ import {
   Wallet,
   Tag,
   CreditCard,
-  ArrowUpCircle,
   TrendingUp,
   Landmark,
   Percent,
@@ -18,7 +17,6 @@ import {
   Calculator,
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
-import { ContasAReceber } from '@/components/financeiro/ContasAReceber';
 import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
 import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
@@ -46,10 +44,8 @@ export default function Financeiro() {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam) {
-      // Map URL param to tab value
       const tabMap: Record<string, string> = {
         'pagar': 'contas-pagar',
-        'receber': 'contas-receber',
         'extrato': 'extrato',
         'caixas': 'caixas',
         'categorias': 'categorias',
@@ -62,7 +58,6 @@ export default function Financeiro() {
       const mappedTab = tabMap[tabParam] || tabParam;
       if (mappedTab) {
         setActiveTab(mappedTab);
-        // Clear query params after processing
         searchParams.delete('tab');
         searchParams.delete('entry');
         setSearchParams(searchParams, { replace: true });
@@ -82,20 +77,7 @@ export default function Financeiro() {
     <AppLayout title="Financeiro" subtitle="Gestão financeira completa">
       <div className="space-y-4 page-enter">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="card-hover">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground tracking-wide">A Receber</p>
-                  <p className="text-lg font-bold text-green-600 truncate">
-                    R$ {totalReceivables.toFixed(0)}
-                  </p>
-                </div>
-                <ArrowUpCircle className="h-6 w-6 text-green-500 shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-3 gap-3">
           <Card className="card-hover">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -147,10 +129,6 @@ export default function Financeiro() {
               <ArrowDownCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">A Pagar</span>
             </TabsTrigger>
-            <TabsTrigger value="a-receber" className="gap-1.5 text-xs tracking-wide h-8">
-              <ArrowUpCircle className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">A Receber</span>
-            </TabsTrigger>
             <TabsTrigger value="extrato" className="gap-1.5 text-xs tracking-wide h-8">
               <FileText className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Extrato</span>
@@ -187,10 +165,6 @@ export default function Financeiro() {
 
           <TabsContent value="contas-pagar" className="page-enter">
             <ContasAPagar />
-          </TabsContent>
-
-          <TabsContent value="a-receber" className="page-enter">
-            <ContasAReceber />
           </TabsContent>
 
           <TabsContent value="extrato" className="page-enter">

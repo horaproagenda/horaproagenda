@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -18,382 +19,374 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowUpCircle, ArrowDownCircle, Trash2, Filter, Pencil } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Filter, Search, Lock } from 'lucide-react';
 import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries';
-import { useBanks } from '@/hooks/useBanks';
-import { useFinancialCategories } from '@/hooks/useFinancialCategories';
-import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useCashTransactions, CashTransaction } from '@/hooks/useCashTransactions';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+
+interface UnifiedEntry {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  type: 'income' | 'expense';
+  grossAmount: number;
+  discount: number;
+  cardFee: number;
+  netAmount: number;
+  paymentMethod: string;
+  status: string;
+  source: 'financial' | 'cash' | 'commission' | 'product';
+  runningBalance?: number;
+}
 
 export function ExtratoFinanceiro() {
-  const { entries, deleteEntry, updateEntry, refetch } = useFinancialEntries();
-  const { banks } = useBanks();
-  const { categories } = useFinancialCategories();
-  const { paymentMethods } = usePaymentMethods();
+  const { entries } = useFinancialEntries();
+  const { transactions } = useCashTransactions();
+  const queryClient = useQueryClient();
   const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('month');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'receivable' | 'payable'>('payable');
-  
-  // Edit state
-  const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
-  const [editDescription, setEditDescription] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editCategoryId, setEditCategoryId] = useState('');
-  const [editPaymentMethodId, setEditPaymentMethodId] = useState('');
-  
-  // Delete state
-  const [deletingEntry, setDeletingEntry] = useState<FinancialEntry | null>(null);
-  const [deleteAllFollowing, setDeleteAllFollowing] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'financial' | 'cash' | 'commission' | 'product'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter entries
+  // Real-time sync for extrato - listen to all relevant tables
+  useEffect(() => {
+    const channel = supabase
+      .channel('extrato-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_register_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Unify all entries from different sources
+  const unifiedEntries = useMemo(() => {
+    const unified: UnifiedEntry[] = [];
+
+    // 1. Financial entries (contas a pagar, recebíveis, comissões)
+    entries.forEach((entry: FinancialEntry) => {
+      const isIncome = entry.type === 'receivable';
+      const grossAmount = Number(entry.amount);
+      const isCommission = (entry.description || '').toLowerCase().includes('comiss');
+      
+      unified.push({
+        id: `fin-${entry.id}`,
+        date: entry.paid_date || entry.due_date,
+        description: entry.description,
+        category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
+        type: isIncome ? 'income' : 'expense',
+        grossAmount,
+        discount: 0,
+        cardFee: 0,
+        netAmount: grossAmount,
+        paymentMethod: entry.payment_method?.name || '-',
+        status: entry.status,
+        source: isCommission ? 'commission' : 'financial',
+      });
+    });
+
+    // 2. Cash transactions (vendas, pagamentos de clientes)
+    transactions.forEach((tx: CashTransaction) => {
+      const isIncome = tx.type === 'income';
+      const grossAmount = Number(tx.amount);
+      const cardFee = Number(tx.card_fee_amount || 0);
+      const discount = Number(tx.discount_amount || 0);
+      const netAmount = grossAmount - cardFee;
+      const isProduct = (tx.description || '').toLowerCase().includes('produto') || 
+                        tx.category === 'product_sale' || tx.category === 'product_purchase';
+
+      // Avoid duplicating entries already in financial_entries
+      const alreadyInFinancial = entries.some(e => 
+        e.description === tx.description && 
+        Math.abs(Number(e.amount) - grossAmount) < 0.01
+      );
+      if (alreadyInFinancial) return;
+
+      unified.push({
+        id: `cash-${tx.id}`,
+        date: tx.created_at,
+        description: tx.description || tx.category,
+        category: isProduct ? 'Produto' : (tx.category || '-'),
+        type: isIncome ? 'income' : 'expense',
+        grossAmount,
+        discount,
+        cardFee,
+        netAmount,
+        paymentMethod: tx.payment_method_name || '-',
+        status: 'paid',
+        source: isProduct ? 'product' : 'cash',
+      });
+    });
+
+    // Sort by date descending
+    unified.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return unified;
+  }, [entries, transactions]);
+
+  // Apply filters
   const filteredEntries = useMemo(() => {
     const today = new Date();
-    
-    return entries.filter((entry) => {
+    const search = searchTerm.toLowerCase().trim();
+
+    return unifiedEntries.filter((entry) => {
       // Type filter
       if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
       
+      // Source filter  
+      if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
+
+      // Search filter
+      if (search && !entry.description.toLowerCase().includes(search) && 
+          !entry.category.toLowerCase().includes(search) &&
+          !entry.paymentMethod.toLowerCase().includes(search)) return false;
+
       // Date filter
       if (dateFilterType === 'today') {
-        const dueDate = parseISO(entry.due_date);
-        return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
+        const entryDate = parseISO(entry.date);
+        return isWithinInterval(entryDate, { start: startOfDay(today), end: endOfDay(today) });
       } else if (dateFilterType === 'month') {
-        const dueDate = parseISO(entry.due_date);
-        return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
+        const entryDate = parseISO(entry.date);
+        return isWithinInterval(entryDate, { start: startOfMonth(today), end: endOfMonth(today) });
       }
       return true;
     });
-  }, [entries, dateFilterType, typeFilter]);
+  }, [unifiedEntries, dateFilterType, typeFilter, sourceFilter, searchTerm]);
 
-  // Calculate running balance per bank - sorted newest first
+  // Calculate running balance
   const entriesWithBalance = useMemo(() => {
-    const bankBalances: Record<string, number> = {};
-    
-    // First sort oldest to newest for balance calculation
-    const sortedEntriesAsc = [...filteredEntries].sort((a, b) => 
-      new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    // Sort oldest first for balance calculation
+    const sorted = [...filteredEntries].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
-    // Calculate running balance
-    const entriesWithCalcBalance = sortedEntriesAsc.map((entry) => {
-      const bankId = entry.bank_id || 'sem_banco';
-      if (!(bankId in bankBalances)) {
-        bankBalances[bankId] = 0;
-      }
-
+    let balance = 0;
+    const withBalance = sorted.map((entry) => {
       if (entry.status === 'paid') {
-        if (entry.type === 'receivable') {
-          bankBalances[bankId] += Number(entry.amount);
+        if (entry.type === 'income') {
+          balance += entry.netAmount;
         } else {
-          bankBalances[bankId] -= Number(entry.amount);
+          balance -= entry.netAmount;
         }
       }
-
-      return {
-        ...entry,
-        runningBalance: bankBalances[bankId],
-      };
+      return { ...entry, runningBalance: balance };
     });
 
-    // Return sorted newest first (most recent updates at top)
-    return entriesWithCalcBalance.sort((a, b) => 
-      new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
-    );
+    // Return newest first
+    return withBalance.reverse();
   }, [filteredEntries]);
 
-  const openEditDialog = (entry: FinancialEntry) => {
-    setEditingEntry(entry);
-    setEditDescription(entry.description);
-    setEditAmount(String(entry.amount));
-    setEditDueDate(entry.due_date);
-    setEditCategoryId(entry.category_id || '');
-    setEditPaymentMethodId(entry.payment_method_id || '');
-  };
+  // Summary totals
+  const totals = useMemo(() => {
+    const paid = entriesWithBalance.filter(e => e.status === 'paid');
+    const totalIncome = paid.filter(e => e.type === 'income').reduce((s, e) => s + e.netAmount, 0);
+    const totalExpense = paid.filter(e => e.type === 'expense').reduce((s, e) => s + e.netAmount, 0);
+    const totalFees = paid.reduce((s, e) => s + e.cardFee, 0);
+    const totalDiscounts = paid.reduce((s, e) => s + e.discount, 0);
+    return { totalIncome, totalExpense, totalFees, totalDiscounts, balance: totalIncome - totalExpense };
+  }, [entriesWithBalance]);
 
-  const handleEdit = () => {
-    if (!editingEntry) return;
-    
-    updateEntry.mutate({
-      id: editingEntry.id,
-      description: editDescription,
-      amount: Number(editAmount),
-      due_date: editDueDate,
-      category_id: editCategoryId && editCategoryId !== '_none' ? editCategoryId : null,
-      payment_method_id: editPaymentMethodId && editPaymentMethodId !== '_none' ? editPaymentMethodId : null,
-    });
-    
-    setEditingEntry(null);
-  };
-
-  const openDeleteDialog = (entry: FinancialEntry) => {
-    setDeletingEntry(entry);
-    setDeleteAllFollowing(false);
-  };
-
-  const handleDelete = async () => {
-    if (!deletingEntry) return;
-
-    if (deleteAllFollowing) {
-      // Delete all following entries with similar description pattern
-      const baseDescription = deletingEntry.description.replace(/\s*\(\d+\/\d+\)$/, '').trim();
-      const entryDate = new Date(deletingEntry.due_date);
-      
-      const entriesToDelete = entries.filter(e => {
-        const eBaseDescription = e.description.replace(/\s*\(\d+\/\d+\)$/, '').trim();
-        const eDate = new Date(e.due_date);
-        return eBaseDescription === baseDescription && 
-               e.type === deletingEntry.type &&
-               eDate >= entryDate;
-      });
-
-      try {
-        for (const entry of entriesToDelete) {
-          await supabase.from('financial_entries').delete().eq('id', entry.id);
-        }
-        toast.success(`${entriesToDelete.length} lançamentos excluídos com sucesso!`);
-        refetch();
-      } catch (error: any) {
-        toast.error('Erro ao excluir lançamentos: ' + error.message);
-      }
-    } else {
-      deleteEntry.mutate(deletingEntry.id);
+  const sourceLabel = (source: string) => {
+    switch (source) {
+      case 'financial': return 'Financeiro';
+      case 'cash': return 'Caixa';
+      case 'commission': return 'Comissão';
+      case 'product': return 'Produto';
+      default: return source;
     }
-
-    setDeletingEntry(null);
   };
 
-  const expenseCategories = categories.filter(c => c.type === 'expense' && c.is_active);
-  const incomeCategories = categories.filter(c => c.type === 'income' && c.is_active);
-  const activePaymentMethods = paymentMethods.filter(pm => pm.is_active);
+  const sourceColor = (source: string) => {
+    switch (source) {
+      case 'financial': return 'bg-blue-100 text-blue-700';
+      case 'cash': return 'bg-green-100 text-green-700';
+      case 'commission': return 'bg-purple-100 text-purple-700';
+      case 'product': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-          <CardTitle>Extrato</CardTitle>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as datas</SelectItem>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="month">Este mês</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={(v: 'all' | 'receivable' | 'payable') => setTypeFilter(v)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="receivable">A Receber</SelectItem>
-                <SelectItem value="payable">A Pagar</SelectItem>
-              </SelectContent>
-            </Select>
+            <CardTitle className="text-base">Extrato</CardTitle>
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <Lock className="h-3 w-3" /> Somente leitura
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[500px]">
-            <div className="min-w-[900px]">
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="relative flex-1 min-w-[150px] max-w-[250px]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-8 text-xs"
+            />
+          </div>
+          <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
+            <SelectTrigger className="w-[110px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas datas</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={(v: 'all' | 'income' | 'expense') => setTypeFilter(v)}>
+            <SelectTrigger className="w-[100px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="income">Entradas</SelectItem>
+              <SelectItem value="expense">Saídas</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter} onValueChange={(v: any) => setSourceFilter(v)}>
+            <SelectTrigger className="w-[110px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas fontes</SelectItem>
+              <SelectItem value="cash">Caixa</SelectItem>
+              <SelectItem value="financial">Financeiro</SelectItem>
+              <SelectItem value="commission">Comissão</SelectItem>
+              <SelectItem value="product">Produto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Summary */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
+          <div className="bg-green-50 dark:bg-green-950/30 rounded-md p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Entradas</p>
+            <p className="text-xs font-bold text-green-600">R$ {totals.totalIncome.toFixed(2)}</p>
+          </div>
+          <div className="bg-red-50 dark:bg-red-950/30 rounded-md p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Saídas</p>
+            <p className="text-xs font-bold text-red-600">R$ {totals.totalExpense.toFixed(2)}</p>
+          </div>
+          <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-md p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Taxas Cartão</p>
+            <p className="text-xs font-bold text-yellow-600">R$ {totals.totalFees.toFixed(2)}</p>
+          </div>
+          <div className="bg-orange-50 dark:bg-orange-950/30 rounded-md p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Descontos</p>
+            <p className="text-xs font-bold text-orange-600">R$ {totals.totalDiscounts.toFixed(2)}</p>
+          </div>
+          <div className="bg-muted/50 rounded-md p-2 text-center col-span-2 sm:col-span-1">
+            <p className="text-[10px] text-muted-foreground">Saldo Líquido</p>
+            <p className={`text-xs font-bold ${totals.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              R$ {totals.balance.toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <ScrollArea className="h-[450px]">
+          <div className="min-w-[950px]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Forma de Pagamento</TableHead>
-                  <TableHead>Parcela</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Saldo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                <TableRow className="h-8">
+                  <TableHead className="text-[10px] py-1 px-2">Data</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2">Origem</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2">Categoria</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2">Pagamento</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2 text-right">Bruto</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2 text-right">Desc.</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2 text-right">Taxa</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2 text-right">Líquido</TableHead>
+                  <TableHead className="text-[10px] py-1 px-2 text-right">Saldo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entriesWithBalance.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.due_date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      {entry.type === 'receivable' ? (
-                        <ArrowUpCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <ArrowDownCircle className="h-4 w-4 text-red-500" />
-                      )}
-                      {entry.description}
+                  <TableRow key={entry.id} className="h-7">
+                    <TableCell className="text-[11px] py-1 px-2">
+                      {format(parseISO(entry.date), 'dd/MM/yy')}
                     </TableCell>
-                    <TableCell>{entry.category?.name || '-'}</TableCell>
-                    <TableCell>{entry.payment_method?.name || '-'}</TableCell>
-                    <TableCell>{entry.installments || 1}x</TableCell>
-                    <TableCell className={entry.type === 'receivable' ? 'text-green-600' : 'text-red-600'}>
-                      {entry.type === 'receivable' ? '+' : '-'} R$ {Number(entry.amount).toFixed(2)}
-                    </TableCell>
-                    <TableCell className={entry.runningBalance >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                      R$ {entry.runningBalance.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(entry)}>
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(entry)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                    <TableCell className="text-[11px] py-1 px-2">
+                      <div className="flex items-center gap-1.5">
+                        {entry.type === 'income' ? (
+                          <ArrowUpCircle className="h-3 w-3 text-green-500 shrink-0" />
+                        ) : (
+                          <ArrowDownCircle className="h-3 w-3 text-red-500 shrink-0" />
+                        )}
+                        <span className="truncate max-w-[200px]">{entry.description}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="py-1 px-2">
+                      <Badge variant="outline" className={`text-[9px] h-4 px-1 ${sourceColor(entry.source)}`}>
+                        {sourceLabel(entry.source)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.category}</TableCell>
+                    <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.paymentMethod}</TableCell>
+                    <TableCell className={`text-[11px] py-1 px-2 text-right ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      R$ {entry.grossAmount.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-[11px] py-1 px-2 text-right text-orange-600">
+                      {entry.discount > 0 ? `- R$ ${entry.discount.toFixed(2)}` : '-'}
+                    </TableCell>
+                    <TableCell className="text-[11px] py-1 px-2 text-right text-yellow-600">
+                      {entry.cardFee > 0 ? `- R$ ${entry.cardFee.toFixed(2)}` : '-'}
+                    </TableCell>
+                    <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      R$ {entry.netAmount.toFixed(2)}
+                    </TableCell>
+                    <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${(entry.runningBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      R$ {(entry.runningBalance || 0).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}
                 {entriesWithBalance.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      Nenhum lançamento encontrado para o período selecionado
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8 text-xs">
+                      Nenhuma transação encontrada para o período selecionado
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </CardContent>
-      </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Lançamento</DialogTitle>
-            <DialogDescription>
-              Altere os dados do lançamento financeiro.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Descrição</Label>
-              <Input
-                id="edit-description"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-amount">Valor (R$)</Label>
-              <CurrencyInput
-                id="edit-amount"
-                value={editAmount}
-                onValueChange={(value) => setEditAmount(String(value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-due-date">Data de Vencimento</Label>
-              <Input
-                id="edit-due-date"
-                type="date"
-                value={editDueDate}
-                onChange={(e) => setEditDueDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-category">Categoria</Label>
-              <Select value={editCategoryId} onValueChange={setEditCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">Sem categoria</SelectItem>
-                  {editingEntry?.type === 'payable' ? (
-                    expenseCategories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))
-                  ) : (
-                    incomeCategories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-payment-method">Forma de Pagamento</Label>
-              <Select value={editPaymentMethodId} onValueChange={setEditPaymentMethodId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma forma de pagamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">Sem forma de pagamento</SelectItem>
-                  {activePaymentMethods.map(pm => (
-                    <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingEntry(null)}>Cancelar</Button>
-            <Button onClick={handleEdit}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <AlertDialog open={!!deletingEntry} onOpenChange={(open) => !open && setDeletingEntry(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Lançamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este lançamento?
-              {deletingEntry && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <p className="font-medium">{deletingEntry.description}</p>
-                  <p className="text-sm">R$ {Number(deletingEntry.amount).toFixed(2)} - {format(parseISO(deletingEntry.due_date), 'dd/MM/yyyy')}</p>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="delete-all-following"
-                checked={deleteAllFollowing}
-                onCheckedChange={(checked) => setDeleteAllFollowing(checked === true)}
-              />
-              <Label htmlFor="delete-all-following" className="text-sm font-normal">
-                Excluir este e todos os lançamentos seguintes com a mesma descrição
-              </Label>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 }

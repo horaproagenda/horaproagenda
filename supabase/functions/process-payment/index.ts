@@ -495,6 +495,17 @@ serve(async (req) => {
       if (clientError) {
         console.error('Error deducting client credit:', clientError);
       }
+      // Resolve professional that performed the baixa: prefer the user's linked professional, fallback to the appointment's
+      let baixaProfessionalId: string | null = appointment.professional_id || null;
+      try {
+        const { data: profRow } = await supabase
+          .from('professionals')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (profRow?.id) baixaProfessionalId = profRow.id;
+      } catch (_e) { /* keep fallback */ }
+
       const { error: creditHistoryError } = await supabase
         .from('client_credit_transactions')
         .insert({
@@ -504,8 +515,9 @@ serve(async (req) => {
           amount: body.used_client_credit,
           previous_balance: Number(currentBalance),
           new_balance: newBalance,
-          description: `Uso de crédito ao cliente: ${serviceName} - ${clientName}`,
+          description: `Uso de crédito na baixa: ${serviceName} - ${clientName} (R$ ${Number(body.used_client_credit).toFixed(2)})`,
           created_by: userId,
+          professional_id: baixaProfessionalId,
         });
 
       if (creditHistoryError) {

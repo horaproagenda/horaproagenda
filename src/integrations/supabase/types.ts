@@ -787,6 +787,7 @@ export type Database = {
           id: string
           new_balance: number
           previous_balance: number
+          professional_id: string | null
           sale_id: string | null
           transaction_type: string
         }
@@ -800,6 +801,7 @@ export type Database = {
           id?: string
           new_balance?: number
           previous_balance?: number
+          professional_id?: string | null
           sale_id?: string | null
           transaction_type: string
         }
@@ -813,10 +815,19 @@ export type Database = {
           id?: string
           new_balance?: number
           previous_balance?: number
+          professional_id?: string | null
           sale_id?: string | null
           transaction_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "client_credit_transactions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_documents: {
         Row: {

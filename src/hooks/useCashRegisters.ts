@@ -96,6 +96,7 @@ export function useCashRegisters() {
           : [],
       })) as CashRegister[];
     },
+    staleTime: 0,
   });
 
   const currentOpenRegister = cashRegisters.find(r => r.status === 'open');

@@ -43,6 +43,7 @@ import {
   Clock,
   DollarSign,
   CreditCard,
+  ShoppingCart,
   CheckCircle,
   AlertCircle,
   Sparkles,
@@ -67,6 +68,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
 import { useServices } from '@/hooks/useServices';
+import { useProducts } from '@/hooks/useProducts';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
@@ -90,9 +92,24 @@ interface AppointmentDetailDialogProps {
     cashRegisterId?: string,
     usedClientCredit?: number,
     discountApplied?: number, // Desconto aplicado
-    usedClientCreditMethod?: string
+    usedClientCreditMethod?: string,
+    additionalItems?: Array<{
+      item_type: 'service' | 'product';
+      service_id?: string | null;
+      product_id?: string | null;
+      quantity: number;
+      unit_price: number;
+      total_amount: number;
+    }>
   ) => void;
 }
+
+type PaymentAdditionalItem = {
+  item_type: 'service' | 'product';
+  item_id: string;
+  quantity: string;
+  unit_price: string;
+};
 
 const statusConfig = appointmentStatusConfig;
 
@@ -116,6 +133,7 @@ export function AppointmentDetailDialog({
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
   const { activeServices } = useServices();
+  const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
@@ -153,6 +171,7 @@ export function AppointmentDetailDialog({
   
   // Discount
   const [discountAmount, setDiscountAmount] = useState('');
+  const [additionalItems, setAdditionalItems] = useState<PaymentAdditionalItem[]>([]);
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -539,6 +558,21 @@ export function AppointmentDetailDialog({
   const totalPrice = isPackageAppointment 
     ? (isPackagePaid ? 0 : packagePrice)
     : servicePrice;
+  const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+  const paymentAdditionalItems = additionalItems
+    .map((item) => {
+      const quantity = Math.max(0, Number(item.quantity) || 0);
+      const unitPrice = parseBrazilianCurrency(item.unit_price);
+      return {
+        ...item,
+        quantity,
+        unit_price_value: unitPrice,
+        total_amount: quantity * unitPrice,
+      };
+    })
+    .filter((item) => item.item_id && item.quantity > 0 && item.unit_price_value >= 0);
+  const additionalItemsTotal = paymentAdditionalItems.reduce((sum, item) => sum + item.total_amount, 0);
+  const finalAppointmentTotal = totalPrice + persistedAdditionalItemsTotal + additionalItemsTotal;
   
   // Calculate amount paid based on actual data
   // For packages: if paid, show full package price as paid. If not paid, show appointment's amount_paid
@@ -547,7 +581,7 @@ export function AppointmentDetailDialog({
     ? (isPackagePaid ? packagePrice : (appointment.amount_paid || 0))
     : (appointment.amount_paid || 0);
   
-  const remainingAmount = Math.max(0, totalPrice - amountPaid);
+  const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal) - amountPaid);
   
   // Determine effective payment status based on actual amounts
   // This ensures consistency between displayed status and values
@@ -565,6 +599,30 @@ export function AppointmentDetailDialog({
 
   const addPaymentMethod = () => {
     setPayments([...payments, { method: '', amount: '' }]);
+  };
+
+  const addAdditionalItem = (item_type: 'service' | 'product') => {
+    setAdditionalItems([...additionalItems, { item_type, item_id: '', quantity: '1', unit_price: '' }]);
+  };
+
+  const removeAdditionalItem = (index: number) => {
+    setAdditionalItems(additionalItems.filter((_, i) => i !== index));
+  };
+
+  const updateAdditionalItem = (index: number, updates: Partial<PaymentAdditionalItem>) => {
+    const newItems = [...additionalItems];
+    const nextItem = { ...newItems[index], ...updates };
+    if (updates.item_id) {
+      if (nextItem.item_type === 'service') {
+        const service = activeServices.find((s) => s.id === updates.item_id);
+        nextItem.unit_price = service ? String(service.price || 0) : nextItem.unit_price;
+      } else {
+        const product = productsForSale.find((p) => p.id === updates.item_id);
+        nextItem.unit_price = product ? String(product.sale_price || product.unit_price || 0) : nextItem.unit_price;
+      }
+    }
+    newItems[index] = nextItem;
+    setAdditionalItems(newItems);
   };
 
   const removePaymentMethod = (index: number) => {
@@ -611,7 +669,7 @@ export function AppointmentDetailDialog({
   const availableClientCredit = appointment.client?.credit_balance || 0;
   
   // Remaining amount after discount
-  const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
+  const remainingAfterDiscount = Math.max(0, (finalAppointmentTotal - amountPaid) - discount);
   const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
   const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
@@ -677,6 +735,14 @@ export function AppointmentDetailDialog({
         cardBrandId: p.cardBrandId,
         installments: p.installments
       }));
+    const validAdditionalItems = paymentAdditionalItems.map((item) => ({
+      item_type: item.item_type,
+      service_id: item.item_type === 'service' ? item.item_id : null,
+      product_id: item.item_type === 'product' ? item.item_id : null,
+      quantity: item.quantity,
+      unit_price: item.unit_price_value,
+      total_amount: item.total_amount,
+    }));
 
     // If excess payment should become client SALDO (credit with financial registration)
     // excessAction === 'credit' means the excess becomes saldo (real money stored as credit)
@@ -685,7 +751,7 @@ export function AppointmentDetailDialog({
     // Courtesy removed - no longer send courtesyCredit
     const finalCourtesyCredit = undefined;
 
-    if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0 || discount > 0) {
+    if (validPayments.length > 0 || validAdditionalItems.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0 || discount > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
@@ -694,13 +760,15 @@ export function AppointmentDetailDialog({
         currentOpenRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
         discount > 0 ? discount : undefined, // Desconto aplicado
-        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method
+        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method,
+        validAdditionalItems
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
       // courtesyCreditAmount removed
       setClientCreditUsedAmount('');
       setDiscountAmount('');
+      setAdditionalItems([]);
       setUseClientCredit(false);
       setShowConfirmDialog(false);
       setExcessAction(null);
@@ -991,7 +1059,7 @@ export function AppointmentDetailDialog({
               <div className="grid grid-cols-3 gap-4 p-3 rounded-lg bg-muted/30">
                 <div>
                   <p className="text-xs text-muted-foreground">Valor Total</p>
-                  <p className="font-semibold">R$ {totalPrice.toFixed(2)}</p>
+                  <p className="font-semibold">R$ {(totalPrice + persistedAdditionalItemsTotal).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Valor Pago</p>
@@ -1155,13 +1223,59 @@ export function AppointmentDetailDialog({
 
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                    <p className="text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
+                    <p className="text-sm text-muted-foreground">Resumo financeiro do agendamento</p>
+                    <div className="mt-2 space-y-1 text-sm">
+                      <div className="flex justify-between"><span>Valor original</span><span className="font-medium">{formatCurrency(totalPrice)}</span></div>
+                      {persistedAdditionalItemsTotal > 0 && <div className="flex justify-between"><span>Adicionais já lançados</span><span className="font-medium">{formatCurrency(persistedAdditionalItemsTotal)}</span></div>}
+                      <div className="flex justify-between"><span>Itens adicionados nesta baixa</span><span className="font-medium">{formatCurrency(additionalItemsTotal)}</span></div>
+                      <Separator className="my-1" />
+                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(finalAppointmentTotal)}</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>Já pago</span><span>{formatCurrency(amountPaid)}</span></div>
+                    </div>
+                    <p className="mt-2 text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
                     {isPackageAppointment && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Valor total do pacote (pagamento integral obrigatório)
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Adicionar na baixa</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => addAdditionalItem('service')}>
+                          <Plus className="h-4 w-4 mr-1" /> Serviço
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => addAdditionalItem('product')}>
+                          <ShoppingCart className="h-4 w-4 mr-1" /> Produto
+                        </Button>
+                      </div>
+                    </div>
+                    {additionalItems.map((item, index) => {
+                      const options = item.item_type === 'service'
+                        ? activeServices.map((service) => ({ value: service.id, label: service.name, sublabel: formatCurrency(service.price || 0) }))
+                        : productsForSale.map((product) => ({ value: product.id, label: product.name, sublabel: formatCurrency(product.sale_price || product.unit_price || 0) }));
+                      const lineTotal = (Number(item.quantity) || 0) * parseBrazilianCurrency(item.unit_price);
+                      return (
+                        <div key={`${item.item_type}-${index}`} className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs">{item.item_type === 'service' ? 'Serviço' : 'Produto'}</Label>
+                              <SearchableSelect options={options} value={item.item_id} onChange={(value) => updateAdditionalItem(index, { item_id: value })} placeholder="Selecione..." searchPlaceholder="Buscar..." />
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeAdditionalItem(index)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div><Label className="text-xs">Qtd.</Label><Input value={item.quantity} onChange={(e) => updateAdditionalItem(index, { quantity: e.target.value })} /></div>
+                            <div><Label className="text-xs">Valor</Label><CurrencyInput value={item.unit_price} onValueChange={(value) => updateAdditionalItem(index, { unit_price: String(value) })} /></div>
+                            <div><Label className="text-xs">Total</Label><div className="h-10 flex items-center font-semibold">{formatCurrency(lineTotal)}</div></div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   <p className="text-sm font-medium">Registrar Pagamento</p>

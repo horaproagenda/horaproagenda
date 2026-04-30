@@ -11,6 +11,14 @@ interface PaymentRequest {
   payment_methods: string[];
   amount_paid: number;
   payment_status: 'pending' | 'partial' | 'paid';
+  additional_items?: Array<{
+    item_type: 'service' | 'product';
+    service_id?: string | null;
+    product_id?: string | null;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+  }>;
   client_credit?: number; // Saldo: troco em dinheiro que fica como crédito (registrado no caixa/financeiro)
   courtesy_credit?: number; // Cortesia: brinde/presente sem entrada de dinheiro
   used_client_credit?: number;
@@ -178,15 +186,60 @@ serve(async (req) => {
       );
     }
 
+    const additionalItems = Array.isArray(body.additional_items) ? body.additional_items : [];
+    for (const [index, item] of additionalItems.entries()) {
+      if (!['service', 'product'].includes(item.item_type)) {
+        errors.push({ field: `additional_items.${index}.item_type`, message: 'Invalid additional item type' });
+      }
+      if (item.item_type === 'service' && !item.service_id) {
+        errors.push({ field: `additional_items.${index}.service_id`, message: 'Service is required' });
+      }
+      if (item.item_type === 'product' && !item.product_id) {
+        errors.push({ field: `additional_items.${index}.product_id`, message: 'Product is required' });
+      }
+      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+        errors.push({ field: `additional_items.${index}.quantity`, message: 'Quantity must be greater than zero' });
+      }
+      if (typeof item.unit_price !== 'number' || item.unit_price < 0 || typeof item.total_amount !== 'number' || item.total_amount < 0) {
+        errors.push({ field: `additional_items.${index}.amount`, message: 'Item amounts must be valid positive numbers' });
+      }
+    }
+
+    if (errors.length > 0) {
+      return new Response(
+        JSON.stringify({ success: false, errors }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const newAdditionalItemsTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+
+    const { data: existingAdditionalItems, error: additionalItemsError } = await supabase
+      .from('appointment_additional_items')
+      .select('total_amount')
+      .eq('appointment_id', body.appointment_id);
+
+    if (additionalItemsError) {
+      console.error('Error fetching existing additional items:', additionalItemsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to calculate additional items', details: additionalItemsError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const existingAdditionalItemsTotal = (existingAdditionalItems || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+    const additionalItemsTotal = existingAdditionalItemsTotal + newAdditionalItemsTotal;
+
     // Determine if this is a package appointment and get correct pricing
     const isPackageAppointment = !!appointment.package_appointment;
     const packageData = appointment.package_appointment?.package;
     const isPackageAlreadyPaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
     
     // For packages: use full package price. For services: use service price
-    const totalRequiredAmount = isPackageAppointment 
+    const baseRequiredAmount = isPackageAppointment 
       ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
       : (appointment.service?.price || 0);
+    const totalRequiredAmount = baseRequiredAmount + additionalItemsTotal;
 
     if (body.used_client_credit && body.used_client_credit > 0) {
       const currentBalance = Number(appointment.client?.credit_balance || 0);
@@ -270,6 +323,51 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: 'Failed to update payment', details: updateError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (additionalItems.length > 0) {
+      const rows = additionalItems.map((item) => ({
+        appointment_id: body.appointment_id,
+        item_type: item.item_type,
+        service_id: item.item_type === 'service' ? item.service_id : null,
+        product_id: item.item_type === 'product' ? item.product_id : null,
+        professional_id: appointment.professional_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_amount: item.total_amount,
+        created_by: userId,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('appointment_additional_items')
+        .insert(rows);
+
+      if (itemsError) {
+        console.error('Error inserting additional items:', itemsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to save additional items', details: itemsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      for (const item of additionalItems.filter((entry) => entry.item_type === 'product' && entry.product_id)) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('current_stock')
+          .eq('id', item.product_id)
+          .single();
+
+        if (product) {
+          const { error: stockError } = await supabase
+            .from('products')
+            .update({ current_stock: Math.max(0, Number(product.current_stock || 0) - Number(item.quantity || 0)) })
+            .eq('id', item.product_id);
+
+          if (stockError) {
+            console.error('Error updating product stock for additional item:', stockError);
+          }
+        }
+      }
     }
 
     // 7. Handle client credit - ADD or DEDUCT
@@ -481,7 +579,7 @@ serve(async (req) => {
           cash_register_id: body.cash_register_id,
           type: 'income',
           category: 'sale',
-          description: `${serviceName} - ${clientName}`,
+          description: `${serviceName} - ${clientName}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
           amount: newCashPaymentAmount,
           payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
@@ -541,6 +639,8 @@ serve(async (req) => {
         payment_methods: body.payment_methods,
         used_client_credit: body.used_client_credit || 0,
         discount_amount: discountAmount,
+        additional_items_total: additionalItemsTotal,
+        additional_items_count: additionalItems.length,
         user_roles: roles,
       },
     });

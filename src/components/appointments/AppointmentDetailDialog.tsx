@@ -188,14 +188,117 @@ export function AppointmentDetailDialog({
       if (financialResult.error) throw financialResult.error;
       if (cashResult.error) throw cashResult.error;
 
-      const auditEvents = (auditResult.data || []).map((entry) => ({
-        id: `audit-${entry.id}`,
-        created_at: entry.created_at,
-        title: entry.action === 'payment_processed' ? 'Baixa registrada' : 'Agendamento alterado',
-        description: entry.user_email ? `Ação: ${entry.action} por ${entry.user_email}` : `Ação: ${entry.action}`,
-        amount: Number((entry.new_data as Record<string, unknown> | null)?.amount_paid || 0) || undefined,
-        kind: entry.action === 'payment_processed' ? 'payment' : 'change',
-      })) satisfies AppointmentHistoryEvent[];
+      // Friendly labels for known appointment fields
+      const FIELD_LABELS: Record<string, string> = {
+        start_time: 'Horário de início',
+        end_time: 'Horário de término',
+        status: 'Status',
+        payment_status: 'Status de pagamento',
+        amount_paid: 'Valor pago',
+        discount_amount: 'Desconto',
+        used_client_credit: 'Crédito do cliente usado',
+        client_credit: 'Saldo gerado para o cliente',
+        notes: 'Observações',
+        professional_id: 'Profissional',
+        room_id: 'Sala',
+        service_id: 'Serviço',
+        client_id: 'Cliente',
+        payment_methods: 'Formas de pagamento',
+      };
+      const STATUS_LABELS: Record<string, string> = {
+        scheduled: 'Agendado',
+        confirmed: 'Confirmado',
+        completed: 'Concluído',
+        cancelled: 'Cancelado',
+        missed: 'Faltou',
+        rescheduled: 'Reagendado',
+      };
+      const PAYMENT_STATUS_LABELS: Record<string, string> = {
+        pending: 'Pendente',
+        partial: 'Parcial',
+        paid: 'Pago',
+      };
+      const formatValue = (field: string, value: unknown): string => {
+        if (value === null || value === undefined || value === '') return '—';
+        if (field === 'start_time' || field === 'end_time') {
+          try { return format(new Date(value as string), "dd/MM/yyyy 'às' HH:mm"); } catch { return String(value); }
+        }
+        if (field === 'status') return STATUS_LABELS[String(value)] || String(value);
+        if (field === 'payment_status') return PAYMENT_STATUS_LABELS[String(value)] || String(value);
+        if (field === 'amount_paid' || field === 'discount_amount' || field === 'used_client_credit' || field === 'client_credit') {
+          return formatCurrency(Number(value) || 0);
+        }
+        if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+      };
+      const IGNORED_FIELDS = new Set(['updated_at', 'updated_by', 'version', 'last_seen_at']);
+
+      const buildChangeDescription = (
+        action: string,
+        oldData: Record<string, unknown> | null,
+        newData: Record<string, unknown> | null,
+      ): { title: string; description: string; isPayment: boolean } => {
+        if (action === 'INSERT') {
+          return { title: 'Agendamento criado', description: 'Registro inicial do agendamento.', isPayment: false };
+        }
+        if (action === 'DELETE') {
+          return { title: 'Agendamento excluído', description: 'Registro removido do sistema.', isPayment: false };
+        }
+        if (!oldData || !newData) {
+          return { title: 'Agendamento alterado', description: `Ação: ${action}`, isPayment: false };
+        }
+        const diffs: string[] = [];
+        const keys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+        let isPaymentChange = false;
+        for (const key of keys) {
+          if (IGNORED_FIELDS.has(key)) continue;
+          const before = (oldData as any)[key];
+          const after = (newData as any)[key];
+          const beforeStr = JSON.stringify(before ?? null);
+          const afterStr = JSON.stringify(after ?? null);
+          if (beforeStr === afterStr) continue;
+          const label = FIELD_LABELS[key] || key;
+          if (['amount_paid', 'payment_status', 'used_client_credit', 'discount_amount', 'payment_methods'].includes(key)) {
+            isPaymentChange = true;
+          }
+          diffs.push(`${label}: ${formatValue(key, before)} → ${formatValue(key, after)}`);
+        }
+        if (diffs.length === 0) {
+          return { title: 'Agendamento atualizado', description: 'Sem alterações relevantes detectadas.', isPayment: false };
+        }
+        // Special case: payment-related update
+        const wasPaid = (oldData as any).payment_status;
+        const nowPaid = (newData as any).payment_status;
+        const paidDelta = Number((newData as any).amount_paid || 0) - Number((oldData as any).amount_paid || 0);
+        let title = 'Agendamento alterado';
+        if (isPaymentChange && paidDelta > 0) {
+          title = nowPaid === 'paid'
+            ? `Baixa de pagamento registrada (${formatCurrency(paidDelta)})`
+            : `Pagamento parcial registrado (${formatCurrency(paidDelta)})`;
+        } else if (wasPaid !== nowPaid && nowPaid) {
+          title = `Status de pagamento alterado para ${PAYMENT_STATUS_LABELS[nowPaid] || nowPaid}`;
+        } else if (diffs.length === 1) {
+          // Use the single change as the title
+          title = diffs[0];
+        }
+        return { title, description: diffs.join(' • '), isPayment: isPaymentChange };
+      };
+
+      const auditEvents = (auditResult.data || []).map((entry) => {
+        const oldData = (entry.old_data || null) as Record<string, unknown> | null;
+        const newData = (entry.new_data || null) as Record<string, unknown> | null;
+        const { title, description, isPayment } = buildChangeDescription(entry.action, oldData, newData);
+        const author = entry.user_email ? ` • por ${entry.user_email}` : '';
+        return {
+          id: `audit-${entry.id}`,
+          created_at: entry.created_at,
+          title,
+          description: `${description}${author}`,
+          amount: Number((newData as any)?.amount_paid || 0) - Number((oldData as any)?.amount_paid || 0) || undefined,
+          kind: isPayment ? 'payment' : 'change',
+        } satisfies AppointmentHistoryEvent;
+      });
 
       const financialEvents = (financialResult.data || []).map((entry) => {
         const isRefund = entry.type === 'payable' || entry.type === 'expense' || /devolu|estorno|desconto/i.test(entry.description || '');

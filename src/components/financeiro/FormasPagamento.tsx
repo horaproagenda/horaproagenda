@@ -55,10 +55,12 @@ export function FormasPagamento() {
   const [brandForm, setBrandForm] = useState({
     name: '', type: 'credit' as 'credit' | 'debit' | 'both',
     is_active: true, fee_behavior: 'deduct_from_provider' as 'add_to_client' | 'deduct_from_provider',
+    split_fee: false,
   });
   const [brandFees, setBrandFees] = useState<{ installment_number: number; fee_percentage: number }[]>([
     { installment_number: 1, fee_percentage: 0 },
   ]);
+  const [showAuditLog, setShowAuditLog] = useState(false);
   const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('pending');
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
@@ -91,12 +93,12 @@ export function FormasPagamento() {
 
   // Brand handlers
   const resetBrandForm = () => {
-    setBrandForm({ name: '', type: 'credit', is_active: true, fee_behavior: 'deduct_from_provider' });
+    setBrandForm({ name: '', type: 'credit', is_active: true, fee_behavior: 'deduct_from_provider', split_fee: false });
     setBrandFees([{ installment_number: 1, fee_percentage: 0 }]); setEditingBrand(null);
   };
   const openBrandEdit = (brand: CardBrand) => {
     setEditingBrand(brand);
-    setBrandForm({ name: brand.name, type: brand.type as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any });
+    setBrandForm({ name: brand.name, type: brand.type as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any, split_fee: (brand as any).split_fee || false });
     setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || [{ installment_number: 1, fee_percentage: 0 }]);
     setBrandDialogOpen(true);
   };

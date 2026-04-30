@@ -587,6 +587,19 @@ export function CategoriasFinanceiras() {
                     <CurrencyInput value={entryForm.amount} onValueChange={(value) => setEntryForm({ ...entryForm, amount: String(value) })} placeholder="0,00" />
                   </div>
                 </div>
+                <div>
+                  <Label>Dias de tolerância (atraso)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={entryForm.overdue_tolerance_days}
+                    onChange={(e) => setEntryForm({ ...entryForm, overdue_tolerance_days: e.target.value })}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dias após o vencimento antes de marcar como "Atrasada"
+                  </p>
+                </div>
                 {parseInt(entryForm.installments) > 1 && (
                   <div>
                     <Label>Tipo de Valor</Label>

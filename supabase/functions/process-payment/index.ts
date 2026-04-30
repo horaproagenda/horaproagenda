@@ -11,6 +11,14 @@ interface PaymentRequest {
   payment_methods: string[];
   amount_paid: number;
   payment_status: 'pending' | 'partial' | 'paid';
+  additional_items?: Array<{
+    item_type: 'service' | 'product';
+    service_id?: string | null;
+    product_id?: string | null;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+  }>;
   client_credit?: number; // Saldo: troco em dinheiro que fica como crédito (registrado no caixa/financeiro)
   courtesy_credit?: number; // Cortesia: brinde/presente sem entrada de dinheiro
   used_client_credit?: number;
@@ -178,15 +186,44 @@ serve(async (req) => {
       );
     }
 
+    const additionalItems = Array.isArray(body.additional_items) ? body.additional_items : [];
+    for (const [index, item] of additionalItems.entries()) {
+      if (!['service', 'product'].includes(item.item_type)) {
+        errors.push({ field: `additional_items.${index}.item_type`, message: 'Invalid additional item type' });
+      }
+      if (item.item_type === 'service' && !item.service_id) {
+        errors.push({ field: `additional_items.${index}.service_id`, message: 'Service is required' });
+      }
+      if (item.item_type === 'product' && !item.product_id) {
+        errors.push({ field: `additional_items.${index}.product_id`, message: 'Product is required' });
+      }
+      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+        errors.push({ field: `additional_items.${index}.quantity`, message: 'Quantity must be greater than zero' });
+      }
+      if (typeof item.unit_price !== 'number' || item.unit_price < 0 || typeof item.total_amount !== 'number' || item.total_amount < 0) {
+        errors.push({ field: `additional_items.${index}.amount`, message: 'Item amounts must be valid positive numbers' });
+      }
+    }
+
+    if (errors.length > 0) {
+      return new Response(
+        JSON.stringify({ success: false, errors }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const additionalItemsTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+
     // Determine if this is a package appointment and get correct pricing
     const isPackageAppointment = !!appointment.package_appointment;
     const packageData = appointment.package_appointment?.package;
     const isPackageAlreadyPaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
     
     // For packages: use full package price. For services: use service price
-    const totalRequiredAmount = isPackageAppointment 
+    const baseRequiredAmount = isPackageAppointment 
       ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
       : (appointment.service?.price || 0);
+    const totalRequiredAmount = baseRequiredAmount + additionalItemsTotal;
 
     if (body.used_client_credit && body.used_client_credit > 0) {
       const currentBalance = Number(appointment.client?.credit_balance || 0);

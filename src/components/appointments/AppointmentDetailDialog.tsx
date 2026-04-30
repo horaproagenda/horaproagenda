@@ -1812,9 +1812,10 @@ export function AppointmentDetailDialog({
 
             <Separator />
             <Tabs defaultValue="items" className="space-y-3">
-              <TabsList className="grid w-full grid-cols-3 h-9">
+              <TabsList className="grid w-full grid-cols-4 h-9">
                 <TabsTrigger value="items" className="text-xs">Itens</TabsTrigger>
                 <TabsTrigger value="changes" className="text-xs">Mudanças</TabsTrigger>
+                <TabsTrigger value="credit" className="text-xs">Crédito</TabsTrigger>
                 <TabsTrigger value="refunds" className="text-xs">Estornos</TabsTrigger>
               </TabsList>
               <TabsContent value="items" className="space-y-2 mt-0">
@@ -1829,14 +1830,33 @@ export function AppointmentDetailDialog({
                 ))}
               </TabsContent>
               <TabsContent value="changes" className="space-y-2 mt-0">
-                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').length === 0 ? (
+                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment' || event.kind === 'credit').length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhuma mudança registrada.</p>
-                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').map((event) => (
-                  <div key={event.id} className="p-2 rounded-md border text-sm">
+                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment' || event.kind === 'credit').map((event) => (
+                  <div key={event.id} className={`p-2 rounded-md border text-sm ${event.kind === 'credit' ? 'border-primary/30 bg-primary/5' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{event.title}</p>
                       <span className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM HH:mm')}</span>
                     </div>
+                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                    {event.kind === 'credit' && event.amount ? (
+                      <p className="text-xs font-semibold text-primary mt-1">Valor usado: {formatCurrency(event.amount)}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="credit" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'credit').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum movimento de crédito do cliente neste agendamento.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'credit').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border border-primary/30 bg-primary/5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-primary">{event.title}</p>
+                      <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(event.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
                     <p className="text-xs text-muted-foreground">{event.description}</p>
                   </div>
                 ))}

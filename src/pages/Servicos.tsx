@@ -387,7 +387,7 @@ const Servicos: React.FC = () => {
                   <div
                     key={service.id}
                     style={{ animationDelay: `${index * 30}ms` }}
-                    className="animate-fade-in cursor-pointer"
+                    className="animate-fade-in cursor-pointer h-full"
                     onClick={() => setSelectedService(service)}
                   >
                     <ServiceCard service={service} onEdit={setSelectedService} onDelete={refetch} />

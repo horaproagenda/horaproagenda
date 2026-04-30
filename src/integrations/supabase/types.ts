@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_additional_items: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          item_type: string
+          notes: string | null
+          product_id: string | null
+          professional_id: string | null
+          quantity: number
+          service_id: string | null
+          total_amount: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_type: string
+          notes?: string | null
+          product_id?: string | null
+          professional_id?: string | null
+          quantity?: number
+          service_id?: string | null
+          total_amount?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_type?: string
+          notes?: string | null
+          product_id?: string | null
+          professional_id?: string | null
+          quantity?: number
+          service_id?: string | null
+          total_amount?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_additional_items_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_additional_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_additional_items_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_additional_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_edit_locks: {
         Row: {
           appointment_id: string

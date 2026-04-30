@@ -17,6 +17,20 @@ export interface FinancialCategory {
 export function useFinancialCategories() {
   const queryClient = useQueryClient();
 
+  // Realtime sync for financial_categories
+  useEffect(() => {
+    const channel = supabase
+      .channel('financial_categories_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_categories' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_categories'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data: categories = [], isLoading, refetch } = useQuery({
     queryKey: ['financial_categories'],
     queryFn: async () => {

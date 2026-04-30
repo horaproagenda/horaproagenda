@@ -1059,7 +1059,7 @@ export function AppointmentDetailDialog({
               <div className="grid grid-cols-3 gap-4 p-3 rounded-lg bg-muted/30">
                 <div>
                   <p className="text-xs text-muted-foreground">Valor Total</p>
-                  <p className="font-semibold">R$ {totalPrice.toFixed(2)}</p>
+                  <p className="font-semibold">R$ {(totalPrice + persistedAdditionalItemsTotal).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Valor Pago</p>

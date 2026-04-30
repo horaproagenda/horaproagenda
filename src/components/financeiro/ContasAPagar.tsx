@@ -786,6 +786,7 @@ export function ContasAPagar() {
                   ⚠ Pagamento parcial — restante de R$ {(Number(entryToPay.amount) - parseFloat(paidAmount)).toFixed(2)} ficará pendente para o próximo mês.
                 </p>
               )}
+            </div>
             
             <div>
               <Label>Forma de Pagamento</Label>

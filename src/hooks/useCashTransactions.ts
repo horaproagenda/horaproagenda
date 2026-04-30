@@ -82,7 +82,7 @@ export function useCashTransactions(cashRegisterId?: string) {
       // Fetch single_sales to get proper description with service/package names and fee info
       const { data: sales } = await supabase
         .from('single_sales')
-        .select('id, description, service_id, package_id, card_fee_amount, original_amount, final_amount, installments');
+        .select('id, description, service_id, package_id, card_fee_amount, original_amount, final_amount, installments, discount_amount');
       
       const serviceMap = new Map(services?.map(s => [s.id, s.name]) || []);
       const packageMap = new Map(packages?.map(p => [p.id, p.name]) || []);
@@ -93,7 +93,8 @@ export function useCashTransactions(cashRegisterId?: string) {
         card_fee_amount: s.card_fee_amount,
         original_amount: s.original_amount,
         final_amount: s.final_amount,
-        installments: s.installments
+        installments: s.installments,
+        discount_amount: s.discount_amount
       }]) || []);
       
       // Map payment_method IDs to names and resolve service/package names in descriptions

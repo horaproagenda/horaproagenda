@@ -192,17 +192,35 @@ const Agenda = () => {
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
 
   useEffect(() => {
+    if (appointments.length === 0) return;
+
+    // Handle location.state deep link
     const state = location.state as { openAppointmentId?: string; appointmentDate?: string } | null;
-    if (!state?.openAppointmentId || appointments.length === 0) return;
+    if (state?.openAppointmentId) {
+      const appointmentToReopen = appointments.find((apt) => apt.id === state.openAppointmentId);
+      if (appointmentToReopen) {
+        setSelectedAppointment(appointmentToReopen);
+        setDetailDialogOpen(true);
+        setSelectedDate(new Date(state.appointmentDate || appointmentToReopen.start_time));
+        navigate('/agenda', { replace: true, state: null });
+        return;
+      }
+    }
 
-    const appointmentToReopen = appointments.find((apt) => apt.id === state.openAppointmentId);
-    if (!appointmentToReopen) return;
-
-    setSelectedAppointment(appointmentToReopen);
-    setDetailDialogOpen(true);
-    setSelectedDate(new Date(state.appointmentDate || appointmentToReopen.start_time));
-    navigate('/agenda', { replace: true, state: null });
-  }, [appointments, location.state, navigate]);
+    // Handle ?appointment=ID query param (from Caixa/Financeiro "Pagar" buttons)
+    const params = new URLSearchParams(location.search);
+    const appointmentId = params.get('appointment');
+    if (appointmentId) {
+      const apt = appointments.find((a) => a.id === appointmentId);
+      if (apt) {
+        setSelectedAppointment(apt);
+        setDetailDialogOpen(true);
+        setSelectedDate(new Date(apt.start_time));
+      }
+      // Clean up URL param
+      navigate('/agenda', { replace: true });
+    }
+  }, [appointments, location.state, location.search, navigate]);
 
   useEffect(() => {
     if (!selectedAppointment) return;

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,11 +64,47 @@ import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';
 type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
+
+  // Real-time sync for sales with agenda, financeiro, card fees and discounts
+  useEffect(() => {
+    const channel = supabase
+      .channel('cash_register_panel_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_register_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const [openingBalance, setOpeningBalance] = useState('');
   const [closingBalance, setClosingBalance] = useState('');
@@ -163,12 +200,14 @@ export function CashRegisterPanel() {
     
     const total = periodSales.reduce((sum, t) => sum + Number(t.amount), 0);
     const totalFees = periodSales.reduce((sum, t) => sum + (t.card_fee_amount || 0), 0);
+    const totalDiscounts = periodSales.reduce((sum, t) => sum + (t.discount_amount || 0), 0);
     const netTotal = total - totalFees;
     
     return {
       transactions: periodSales,
       total,
       totalFees,
+      totalDiscounts,
       netTotal,
       count: periodSales.length,
     };
@@ -611,9 +650,8 @@ export function CashRegisterPanel() {
                               variant="outline"
                               size="sm"
                               className="h-5 text-[10px] px-1.5"
-                              onClick={() => {
-                                window.location.href = `/agenda?appointment=${entry.id}`;
-                              }}
+                              onClick={() => navigate(`/agenda?appointment=${entry.id}`)}
+                              title="Abrir agendamento para dar baixa"
                             >
                               <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                               Pagar
@@ -648,7 +686,7 @@ export function CashRegisterPanel() {
           </div>
         </CardHeader>
         <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-4 gap-2 mb-2">
             <div className="p-2 bg-green-50 dark:bg-green-950 rounded-md">
               <div className="text-[10px] text-muted-foreground">Valor Bruto</div>
               <div className="text-base font-bold text-green-600">
@@ -658,8 +696,17 @@ export function CashRegisterPanel() {
                 {salesSummary.count} venda(s)
               </div>
             </div>
+            <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
+              <div className="text-[10px] text-muted-foreground">Descontos</div>
+              <div className="text-base font-bold text-amber-600">
+                -R$ {salesSummary.totalDiscounts.toFixed(2)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Abatido
+              </div>
+            </div>
             <div className="p-2 bg-destructive/10 rounded-md">
-              <div className="text-[10px] text-muted-foreground">Taxas de Cartão</div>
+              <div className="text-[10px] text-muted-foreground">Taxas Cartão</div>
               <div className="text-base font-bold text-destructive">
                 -R$ {salesSummary.totalFees.toFixed(2)}
               </div>

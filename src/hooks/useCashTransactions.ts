@@ -23,6 +23,7 @@ export interface CashTransaction {
   card_fee_amount?: number;
   net_amount?: number;
   installments?: number;
+  discount_amount?: number;
 }
 
 export function useCashTransactions(cashRegisterId?: string) {
@@ -81,7 +82,7 @@ export function useCashTransactions(cashRegisterId?: string) {
       // Fetch single_sales to get proper description with service/package names and fee info
       const { data: sales } = await supabase
         .from('single_sales')
-        .select('id, description, service_id, package_id, card_fee_amount, original_amount, final_amount, installments');
+        .select('id, description, service_id, package_id, card_fee_amount, original_amount, final_amount, installments, discount_amount');
       
       const serviceMap = new Map(services?.map(s => [s.id, s.name]) || []);
       const packageMap = new Map(packages?.map(p => [p.id, p.name]) || []);
@@ -92,7 +93,8 @@ export function useCashTransactions(cashRegisterId?: string) {
         card_fee_amount: s.card_fee_amount,
         original_amount: s.original_amount,
         final_amount: s.final_amount,
-        installments: s.installments
+        installments: s.installments,
+        discount_amount: s.discount_amount
       }]) || []);
       
       // Map payment_method IDs to names and resolve service/package names in descriptions
@@ -149,19 +151,26 @@ export function useCashTransactions(cashRegisterId?: string) {
         let card_fee_amount: number | undefined = t.card_fee_amount || undefined;
         let net_amount: number | undefined = undefined;
         let installments: number | undefined = t.installments || undefined;
+        let discount_amount: number | undefined = undefined;
         
         // If no fee in transaction, try to find from single_sales
-        if (!card_fee_amount && t.category === 'sale' && t.reference_type === 'single_sale' && t.reference_id) {
+        if (t.category === 'sale' && t.reference_type === 'single_sale' && t.reference_id) {
           const saleInfo = salesMap.get(t.reference_id);
-          if (saleInfo?.card_fee_amount && saleInfo.card_fee_amount > 0) {
-            card_fee_amount = saleInfo.card_fee_amount;
-            installments = saleInfo.installments;
+          if (saleInfo) {
+            if (!card_fee_amount && saleInfo.card_fee_amount && saleInfo.card_fee_amount > 0) {
+              card_fee_amount = saleInfo.card_fee_amount;
+              installments = saleInfo.installments;
+            }
+            if (saleInfo.discount_amount && saleInfo.discount_amount > 0) {
+              discount_amount = saleInfo.discount_amount;
+            }
           }
         }
         
-        // Calculate net amount if there's a fee
-        if (card_fee_amount && card_fee_amount > 0) {
-          net_amount = Number(t.amount) - card_fee_amount;
+        // Calculate net amount considering fees and discounts
+        const totalDeductions = (card_fee_amount || 0);
+        if (totalDeductions > 0) {
+          net_amount = Number(t.amount) - totalDeductions;
         }
         
         return {
@@ -171,6 +180,7 @@ export function useCashTransactions(cashRegisterId?: string) {
           card_fee_amount,
           net_amount,
           installments,
+          discount_amount,
         };
       }) as CashTransaction[];
     },

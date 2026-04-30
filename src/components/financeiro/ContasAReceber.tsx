@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { format, parseISO, isAfter } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Trash2, Check, Calendar } from 'lucide-react';
+import { Trash2, Check, Calendar, DollarSign } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ export function ContasAReceber() {
   const { receivables, updateEntry, deleteEntry } = useFinancialEntries();
   const { appointments } = useAppointments();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Track previous receivable IDs/amounts for change detection
   const prevSnapshotRef = useRef<Map<string, { amount: number; status: string }>>(new Map());
@@ -327,9 +329,16 @@ export function ContasAReceber() {
                             </Button>
                           )}
                           {item.type === 'appointment' && (
-                            <span className="text-[10px] text-muted-foreground px-1">
-                              Agenda
-                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-6 text-[10px] px-1.5 gap-0.5"
+                              onClick={() => navigate(`/agenda?appointment=${item.id}`)}
+                              title="Abrir agendamento para dar baixa"
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              Pagar
+                            </Button>
                           )}
                           {item.type === 'financial_entry' && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(item)}>

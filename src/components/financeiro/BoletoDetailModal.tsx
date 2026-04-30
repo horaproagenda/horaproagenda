@@ -100,6 +100,12 @@ export function BoletoDetailModal({
 
   const handleBatchPay = async () => {
     if (selectedIds.length === 0) return;
+    // Validate: sum of paid + selected must not exceed total
+    const wouldPayTotal = totalPaid + selectedTotal;
+    if (wouldPayTotal > totalAmount + 0.01) {
+      toast.error(`A soma das parcelas pagas (R$ ${wouldPayTotal.toFixed(2)}) ultrapassa o valor total (R$ ${totalAmount.toFixed(2)}). Verifique os valores.`);
+      return;
+    }
     setBatchPaying(true);
     try {
       await onBatchPay({ ids: selectedIds });

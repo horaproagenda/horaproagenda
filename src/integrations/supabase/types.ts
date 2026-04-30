@@ -656,6 +656,7 @@ export type Database = {
           opening_balance: number
           payment_breakdown: Json | null
           payments_count: number | null
+          register_number: number
           status: string
           total_receivables: number | null
           total_received: number | null
@@ -678,6 +679,7 @@ export type Database = {
           opening_balance?: number
           payment_breakdown?: Json | null
           payments_count?: number | null
+          register_number: number
           status?: string
           total_receivables?: number | null
           total_received?: number | null
@@ -700,6 +702,7 @@ export type Database = {
           opening_balance?: number
           payment_breakdown?: Json | null
           payments_count?: number | null
+          register_number?: number
           status?: string
           total_receivables?: number | null
           total_received?: number | null

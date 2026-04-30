@@ -28,6 +28,21 @@ export interface CashTransaction {
 export function useCashTransactions(cashRegisterId?: string) {
   const queryClient = useQueryClient();
 
+  // Realtime sync for cash_transactions
+  useEffect(() => {
+    const channel = supabase
+      .channel('cash_transactions_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+
   const { data: transactions = [], isLoading, refetch } = useQuery({
     queryKey: ['cash_transactions', cashRegisterId],
     queryFn: async () => {

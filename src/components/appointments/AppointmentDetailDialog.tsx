@@ -1223,13 +1223,59 @@ export function AppointmentDetailDialog({
 
                   {/* Total to pay header */}
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                    <p className="text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
+                    <p className="text-sm text-muted-foreground">Resumo financeiro do agendamento</p>
+                    <div className="mt-2 space-y-1 text-sm">
+                      <div className="flex justify-between"><span>Valor original</span><span className="font-medium">{formatCurrency(totalPrice)}</span></div>
+                      {persistedAdditionalItemsTotal > 0 && <div className="flex justify-between"><span>Adicionais já lançados</span><span className="font-medium">{formatCurrency(persistedAdditionalItemsTotal)}</span></div>}
+                      <div className="flex justify-between"><span>Itens adicionados nesta baixa</span><span className="font-medium">{formatCurrency(additionalItemsTotal)}</span></div>
+                      <Separator className="my-1" />
+                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(finalAppointmentTotal)}</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>Já pago</span><span>{formatCurrency(amountPaid)}</span></div>
+                    </div>
+                    <p className="mt-2 text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>
                     {isPackageAppointment && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Valor total do pacote (pagamento integral obrigatório)
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Adicionar na baixa</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => addAdditionalItem('service')}>
+                          <Plus className="h-4 w-4 mr-1" /> Serviço
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => addAdditionalItem('product')}>
+                          <ShoppingCart className="h-4 w-4 mr-1" /> Produto
+                        </Button>
+                      </div>
+                    </div>
+                    {additionalItems.map((item, index) => {
+                      const options = item.item_type === 'service'
+                        ? activeServices.map((service) => ({ value: service.id, label: service.name, sublabel: formatCurrency(service.price || 0) }))
+                        : productsForSale.map((product) => ({ value: product.id, label: product.name, sublabel: formatCurrency(product.sale_price || product.unit_price || 0) }));
+                      const lineTotal = (Number(item.quantity) || 0) * parseBrazilianCurrency(item.unit_price);
+                      return (
+                        <div key={`${item.item_type}-${index}`} className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs">{item.item_type === 'service' ? 'Serviço' : 'Produto'}</Label>
+                              <SearchableSelect options={options} value={item.item_id} onChange={(value) => updateAdditionalItem(index, { item_id: value })} placeholder="Selecione..." searchPlaceholder="Buscar..." />
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeAdditionalItem(index)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div><Label className="text-xs">Qtd.</Label><Input value={item.quantity} onChange={(e) => updateAdditionalItem(index, { quantity: e.target.value })} /></div>
+                            <div><Label className="text-xs">Valor</Label><CurrencyInput value={item.unit_price} onValueChange={(value) => updateAdditionalItem(index, { unit_price: String(value) })} /></div>
+                            <div><Label className="text-xs">Total</Label><div className="h-10 flex items-center font-semibold">{formatCurrency(lineTotal)}</div></div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   <p className="text-sm font-medium">Registrar Pagamento</p>

@@ -212,7 +212,23 @@ serve(async (req) => {
       );
     }
 
-    const additionalItemsTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+    const newAdditionalItemsTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+
+    const { data: existingAdditionalItems, error: additionalItemsError } = await supabase
+      .from('appointment_additional_items')
+      .select('total_amount')
+      .eq('appointment_id', body.appointment_id);
+
+    if (additionalItemsError) {
+      console.error('Error fetching existing additional items:', additionalItemsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to calculate additional items', details: additionalItemsError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const existingAdditionalItemsTotal = (existingAdditionalItems || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+    const additionalItemsTotal = existingAdditionalItemsTotal + newAdditionalItemsTotal;
 
     // Determine if this is a package appointment and get correct pricing
     const isPackageAppointment = !!appointment.package_appointment;
@@ -332,6 +348,25 @@ serve(async (req) => {
           JSON.stringify({ success: false, error: 'Failed to save additional items', details: itemsError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      for (const item of additionalItems.filter((entry) => entry.item_type === 'product' && entry.product_id)) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('current_stock')
+          .eq('id', item.product_id)
+          .single();
+
+        if (product) {
+          const { error: stockError } = await supabase
+            .from('products')
+            .update({ current_stock: Math.max(0, Number(product.current_stock || 0) - Number(item.quantity || 0)) })
+            .eq('id', item.product_id);
+
+          if (stockError) {
+            console.error('Error updating product stock for additional item:', stockError);
+          }
+        }
       }
     }
 

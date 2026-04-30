@@ -27,6 +27,7 @@ import { useCardBrands, type CardBrand } from '@/hooks/useCardBrands';
 import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 import { BoletoDetailModal } from './BoletoDetailModal';
+import { BoletoAuditLogDialog } from './BoletoAuditLogDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';

@@ -735,6 +735,14 @@ export function AppointmentDetailDialog({
         cardBrandId: p.cardBrandId,
         installments: p.installments
       }));
+    const validAdditionalItems = paymentAdditionalItems.map((item) => ({
+      item_type: item.item_type,
+      service_id: item.item_type === 'service' ? item.item_id : null,
+      product_id: item.item_type === 'product' ? item.item_id : null,
+      quantity: item.quantity,
+      unit_price: item.unit_price_value,
+      total_amount: item.total_amount,
+    }));
 
     // If excess payment should become client SALDO (credit with financial registration)
     // excessAction === 'credit' means the excess becomes saldo (real money stored as credit)
@@ -743,7 +751,7 @@ export function AppointmentDetailDialog({
     // Courtesy removed - no longer send courtesyCredit
     const finalCourtesyCredit = undefined;
 
-    if (validPayments.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0 || discount > 0) {
+    if (validPayments.length > 0 || validAdditionalItems.length > 0 || finalClientCredit || finalCourtesyCredit || clientCreditUsed > 0 || discount > 0) {
       onPayment(
         appointment.id, 
         validPayments, 
@@ -752,13 +760,15 @@ export function AppointmentDetailDialog({
         currentOpenRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
         discount > 0 ? discount : undefined, // Desconto aplicado
-        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method
+        clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method,
+        validAdditionalItems
       );
       setShowPaymentForm(false);
       setPayments([{ method: '', amount: '' }]);
       // courtesyCreditAmount removed
       setClientCreditUsedAmount('');
       setDiscountAmount('');
+      setAdditionalItems([]);
       setUseClientCredit(false);
       setShowConfirmDialog(false);
       setExcessAction(null);

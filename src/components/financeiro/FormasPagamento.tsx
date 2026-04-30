@@ -280,6 +280,10 @@ export function FormasPagamento() {
                 {' '}({filteredBoletos.length})
               </p>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAuditLog(true)}>
+                  <History className="h-3.5 w-3.5" />
+                  Histórico
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => triggerSync.mutate()} disabled={triggerSync.isPending}>
                   <RefreshCw className={`h-3.5 w-3.5 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
                   Sincronizar

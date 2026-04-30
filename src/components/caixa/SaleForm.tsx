@@ -1251,39 +1251,139 @@ export function SaleForm() {
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
                               <SelectItem key={n} value={n.toString()}>
-                                {n}x {paymentAmount > 0 && formatCurrency(paymentAmount / n)}
+                                {n === 1 ? 'À vista' : `${n}x ${paymentAmount > 0 ? formatCurrency(paymentAmount / n) : ''}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      {boletoInstallments > 1 && (
-                        <div className="space-y-2">
-                          <Label>1º Vencimento</Label>
-                          <Input
-                            type="date"
-                            value={boletoFirstDueDate}
-                            onChange={(e) => setBoletoFirstDueDate(e.target.value)}
-                          />
-                        </div>
-                      )}
+                      <div className="space-y-2">
+                        <Label>{boletoInstallments > 1 ? '1º Vencimento' : 'Vencimento'}</Label>
+                        <Input
+                          type="date"
+                          value={boletoFirstDueDate}
+                          onChange={(e) => setBoletoFirstDueDate(e.target.value)}
+                        />
+                      </div>
                     </>
+                  )}
+
+                  {/* Cheque Form */}
+                  {isCheque && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Nº do Cheque</Label>
+                        <Input
+                          placeholder="Número do cheque"
+                          value={chequeNumber}
+                          onChange={(e) => setChequeNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Banco para Desconto</Label>
+                        <Select value={chequeBank} onValueChange={setChequeBank}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o banco..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeBanks.map((bank) => (
+                              <SelectItem key={bank.id} value={bank.id}>
+                                {bank.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Data para Descontar</Label>
+                        <Input
+                          type="date"
+                          value={chequeCashDate}
+                          onChange={(e) => setChequeCashDate(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Cash (Dinheiro) - Received Amount */}
+                  {isDinheiro && saleInfo && (
+                    <div className="space-y-2">
+                      <Label>Valor Recebido</Label>
+                      <CurrencyInput
+                        value={cashReceived}
+                        onValueChange={(v) => setCashReceived(normalizeBrazilianCurrency(v))}
+                      />
+                    </div>
                   )}
                 </div>
 
                 {/* Boleto Info */}
-                {isBoleto && boletoInstallments > 1 && paymentAmount > 0 && (
+                {isBoleto && paymentAmount > 0 && (
                   <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-muted/50 border">
                     <Badge variant="outline" className="border-primary/30 text-primary">
                       <FileText className="h-3 w-3 mr-1" />
-                      {boletoInstallments}x Boleto
+                      {boletoInstallments === 1 ? 'Boleto à vista' : `${boletoInstallments}x Boleto`}
+                    </Badge>
+                    {boletoInstallments > 1 && (
+                      <span className="text-muted-foreground">
+                        Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">
+                      • {boletoInstallments > 1 ? '1º venc' : 'Venc'}: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Cheque Info */}
+                {isCheque && chequeBank && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <Badge variant="outline" className="border-amber-500/50 text-amber-700">
+                      Cheque nº {chequeNumber || 'S/N'}
                     </Badge>
                     <span className="text-muted-foreground">
-                      Parcela: {formatCurrency(paymentAmount / boletoInstallments)}
+                      Banco: {activeBanks.find(b => b.id === chequeBank)?.name}
                     </span>
                     <span className="text-muted-foreground">
-                      • 1º venc: {format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                      • Descontar em: {format(new Date(chequeCashDate + 'T12:00:00'), 'dd/MM/yyyy')}
                     </span>
+                  </div>
+                )}
+
+                {/* Cash Change (Troco) */}
+                {isDinheiro && saleInfo && changeAmount > 0 && (
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                        Troco: {formatCurrency(changeAmount)}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'cash' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('cash')}
+                      >
+                        💵 Dinheiro
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'pix' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('pix')}
+                      >
+                        📱 PIX
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={changeMethod === 'credit' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setChangeMethod('credit')}
+                      >
+                        💳 Crédito ao Cliente
+                      </Button>
+                    </div>
                   </div>
                 )}
 

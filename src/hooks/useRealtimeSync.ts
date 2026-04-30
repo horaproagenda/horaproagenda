@@ -584,6 +584,40 @@ export function useRealtimeSync() {
         }
       )
       
+      // ============ CASH REGISTER ENTRIES ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_register_entries' },
+        (payload) => {
+          invalidateMultiple([
+            ...FINANCIAL_QUERIES,
+            'dashboard-stats',
+          ]);
+          
+          if (payload.eventType === 'INSERT') {
+            toast.info('💰 Nova movimentação no caixa', { duration: 2000 });
+          }
+        }
+      )
+      
+      // ============ PAYMENTS AUDIT ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments_audit' },
+        (payload) => {
+          invalidateMultiple([
+            ...FINANCIAL_QUERIES,
+            ...CLIENT_QUERIES,
+            ...APPOINTMENT_QUERIES,
+            'dashboard-stats',
+          ]);
+          
+          if (payload.eventType === 'INSERT') {
+            toast.success('✅ Pagamento registrado', { duration: 2000 });
+          }
+        }
+      )
+      
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('✅ Realtime sync v2: conectado a todas as tabelas');

@@ -29,10 +29,12 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
+import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Despesa Financeira', type: 'expense' },

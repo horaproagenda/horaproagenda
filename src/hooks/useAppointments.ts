@@ -95,7 +95,7 @@ export function useAppointments() {
       if (error) throw error;
       
       // Return directly without additional profile fetches for performance
-      return (data || []) as Appointment[];
+      return (data || []) as unknown as Appointment[];
     },
     staleTime: 30000, // Cache for 30 seconds
     refetchOnWindowFocus: true, // Refetch when user returns to window

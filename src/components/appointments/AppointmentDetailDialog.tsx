@@ -669,7 +669,7 @@ export function AppointmentDetailDialog({
   const availableClientCredit = appointment.client?.credit_balance || 0;
   
   // Remaining amount after discount
-  const remainingAfterDiscount = Math.max(0, remainingAmount - discount);
+  const remainingAfterDiscount = Math.max(0, (finalAppointmentTotal - amountPaid) - discount);
   const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
   const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;

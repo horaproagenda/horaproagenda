@@ -461,6 +461,10 @@ export type Database = {
           automation_smart_recurrence: boolean | null
           automation_waitlist: boolean | null
           automation_whatsapp_reminders: boolean | null
+          clinic_address: string | null
+          clinic_cnpj: string | null
+          clinic_name: string | null
+          clinic_phone: string | null
           closing_time: string
           created_at: string
           drag_and_drop_enabled: boolean
@@ -483,6 +487,10 @@ export type Database = {
           automation_smart_recurrence?: boolean | null
           automation_waitlist?: boolean | null
           automation_whatsapp_reminders?: boolean | null
+          clinic_address?: string | null
+          clinic_cnpj?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -505,6 +513,10 @@ export type Database = {
           automation_smart_recurrence?: boolean | null
           automation_waitlist?: boolean | null
           automation_whatsapp_reminders?: boolean | null
+          clinic_address?: string | null
+          clinic_cnpj?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean

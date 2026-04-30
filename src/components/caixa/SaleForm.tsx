@@ -656,11 +656,72 @@ export function SaleForm() {
               created_by: user?.id,
             });
           }
+        } else if (isCheque) {
+          // Cheque: create receivable as pending until cash date
+          await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: `Cheque nº ${chequeNumber || 'S/N'}: ${financialItemNames} - ${selectedClient?.name}`,
+            amount: paymentAmount,
+            due_date: chequeCashDate,
+            paid_date: null,
+            status: 'pending',
+            payment_method_id: paymentMethodId,
+            client_id: selectedClientId,
+            created_by: user?.id,
+            notes: `Cheque nº ${chequeNumber || 'S/N'} - Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'} - Descontar em ${format(new Date(chequeCashDate + 'T12:00:00'), 'dd/MM/yyyy')}`,
+          });
+
+          // Create reminder for the cash date
+          await supabase.from('reminders').insert({
+            title: `Descontar cheque: ${selectedClient?.name}`,
+            description: `Ir ao banco descontar cheque nº ${chequeNumber || 'S/N'} de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}". Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'}.`,
+            reminder_date: chequeCashDate,
+            reminder_time: '08:00',
+            is_recurring: false,
+            is_active: true,
+            is_completed: false,
+            category: 'financeiro',
+            priority: 'high',
+            created_by: user?.id,
+          });
+        } else if (isBoleto && boletoInstallments === 1) {
+          // Boleto à vista: receivable pending until payment confirmed
+          await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: `Boleto à vista: ${financialItemNames} - ${selectedClient?.name}`,
+            amount: paymentAmount,
+            due_date: boletoFirstDueDate,
+            paid_date: null,
+            status: 'pending',
+            payment_method_id: paymentMethodId,
+            client_id: selectedClientId,
+            created_by: user?.id,
+            notes: 'Boleto Bancário à vista',
+          });
+
+          // Create reminder
+          await supabase.from('reminders').insert({
+            title: `Verificar boleto à vista: ${selectedClient?.name}`,
+            description: `Boleto à vista de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}" vence em ${format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}.`,
+            reminder_date: boletoFirstDueDate,
+            reminder_time: '09:00',
+            is_recurring: false,
+            is_active: true,
+            is_completed: false,
+            category: 'financeiro',
+            priority: 'high',
+            created_by: user?.id,
+          });
         } else {
+          // All other methods (Dinheiro, PIX, Transferência, Cartão): immediate paid entry
+          const netAmount = selectedCardBrand && selectedCardBrand.fee_behavior === 'deduct_from_provider'
+            ? paymentAmount - feeInfo.feeAmount
+            : paymentAmount;
+
           await supabase.from('financial_entries').insert({
             type: 'receivable',
             description: financialDescription,
-            amount: paymentAmount,
+            amount: netAmount,
             due_date: paymentDate,
             paid_date: paymentDate,
             status: 'paid',
@@ -668,7 +729,22 @@ export function SaleForm() {
             client_id: selectedClientId,
             installments: selectedCardBrand && isCreditCard ? installments : null,
             created_by: user?.id,
+            notes: selectedCardBrand ? `Taxa ${selectedCardBrand.name}: ${feeInfo.feePercentage}% = R$ ${feeInfo.feeAmount.toFixed(2)}` : (isDinheiro && changeAmount > 0 ? `Troco: R$ ${changeAmount.toFixed(2)} (${changeMethod === 'cash' ? 'Dinheiro' : changeMethod === 'pix' ? 'PIX' : 'Crédito ao Cliente'})` : null),
           });
+
+          // If card has fee and deducted from provider, register the fee as expense
+          if (selectedCardBrand && feeInfo.feeAmount > 0 && selectedCardBrand.fee_behavior === 'deduct_from_provider') {
+            await supabase.from('financial_entries').insert({
+              type: 'expense',
+              description: `Taxa ${selectedCardBrand.name} (${feeInfo.feePercentage}%): ${financialItemNames}`,
+              amount: feeInfo.feeAmount,
+              due_date: paymentDate,
+              paid_date: paymentDate,
+              status: 'paid',
+              created_by: user?.id,
+              notes: `Taxa de cartão descontada do provedor - Venda: ${financialItemNames}`,
+            });
+          }
         }
       }
 

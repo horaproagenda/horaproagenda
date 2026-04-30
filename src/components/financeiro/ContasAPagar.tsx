@@ -48,6 +48,7 @@ import { useBanks } from '@/hooks/useBanks';
 import { useReminders } from '@/hooks/useReminders';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
+import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
@@ -203,9 +204,13 @@ export function ContasAPagar() {
     const totalAmount = parseFloat(form.amount) || 0;
     const recurringCount = parseInt(form.recurring_count) || 1;
     
-    const amountPerEntry = form.is_recurring && form.split_value 
-      ? totalAmount / recurringCount 
-      : totalAmount;
+    const calc = calculateRecurringValues({
+      amount: totalAmount,
+      installments: recurringCount,
+      isTotalValue: form.split_value,
+    });
+    
+    const amountPerEntry = calc.perInstallmentAmount;
 
     if (editingEntry) {
       // Update this entry

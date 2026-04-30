@@ -25,6 +25,7 @@ import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
+import { FinancialDivergenceAlert } from '@/components/financeiro/FinancialDivergenceAlert';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -76,6 +77,9 @@ export default function Financeiro() {
   return (
     <AppLayout title="Financeiro" subtitle="Gestão financeira completa">
       <div className="space-y-4 page-enter">
+        {/* Divergence Alert */}
+        <FinancialDivergenceAlert />
+
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-3">
           <Card className="card-hover">

@@ -73,7 +73,7 @@ export function useAppointments() {
         .from('appointments')
         .select(`
           *,
-          client:clients(id, name, phone, email),
+          client:clients(id, name, phone, email, credit_balance),
           service:services(
             id, name, price, duration, category,
             room:rooms(id, name),

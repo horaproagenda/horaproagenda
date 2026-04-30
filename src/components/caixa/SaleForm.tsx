@@ -578,28 +578,73 @@ export function SaleForm() {
       // Create financial entry only for real money payments. Client credit is non-cash.
       // Build description with item names for financial entry
       const financialItemNames = saleInfo.items.map(item => item.name).join(', ');
-      const financialDescription = `Venda: ${financialItemNames} - ${selectedClient?.name}`;
+      const financialDescription = isBoleto && boletoInstallments > 1
+        ? `Parcelamento Boleto Bancário ${boletoInstallments}x: ${financialItemNames} - ${selectedClient?.name}`
+        : `Venda: ${financialItemNames} - ${selectedClient?.name}`;
       
       if (!isClientCredit) {
-        await supabase.from('financial_entries').insert({
-          type: 'receivable',
-          description: financialDescription,
-          amount: paymentAmount,
-          due_date: paymentDate,
-          paid_date: paymentDate,
-          status: 'paid',
-          payment_method_id: paymentMethodId,
-          client_id: selectedClientId,
-          installments: selectedCardBrand && isCreditCard ? installments : null,
-          created_by: user?.id,
-        });
+        if (isBoleto && boletoInstallments > 1) {
+          // For boleto installments, create one receivable per installment
+          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
+          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
+
+          for (let i = 0; i < boletoInstallments; i++) {
+            const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
+            dueDate.setDate(dueDate.getDate() + i * 30);
+            const dueDateStr = format(dueDate, 'yyyy-MM-dd');
+            const amt = i === 0 ? installmentAmount + remainder : installmentAmount;
+
+            await supabase.from('financial_entries').insert({
+              type: 'receivable',
+              description: `Boleto ${i + 1}/${boletoInstallments}: ${financialItemNames} - ${selectedClient?.name} (venc. ${format(dueDate, 'dd/MM/yyyy')})`,
+              amount: amt,
+              due_date: dueDateStr,
+              paid_date: null,
+              status: 'pending',
+              payment_method_id: paymentMethodId,
+              client_id: selectedClientId,
+              installments: boletoInstallments,
+              created_by: user?.id,
+              notes: `Parcelamento no Boleto Bancário ${boletoInstallments}x`,
+            });
+
+            // Create reminder for each boleto due date
+            await supabase.from('reminders').insert({
+              title: `Verificar boleto ${i + 1}/${boletoInstallments}: ${selectedClient?.name}`,
+              description: `Boleto de R$ ${amt.toFixed(2)} referente a "${financialItemNames}" vence em ${format(dueDate, 'dd/MM/yyyy')}. Verificar se foi pago e dar baixa no sistema.`,
+              reminder_date: dueDateStr,
+              reminder_time: '09:00',
+              is_recurring: false,
+              is_active: true,
+              is_completed: false,
+              category: 'financeiro',
+              priority: 'high',
+              created_by: user?.id,
+            });
+          }
+        } else {
+          await supabase.from('financial_entries').insert({
+            type: 'receivable',
+            description: financialDescription,
+            amount: paymentAmount,
+            due_date: paymentDate,
+            paid_date: paymentDate,
+            status: 'paid',
+            payment_method_id: paymentMethodId,
+            client_id: selectedClientId,
+            installments: selectedCardBrand && isCreditCard ? installments : null,
+            created_by: user?.id,
+          });
+        }
       }
 
       // Create cash transaction if register is open
       // Skip cash transaction for "Crédito ao Cliente" because it uses existing balance.
       // Build description with item names
       const itemNames = saleInfo.items.map(item => item.name).join(', ');
-      const saleDescription = `${itemNames} - ${selectedClient?.name}`;
+      const saleDescription = isBoleto && boletoInstallments > 1
+        ? `Boleto Bancário ${boletoInstallments}x: ${itemNames} - ${selectedClient?.name}`
+        : `${itemNames} - ${selectedClient?.name}`;
       
       if (currentOpenRegister && !isClientCredit) {
         // Calculate net amount for card payments
@@ -641,7 +686,6 @@ export function SaleForm() {
 
       // Create boleto installments if payment is boleto with installments
       if (isBoleto && boletoInstallments > 1 && saleInfo.items.length > 0) {
-        // Get the last sale record to link
         const { data: lastSales } = await supabase
           .from('single_sales')
           .select('id')
@@ -649,20 +693,20 @@ export function SaleForm() {
           .order('created_at', { ascending: false })
           .limit(1);
 
-        if (lastSales && lastSales.length > 0) {
-          const saleId = lastSales[0].id;
+        const saleId = lastSales?.[0]?.id;
+        if (saleId) {
           const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
           const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
 
           const records = Array.from({ length: boletoInstallments }, (_, i) => {
-            const dueDate = new Date(boletoFirstDueDate);
+            const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
             dueDate.setDate(dueDate.getDate() + i * 30);
             return {
               sale_id: saleId,
               installment_number: i + 1,
               total_installments: boletoInstallments,
               amount: i === 0 ? installmentAmount + remainder : installmentAmount,
-              due_date: dueDate.toISOString().split('T')[0],
+              due_date: format(dueDate, 'yyyy-MM-dd'),
               status: 'pending' as const,
               created_by: user?.id || null,
             };

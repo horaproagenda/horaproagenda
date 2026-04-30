@@ -149,6 +149,31 @@ export function SaleForm() {
     return isClientCreditPaymentMethod(selectedPaymentMethod.name);
   }, [selectedPaymentMethod]);
 
+  // Detect cheque
+  const isCheque = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('cheque');
+  }, [selectedPaymentMethod]);
+
+  // Detect cash (dinheiro)
+  const isDinheiro = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    return selectedPaymentMethod.name.toLowerCase().includes('dinheiro');
+  }, [selectedPaymentMethod]);
+
+  // Detect PIX or transfer
+  const isPixOrTransfer = useMemo(() => {
+    if (!selectedPaymentMethod) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    return name.includes('pix') || name.includes('transferência') || name.includes('transferencia');
+  }, [selectedPaymentMethod]);
+
+  // Cash change amount
+  const changeAmount = useMemo(() => {
+    if (!isDinheiro || !saleInfo) return 0;
+    return Math.max(0, cashReceived - saleInfo.total);
+  }, [isDinheiro, cashReceived, saleInfo?.total]);
+
   // Get applicable card brands
   const applicableCardBrands = useMemo(() => {
     if (isCreditCard) {

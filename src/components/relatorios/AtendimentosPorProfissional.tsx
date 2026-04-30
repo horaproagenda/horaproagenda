@@ -131,9 +131,19 @@ export function AtendimentosPorProfissional() {
   // Get monthly breakdown for selected professional
   const monthlyBreakdown = useMemo(() => {
     if (!selectedProfessional) return [];
-    const profAppts = allAppointments.filter((a: any) =>
+    let profAppts = allAppointments.filter((a: any) =>
       a.professional_id === selectedProfessional && a.status === 'completed'
     );
+
+    // Apply date range filter
+    if (detailDateFrom) {
+      profAppts = profAppts.filter((a: any) => parseISO(a.start_time) >= detailDateFrom);
+    }
+    if (detailDateTo) {
+      const endOfDay = new Date(detailDateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      profAppts = profAppts.filter((a: any) => parseISO(a.start_time) <= endOfDay);
+    }
 
     const months: { month: Date; label: string; appointments: any[] }[] = [];
     for (let i = 0; i < 12; i++) {
@@ -153,7 +163,7 @@ export function AtendimentosPorProfissional() {
       }
     }
     return months;
-  }, [selectedProfessional, allAppointments]);
+  }, [selectedProfessional, allAppointments, detailDateFrom, detailDateTo]);
 
   const selectedProf = professionals.find(p => p.id === selectedProfessional);
   const selectedProfPaidCommissions = commissionPayments.filter((cp: any) =>

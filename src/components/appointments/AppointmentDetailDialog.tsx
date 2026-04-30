@@ -1305,6 +1305,34 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
+              {(appointment.additional_items?.length || 0) > 0 && (
+                <div className="space-y-2 p-3 rounded-lg border bg-muted/20">
+                  <p className="text-sm font-medium">Serviços/produtos adicionados</p>
+                  {appointment.additional_items?.map((item) => (
+                    <div key={item.id || `${item.item_type}-${item.service_id}-${item.product_id}`} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">
+                        {item.item_type === 'service' ? <Sparkles className="h-3 w-3 inline mr-1" /> : <ShoppingCart className="h-3 w-3 inline mr-1" />}
+                        {item.service?.name || item.product?.name || 'Item adicional'} × {Number(item.quantity || 0)}
+                      </span>
+                      <span className="font-medium">{formatCurrency(Number(item.total_amount || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(amountPaid > 0 || persistedAdditionalItemsTotal > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" onClick={handleDownloadReceipt}>
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Baixar recibo PDF
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleSendReceipt}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar ao cliente
+                  </Button>
+                </div>
+              )}
+
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">

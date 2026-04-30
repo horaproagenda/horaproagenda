@@ -309,6 +309,32 @@ serve(async (req) => {
       );
     }
 
+    if (additionalItems.length > 0) {
+      const rows = additionalItems.map((item) => ({
+        appointment_id: body.appointment_id,
+        item_type: item.item_type,
+        service_id: item.item_type === 'service' ? item.service_id : null,
+        product_id: item.item_type === 'product' ? item.product_id : null,
+        professional_id: appointment.professional_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_amount: item.total_amount,
+        created_by: userId,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('appointment_additional_items')
+        .insert(rows);
+
+      if (itemsError) {
+        console.error('Error inserting additional items:', itemsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to save additional items', details: itemsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // 7. Handle client credit - ADD or DEDUCT
     const clientName = appointment.client?.name || 'Cliente';
     // Use package name if package appointment, otherwise use service name

@@ -648,9 +648,8 @@ export function CashRegisterPanel() {
                               variant="outline"
                               size="sm"
                               className="h-5 text-[10px] px-1.5"
-                              onClick={() => {
-                                window.location.href = `/agenda?appointment=${entry.id}`;
-                              }}
+                              onClick={() => navigate(`/agenda?appointment=${entry.id}`)}
+                              title="Abrir agendamento para dar baixa"
                             >
                               <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                               Pagar

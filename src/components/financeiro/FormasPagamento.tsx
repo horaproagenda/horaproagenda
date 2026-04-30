@@ -496,6 +496,7 @@ export function FormasPagamento() {
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
       />
+      <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
     </Card>
   );
 }

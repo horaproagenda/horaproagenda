@@ -188,6 +188,55 @@ export function AppointmentDetailDialog({
       if (financialResult.error) throw financialResult.error;
       if (cashResult.error) throw cashResult.error;
 
+      // Collect all UUIDs referenced in audit data, grouped by entity, to resolve to names
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const idBuckets: Record<'payment_methods' | 'professionals' | 'rooms' | 'services' | 'clients', Set<string>> = {
+        payment_methods: new Set(),
+        professionals: new Set(),
+        rooms: new Set(),
+        services: new Set(),
+        clients: new Set(),
+      };
+      const collect = (bucket: keyof typeof idBuckets, value: unknown) => {
+        if (!value) return;
+        if (Array.isArray(value)) value.forEach(v => collect(bucket, v));
+        else if (typeof value === 'string' && UUID_RE.test(value)) idBuckets[bucket].add(value);
+      };
+      for (const entry of auditResult.data || []) {
+        for (const data of [entry.old_data, entry.new_data]) {
+          const d = (data || {}) as Record<string, unknown>;
+          collect('payment_methods', d.payment_methods);
+          collect('professionals', d.professional_id);
+          collect('rooms', d.room_id);
+          collect('services', d.service_id);
+          collect('clients', d.client_id);
+        }
+      }
+
+      const fetchNames = async (table: string, ids: string[]): Promise<Map<string, string>> => {
+        if (!ids.length) return new Map();
+        const { data } = await supabase.from(table as any).select('id, name').in('id', ids);
+        return new Map(((data as any[]) || []).map(row => [row.id, row.name]));
+      };
+      const [pmMap, profMap, roomMap, svcMap, cliMap] = await Promise.all([
+        fetchNames('payment_methods', [...idBuckets.payment_methods]),
+        fetchNames('professionals', [...idBuckets.professionals]),
+        fetchNames('rooms', [...idBuckets.rooms]),
+        fetchNames('services', [...idBuckets.services]),
+        fetchNames('clients', [...idBuckets.clients]),
+      ]);
+      const NAME_MAPS: Record<string, Map<string, string>> = {
+        payment_methods: pmMap,
+        professional_id: profMap,
+        room_id: roomMap,
+        service_id: svcMap,
+        client_id: cliMap,
+      };
+      const resolveName = (field: string, id: string): string => {
+        const map = NAME_MAPS[field];
+        return (map && map.get(id)) || id;
+      };
+
       // Friendly labels for known appointment fields
       const FIELD_LABELS: Record<string, string> = {
         start_time: 'Horário de início',
@@ -227,6 +276,12 @@ export function AppointmentDetailDialog({
         if (field === 'payment_status') return PAYMENT_STATUS_LABELS[String(value)] || String(value);
         if (field === 'amount_paid' || field === 'discount_amount' || field === 'used_client_credit' || field === 'client_credit') {
           return formatCurrency(Number(value) || 0);
+        }
+        if (field === 'payment_methods' && Array.isArray(value)) {
+          return value.length ? value.map(v => typeof v === 'string' && UUID_RE.test(v) ? resolveName('payment_methods', v) : String(v)).join(', ') : '—';
+        }
+        if (['professional_id', 'room_id', 'service_id', 'client_id'].includes(field) && typeof value === 'string') {
+          return resolveName(field, value);
         }
         if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
         if (typeof value === 'object') return JSON.stringify(value);

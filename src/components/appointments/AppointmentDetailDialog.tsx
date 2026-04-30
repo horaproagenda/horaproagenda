@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -59,9 +63,12 @@ import {
   X,
   ExternalLink,
   Lock,
+  FileDown,
+  Send,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDurationClock } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -111,6 +118,15 @@ type PaymentAdditionalItem = {
   unit_price: string;
 };
 
+type AppointmentHistoryEvent = {
+  id: string;
+  created_at: string;
+  title: string;
+  description: string;
+  amount?: number;
+  kind: 'item' | 'change' | 'refund' | 'payment';
+};
+
 const statusConfig = appointmentStatusConfig;
 
 const paymentStatusConfig = {
@@ -138,6 +154,73 @@ export function AppointmentDetailDialog({
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
   const { settings } = useBusinessSettings();
+  const { data: appointmentHistory = [] } = useQuery({
+    queryKey: ['appointment-history', appointment?.id],
+    enabled: open && !!appointment?.id,
+    queryFn: async () => {
+      if (!appointment?.id) return [] as AppointmentHistoryEvent[];
+
+      const [auditResult, financialResult, cashResult] = await Promise.all([
+        supabase
+          .from('audit_logs')
+          .select('id, action, created_at, old_data, new_data, user_email')
+          .eq('table_name', 'appointments')
+          .eq('record_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('financial_entries')
+          .select('id, created_at, type, description, amount, status, paid_date, notes')
+          .eq('appointment_id', appointment.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('cash_transactions')
+          .select('id, created_at, type, category, description, amount, payment_method, reference_type')
+          .eq('reference_id', appointment.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (auditResult.error) throw auditResult.error;
+      if (financialResult.error) throw financialResult.error;
+      if (cashResult.error) throw cashResult.error;
+
+      const auditEvents = (auditResult.data || []).map((entry) => ({
+        id: `audit-${entry.id}`,
+        created_at: entry.created_at,
+        title: entry.action === 'payment_processed' ? 'Baixa registrada' : 'Agendamento alterado',
+        description: entry.user_email ? `Ação: ${entry.action} por ${entry.user_email}` : `Ação: ${entry.action}`,
+        amount: Number((entry.new_data as Record<string, unknown> | null)?.amount_paid || 0) || undefined,
+        kind: entry.action === 'payment_processed' ? 'payment' : 'change',
+      })) satisfies AppointmentHistoryEvent[];
+
+      const financialEvents = (financialResult.data || []).map((entry) => {
+        const isRefund = entry.type === 'payable' || entry.type === 'expense' || /devolu|estorno|desconto/i.test(entry.description || '');
+        return {
+          id: `financial-${entry.id}`,
+          created_at: entry.created_at,
+          title: isRefund ? 'Estorno/ajuste financeiro' : 'Registro financeiro',
+          description: `${entry.description}${entry.status ? ` • ${entry.status}` : ''}`,
+          amount: Number(entry.amount || 0),
+          kind: isRefund ? 'refund' : 'payment',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      const cashEvents = (cashResult.data || []).map((entry) => {
+        const isRefund = entry.type === 'expense' || entry.category === 'refund';
+        return {
+          id: `cash-${entry.id}`,
+          created_at: entry.created_at,
+          title: isRefund ? 'Estorno no caixa' : 'Movimento de caixa',
+          description: `${entry.description || 'Movimento vinculado ao agendamento'}${entry.payment_method ? ` • ${entry.payment_method}` : ''}`,
+          amount: Number(entry.amount || 0),
+          kind: isRefund ? 'refund' : 'payment',
+        } satisfies AppointmentHistoryEvent;
+      });
+
+      return [...auditEvents, ...financialEvents, ...cashEvents].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+  });
   
   // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');
@@ -596,6 +679,100 @@ export function AppointmentDetailDialog({
   const effectivePaymentStatus = calculateEffectivePaymentStatus();
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
+
+  const receiptRows = [
+    {
+      item: appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço',
+      type: isPackageAppointment ? 'Pacote' : 'Serviço',
+      quantity: 1,
+      unitPrice: totalPrice,
+      total: totalPrice,
+    },
+    ...(appointment.additional_items || []).map((item) => ({
+      item: item.service?.name || item.product?.name || (item.item_type === 'service' ? 'Serviço adicional' : 'Produto adicional'),
+      type: item.item_type === 'service' ? 'Serviço adicional' : 'Produto',
+      quantity: Number(item.quantity || 0),
+      unitPrice: Number(item.unit_price || 0),
+      total: Number(item.total_amount || 0),
+    })),
+  ];
+
+  const normalizePdfText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const buildReceiptPdf = () => {
+    const doc = new jsPDF();
+    const clinicName = 'Clínica de Estética';
+    const receiptNumber = appointment.id.slice(0, 8).toUpperCase();
+    const paymentMethods = (appointment.payment_methods || [])
+      .map((method) => activePaymentMethods.find((item) => item.id === method)?.name || method)
+      .join(', ') || 'Não informado';
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text(normalizePdfText('Recibo de Baixa'), 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`${clinicName} • Recibo ${receiptNumber}`), 14, 28);
+    doc.text(normalizePdfText(`Horário da clínica: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, 35);
+    doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, 42);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(normalizePdfText('Cliente e agendamento'), 14, 56);
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`Cliente: ${appointment.client?.name || 'Não informado'}`), 14, 64);
+    doc.text(normalizePdfText(`Telefone: ${appointment.client?.phone || 'Não informado'}`), 14, 71);
+    doc.text(normalizePdfText(`Profissional: ${professional?.name || 'Não informado'}`), 14, 78);
+    doc.text(normalizePdfText(`Data: ${format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), 'dd/MM/yyyy')} • ${formatTimeInTimeZone(appointment.start_time, settings?.timezone)} às ${formatTimeInTimeZone(appointment.end_time, settings?.timezone)}`), 14, 85);
+
+    autoTable(doc, {
+      startY: 96,
+      head: [['Item', 'Tipo', 'Qtd.', 'Unitário', 'Total']],
+      body: receiptRows.map((row) => [
+        normalizePdfText(row.item),
+        normalizePdfText(row.type),
+        String(row.quantity),
+        formatCurrency(row.unitPrice),
+        formatCurrency(row.total),
+      ]),
+      styles: { font: 'helvetica', fontSize: 9 },
+      headStyles: { fillColor: [44, 62, 80] },
+    });
+
+    const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 120;
+    doc.setFont('helvetica', 'normal');
+    doc.text(normalizePdfText(`Valor original: ${formatCurrency(totalPrice)}`), 14, finalY + 12);
+    doc.text(normalizePdfText(`Serviços/produtos adicionados: ${formatCurrency(persistedAdditionalItemsTotal)}`), 14, finalY + 20);
+    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, finalY + 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(normalizePdfText(`Total final: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}`), 14, finalY + 40);
+    doc.setFontSize(11);
+    doc.text(normalizePdfText(`Valor pago: ${formatCurrency(amountPaid)}`), 14, finalY + 49);
+    return doc;
+  };
+
+  const handleDownloadReceipt = () => {
+    buildReceiptPdf().save(`recibo_${safeClient.name.replace(/\s+/g, '_')}_${appointment.id.slice(0, 8)}.pdf`);
+    toast.success('Recibo gerado para download.');
+  };
+
+  const handleSendReceipt = async () => {
+    const phone = appointment.client?.phone?.replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sem telefone cadastrado.');
+      return;
+    }
+    const pdfBlob = buildReceiptPdf().output('blob');
+    const file = new File([pdfBlob], `recibo_${appointment.id.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+    const shareData = { files: [file], title: 'Recibo de pagamento', text: `Recibo da baixa de ${safeClient.name}` };
+    if (navigator.canShare?.(shareData)) {
+      await navigator.share(shareData);
+      return;
+    }
+    const message = encodeURIComponent(`Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`);
+    window.open(`https://wa.me/55${phone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.');
+  };
 
   const addPaymentMethod = () => {
     setPayments([...payments, { method: '', amount: '' }]);
@@ -1128,6 +1305,34 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
+              {(appointment.additional_items?.length || 0) > 0 && (
+                <div className="space-y-2 p-3 rounded-lg border bg-muted/20">
+                  <p className="text-sm font-medium">Serviços/produtos adicionados</p>
+                  {appointment.additional_items?.map((item) => (
+                    <div key={item.id || `${item.item_type}-${item.service_id}-${item.product_id}`} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">
+                        {item.item_type === 'service' ? <Sparkles className="h-3 w-3 inline mr-1" /> : <ShoppingCart className="h-3 w-3 inline mr-1" />}
+                        {item.service?.name || item.product?.name || 'Item adicional'} × {Number(item.quantity || 0)}
+                      </span>
+                      <span className="font-medium">{formatCurrency(Number(item.total_amount || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(amountPaid > 0 || persistedAdditionalItemsTotal > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" onClick={handleDownloadReceipt}>
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Baixar recibo PDF
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleSendReceipt}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar ao cliente
+                  </Button>
+                </div>
+              )}
+
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">
@@ -1569,6 +1774,52 @@ export function AppointmentDetailDialog({
                 </div>
               </>
             )}
+
+            <Separator />
+            <Tabs defaultValue="items" className="space-y-3">
+              <TabsList className="grid w-full grid-cols-3 h-9">
+                <TabsTrigger value="items" className="text-xs">Itens</TabsTrigger>
+                <TabsTrigger value="changes" className="text-xs">Mudanças</TabsTrigger>
+                <TabsTrigger value="refunds" className="text-xs">Estornos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="items" className="space-y-2 mt-0">
+                {receiptRows.map((row, index) => (
+                  <div key={`${row.type}-${index}`} className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30 text-sm">
+                    <div>
+                      <p className="font-medium">{row.item}</p>
+                      <p className="text-xs text-muted-foreground">{row.type} • qtd. {row.quantity}</p>
+                    </div>
+                    <span className="font-semibold">{formatCurrency(row.total)}</span>
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="changes" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma mudança registrada.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{event.title}</p>
+                      <span className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM HH:mm')}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                  </div>
+                ))}
+              </TabsContent>
+              <TabsContent value="refunds" className="space-y-2 mt-0">
+                {appointmentHistory.filter((event) => event.kind === 'refund').length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum estorno registrado.</p>
+                ) : appointmentHistory.filter((event) => event.kind === 'refund').map((event) => (
+                  <div key={event.id} className="p-2 rounded-md border border-destructive/20 bg-destructive/5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-destructive">{event.title}</p>
+                      <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {event.description}</p>
+                  </div>
+                ))}
+              </TabsContent>
+            </Tabs>
 
             {/* Created/Updated By Info */}
             <Separator />

@@ -596,6 +596,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 <p><span className="text-muted-foreground">Data:</span> {format(new Date(selectedCreditTransaction.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
                 <p><span className="text-muted-foreground">Tipo:</span> {getClientCreditTransactionTypeLabel(selectedCreditTransaction.transaction_type)}</p>
                 <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(Number(selectedCreditTransaction.amount || 0))}</p>
+                <p><span className="text-muted-foreground">Profissional responsável:</span> {selectedCreditTransaction.professional?.name || '— (não registrado)'}</p>
                 <p><span className="text-muted-foreground">Origem:</span> {getTransactionOrigin(selectedCreditTransaction)}</p>
                 <p><span className="text-muted-foreground">Referência do documento/atendimento:</span> {getTransactionReference(selectedCreditTransaction)}</p>
                 <p><span className="text-muted-foreground">Descrição:</span> {selectedCreditTransaction.description}</p>

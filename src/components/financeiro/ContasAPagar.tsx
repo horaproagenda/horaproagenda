@@ -48,6 +48,7 @@ import { useBanks } from '@/hooks/useBanks';
 import { useReminders } from '@/hooks/useReminders';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
+import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();

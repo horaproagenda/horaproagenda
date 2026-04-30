@@ -25,6 +25,7 @@ import { CommissionsReport } from '@/components/caixa/CommissionsReport';
 import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
+import { FinancialDivergenceAlert } from '@/components/financeiro/FinancialDivergenceAlert';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';

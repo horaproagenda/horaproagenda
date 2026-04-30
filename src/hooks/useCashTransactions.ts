@@ -174,6 +174,7 @@ export function useCashTransactions(cashRegisterId?: string) {
         };
       }) as CashTransaction[];
     },
+    staleTime: 0,
   });
 
   const createTransaction = useMutation({

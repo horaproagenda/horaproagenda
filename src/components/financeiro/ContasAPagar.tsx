@@ -23,16 +23,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   Table,
   TableBody,
   TableCell,
@@ -40,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
+import { Plus, Check, AlertCircle, DollarSign, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
@@ -52,7 +42,7 @@ import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedF
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
 export function ContasAPagar() {
-  const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
+  const { payables, createEntry, updateEntry } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
@@ -63,9 +53,6 @@ export function ContasAPagar() {
     date: ['month'],
     status: ['pending'],
   });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<any>(null);
-  const [deleteRecurring, setDeleteRecurring] = useState(false);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [entryToPay, setEntryToPay] = useState<any>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
@@ -357,33 +344,6 @@ export function ContasAPagar() {
     setCreateBoletoReminder(false);
   };
 
-  const openDeleteDialog = (entry: any) => {
-    setEntryToDelete(entry);
-    setDeleteRecurring(false);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!entryToDelete) return;
-
-    if (deleteRecurring && entryToDelete.is_recurring) {
-      const baseDescription = entryToDelete.description.replace(/\s*\(\d+\/\d+\)$/, '');
-      const relatedEntries = payables.filter(e => 
-        e.description.replace(/\s*\(\d+\/\d+\)$/, '') === baseDescription &&
-        parseISO(e.due_date) >= parseISO(entryToDelete.due_date)
-      );
-      
-      for (const entry of relatedEntries) {
-        await deleteEntry.mutateAsync(entry.id);
-      }
-    } else {
-      await deleteEntry.mutateAsync(entryToDelete.id);
-    }
-    
-    setDeleteDialogOpen(false);
-    setEntryToDelete(null);
-  };
-
   const getStatusDisplay = (entry: any) => {
     if (entry.status === 'paid') {
       // Check if it was a partial payment
@@ -619,9 +579,6 @@ export function ContasAPagar() {
                             <Pencil className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(entry)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -632,34 +589,6 @@ export function ContasAPagar() {
         </ScrollArea>
       </CardContent>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja excluir a conta "{entryToDelete?.description}"?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {entryToDelete?.is_recurring && (
-            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-              <Switch
-                checked={deleteRecurring}
-                onCheckedChange={setDeleteRecurring}
-              />
-              <Label className="text-sm">
-                Excluir esta e todas as recorrências futuras
-              </Label>
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Payment / Edit Payment Dialog */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>

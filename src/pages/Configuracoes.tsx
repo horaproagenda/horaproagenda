@@ -32,6 +32,7 @@ const Configuracoes = () => {
   const [dragAndDropEnabled, setDragAndDropEnabled] = useState(true);
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [overdueDaysThreshold, setOverdueDaysThreshold] = useState(0);
 
   useEffect(() => {
     if (settings) {

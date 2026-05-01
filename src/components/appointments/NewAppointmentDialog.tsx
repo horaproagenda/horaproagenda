@@ -343,6 +343,9 @@ export function NewAppointmentDialog({
     const totalSessions = packageData?.total_sessions || 1;
     if (totalSessions <= 1) return [];
 
+    const workSundays = settings?.work_sundays ?? false;
+    const workSaturdays = settings?.work_saturdays ?? true;
+
     const dates: Date[] = [appointmentTimes.startTime];
     let currentDate = appointmentTimes.startTime;
 
@@ -360,6 +363,14 @@ export function NewAppointmentDialog({
         }
       }
 
+      // Skip closed days (Sundays/Saturdays)
+      while (
+        (!workSundays && futureDate.getDay() === 0) ||
+        (!workSaturdays && futureDate.getDay() === 6)
+      ) {
+        futureDate.setDate(futureDate.getDate() + 1);
+      }
+
       // Apply preferred time if set
       if (preferredTime) {
         const zonedFutureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
@@ -371,7 +382,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, settings?.timezone]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, settings?.timezone, settings?.work_sundays, settings?.work_saturdays]);
 
   // Update preview dates when calculation changes
   useEffect(() => {

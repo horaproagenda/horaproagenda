@@ -529,32 +529,55 @@ export function useClientProfile(clientId: string) {
           packageId: sale.package_id || undefined,
         }));
     }),
-    ...appointments
-      .filter(a => {
-        if (a.service_id && saleLinkedServiceIds.has(a.service_id)) return false;
-        return (a.amount_paid || 0) > 0;
-      })
-      .map(a => {
+    ...(() => {
+      // Deduplicate package appointments — each package's payment should appear only once,
+      // not once per session, since amount_paid is propagated across all sessions.
+      const seenPackageIds = new Set<string>();
+      const items: PaymentHistoryItem[] = [];
+
+      for (const a of appointments) {
+        if (a.service_id && saleLinkedServiceIds.has(a.service_id)) continue;
+        if ((a.amount_paid || 0) <= 0) continue;
+
+        const pkg = a.package_appointment?.package;
+        const packageId = pkg?.id;
+
+        if (packageId) {
+          if (seenPackageIds.has(packageId)) continue;
+          // Skip if there is already a sale registered for this package
+          if (appointmentSaleIds.has(packageId)) continue;
+          seenPackageIds.add(packageId);
+        }
+
         const servicePrice = Number(a.service?.price || 0);
+        const packagePrice = Number(pkg?.total_price || 0);
+        const totalPrice = packageId ? packagePrice : servicePrice;
         const amountPaid = Number(a.amount_paid || 0);
         const paymentMethodNames = (a.payment_methods || [])
           .map(m => getPaymentMethodName(m))
           .filter(Boolean)
           .join(', ');
+        const displayName = packageId
+          ? (pkg?.name || 'Pacote')
+          : (a.service?.name || 'Atendimento');
 
-        return {
-          id: `apt-${a.id}`,
+        items.push({
+          id: packageId ? `pkg-${packageId}` : `apt-${a.id}`,
           date: a.updated_at?.split('T')[0] || a.start_time.split('T')[0],
-          description: a.service?.name || 'Atendimento',
-          serviceName: a.service?.name || 'Atendimento',
+          description: displayName,
+          serviceName: displayName,
           amount: amountPaid,
-          totalPrice: servicePrice,
-          pendingAmount: Math.max(0, servicePrice - amountPaid),
+          totalPrice,
+          pendingAmount: Math.max(0, totalPrice - amountPaid),
           paymentMethod: paymentMethodNames || '-',
           source: 'appointment' as const,
           status: 'paid' as const,
-        };
-      }),
+          packageId: packageId || undefined,
+        });
+      }
+
+      return items;
+    })(),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate detailed stats - include confirmed in scheduled count

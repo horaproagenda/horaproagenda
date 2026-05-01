@@ -349,9 +349,9 @@ serve(async (req) => {
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
-        payment_methods: body.payment_methods,
-        amount_paid: body.amount_paid,
-        payment_status: body.payment_status,
+        payment_methods: accumulatedPaymentMethods,
+        amount_paid: accumulatedAmountPaid,
+        payment_status: resolvedPaymentStatus,
         updated_by: userId,
       })
       .eq('id', body.appointment_id)
@@ -367,8 +367,7 @@ serve(async (req) => {
     }
 
     // Propagate payment_status to all sibling appointments in the same package
-    if (appointment.package_appointment?.package_id) {
-      const packageId = appointment.package_appointment.package_id;
+    if (packageId) {
       
       // Get all package_appointments for this package
       const { data: siblingPAs } = await supabase
@@ -386,9 +385,9 @@ serve(async (req) => {
           const { error: propagateError } = await supabase
             .from('appointments')
             .update({
-              payment_status: body.payment_status,
-              amount_paid: body.amount_paid,
-              payment_methods: body.payment_methods,
+              payment_status: resolvedPaymentStatus,
+              amount_paid: accumulatedAmountPaid,
+              payment_methods: accumulatedPaymentMethods,
               updated_by: userId,
             })
             .in('id', siblingIds);
@@ -396,7 +395,7 @@ serve(async (req) => {
           if (propagateError) {
             console.error('Error propagating payment to siblings:', propagateError);
           } else {
-            console.log(`Propagated payment (status='${body.payment_status}', amount=${body.amount_paid}) to ${siblingIds.length} sibling appointments in package ${packageId}`);
+            console.log(`Propagated package payment (status='${resolvedPaymentStatus}', amount=${accumulatedAmountPaid}) to ${siblingIds.length} sibling appointments in package ${packageId}`);
           }
         }
       }

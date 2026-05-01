@@ -197,6 +197,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   });
 
   const isCommissionBased = form.watch('is_commission_based');
+  const commissionType = form.watch('commission_type');
+  const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
   const permissions = form.watch('permissions');
 

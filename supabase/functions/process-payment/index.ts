@@ -469,10 +469,10 @@ serve(async (req) => {
     }
 
     // If this is a package payment and package exists, update its payment_methods
-    if (isPackageAppointment && packageData?.id && body.payment_status === 'paid' && !isPackageAlreadyPaid) {
+    if (isPackageAppointment && packageData?.id && resolvedPaymentStatus === 'paid' && !isPackageAlreadyPaid) {
       const { error: updatePackageError } = await supabase
         .from('service_packages')
-        .update({ payment_methods: body.payment_methods })
+        .update({ payment_methods: accumulatedPaymentMethods })
         .eq('id', packageData.id);
       
       if (updatePackageError) {
@@ -683,7 +683,7 @@ serve(async (req) => {
       }
 
       // Create pending receivable for partial payments
-      if (remainingAfterPayment > 0 && body.payment_status === 'partial') {
+      if (remainingAfterPayment > 0 && resolvedPaymentStatus === 'partial') {
         const { error: pendingError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
           description: `Saldo pendente: ${serviceName} - ${clientName}`,
@@ -702,7 +702,7 @@ serve(async (req) => {
       }
 
       // Mark pending entries as paid if fully paid
-      if (body.payment_status === 'paid') {
+      if (resolvedPaymentStatus === 'paid') {
         const { error: updatePendingError } = await supabase
           .from('financial_entries')
           .update({ status: 'paid', paid_date: today })
@@ -722,9 +722,9 @@ serve(async (req) => {
       record_id: body.appointment_id,
       user_id: userId,
       new_data: {
-        amount_paid: body.amount_paid,
-        payment_status: body.payment_status,
-        payment_methods: body.payment_methods,
+        amount_paid: accumulatedAmountPaid,
+        payment_status: resolvedPaymentStatus,
+        payment_methods: accumulatedPaymentMethods,
         used_client_credit: body.used_client_credit || 0,
         discount_amount: discountAmount,
         additional_items_total: additionalItemsTotal,
@@ -740,7 +740,7 @@ serve(async (req) => {
         payment_details: {
           previous_amount: previousAmountPaid,
           new_payment: newCashPaymentAmount,
-          total_paid: body.amount_paid,
+          total_paid: accumulatedAmountPaid,
           remaining: remainingAfterPayment
         }
       }),

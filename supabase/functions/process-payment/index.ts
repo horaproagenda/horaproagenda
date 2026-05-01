@@ -297,10 +297,50 @@ serve(async (req) => {
     }
 
     // 5. Calculate payment amounts using the correct total price
-    const previousAmountPaid = appointment.amount_paid || 0;
-    const newPaymentAmount = body.amount_paid - previousAmountPaid;
+    const packageId = appointment.package_appointment?.package_id || null;
+    let previousAmountPaid = Number(appointment.amount_paid || 0);
+    let accumulatedAmountPaid = Number(body.amount_paid || 0);
+    let accumulatedPaymentMethods = [...body.payment_methods];
+
+    if (packageId) {
+      const { data: packageRows, error: packageRowsError } = await supabase
+        .from('package_appointments')
+        .select('appointment:appointments(id, amount_paid, payment_methods)')
+        .eq('package_id', packageId)
+        .not('appointment_id', 'is', null);
+
+      if (packageRowsError) {
+        console.error('Error fetching package payment totals:', packageRowsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to synchronize package payments', details: packageRowsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const packageAppointments = (packageRows || [])
+        .map((row: any) => row.appointment)
+        .filter(Boolean);
+      const currentPackagePaid = Math.max(...packageAppointments.map((apt: any) => Number(apt.amount_paid || 0)), previousAmountPaid, 0);
+      const requestedDelta = typeof body.payment_delta === 'number'
+        ? body.payment_delta
+        : Math.max(0, Number(body.amount_paid || 0) - previousAmountPaid);
+
+      previousAmountPaid = currentPackagePaid;
+      accumulatedAmountPaid = Math.max(currentPackagePaid, Math.min(totalRequiredAmount, currentPackagePaid + requestedDelta));
+      accumulatedPaymentMethods = [...new Set([
+        ...packageAppointments.flatMap((apt: any) => Array.isArray(apt.payment_methods) ? apt.payment_methods : []),
+        ...body.payment_methods,
+      ])];
+    }
+
+    const newPaymentAmount = Math.max(0, accumulatedAmountPaid - previousAmountPaid);
     const newCashPaymentAmount = Math.max(0, newPaymentAmount - (body.used_client_credit || 0));
-    const remainingAfterPayment = Math.max(0, totalRequiredAmount - body.amount_paid);
+    const remainingAfterPayment = Math.max(0, totalRequiredAmount - accumulatedAmountPaid);
+    const resolvedPaymentStatus: PaymentRequest['payment_status'] = totalRequiredAmount <= 0 || accumulatedAmountPaid >= totalRequiredAmount
+      ? 'paid'
+      : accumulatedAmountPaid > 0
+        ? 'partial'
+        : 'pending';
 
     // Note: We allow payments exceeding service price for flexibility
     // (tips, advance payments, package adjustments, different negotiated prices, etc.)

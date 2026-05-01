@@ -845,12 +845,11 @@ export function NewAppointmentDialog({
 
           // Report results
           if (failedSessions.length > 0) {
-            toast.warning(`${createdCount + 1} agendamentos criados. Sessões ${failedSessions.join(', ')} tiveram conflitos e não foram agendadas.`);
+            toast.error(`Sessões ${failedSessions.join(', ')} não foram agendadas devido a conflitos de horário. Verifique a agenda e reagende manualmente.`, { duration: 8000 });
+            toast.info(`${createdCount + 1} de ${sessionsToCreate + 1} agendamentos foram criados.`);
           } else {
             toast.success(`${createdCount + 1} agendamentos criados automaticamente!`);
           }
-
-          toast.success(`${sessionsToCreate + 1} agendamentos criados automaticamente!`);
 
           // Send WhatsApp notification for all scheduled sessions
           if (sendWhatsappNotification && clientData?.phone) {

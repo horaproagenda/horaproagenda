@@ -409,6 +409,13 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {(prof as any).is_commission_based && (prof as any).commission_type === 'both' && (
+                        <ProfessionalServiceCommissionDialog professionalId={prof.id} professionalName={prof.name}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Comissões por serviço">
+                            <Settings2 className="h-4 w-4 text-amber-500" />
+                          </Button>
+                        </ProfessionalServiceCommissionDialog>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

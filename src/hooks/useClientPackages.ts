@@ -325,15 +325,33 @@ export function useClientPackages(clientId: string | null) {
 
       if (updateSessionError) throw updateSessionError;
 
-      // Get the package to check if it was paid (has payment_methods) and get total_sessions
+      // Get the package and current package-level payment state
       const { data: pkgData } = await supabase
         .from('service_packages')
-        .select('payment_methods, total_sessions, name')
+        .select('payment_methods, total_sessions, total_price, name')
         .eq('id', packageId)
         .single();
 
-      // Package is paid only if payment_methods has values (set during sale)
-      const isPackagePaid = pkgData?.payment_methods && pkgData.payment_methods.length > 0;
+      const { data: packagePaymentRows } = await supabase
+        .from('package_appointments')
+        .select('appointment:appointments(amount_paid, payment_methods)')
+        .eq('package_id', packageId)
+        .not('appointment_id', 'is', null);
+
+      const packageAppointments = (packagePaymentRows || [])
+        .map((row: any) => row.appointment)
+        .filter(Boolean);
+      const packageAmountPaid = Math.max(...packageAppointments.map((apt: any) => Number(apt.amount_paid || 0)), 0);
+      const packagePaymentMethods = [...new Set([
+        ...(pkgData?.payment_methods || []),
+        ...packageAppointments.flatMap((apt: any) => Array.isArray(apt.payment_methods) ? apt.payment_methods : []),
+      ])];
+      const packageTotalPrice = Number(pkgData?.total_price || 0);
+      const packagePaymentStatus = packageTotalPrice > 0 && packageAmountPaid >= packageTotalPrice
+        ? 'paid'
+        : packageAmountPaid > 0
+          ? 'partial'
+          : 'pending';
       const totalSessions = pkgData?.total_sessions || 1;
       const packageName = pkgData?.name || 'Pacote';
 
@@ -365,7 +383,9 @@ export function useClientPackages(clientId: string | null) {
         .update({
           package_appointment_id: pendingSession.id,
           service_id: pendingSession.service_id || null,
-          payment_status: isPackagePaid ? 'paid' : 'pending',
+          payment_status: packagePaymentStatus,
+          amount_paid: packageAmountPaid,
+          payment_methods: packagePaymentMethods,
           notes: finalNotes,
         })
         .eq('id', appointmentId);

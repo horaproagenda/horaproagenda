@@ -753,16 +753,15 @@ export function AppointmentDetailDialog({
   // Calculate amount paid based on actual data
   // For packages: if paid, show full package price as paid. If not paid, show appointment's amount_paid
   // For regular services: show the actual amount_paid from the appointment
-  const amountPaid = isPackageAppointment 
-    ? (isPackagePaid ? packagePrice : (appointment.amount_paid || 0))
-    : (appointment.amount_paid || 0);
+  const amountPaid = isPackageAppointment
+    ? Math.min(packagePrice || Number(appointment.amount_paid || 0), Number(appointment.amount_paid || 0))
+    : Number(appointment.amount_paid || 0);
   
   const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal) - amountPaid);
   
   // Determine effective payment status based on actual amounts
   // This ensures consistency between displayed status and values
   const calculateEffectivePaymentStatus = () => {
-    if (isPackagePaid) return 'paid';
     if (totalPrice === 0) return 'paid';
     if (amountPaid >= totalPrice) return 'paid';
     if (amountPaid > 0) return 'partial';

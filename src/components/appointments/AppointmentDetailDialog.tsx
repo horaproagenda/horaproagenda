@@ -732,7 +732,7 @@ export function AppointmentDetailDialog({
   const packagePrice = packageData?.total_price || 0;
   
   const totalPrice = isPackageAppointment 
-    ? (isPackagePaid ? 0 : packagePrice)
+    ? packagePrice
     : servicePrice;
   const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
   const paymentAdditionalItems = additionalItems

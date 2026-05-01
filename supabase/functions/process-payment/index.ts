@@ -325,6 +325,40 @@ serve(async (req) => {
       );
     }
 
+    // Propagate payment_status to all sibling appointments in the same package
+    if (appointment.package_appointment?.package_id) {
+      const packageId = appointment.package_appointment.package_id;
+      
+      // Get all package_appointments for this package
+      const { data: siblingPAs } = await supabase
+        .from('package_appointments')
+        .select('appointment_id')
+        .eq('package_id', packageId)
+        .not('appointment_id', 'is', null);
+
+      if (siblingPAs && siblingPAs.length > 0) {
+        const siblingIds = siblingPAs
+          .map((pa: any) => pa.appointment_id)
+          .filter((id: string) => id !== body.appointment_id);
+
+        if (siblingIds.length > 0) {
+          const { error: propagateError } = await supabase
+            .from('appointments')
+            .update({
+              payment_status: body.payment_status,
+              updated_by: userId,
+            })
+            .in('id', siblingIds);
+
+          if (propagateError) {
+            console.error('Error propagating payment status to siblings:', propagateError);
+          } else {
+            console.log(`Propagated payment_status '${body.payment_status}' to ${siblingIds.length} sibling appointments in package ${packageId}`);
+          }
+        }
+      }
+    }
+
     if (additionalItems.length > 0) {
       const rows = additionalItems.map((item) => ({
         appointment_id: body.appointment_id,

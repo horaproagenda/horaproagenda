@@ -350,11 +350,15 @@ export function NewAppointmentDialog({
     let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
+      const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
+      // Use the step's interval, falling back to previous step, package default, or 7 days
       const intervalDays = packageSequenceSteps.length > 0
-        ? Number(previousStep?.interval_after_days || 0)
+        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
         : Number(packageData?.interval_days || 7);
-      const futureDate = addDays(currentDate, intervalDays);
+      // Ensure minimum 1 day interval to prevent overlapping sessions
+      const safeInterval = Math.max(intervalDays, 1);
+      const futureDate = addDays(currentDate, safeInterval);
       
       // Adjust to preferred day of week if set
       if (preferredDayOfWeek !== null) {

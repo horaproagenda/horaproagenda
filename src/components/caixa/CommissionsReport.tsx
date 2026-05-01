@@ -80,6 +80,8 @@ export function CommissionsReport({
   const { activePaymentMethods } = usePaymentMethods();
   const { banks } = useBanks();
   
+  const queryClient = useQueryClient();
+  
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState<ProfessionalCommission | null>(null);
@@ -87,6 +89,18 @@ export function CommissionsReport({
   const [paymentTime, setPaymentTime] = useState(format(new Date(), 'HH:mm'));
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [bankId, setBankId] = useState<string>('');
+
+  // Fetch per-service commission overrides
+  const { data: serviceCommissions = [] } = useQuery({
+    queryKey: ['professional_service_commissions_all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professional_service_commissions' as any)
+        .select('*');
+      if (error) throw error;
+      return data as any[];
+    },
+  });
 
   // Check if a commission was already paid
   const paidCommissions = useMemo(() => {

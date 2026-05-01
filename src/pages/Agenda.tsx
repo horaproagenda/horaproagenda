@@ -824,7 +824,15 @@ const Agenda = () => {
     // CRITICAL FIX: Calculate the actual amount to record as paid
     // Apply discount first, then check for overpayment
     const priceAfterDiscount = Math.max(0, totalPrice - discount);
-    const existingPaid = appointment.amount_paid || 0;
+    const existingPaid = isPackageAppointment && appointment.package_appointment?.package_id
+      ? Math.max(
+          ...appointments
+            .filter((item) => item.package_appointment?.package_id === appointment.package_appointment?.package_id)
+            .map((item) => Number(item.amount_paid || 0)),
+          Number(appointment.amount_paid || 0),
+          0
+        )
+      : Number(appointment.amount_paid || 0);
     const remainingToPay = Math.max(0, priceAfterDiscount - existingPaid);
 
     if (creditUsed > Math.min(availableCredit, remainingToPay)) {
@@ -900,6 +908,7 @@ const Agenda = () => {
       payment: {
         payment_methods: newMethods,
         amount_paid: amountToSendToBackend,
+        payment_delta: actualAmountForProcedure + saldoToAdd + courtesyToAdd,
         payment_status: paymentStatus,
         additional_items: additionalItems,
         client_credit: saldoToAdd > 0 ? saldoToAdd : undefined, // Saldo: registered in cash/financial

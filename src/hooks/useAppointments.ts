@@ -21,6 +21,7 @@ export interface AppointmentInsert {
 export interface PaymentUpdate {
   payment_methods: string[];
   amount_paid: number;
+  payment_delta?: number;
   payment_status: PaymentStatus;
   additional_items?: Array<{
     item_type: 'service' | 'product';
@@ -81,7 +82,7 @@ export function useAppointments() {
           ),
           room:rooms(id, name),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
-            id, session_number, original_session_number, status,
+            id, package_id, session_number, original_session_number, status,
             package:service_packages(id, name, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)
           ),
           additional_items:appointment_additional_items(
@@ -203,6 +204,7 @@ export function useAppointments() {
           appointment_id: id,
           payment_methods: payment.payment_methods,
           amount_paid: payment.amount_paid,
+          payment_delta: payment.payment_delta,
           payment_status: payment.payment_status,
           additional_items: payment.additional_items,
           client_credit: payment.client_credit,
@@ -243,29 +245,42 @@ export function useAppointments() {
         const targetApt = old.find(apt => apt.id === id);
         const packageId = targetApt?.package_appointment?.package_id;
         
-        // Get all sibling appointment IDs in the same package
-        const siblingIds = packageId
-          ? old
-              .filter(apt => apt.package_appointment?.package_id === packageId && apt.id !== id)
-              .map(apt => apt.id)
+        const packageAppointments = packageId
+          ? old.filter(apt => apt.package_appointment?.package_id === packageId)
           : [];
+        const existingPackagePaid = packageAppointments.length > 0
+          ? Math.max(...packageAppointments.map(apt => Number(apt.amount_paid || 0)), 0)
+          : Number(targetApt?.amount_paid || 0);
+        const paymentDelta = typeof payment.payment_delta === 'number'
+          ? payment.payment_delta
+          : Math.max(0, Number(payment.amount_paid || 0) - Number(targetApt?.amount_paid || 0));
+        const packageTotal = Number(targetApt?.package_appointment?.package?.total_price || 0);
+        const syncedAmountPaid = packageId
+          ? Math.max(existingPackagePaid, packageTotal > 0 ? Math.min(packageTotal, existingPackagePaid + paymentDelta) : existingPackagePaid + paymentDelta)
+          : payment.amount_paid;
+        const syncedStatus: PaymentStatus = packageId
+          ? (packageTotal > 0 && syncedAmountPaid >= packageTotal ? 'paid' : syncedAmountPaid > 0 ? 'partial' : 'pending')
+          : payment.payment_status;
+        const syncedMethods = packageId
+          ? [...new Set([...packageAppointments.flatMap(apt => apt.payment_methods || []), ...payment.payment_methods])]
+          : payment.payment_methods;
 
         return old.map(apt => {
           if (apt.id === id) {
             return {
               ...apt,
-              amount_paid: payment.amount_paid,
-              payment_status: payment.payment_status,
-              payment_methods: payment.payment_methods,
+              amount_paid: syncedAmountPaid,
+              payment_status: syncedStatus,
+              payment_methods: syncedMethods,
             };
           }
           // Propagate payment to sibling package appointments
-          if (siblingIds.includes(apt.id)) {
+          if (packageId && apt.package_appointment?.package_id === packageId) {
             return {
               ...apt,
-              amount_paid: payment.amount_paid,
-              payment_status: payment.payment_status,
-              payment_methods: payment.payment_methods,
+              amount_paid: syncedAmountPaid,
+              payment_status: syncedStatus,
+              payment_methods: syncedMethods,
             };
           }
           return apt;

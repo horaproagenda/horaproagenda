@@ -10,6 +10,7 @@ interface PaymentRequest {
   appointment_id: string;
   payment_methods: string[];
   amount_paid: number;
+  payment_delta?: number;
   payment_status: 'pending' | 'partial' | 'paid';
   additional_items?: Array<{
     item_type: 'service' | 'product';
@@ -237,7 +238,7 @@ serve(async (req) => {
     
     // For packages: use full package price. For services: use service price
     const baseRequiredAmount = isPackageAppointment 
-      ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
+      ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
     const totalRequiredAmount = baseRequiredAmount + additionalItemsTotal;
 
@@ -296,10 +297,50 @@ serve(async (req) => {
     }
 
     // 5. Calculate payment amounts using the correct total price
-    const previousAmountPaid = appointment.amount_paid || 0;
-    const newPaymentAmount = body.amount_paid - previousAmountPaid;
+    const packageId = appointment.package_appointment?.package_id || null;
+    let previousAmountPaid = Number(appointment.amount_paid || 0);
+    let accumulatedAmountPaid = Number(body.amount_paid || 0);
+    let accumulatedPaymentMethods = [...body.payment_methods];
+
+    if (packageId) {
+      const { data: packageRows, error: packageRowsError } = await supabase
+        .from('package_appointments')
+        .select('appointment:appointments(id, amount_paid, payment_methods)')
+        .eq('package_id', packageId)
+        .not('appointment_id', 'is', null);
+
+      if (packageRowsError) {
+        console.error('Error fetching package payment totals:', packageRowsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to synchronize package payments', details: packageRowsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const packageAppointments = (packageRows || [])
+        .map((row: any) => row.appointment)
+        .filter(Boolean);
+      const currentPackagePaid = Math.max(...packageAppointments.map((apt: any) => Number(apt.amount_paid || 0)), previousAmountPaid, 0);
+      const requestedDelta = typeof body.payment_delta === 'number'
+        ? body.payment_delta
+        : Math.max(0, Number(body.amount_paid || 0) - previousAmountPaid);
+
+      previousAmountPaid = currentPackagePaid;
+      accumulatedAmountPaid = Math.max(currentPackagePaid, Math.min(totalRequiredAmount, currentPackagePaid + requestedDelta));
+      accumulatedPaymentMethods = [...new Set([
+        ...packageAppointments.flatMap((apt: any) => Array.isArray(apt.payment_methods) ? apt.payment_methods : []),
+        ...body.payment_methods,
+      ])];
+    }
+
+    const newPaymentAmount = Math.max(0, accumulatedAmountPaid - previousAmountPaid);
     const newCashPaymentAmount = Math.max(0, newPaymentAmount - (body.used_client_credit || 0));
-    const remainingAfterPayment = Math.max(0, totalRequiredAmount - body.amount_paid);
+    const remainingAfterPayment = Math.max(0, totalRequiredAmount - accumulatedAmountPaid);
+    const resolvedPaymentStatus: PaymentRequest['payment_status'] = totalRequiredAmount <= 0 || accumulatedAmountPaid >= totalRequiredAmount
+      ? 'paid'
+      : accumulatedAmountPaid > 0
+        ? 'partial'
+        : 'pending';
 
     // Note: We allow payments exceeding service price for flexibility
     // (tips, advance payments, package adjustments, different negotiated prices, etc.)
@@ -308,9 +349,9 @@ serve(async (req) => {
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
-        payment_methods: body.payment_methods,
-        amount_paid: body.amount_paid,
-        payment_status: body.payment_status,
+        payment_methods: accumulatedPaymentMethods,
+        amount_paid: accumulatedAmountPaid,
+        payment_status: resolvedPaymentStatus,
         updated_by: userId,
       })
       .eq('id', body.appointment_id)
@@ -326,8 +367,7 @@ serve(async (req) => {
     }
 
     // Propagate payment_status to all sibling appointments in the same package
-    if (appointment.package_appointment?.package_id) {
-      const packageId = appointment.package_appointment.package_id;
+    if (packageId) {
       
       // Get all package_appointments for this package
       const { data: siblingPAs } = await supabase
@@ -345,9 +385,9 @@ serve(async (req) => {
           const { error: propagateError } = await supabase
             .from('appointments')
             .update({
-              payment_status: body.payment_status,
-              amount_paid: body.amount_paid,
-              payment_methods: body.payment_methods,
+              payment_status: resolvedPaymentStatus,
+              amount_paid: accumulatedAmountPaid,
+              payment_methods: accumulatedPaymentMethods,
               updated_by: userId,
             })
             .in('id', siblingIds);
@@ -355,7 +395,7 @@ serve(async (req) => {
           if (propagateError) {
             console.error('Error propagating payment to siblings:', propagateError);
           } else {
-            console.log(`Propagated payment (status='${body.payment_status}', amount=${body.amount_paid}) to ${siblingIds.length} sibling appointments in package ${packageId}`);
+            console.log(`Propagated package payment (status='${resolvedPaymentStatus}', amount=${accumulatedAmountPaid}) to ${siblingIds.length} sibling appointments in package ${packageId}`);
           }
         }
       }
@@ -429,10 +469,10 @@ serve(async (req) => {
     }
 
     // If this is a package payment and package exists, update its payment_methods
-    if (isPackageAppointment && packageData?.id && body.payment_status === 'paid' && !isPackageAlreadyPaid) {
+    if (isPackageAppointment && packageData?.id && resolvedPaymentStatus === 'paid' && !isPackageAlreadyPaid) {
       const { error: updatePackageError } = await supabase
         .from('service_packages')
-        .update({ payment_methods: body.payment_methods })
+        .update({ payment_methods: accumulatedPaymentMethods })
         .eq('id', packageData.id);
       
       if (updatePackageError) {
@@ -643,7 +683,7 @@ serve(async (req) => {
       }
 
       // Create pending receivable for partial payments
-      if (remainingAfterPayment > 0 && body.payment_status === 'partial') {
+      if (remainingAfterPayment > 0 && resolvedPaymentStatus === 'partial') {
         const { error: pendingError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
           description: `Saldo pendente: ${serviceName} - ${clientName}`,
@@ -662,7 +702,7 @@ serve(async (req) => {
       }
 
       // Mark pending entries as paid if fully paid
-      if (body.payment_status === 'paid') {
+      if (resolvedPaymentStatus === 'paid') {
         const { error: updatePendingError } = await supabase
           .from('financial_entries')
           .update({ status: 'paid', paid_date: today })
@@ -682,9 +722,9 @@ serve(async (req) => {
       record_id: body.appointment_id,
       user_id: userId,
       new_data: {
-        amount_paid: body.amount_paid,
-        payment_status: body.payment_status,
-        payment_methods: body.payment_methods,
+        amount_paid: accumulatedAmountPaid,
+        payment_status: resolvedPaymentStatus,
+        payment_methods: accumulatedPaymentMethods,
         used_client_credit: body.used_client_credit || 0,
         discount_amount: discountAmount,
         additional_items_total: additionalItemsTotal,
@@ -700,7 +740,7 @@ serve(async (req) => {
         payment_details: {
           previous_amount: previousAmountPaid,
           new_payment: newCashPaymentAmount,
-          total_paid: body.amount_paid,
+          total_paid: accumulatedAmountPaid,
           remaining: remainingAfterPayment
         }
       }),

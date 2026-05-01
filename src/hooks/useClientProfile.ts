@@ -482,7 +482,15 @@ export function useClientProfile(clientId: string) {
       if (isCancelled) return [];
 
       const serviceName = sale.service?.name || sale.package?.name || sale.description || '-';
-      const totalPrice = Number(sale.original_amount || sale.package?.total_price || sale.service?.price || sale.final_amount || 0);
+      const totalPrice = Number(
+        sale.original_amount != null && sale.original_amount !== 0
+          ? sale.original_amount
+          : sale.package?.total_price != null && sale.package.total_price !== 0
+            ? sale.package.total_price
+            : sale.service?.price != null && sale.service.price !== 0
+              ? sale.service.price
+              : sale.final_amount || 0
+      );
       const basePayment = sale.paid_at
         ? [{
             id: sale.id,

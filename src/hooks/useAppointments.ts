@@ -259,11 +259,13 @@ export function useAppointments() {
               payment_methods: payment.payment_methods,
             };
           }
-          // Propagate payment_status to sibling package appointments
+          // Propagate payment to sibling package appointments
           if (siblingIds.includes(apt.id)) {
             return {
               ...apt,
+              amount_paid: payment.amount_paid,
               payment_status: payment.payment_status,
+              payment_methods: payment.payment_methods,
             };
           }
           return apt;

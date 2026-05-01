@@ -163,15 +163,40 @@ export function CommissionsReport({
       professionalsMap[profId].appointments.push(apt);
     });
 
-    // Calculate commissions
+    // Calculate commissions - with per-service overrides
     Object.values(professionalsMap).forEach(data => {
-      if (data.professional.is_commission_based && data.commissionPercentage > 0) {
-        data.commissionValue = (data.totalRevenue * data.commissionPercentage) / 100;
-      }
+      if (!data.professional.is_commission_based) return;
+      const prof = data.professional;
+      const profType = (prof as any).commission_type || 'percentage';
+      
+      let totalCommission = 0;
+      data.appointments.forEach(apt => {
+        const amount = apt.amount_paid || 0;
+        const serviceId = apt.service_id;
+        
+        // Check for per-service override
+        const override = serviceId ? serviceCommissions.find(
+          (sc: any) => sc.professional_id === prof.id && sc.service_id === serviceId
+        ) : null;
+
+        if (override) {
+          if (override.commission_type === 'fixed') {
+            totalCommission += Number(override.commission_fixed_value) || 0;
+          } else {
+            totalCommission += (amount * (Number(override.commission_percentage) || 0)) / 100;
+          }
+        } else if (profType === 'fixed') {
+          totalCommission += Number((prof as any).commission_fixed_value) || 0;
+        } else {
+          totalCommission += (amount * (data.commissionPercentage || 0)) / 100;
+        }
+      });
+      
+      data.commissionValue = totalCommission;
     });
 
     return Object.values(professionalsMap).sort((a, b) => b.commissionValue - a.commissionValue);
-  }, [appointments, professionals, dateRange, paidCommissions]);
+  }, [appointments, professionals, dateRange, paidCommissions, serviceCommissions]);
 
   // Calculate totals
   const totals = useMemo(() => {

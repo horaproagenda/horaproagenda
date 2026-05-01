@@ -209,7 +209,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         ? data.specialties.split(',').map(s => s.trim()).filter(Boolean)
         : [];
 
-      const payload = {
+      const payload: any = {
         name: data.name,
         cpf: data.cpf ? formatCPF(data.cpf) : null,
         birthdate: data.birthdate || null,
@@ -220,7 +220,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         agenda_color: data.agenda_color,
         app_role: data.app_role,
         is_commission_based: data.is_commission_based,
+        commission_type: data.is_commission_based ? data.commission_type : 'percentage',
         commission_percentage: data.is_commission_based ? data.commission_percentage : 0,
+        commission_fixed_value: data.is_commission_based ? data.commission_fixed_value : 0,
+        commission_frequency: data.is_commission_based ? data.commission_frequency : 'monthly',
+        commission_payment_day: data.is_commission_based ? data.commission_payment_day : 1,
         is_active: data.is_active,
         permissions: data.app_role === 'admin' 
           ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))

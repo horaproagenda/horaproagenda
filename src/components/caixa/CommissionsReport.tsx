@@ -49,6 +49,7 @@ import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
+import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Professional } from '@/types';
 
 interface CommissionsReportProps {

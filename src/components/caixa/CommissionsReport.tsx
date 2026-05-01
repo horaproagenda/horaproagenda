@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, parseISO, isWithinInterval } from 'date-fns';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ import { toast } from 'sonner';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
+import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Professional } from '@/types';
 
 interface CommissionsReportProps {
@@ -78,6 +80,8 @@ export function CommissionsReport({
   const { activePaymentMethods } = usePaymentMethods();
   const { banks } = useBanks();
   
+  const queryClient = useQueryClient();
+  
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState<ProfessionalCommission | null>(null);
@@ -85,6 +89,18 @@ export function CommissionsReport({
   const [paymentTime, setPaymentTime] = useState(format(new Date(), 'HH:mm'));
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [bankId, setBankId] = useState<string>('');
+
+  // Fetch per-service commission overrides
+  const { data: serviceCommissions = [] } = useQuery({
+    queryKey: ['professional_service_commissions_all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professional_service_commissions' as any)
+        .select('*');
+      if (error) throw error;
+      return data as any[];
+    },
+  });
 
   // Check if a commission was already paid
   const paidCommissions = useMemo(() => {
@@ -147,15 +163,40 @@ export function CommissionsReport({
       professionalsMap[profId].appointments.push(apt);
     });
 
-    // Calculate commissions
+    // Calculate commissions - with per-service overrides
     Object.values(professionalsMap).forEach(data => {
-      if (data.professional.is_commission_based && data.commissionPercentage > 0) {
-        data.commissionValue = (data.totalRevenue * data.commissionPercentage) / 100;
-      }
+      if (!data.professional.is_commission_based) return;
+      const prof = data.professional;
+      const profType = (prof as any).commission_type || 'percentage';
+      
+      let totalCommission = 0;
+      data.appointments.forEach(apt => {
+        const amount = apt.amount_paid || 0;
+        const serviceId = apt.service_id;
+        
+        // Check for per-service override
+        const override = serviceId ? serviceCommissions.find(
+          (sc: any) => sc.professional_id === prof.id && sc.service_id === serviceId
+        ) : null;
+
+        if (override) {
+          if (override.commission_type === 'fixed') {
+            totalCommission += Number(override.commission_fixed_value) || 0;
+          } else {
+            totalCommission += (amount * (Number(override.commission_percentage) || 0)) / 100;
+          }
+        } else if (profType === 'fixed') {
+          totalCommission += Number((prof as any).commission_fixed_value) || 0;
+        } else {
+          totalCommission += (amount * (data.commissionPercentage || 0)) / 100;
+        }
+      });
+      
+      data.commissionValue = totalCommission;
     });
 
     return Object.values(professionalsMap).sort((a, b) => b.commissionValue - a.commissionValue);
-  }, [appointments, professionals, dateRange, paidCommissions]);
+  }, [appointments, professionals, dateRange, paidCommissions, serviceCommissions]);
 
   // Calculate totals
   const totals = useMemo(() => {

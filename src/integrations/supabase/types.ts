@@ -2270,6 +2270,54 @@ export type Database = {
           },
         ]
       }
+      professional_service_commissions: {
+        Row: {
+          commission_fixed_value: number | null
+          commission_percentage: number | null
+          commission_type: string
+          created_at: string
+          id: string
+          professional_id: string
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_fixed_value?: number | null
+          commission_percentage?: number | null
+          commission_type?: string
+          created_at?: string
+          id?: string
+          professional_id: string
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_fixed_value?: number | null
+          commission_percentage?: number | null
+          commission_type?: string
+          created_at?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_service_commissions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_service_commissions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           agenda_color: string | null
@@ -2277,7 +2325,11 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           birthdate: string | null
+          commission_fixed_value: number | null
+          commission_frequency: string | null
+          commission_payment_day: number | null
           commission_percentage: number | null
+          commission_type: string | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -2298,7 +2350,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           birthdate?: string | null
+          commission_fixed_value?: number | null
+          commission_frequency?: string | null
+          commission_payment_day?: number | null
           commission_percentage?: number | null
+          commission_type?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -2319,7 +2375,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           birthdate?: string | null
+          commission_fixed_value?: number | null
+          commission_frequency?: string | null
+          commission_payment_day?: number | null
           commission_percentage?: number | null
+          commission_type?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null

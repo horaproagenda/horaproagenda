@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Plus, Trash2, Edit2, Shield, ChevronDown, ChevronRight, Search, Eye } from 'lucide-react';
+import { User, Plus, Trash2, Edit2, Shield, ChevronDown, ChevronRight, Search, Eye, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,6 +39,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 
 const AGENDA_COLORS = [
   { value: '#3B82F6', label: 'Azul' },
@@ -104,6 +105,19 @@ const PERMISSION_CATEGORIES = [
   { key: 'system', label: 'Sistema', icon: '⚙️' },
 ];
 
+const COMMISSION_TYPES = [
+  { value: 'percentage', label: 'Porcentagem' },
+  { value: 'fixed', label: 'Valor Fixo' },
+  { value: 'both', label: 'Ambos (por serviço)' },
+];
+
+const COMMISSION_FREQUENCIES = [
+  { value: 'daily', label: 'Diário' },
+  { value: 'weekly', label: 'Semanal' },
+  { value: 'biweekly', label: 'Quinzenal' },
+  { value: 'monthly', label: 'Mensal' },
+];
+
 const professionalSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   cpf: z.string().trim().optional().refine(
@@ -118,7 +132,11 @@ const professionalSchema = z.object({
   agenda_color: z.string().default('#3B82F6'),
   app_role: z.string().default('professional'),
   is_commission_based: z.boolean().default(false),
+  commission_type: z.string().default('percentage'),
   commission_percentage: z.coerce.number().min(0).max(100).default(0),
+  commission_fixed_value: z.coerce.number().min(0).default(0),
+  commission_frequency: z.string().default('monthly'),
+  commission_payment_day: z.coerce.number().min(0).max(31).default(1),
   is_active: z.boolean(),
   permissions: z.record(z.boolean()).default(defaultPermissions),
 });
@@ -169,13 +187,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       agenda_color: '#3B82F6',
       app_role: 'professional',
       is_commission_based: false,
+      commission_type: 'percentage',
       commission_percentage: 0,
+      commission_fixed_value: 0,
+      commission_frequency: 'monthly',
+      commission_payment_day: 1,
       is_active: true,
       permissions: defaultPermissions,
     },
   });
 
   const isCommissionBased = form.watch('is_commission_based');
+  const commissionType = form.watch('commission_type');
+  const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
   const permissions = form.watch('permissions');
 
@@ -186,7 +210,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         ? data.specialties.split(',').map(s => s.trim()).filter(Boolean)
         : [];
 
-      const payload = {
+      const payload: any = {
         name: data.name,
         cpf: data.cpf ? formatCPF(data.cpf) : null,
         birthdate: data.birthdate || null,
@@ -197,7 +221,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         agenda_color: data.agenda_color,
         app_role: data.app_role,
         is_commission_based: data.is_commission_based,
+        commission_type: data.is_commission_based ? data.commission_type : 'percentage',
         commission_percentage: data.is_commission_based ? data.commission_percentage : 0,
+        commission_fixed_value: data.is_commission_based ? data.commission_fixed_value : 0,
+        commission_frequency: data.is_commission_based ? data.commission_frequency : 'monthly',
+        commission_payment_day: data.is_commission_based ? data.commission_payment_day : 1,
         is_active: data.is_active,
         permissions: data.app_role === 'admin' 
           ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
@@ -245,7 +273,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       agenda_color: professional.agenda_color || '#3B82F6',
       app_role: professional.app_role || 'professional',
       is_commission_based: professional.is_commission_based || false,
+      commission_type: professional.commission_type || 'percentage',
       commission_percentage: professional.commission_percentage || 0,
+      commission_fixed_value: professional.commission_fixed_value || 0,
+      commission_frequency: professional.commission_frequency || 'monthly',
+      commission_payment_day: professional.commission_payment_day || 1,
       is_active: professional.is_active,
       permissions: { ...defaultPermissions, ...existingPermissions },
     });
@@ -377,6 +409,13 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {(prof as any).is_commission_based && (prof as any).commission_type === 'both' && (
+                        <ProfessionalServiceCommissionDialog professionalId={prof.id} professionalName={prof.name}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Comissões por serviço">
+                            <Settings2 className="h-4 w-4 text-amber-500" />
+                          </Button>
+                        </ProfessionalServiceCommissionDialog>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -591,7 +630,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <FormField
                     control={form.control}
                     name="is_commission_based"
@@ -609,27 +648,120 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
 
                   {isCommissionBased && (
-                    <FormField
-                      control={form.control}
-                      name="commission_percentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Comissão (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              max={100} 
-                              step={0.5}
-                              placeholder="Ex: 30"
-                              className="h-9 text-sm"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
+                    <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="commission_type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Tipo de Comissão</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {COMMISSION_TYPES.map(t => (
+                                    <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="commission_frequency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Frequência de Pagamento</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {COMMISSION_FREQUENCIES.map(f => (
+                                    <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {(commissionType === 'percentage' || commissionType === 'both') && (
+                          <FormField
+                            control={form.control}
+                            name="commission_percentage"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Comissão Padrão (%)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min={0} max={100} step={0.5} placeholder="Ex: 30" className="h-9 text-sm" {...field} />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {(commissionType === 'fixed' || commissionType === 'both') && (
+                          <FormField
+                            control={form.control}
+                            name="commission_fixed_value"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Valor Fixo Padrão (R$)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min={0} step={0.01} placeholder="Ex: 50,00" className="h-9 text-sm" {...field} />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="commission_payment_day"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {commissionFrequency === 'monthly' ? 'Dia do Pagamento (1-31)' :
+                               commissionFrequency === 'weekly' || commissionFrequency === 'biweekly' ? 'Dia da Semana (0=Dom, 6=Sáb)' :
+                               'Dia de Pagamento'}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min={0} 
+                                max={commissionFrequency === 'monthly' ? 31 : 6}
+                                placeholder={commissionFrequency === 'monthly' ? 'Ex: 5' : 'Ex: 1 (Segunda)'}
+                                className="h-9 text-sm" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {commissionType === 'both' && (
+                        <p className="text-[10px] text-muted-foreground">
+                          💡 Com "Ambos", ao vincular o profissional a um serviço, será configurado se recebe porcentagem ou valor fixo naquele serviço específico.
+                        </p>
                       )}
-                    />
+                    </div>
                   )}
                 </div>
 

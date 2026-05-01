@@ -60,6 +60,10 @@ export interface Professional {
   app_role: string | null;
   is_commission_based: boolean | null;
   commission_percentage: number | null;
+  commission_type: string | null;
+  commission_fixed_value: number | null;
+  commission_frequency: string | null;
+  commission_payment_day: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

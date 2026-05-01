@@ -272,7 +272,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       agenda_color: professional.agenda_color || '#3B82F6',
       app_role: professional.app_role || 'professional',
       is_commission_based: professional.is_commission_based || false,
+      commission_type: professional.commission_type || 'percentage',
       commission_percentage: professional.commission_percentage || 0,
+      commission_fixed_value: professional.commission_fixed_value || 0,
+      commission_frequency: professional.commission_frequency || 'monthly',
+      commission_payment_day: professional.commission_payment_day || 1,
       is_active: professional.is_active,
       permissions: { ...defaultPermissions, ...existingPermissions },
     });

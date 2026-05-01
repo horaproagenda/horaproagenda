@@ -10,6 +10,7 @@ interface PaymentRequest {
   appointment_id: string;
   payment_methods: string[];
   amount_paid: number;
+  payment_delta?: number;
   payment_status: 'pending' | 'partial' | 'paid';
   additional_items?: Array<{
     item_type: 'service' | 'product';

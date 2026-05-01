@@ -235,9 +235,21 @@ export function useAppointments() {
       // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData(['appointments']);
 
-      // Optimistically update the appointment with payment info
+      // Optimistically update the appointment and all siblings in the same package
       queryClient.setQueryData(['appointments'], (old: Appointment[] | undefined) => {
         if (!old) return old;
+        
+        // Find the target appointment to get its package info
+        const targetApt = old.find(apt => apt.id === id);
+        const packageId = targetApt?.package_appointment?.package_id;
+        
+        // Get all sibling appointment IDs in the same package
+        const siblingIds = packageId
+          ? old
+              .filter(apt => apt.package_appointment?.package_id === packageId && apt.id !== id)
+              .map(apt => apt.id)
+          : [];
+
         return old.map(apt => {
           if (apt.id === id) {
             return {
@@ -245,6 +257,13 @@ export function useAppointments() {
               amount_paid: payment.amount_paid,
               payment_status: payment.payment_status,
               payment_methods: payment.payment_methods,
+            };
+          }
+          // Propagate payment_status to sibling package appointments
+          if (siblingIds.includes(apt.id)) {
+            return {
+              ...apt,
+              payment_status: payment.payment_status,
             };
           }
           return apt;

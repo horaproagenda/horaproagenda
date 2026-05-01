@@ -21,6 +21,7 @@ export interface AppointmentInsert {
 export interface PaymentUpdate {
   payment_methods: string[];
   amount_paid: number;
+  payment_delta?: number;
   payment_status: PaymentStatus;
   additional_items?: Array<{
     item_type: 'service' | 'product';
@@ -81,7 +82,7 @@ export function useAppointments() {
           ),
           room:rooms(id, name),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
-            id, session_number, original_session_number, status,
+            id, package_id, session_number, original_session_number, status,
             package:service_packages(id, name, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)
           ),
           additional_items:appointment_additional_items(
@@ -203,6 +204,7 @@ export function useAppointments() {
           appointment_id: id,
           payment_methods: payment.payment_methods,
           amount_paid: payment.amount_paid,
+          payment_delta: payment.payment_delta,
           payment_status: payment.payment_status,
           additional_items: payment.additional_items,
           client_credit: payment.client_credit,

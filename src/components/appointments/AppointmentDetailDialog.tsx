@@ -714,9 +714,7 @@ export function AppointmentDetailDialog({
   const isPackageAppointment = !!appointment.package_appointment;
   const packageData = appointment.package_appointment?.package;
   
-  // For package appointments, check if the package was actually paid
-  // A package is paid when payment_methods are set and total_price > 0 implies it was sold
-  const isPackagePaid = isPackageAppointment && packageData?.payment_methods && packageData.payment_methods.length > 0;
+  // Package payment must reflect the synchronized amount on appointments, not only the existence of a payment method.
   
   // Check if this appointment used a pre-paid service (from caixa sale)
   // Only consider prepaid if it's marked as paid AND has payment methods or explicitly amount_paid equals price
@@ -730,6 +728,7 @@ export function AppointmentDetailDialog({
   // Packages must be paid in full, regardless of how many sessions are scheduled
   const servicePrice = appointment.service?.price || 0;
   const packagePrice = packageData?.total_price || 0;
+  const isPackagePaid = isPackageAppointment && packagePrice > 0 && Number(appointment.amount_paid || 0) >= packagePrice;
   
   const totalPrice = isPackageAppointment 
     ? packagePrice
@@ -1366,7 +1365,7 @@ export function AppointmentDetailDialog({
                   <div className="flex-1">
                     <p className="text-sm font-medium text-primary">Pagamento de Pacote</p>
                     <p className="text-xs text-muted-foreground">
-                      O valor total do pacote é <strong>R$ {(packageData?.total_price || 0).toFixed(2)}</strong> e deve ser pago integralmente.
+                      O valor total do pacote é <strong>R$ {(packageData?.total_price || 0).toFixed(2)}</strong>; pagamentos parciais são sincronizados em todas as aplicações.
                     </p>
                   </div>
                 </div>

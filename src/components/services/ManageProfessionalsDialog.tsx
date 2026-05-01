@@ -39,6 +39,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 
 const AGENDA_COLORS = [
   { value: '#3B82F6', label: 'Azul' },

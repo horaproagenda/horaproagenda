@@ -346,14 +346,16 @@ serve(async (req) => {
             .from('appointments')
             .update({
               payment_status: body.payment_status,
+              amount_paid: body.amount_paid,
+              payment_methods: body.payment_methods,
               updated_by: userId,
             })
             .in('id', siblingIds);
 
           if (propagateError) {
-            console.error('Error propagating payment status to siblings:', propagateError);
+            console.error('Error propagating payment to siblings:', propagateError);
           } else {
-            console.log(`Propagated payment_status '${body.payment_status}' to ${siblingIds.length} sibling appointments in package ${packageId}`);
+            console.log(`Propagated payment (status='${body.payment_status}', amount=${body.amount_paid}) to ${siblingIds.length} sibling appointments in package ${packageId}`);
           }
         }
       }

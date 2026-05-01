@@ -104,6 +104,19 @@ const PERMISSION_CATEGORIES = [
   { key: 'system', label: 'Sistema', icon: '⚙️' },
 ];
 
+const COMMISSION_TYPES = [
+  { value: 'percentage', label: 'Porcentagem' },
+  { value: 'fixed', label: 'Valor Fixo' },
+  { value: 'both', label: 'Ambos (por serviço)' },
+];
+
+const COMMISSION_FREQUENCIES = [
+  { value: 'daily', label: 'Diário' },
+  { value: 'weekly', label: 'Semanal' },
+  { value: 'biweekly', label: 'Quinzenal' },
+  { value: 'monthly', label: 'Mensal' },
+];
+
 const professionalSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   cpf: z.string().trim().optional().refine(
@@ -118,7 +131,11 @@ const professionalSchema = z.object({
   agenda_color: z.string().default('#3B82F6'),
   app_role: z.string().default('professional'),
   is_commission_based: z.boolean().default(false),
+  commission_type: z.string().default('percentage'),
   commission_percentage: z.coerce.number().min(0).max(100).default(0),
+  commission_fixed_value: z.coerce.number().min(0).default(0),
+  commission_frequency: z.string().default('monthly'),
+  commission_payment_day: z.coerce.number().min(0).max(31).default(1),
   is_active: z.boolean(),
   permissions: z.record(z.boolean()).default(defaultPermissions),
 });

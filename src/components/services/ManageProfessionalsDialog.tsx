@@ -622,7 +622,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <FormField
                     control={form.control}
                     name="is_commission_based"
@@ -640,27 +640,120 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
 
                   {isCommissionBased && (
-                    <FormField
-                      control={form.control}
-                      name="commission_percentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Comissão (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              max={100} 
-                              step={0.5}
-                              placeholder="Ex: 30"
-                              className="h-9 text-sm"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
+                    <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="commission_type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Tipo de Comissão</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {COMMISSION_TYPES.map(t => (
+                                    <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="commission_frequency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Frequência de Pagamento</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {COMMISSION_FREQUENCIES.map(f => (
+                                    <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {(commissionType === 'percentage' || commissionType === 'both') && (
+                          <FormField
+                            control={form.control}
+                            name="commission_percentage"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Comissão Padrão (%)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min={0} max={100} step={0.5} placeholder="Ex: 30" className="h-9 text-sm" {...field} />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {(commissionType === 'fixed' || commissionType === 'both') && (
+                          <FormField
+                            control={form.control}
+                            name="commission_fixed_value"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Valor Fixo Padrão (R$)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min={0} step={0.01} placeholder="Ex: 50,00" className="h-9 text-sm" {...field} />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="commission_payment_day"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {commissionFrequency === 'monthly' ? 'Dia do Pagamento (1-31)' :
+                               commissionFrequency === 'weekly' || commissionFrequency === 'biweekly' ? 'Dia da Semana (0=Dom, 6=Sáb)' :
+                               'Dia de Pagamento'}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min={0} 
+                                max={commissionFrequency === 'monthly' ? 31 : 6}
+                                placeholder={commissionFrequency === 'monthly' ? 'Ex: 5' : 'Ex: 1 (Segunda)'}
+                                className="h-9 text-sm" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {commissionType === 'both' && (
+                        <p className="text-[10px] text-muted-foreground">
+                          💡 Com "Ambos", ao vincular o profissional a um serviço, será configurado se recebe porcentagem ou valor fixo naquele serviço específico.
+                        </p>
                       )}
-                    />
+                    </div>
                   )}
                 </div>
 

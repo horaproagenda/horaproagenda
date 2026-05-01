@@ -238,7 +238,7 @@ serve(async (req) => {
     
     // For packages: use full package price. For services: use service price
     const baseRequiredAmount = isPackageAppointment 
-      ? (isPackageAlreadyPaid ? 0 : (packageData?.total_price || 0))
+      ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
     const totalRequiredAmount = baseRequiredAmount + additionalItemsTotal;
 

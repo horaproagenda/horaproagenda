@@ -93,6 +93,7 @@ export function ContasAReceber() {
 
     // Get appointments with pending or partial payment
     const excludedStatuses = ['cancelled', 'missed', 'rescheduled', 'no_show'];
+    const seenPackageIds = new Set<string>();
     const pendingAppointments = appointments
       .filter(apt => {
         const paymentPending = apt.payment_status === 'pending' || apt.payment_status === 'partial';
@@ -116,6 +117,12 @@ export function ContasAReceber() {
       .map(apt => {
         const isPackageAppointment = !!apt.package_appointment;
         const packageData = apt.package_appointment?.package;
+
+        // Deduplicate package appointments — show one receivable per package, not per session
+        if (isPackageAppointment && packageData?.id) {
+          if (seenPackageIds.has(packageData.id)) return null;
+          seenPackageIds.add(packageData.id);
+        }
         
         const isPackagePaid = packageData?.payment_methods && packageData.payment_methods.length > 0;
         if (isPackagePaid) return null;

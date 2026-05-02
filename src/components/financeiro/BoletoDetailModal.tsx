@@ -13,6 +13,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -43,6 +47,13 @@ export function BoletoDetailModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', due_date: '' });
   const [batchPaying, setBatchPaying] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    | { kind: 'pay'; id: string; label: string }
+    | { kind: 'cancel'; id: string; label: string }
+    | { kind: 'edit'; id: string; label: string }
+    | { kind: 'batchPay'; ids: string[]; total: number }
+    | null
+  >(null);
 
   const sorted = useMemo(
     () => [...installments].sort((a, b) => a.installment_number - b.installment_number),
@@ -88,31 +99,39 @@ export function BoletoDetailModal({
     });
   };
 
-  const saveEdit = async () => {
+  const requestSaveEdit = () => {
+    if (!editingId) return;
+    const inst = sorted.find(i => i.id === editingId);
+    setConfirmAction({
+      kind: 'edit',
+      id: editingId,
+      label: `parcela ${inst?.installment_number}/${inst?.total_installments}`,
+    });
+  };
+
+  const performSaveEdit = async () => {
     if (!editingId) return;
     const newAmount = parseFloat(editForm.amount);
-    // Validate: updated amount + other installments shouldn't exceed sale total
     const otherTotal = sorted.filter(i => i.id !== editingId).reduce((s, i) => s + Number(i.amount), 0);
     if (otherTotal + newAmount > totalAmount + 0.01 && newAmount > Number(sorted.find(i => i.id === editingId)?.amount || 0)) {
       toast.error('O novo valor faria a soma das parcelas ultrapassar o valor total do boleto.');
       return;
     }
-    await onUpdate({
-      id: editingId,
-      amount: newAmount,
-      due_date: editForm.due_date,
-    });
+    await onUpdate({ id: editingId, amount: newAmount, due_date: editForm.due_date });
     setEditingId(null);
   };
 
-  const handleBatchPay = async () => {
+  const handleBatchPay = () => {
     if (selectedIds.length === 0) return;
-    // Validate: sum of paid + selected must not exceed total
     const wouldPayTotal = totalPaid + selectedTotal;
     if (wouldPayTotal > totalAmount + 0.01) {
       toast.error(`A soma das parcelas pagas (R$ ${wouldPayTotal.toFixed(2)}) ultrapassa o valor total (R$ ${totalAmount.toFixed(2)}). Verifique os valores.`);
       return;
     }
+    setConfirmAction({ kind: 'batchPay', ids: [...selectedIds], total: selectedTotal });
+  };
+
+  const performBatchPay = async () => {
     setBatchPaying(true);
     try {
       await onBatchPay({ ids: selectedIds });
@@ -122,15 +141,26 @@ export function BoletoDetailModal({
     }
   };
 
+  const performConfirm = async () => {
+    if (!confirmAction) return;
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action.kind === 'pay') await onMarkAsPaid({ id: action.id });
+    else if (action.kind === 'cancel') await onCancel(action.id);
+    else if (action.kind === 'edit') await performSaveEdit();
+    else if (action.kind === 'batchPay') await performBatchPay();
+  };
+
+
   const clientName = sale?.client?.name || 'Cliente';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Detalhes do Boleto Bancário
+            Boletos do Cliente — {clientName}
           </DialogTitle>
         </DialogHeader>
 
@@ -206,6 +236,7 @@ export function BoletoDetailModal({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8"></TableHead>
+                  <TableHead>Venda / Descrição</TableHead>
                   <TableHead>Parcela</TableHead>
                   <TableHead>Vencimento</TableHead>
                   <TableHead>Valor</TableHead>
@@ -227,6 +258,12 @@ export function BoletoDetailModal({
                             checked={selectedIds.includes(inst.id)}
                             onCheckedChange={() => toggleSelect(inst.id)}
                           />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[180px]">
+                        <div className="font-medium truncate">{inst.sale?.description || inst.service_description || '—'}</div>
+                        {inst.document_number && (
+                          <div className="text-[10px] text-muted-foreground truncate">Doc: {inst.document_number}</div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm font-medium">
@@ -267,7 +304,7 @@ export function BoletoDetailModal({
                         <div className="flex justify-end gap-1">
                           {isEditing ? (
                             <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveEdit}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={requestSaveEdit}>
                                 <Check className="h-3.5 w-3.5 text-green-600" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
@@ -283,7 +320,7 @@ export function BoletoDetailModal({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={() => onMarkAsPaid({ id: inst.id })}
+                                onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
                               >
                                 <Check className="h-3.5 w-3.5 text-green-600" />
                               </Button>
@@ -291,7 +328,7 @@ export function BoletoDetailModal({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={() => onCancel(inst.id)}
+                                onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
                               >
                                 <X className="h-3.5 w-3.5 text-destructive" />
                               </Button>
@@ -328,6 +365,34 @@ export function BoletoDetailModal({
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.kind === 'pay' && 'Confirmar baixa do boleto'}
+              {confirmAction?.kind === 'cancel' && 'Apagar/cancelar parcela'}
+              {confirmAction?.kind === 'edit' && 'Confirmar edição da parcela'}
+              {confirmAction?.kind === 'batchPay' && 'Confirmar baixa em lote'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
+              {confirmAction?.kind === 'cancel' && `Tem certeza que deseja apagar/cancelar a ${confirmAction.label}? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
+              {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performConfirm}
+              className={confirmAction?.kind === 'cancel' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

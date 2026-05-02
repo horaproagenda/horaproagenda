@@ -176,63 +176,45 @@ export function RelatorioConsolidado() {
             Filtros · {getPeriodLabel()}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
+        <CardContent className="px-3 pb-3 pt-0">
+          <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Período</label>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant={periodFilter === 'today' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('today')}
-                >
-                  Hoje
-                </Button>
-                <Button
-                  variant={periodFilter === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('week')}
-                >
-                  Semana
-                </Button>
-                <Button
-                  variant={periodFilter === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('month')}
-                >
-                  Mês
-                </Button>
-                <Button
-                  variant={periodFilter === 'quarter' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('quarter')}
-                >
-                  Trimestre
-                </Button>
-                <Button
-                  variant={periodFilter === 'custom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('custom')}
-                >
-                  Data Específica
-                </Button>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Período</label>
+              <div className="flex gap-1 flex-wrap">
+                {([
+                  ['today', 'Hoje'],
+                  ['week', 'Semana'],
+                  ['month', 'Mês'],
+                  ['quarter', 'Trimestre'],
+                  ['custom', 'Data Específica'],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={periodFilter === value ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => setPeriodFilter(value as any)}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
             </div>
             {periodFilter === 'custom' && (
-              <div className="min-w-[200px]">
-                <label className="text-sm text-muted-foreground mb-1 block">Data</label>
+              <div className="min-w-[180px]">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Data</label>
                 <Input
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="max-w-xs"
+                  className="max-w-xs h-7 text-xs"
                 />
               </div>
             )}
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Origem</label>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Origem</label>
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs h-7 text-xs">
                   <SelectValue placeholder="Todas as origens" />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,10 +225,10 @@ export function RelatorioConsolidado() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Tipo</label>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tipo</label>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs h-7 text-xs">
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
                 <SelectContent>

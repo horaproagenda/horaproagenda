@@ -65,6 +65,7 @@ import {
   Lock,
   FileDown,
   Send,
+  FileText,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
@@ -165,6 +166,33 @@ export function AppointmentDetailDialog({
   const { appointments: pkgSessions } = usePackageAppointments(
     appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null,
   );
+
+  // Detect if this appointment's package was sold via boleto parcelado and still has open installments.
+  // When true, we redirect the user to the client's boleto page instead of the inline payment flow.
+  const packageIdForBoleto = appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null;
+  const { data: packageBoletoInfo } = useQuery({
+    queryKey: ['appointment-package-boleto', packageIdForBoleto, appointment?.client_id],
+    enabled: open && !!packageIdForBoleto && !!appointment?.client_id,
+    queryFn: async () => {
+      const { data: sales } = await supabase
+        .from('single_sales')
+        .select('id, payment_method:payment_methods(name)')
+        .eq('package_id', packageIdForBoleto!)
+        .eq('client_id', appointment!.client_id);
+      const saleIds = (sales || []).map((s: any) => s.id);
+      if (!saleIds.length) return { hasBoleto: false, hasOpen: false };
+      const { data: insts } = await supabase
+        .from('boleto_installments')
+        .select('status')
+        .in('sale_id', saleIds);
+      const list = insts || [];
+      if (!list.length) return { hasBoleto: false, hasOpen: false };
+      const hasOpen = list.some((i: any) => i.status !== 'paid' && i.status !== 'cancelled');
+      return { hasBoleto: true, hasOpen };
+    },
+    staleTime: 15_000,
+  });
+  const shouldRedirectToBoleto = !!packageBoletoInfo?.hasBoleto && !!packageBoletoInfo?.hasOpen;
   const { data: appointmentHistory = [] } = useQuery({
     queryKey: ['appointment-history', appointment?.id],
     enabled: open && !!appointment?.id,
@@ -1902,10 +1930,27 @@ export function AppointmentDetailDialog({
                   </div>
                 </div>
               ) : remainingAmount > 0 ? (
-                <Button onClick={() => setShowPaymentForm(true)} className="w-full">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Dar Baixa no Pagamento
-                </Button>
+                shouldRedirectToBoleto ? (
+                  <Button
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem('openBoletoClientId', appointment.client_id || '');
+                      } catch {}
+                      onOpenChange(false);
+                      navigate('/financeiro?tab=formas');
+                    }}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Dar baixa no boleto bancário
+                  </Button>
+                ) : (
+                  <Button onClick={() => setShowPaymentForm(true)} className="w-full">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Dar Baixa no Pagamento
+                  </Button>
+                )
               ) : null}
             </div>
 

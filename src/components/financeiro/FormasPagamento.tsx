@@ -231,6 +231,23 @@ export function FormasPagamento() {
   const detailInstallments = detailGroup?.installments || [];
   const detailSale = detailInstallments.length > 0 ? (detailInstallments[0] as any).sale : null;
 
+  // Deep-link: when redirected from the appointment detail dialog, auto-open the
+  // boleto modal for the requested client and switch the filter to "pending".
+  useEffect(() => {
+    if (loadingBoletos) return;
+    let pendingClientId: string | null = null;
+    try {
+      pendingClientId = sessionStorage.getItem('openBoletoClientId');
+    } catch {}
+    if (!pendingClientId) return;
+    const match = clientGroups.find(g => g.clientId === pendingClientId);
+    if (match) {
+      setBoletoFilter('pending');
+      setDetailClientKey(match.key);
+      try { sessionStorage.removeItem('openBoletoClientId'); } catch {}
+    }
+  }, [clientGroups, loadingBoletos]);
+
   return (
     <Card>
       <CardHeader>

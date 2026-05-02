@@ -47,23 +47,37 @@ const getSeverityColor = (severity: SystemNotification['severity']) => {
 
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  // Local set of IDs dismissed in this render cycle — combined with persistent
+  // signature storage so they disappear immediately from the panel as well.
+  const [justDismissed, setJustDismissed] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
-  const { notifications, totalCritical } = useSystemNotifications();
+  const { notifications } = useSystemNotifications();
 
-  const activeNotifications = notifications.filter(n => !dismissedIds.has(n.id));
+  const activeNotifications = notifications.filter(n => !justDismissed.has(n.id));
   const totalActive = activeNotifications.length;
   const criticalActive = activeNotifications.filter(n => n.severity === 'critical').length;
 
-  const handleDismiss = (id: string) => {
-    setDismissedIds(prev => new Set([...prev, id]));
+  const handleDismiss = (notification: SystemNotification) => {
+    dismissNotification(notification.id, notification.signature);
+    setJustDismissed(prev => new Set([...prev, notification.id]));
   };
 
-  const handleNavigate = (link?: string) => {
-    if (link) {
-      navigate(link);
-      setOpen(false);
-    }
+  const handleClearAll = () => {
+    dismissNotifications(activeNotifications.map(n => ({ id: n.id, signature: n.signature })));
+    setJustDismissed(prev => {
+      const next = new Set(prev);
+      activeNotifications.forEach(n => next.add(n.id));
+      return next;
+    });
+  };
+
+  const handleNavigate = (notification: SystemNotification) => {
+    if (!notification.link) return;
+    // Clicking "ver detalhes" also dismisses persistently — only re-appears if data changes
+    dismissNotification(notification.id, notification.signature);
+    setJustDismissed(prev => new Set([...prev, notification.id]));
+    navigate(notification.link);
+    setOpen(false);
   };
 
   if (totalActive === 0) {

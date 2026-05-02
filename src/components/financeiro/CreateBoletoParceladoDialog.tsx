@@ -221,7 +221,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         payment_method_id: boletoPaymentMethod.id,
         sale_date: today(),
         item_type: itemType === 'package' ? 'package' : 'service',
-        installments_count: installments,
+        installments: installments,
         notes: notes || null,
         created_by: user?.id || null,
       };

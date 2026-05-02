@@ -1463,8 +1463,12 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
-              {/* Boleto status alert (cross-appointment) */}
-              <ClientBoletoStatus clientId={appointment.client_id} />
+              {/* Boleto status alert — only when this appointment's service/package was sold via boleto */}
+              <ClientBoletoStatus
+                clientId={appointment.client_id}
+                serviceId={appointment.service_id}
+                packageId={packageIdForBoleto}
+              />
 
               {/* Existing Payments */}
               {appointment.payment_methods && appointment.payment_methods.length > 0 && (
@@ -1509,79 +1513,7 @@ export function AppointmentDetailDialog({
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">
-                  {/* Client credit balance - Use Credit Section */}
-                  {availableClientCredit > 0 && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-amber-500" />
-                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            Crédito disponível do cliente
-                          </span>
-                        </div>
-                        <span className="text-lg font-bold text-amber-600">
-                          R$ {availableClientCredit.toFixed(2)}
-                        </span>
-                      </div>
-                      
-                      {!useClientCredit ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
-                          onClick={() => {
-                            setUseClientCredit(true);
-                            // Pre-fill with max usable amount (min of available credit and remaining)
-                            setClientCreditUsedAmount(Math.min(availableClientCredit, remainingAmount).toFixed(2));
-                          }}
-                        >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Usar Crédito no Pagamento
-                        </Button>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-amber-700 dark:text-amber-400">
-                              Valor do crédito a utilizar
-                            </Label>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-xs text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                setUseClientCredit(false);
-                                setClientCreditUsedAmount('');
-                              }}
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Cancelar
-                            </Button>
-                          </div>
-                          <div className="flex gap-2">
-                            <CurrencyInput
-                              value={clientCreditUsedAmount}
-                              onValueChange={(value) => setClientCreditUsedAmount(String(Math.min(value, Math.min(availableClientCredit, remainingAmount))))}
-                              className="border-amber-500/30 focus:border-amber-500"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap border-amber-500/50"
-                              onClick={() => setClientCreditUsedAmount(Math.min(availableClientCredit, remainingAmount).toFixed(2))}
-                            >
-                              Usar Tudo
-                            </Button>
-                          </div>
-                          {clientCreditUsed > 0 && (
-                            <div className="flex items-center gap-2 text-xs text-success bg-success/10 p-2 rounded">
-                              <CheckCircle className="h-3 w-3" />
-                              <span>{formatCurrency(clientCreditUsed)} de crédito será descontado</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Client credit is available as a payment method below in the payment selector */}
 
                   {/* Discount Section */}
                   <div className="p-3 rounded-lg border border-orange-500/30 bg-orange-500/5">
@@ -1694,7 +1626,9 @@ export function AppointmentDetailDialog({
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {activePaymentMethods.map(m => (
+                                {activePaymentMethods
+                                  .filter(m => !m.name.toLowerCase().includes('boleto'))
+                                  .map(m => (
                                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -2389,7 +2323,9 @@ export function AppointmentDetailDialog({
                       <Select value={refundMethodId} onValueChange={setRefundMethodId}>
                         <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
                         <SelectContent>
-                          {(activePaymentMethods || []).map((pm: any) => (
+                          {(activePaymentMethods || [])
+                            .filter((pm: any) => !pm.name.toLowerCase().includes('boleto'))
+                            .map((pm: any) => (
                             <SelectItem key={pm.id} value={pm.name}>{pm.name}</SelectItem>
                           ))}
                         </SelectContent>

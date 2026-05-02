@@ -105,23 +105,7 @@ export function UnifiedServiceFilters({
 
   const sessionsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'];
 
-  const sortOptions = type === 'services' ? [
-    { value: 'name-asc', label: 'Nome A-Z' },
-    { value: 'name-desc', label: 'Nome Z-A' },
-    { value: 'price-asc', label: 'Preço ↑' },
-    { value: 'price-desc', label: 'Preço ↓' },
-    { value: 'date-asc', label: 'Mais antigo' },
-    { value: 'date-desc', label: 'Mais recente' },
-  ] : [
-    { value: 'name-asc', label: 'Nome A-Z' },
-    { value: 'name-desc', label: 'Nome Z-A' },
-    { value: 'price-asc', label: 'Preço ↑' },
-    { value: 'price-desc', label: 'Preço ↓' },
-    { value: 'sessions-asc', label: 'Aplicações ↑' },
-    { value: 'sessions-desc', label: 'Aplicações ↓' },
-    { value: 'date-asc', label: 'Mais antigo' },
-    { value: 'date-desc', label: 'Mais recente' },
-  ];
+
 
   const FilterSection = ({ 
     title, 

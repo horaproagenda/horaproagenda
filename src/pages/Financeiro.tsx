@@ -154,6 +154,10 @@ export default function Financeiro() {
               <Wallet className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Caixas</span>
             </TabsTrigger>
+            <TabsTrigger value="pacotes" className="gap-1.5 text-xs tracking-wide h-8">
+              <Tag className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Pacotes</span>
+            </TabsTrigger>
             <TabsTrigger value="categorias" className="gap-1.5 text-xs tracking-wide h-8">
               <Tag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Categorias</span>

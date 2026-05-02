@@ -30,6 +30,7 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['cash_register_entries'] });
   queryClient.invalidateQueries({ queryKey: ['single_sales'] });
   queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+  queryClient.invalidateQueries({ queryKey: ['client_boleto_status'] });
   queryClient.invalidateQueries({ queryKey: ['client_packages'] });
   queryClient.invalidateQueries({ queryKey: ['service_packages'] });
   queryClient.invalidateQueries({ queryKey: ['package_appointments'] });

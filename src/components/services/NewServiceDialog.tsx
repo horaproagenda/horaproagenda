@@ -110,7 +110,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         assignedProfessionalId = professionalId;
       }
 
-      const { error } = await supabase.from('services').insert({
+      const { data: created, error } = await supabase.from('services').insert({
         name: data.name,
         description: data.description || null,
         duration: data.duration,
@@ -121,12 +121,23 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         equipment: data.equipment || [],
         return_days: data.return_days || null,
         is_active: data.is_active,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
+      // Save per-service commission override if defined
+      if (assignedProfessionalId && created?.id && commissionOverride.enabled) {
+        try {
+          await saveCommissionOverride(assignedProfessionalId, created.id, commissionOverride);
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+        } catch (err: any) {
+          toast.error('Serviço criado, mas comissão não foi salva: ' + err.message);
+        }
+      }
+
       toast.success('Serviço cadastrado!');
       form.reset();
+      setCommissionOverride(defaultCommissionOverride);
       setOpen(false);
       onServiceCreated?.();
     } catch (error: any) {

@@ -608,6 +608,32 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
+              {itemType === 'package' && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <Label>Disponibilizar pacote para agendamento</Label>
+                  <RadioGroup
+                    value={packageReleaseRule}
+                    onValueChange={(value) => setPackageReleaseRule(value as BoletoPackageReleaseRule)}
+                    className="grid gap-2"
+                  >
+                    <label className="flex items-start gap-2 rounded-md border bg-background p-2 cursor-pointer">
+                      <RadioGroupItem value="boleto_first_paid" className="mt-0.5" />
+                      <span className="text-xs leading-relaxed">
+                        Após confirmar a primeira parcela
+                        <span className="block text-muted-foreground">O pacote fica bloqueado até a primeira baixa do boleto.</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 rounded-md border bg-background p-2 cursor-pointer">
+                      <RadioGroupItem value="boleto_all_paid" className="mt-0.5" />
+                      <span className="text-xs leading-relaxed">
+                        Somente quando todas as parcelas forem pagas
+                        <span className="block text-muted-foreground">O pacote só aparece para agendamento após quitação total.</span>
+                      </span>
+                    </label>
+                  </RadioGroup>
+                </div>
+              )}
+
               <Separator />
               <p className="text-sm font-medium">Encargos & Descontos</p>
               <div className="grid grid-cols-2 gap-3">

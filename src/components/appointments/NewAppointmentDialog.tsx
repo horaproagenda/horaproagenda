@@ -61,6 +61,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
 import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
+import {
+  ProfessionalCommissionField,
+  saveCommissionOverride,
+  defaultCommissionOverride,
+  type CommissionOverride,
+} from '@/components/services/ProfessionalCommissionField';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';

@@ -572,3 +572,93 @@ table {
 html, body {
   overflow-x: auto;
 }
+
+/* ===========================================================
+   Container padrão de formulário rolável
+   Use .form-scroll-container em qualquer <form> ou wrapper
+   para garantir scroll vertical + horizontal consistente
+   =========================================================== */
+@layer utilities {
+  .form-scroll-container {
+    overflow: auto;
+    overscroll-behavior: contain;
+    max-height: 100%;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+  .form-scroll-container::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .form-scroll-container::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.3);
+    border-radius: 8px;
+  }
+  .form-scroll-container::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.45);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .form-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7);
+  }
+  .form-scroll-container::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Aplicar comportamento de container rolável a TODOS os
+   formulários e seus wrappers diretos dentro de diálogos/sheets */
+[role="dialog"] form,
+[data-radix-dialog-content] form,
+[data-radix-sheet-content] form,
+form.form-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  max-height: 100%;
+}
+
+/* Cards, previews e seções com overflow dentro de formulários
+   precisam permitir scroll por mouse wheel + barras visíveis */
+form [class*="card"],
+form [data-preview],
+form .preview,
+form .scroll-section,
+[role="dialog"] [class*="card"][data-scrollable],
+[data-radix-dialog-content] [data-preview],
+[data-radix-sheet-content] [data-preview] {
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
+
+/* Tabelas: scroll horizontal e vertical com mouse wheel
+   garantido em qualquer tela ou formulário. O wrapper Table
+   já usa .overflow-auto, mas reforçamos touch-action e
+   altura máxima opcional via .table-scroll-y */
+.table-scroll-container,
+[data-table-wrapper],
+div:has(> table),
+table {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-y {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+/* Garantir que wrappers .overflow-auto/scroll respondam ao
+   mouse wheel mesmo dentro de containers com transform */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+}

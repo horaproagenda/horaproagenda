@@ -2107,8 +2107,11 @@ export function AppointmentDetailDialog({
                       </div>
                     )}
                     
-                    {/* Payment warning - show when appointment has payments */}
-                    {amountPaid > 0 && (
+                    {/* Payment warning — only when NOT a package appointment.
+                        For packages, the payment is at the package level and remains
+                        valid for the remaining sessions; deleting one session does
+                        NOT remove any payment from caixa or financeiro. */}
+                    {amountPaid > 0 && !isPackageAppointment && (
                       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <div className="flex items-center gap-2 text-destructive font-medium mb-2">
                           <AlertTriangle className="h-4 w-4" />
@@ -2119,7 +2122,21 @@ export function AppointmentDetailDialog({
                         </p>
                       </div>
                     )}
-                    
+
+                    {amountPaid > 0 && isPackageAppointment && (
+                      <div className="p-3 rounded-lg bg-info/10 border border-info/20">
+                        <div className="flex items-center gap-2 text-info font-medium mb-2">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Pagamento do pacote será preservado</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          O valor pago de <strong>R$ {amountPaid.toFixed(2)}</strong> permanece registrado no caixa e no financeiro,
+                          vinculado ao pacote, e continua valendo para as demais aplicações.
+                          Para devolver o dinheiro ao cliente, exclua o pacote inteiro.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Package session info */}
                     {isPackageAppointment && packageSessionInfo && (
                       <div className="p-3 rounded-lg bg-info/10 border border-info/20">
@@ -2128,14 +2145,14 @@ export function AppointmentDetailDialog({
                           <span>Sessão de Pacote</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Após excluir, a sessão será liberada para reagendamento.
+                          Apenas <strong>1 aplicação</strong> será liberada para reagendamento.
                         </p>
-                        <div className="mt-2 flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <span className="font-medium text-foreground">{packageSessionInfo.remainingSessions}</span>
-                            <span className="text-muted-foreground">sessões disponíveis</span>
-                          </span>
-                          <span className="text-muted-foreground">de {packageSessionInfo.totalSessions} total</span>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Disponíveis agora:</span>
+                          <span className="font-medium text-foreground">{packageSessionInfo.availableNow}</span>
+                          <span>→ após excluir:</span>
+                          <span className="font-medium text-foreground">{packageSessionInfo.availableAfterDelete}</span>
+                          <span>(de {packageSessionInfo.totalSessions} total)</span>
                         </div>
                       </div>
                     )}

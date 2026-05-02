@@ -236,6 +236,7 @@ export function BoletoDetailModal({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8"></TableHead>
+                  <TableHead>Venda / Descrição</TableHead>
                   <TableHead>Parcela</TableHead>
                   <TableHead>Vencimento</TableHead>
                   <TableHead>Valor</TableHead>

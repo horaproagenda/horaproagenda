@@ -28,6 +28,7 @@ import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServic
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
 import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
 import { FinancialDivergenceAlert } from '@/components/financeiro/FinancialDivergenceAlert';
+import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -53,6 +54,7 @@ export default function Financeiro() {
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',
+        'pacotes': 'pacotes',
         'categorias': 'categorias',
         'formas': 'formas-pagamento',
         'comissoes': 'comissoes',
@@ -152,6 +154,10 @@ export default function Financeiro() {
               <Wallet className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Caixas</span>
             </TabsTrigger>
+            <TabsTrigger value="pacotes" className="gap-1.5 text-xs tracking-wide h-8">
+              <Tag className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Pacotes</span>
+            </TabsTrigger>
             <TabsTrigger value="categorias" className="gap-1.5 text-xs tracking-wide h-8">
               <Tag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Categorias</span>
@@ -192,6 +198,10 @@ export default function Financeiro() {
 
           <TabsContent value="meus-caixas" className="page-enter">
             <MeusCaixas />
+          </TabsContent>
+
+          <TabsContent value="pacotes" className="page-enter">
+            <PacotesFinanceiro />
           </TabsContent>
 
           <TabsContent value="categorias" className="page-enter">

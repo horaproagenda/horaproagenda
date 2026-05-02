@@ -683,3 +683,61 @@ html.no-animations *::after {
   transition-delay: 0ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ============================================================
+   Compact / Minimalist global density rules
+   ============================================================ */
+table { font-feature-settings: "tnum"; }
+@media (max-width: 640px) {
+  table { font-size: 11px; }
+  table th { height: 32px !important; padding: 4px 8px !important; font-size: 10px !important; }
+  table td { padding: 6px 8px !important; }
+}
+
+/* Badges: nivelar alturas e espaçamentos */
+.badge-row, [data-badge-row] {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Filter bars / toolbar density */
+[data-filters], .filters-bar { gap: 6px !important; }
+[data-filters] button, [data-filters] input, [data-filters] [role="combobox"],
+.filters-bar button, .filters-bar input, .filters-bar [role="combobox"] {
+  height: 32px !important;
+  font-size: 12px !important;
+}
+
+/* Cards: reduce internal padding on mobile */
+@media (max-width: 640px) {
+  [class*="rounded-lg"][class*="border"][class*="bg-card"] > div { padding: 10px !important; }
+}
+
+/* Dialog header compaction */
+[role="dialog"] h2, [data-radix-dialog-content] h2 {
+  font-size: 1rem;
+  line-height: 1.25rem;
+}
+
+/* Mobile horizontal scroll smoothness */
+@media (max-width: 768px) {
+  .overflow-auto, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  body { overflow-wrap: anywhere; }
+}
+
+/* Pagination compact */
+[data-pagination], nav[aria-label*="agina"] { gap: 4px !important; }
+[data-pagination] button, nav[aria-label*="agina"] button {
+  height: 30px !important;
+  min-width: 30px !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+}
+
+/* ScrollArea inside dialogs: avoid huge empty space */
+[role="dialog"] [data-radix-scroll-area-viewport],
+[data-radix-dialog-content] [data-radix-scroll-area-viewport] {
+  max-height: min(70vh, 100%);
+}

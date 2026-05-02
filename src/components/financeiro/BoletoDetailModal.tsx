@@ -297,7 +297,7 @@ export function BoletoDetailModal({
                         <div className="flex justify-end gap-1">
                           {isEditing ? (
                             <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveEdit}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={requestSaveEdit}>
                                 <Check className="h-3.5 w-3.5 text-green-600" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
@@ -313,7 +313,7 @@ export function BoletoDetailModal({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={() => onMarkAsPaid({ id: inst.id })}
+                                onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
                               >
                                 <Check className="h-3.5 w-3.5 text-green-600" />
                               </Button>
@@ -321,7 +321,7 @@ export function BoletoDetailModal({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={() => onCancel(inst.id)}
+                                onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
                               >
                                 <X className="h-3.5 w-3.5 text-destructive" />
                               </Button>

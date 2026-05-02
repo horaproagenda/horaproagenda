@@ -786,22 +786,22 @@ export default function Produtos() {
         <Card className="card-hover">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="text-xs">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Estoque</TableHead>
-                    <TableHead>Tipo de Uso</TableHead>
-                    <TableHead>Atendimentos</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 py-1.5 text-[11px]">Produto</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Estoque</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Tipo de Uso</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Atend.</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Status</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-xs">
+                        <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
                         <p>Nenhum produto cadastrado</p>
                       </TableCell>
                     </TableRow>
@@ -816,50 +816,50 @@ export default function Produtos() {
                           className={cn("cursor-pointer hover:bg-muted/50", isLowStock && "bg-amber-50/50 dark:bg-amber-950/20")}
                           onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }}
                         >
-                          <TableCell>
+                          <TableCell className="py-1.5">
                             <div>
-                              <p className="font-medium">{product.name}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <p className="font-medium text-xs leading-tight">{product.name}</p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
                                 {product.brand && <span>{product.brand}</span>}
-                                {product.category && <Badge variant="outline" className="text-xs">{product.category}</Badge>}
-                                <Badge variant="outline" className="text-[10px]">{getTypeLabel(product.product_type)}</Badge>
+                                {product.category && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">{product.category}</Badge>}
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">{getTypeLabel(product.product_type)}</Badge>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <span className={cn("font-medium", isLowStock && "text-amber-600")}>
+                          <TableCell className="py-1.5">
+                            <span className={cn("font-medium text-xs", isLowStock && "text-amber-600")}>
                               {product.current_stock} {getUnitLabel(product.unit)}
                             </span>
-                            {isLowStock && <Badge variant="outline" className="ml-2 text-xs border-amber-500 text-amber-600">Baixo</Badge>}
+                            {isLowStock && <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 h-4 border-amber-500 text-amber-600">Baixo</Badge>}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5">
                             {product.is_for_sale ? (
                               <div className="flex items-center gap-1 text-green-600">
-                                <Store className="h-4 w-4" /><span className="text-sm">Venda</span>
+                                <Store className="h-3 w-3" /><span className="text-[11px]">Venda</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-blue-600">
-                                <Building2 className="h-4 w-4" /><span className="text-sm">Clínica</span>
+                                <Building2 className="h-3 w-3" /><span className="text-[11px]">Clínica</span>
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">{totalAppointments}</Badge>
+                          <TableCell className="py-1.5">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{totalAppointments}</Badge>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={product.is_active ? 'default' : 'secondary'}>
+                          <TableCell className="py-1.5">
+                            <Badge variant={product.is_active ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 h-4">
                               {product.is_active ? 'Ativo' : 'Inativo'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex gap-1 justify-end">
-                              <Button variant="ghost" size="icon" onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }} title="Ver detalhes">
-                                <Eye className="h-4 w-4" />
+                          <TableCell className="py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex gap-0.5 justify-end">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }} title="Ver detalhes">
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
                               {canDelete && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>

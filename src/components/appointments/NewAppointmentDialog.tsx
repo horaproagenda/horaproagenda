@@ -1701,8 +1701,17 @@ Até breve! ✨`;
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Sala</Label>
+            {/* Per-service commission for selected professional (auto-loads existing override, editable) */}
+            {selectedProfessional && serviceType === 'service' && selectedService && (
+              <ProfessionalCommissionField
+                professionalId={selectedProfessional}
+                serviceId={selectedService}
+                value={commissionOverride}
+                onChange={setCommissionOverride}
+              />
+            )}
+
+
               <SearchableSelect
                 options={activeRooms.map(r => ({
                   value: r.id,

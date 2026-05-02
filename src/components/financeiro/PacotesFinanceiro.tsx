@@ -34,6 +34,7 @@ interface PackageSaleRow {
   totalSessions: number;
   usedSessions: number;
   isCancelled: boolean;
+  refundedAmount: number;
 }
 
 export function PacotesFinanceiro() {

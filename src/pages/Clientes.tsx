@@ -390,6 +390,13 @@ const Clientes = () => {
                       key={client.id}
                       style={{ animationDelay: `${index * 30}ms` }}
                       className="animate-scale-in"
+                      onClickCapture={() =>
+                        savePosition({
+                          lastItemId: client.id,
+                          lastItemLabel: client.name,
+                          letter: client.name?.charAt(0).toUpperCase(),
+                        })
+                      }
                     >
                       <ClientCard client={client} />
                     </div>

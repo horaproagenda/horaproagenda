@@ -405,13 +405,13 @@ export function AtendimentosPorProfissional() {
                     <AccordionItem key={month.label} value={month.label}>
                       <AccordionTrigger className="text-sm hover:no-underline py-2">
                         <div className="flex items-center gap-3 w-full pr-4">
-                          <span className="capitalize font-medium">{month.label}</span>
-                          <div className="flex items-center gap-3 ml-auto text-[10px] text-muted-foreground">
-                            <Badge variant="secondary" className="text-[10px]">
+                          <span className="capitalize font-semibold text-sm">{month.label}</span>
+                          <div className="flex items-center gap-3 ml-auto text-[11px]">
+                            <Badge variant="secondary" className="text-[10px] h-5">
                               {month.appointments.length} atend.
                             </Badge>
-                            <span>{formatCurrency(monthRevenue)}</span>
-                            <span className="text-blue-600">{formatCurrency(monthCommission)}</span>
+                            <span className="text-emerald-600 font-medium tabular-nums">{formatCurrency(monthRevenue)}</span>
+                            <span className="text-amber-600 font-medium tabular-nums">{formatCurrency(monthCommission)}</span>
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -419,11 +419,11 @@ export function AtendimentosPorProfissional() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Data</TableHead>
-                              <TableHead className="text-xs">Cliente</TableHead>
-                              <TableHead className="text-xs">Serviço</TableHead>
-                              <TableHead className="text-xs text-right">Valor</TableHead>
-                              <TableHead className="text-xs text-right">Comissão</TableHead>
+                              <TableHead className="text-[11px]">Data</TableHead>
+                              <TableHead className="text-[11px]">Cliente</TableHead>
+                              <TableHead className="text-[11px]">Serviço</TableHead>
+                              <TableHead className="text-[11px] text-right">Valor</TableHead>
+                              <TableHead className="text-[11px] text-right">Comissão</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -432,15 +432,15 @@ export function AtendimentosPorProfissional() {
                               const pct = Number(apt.service?.commission_percentage || prof?.commission_percentage || 0);
                               const comm = amt * pct / 100;
                               return (
-                                <TableRow key={apt.id}>
-                                  <TableCell className="text-xs">
+                                <TableRow key={apt.id} className="hover:bg-muted/40 transition-colors">
+                                  <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">
                                     {format(parseISO(apt.start_time), 'dd/MM/yyyy')}
                                   </TableCell>
-                                  <TableCell className="text-xs">{apt.client?.name || '-'}</TableCell>
-                                  <TableCell className="text-xs">{apt.service?.name || '-'}</TableCell>
-                                  <TableCell className="text-xs text-right">{formatCurrency(amt)}</TableCell>
-                                  <TableCell className="text-xs text-right text-blue-600">
-                                    {formatCurrency(comm)} ({pct}%)
+                                  <TableCell className="text-xs py-2 font-medium">{apt.client?.name || '-'}</TableCell>
+                                  <TableCell className="text-xs py-2">{apt.service?.name || '-'}</TableCell>
+                                  <TableCell className="text-xs py-2 text-right font-medium tabular-nums">{formatCurrency(amt)}</TableCell>
+                                  <TableCell className="text-xs py-2 text-right text-amber-600 font-semibold tabular-nums">
+                                    {formatCurrency(comm)} <span className="text-muted-foreground font-normal">({pct}%)</span>
                                   </TableCell>
                                 </TableRow>
                               );

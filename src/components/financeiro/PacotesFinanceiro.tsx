@@ -183,36 +183,73 @@ export function PacotesFinanceiro() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
+      // Re-validate at submit time (defense in depth)
+      const err = validate();
+      if (err) throw new Error(err);
       if (!selected) throw new Error('Sem pacote selecionado');
+
       const { data: { user } } = await supabase.auth.getUser();
       const today = format(new Date(), 'yyyy-MM-dd');
       const refundDescription = `Devolução de pacote: ${selected.packageName} - Cliente: ${selected.clientName} - Pagamento: ${refundMethod}`;
 
-      // 1. Register refund in cash_transactions (caixa)
-      const { data: openReg } = await supabase
-        .from('cash_registers')
-        .select('id')
-        .is('closed_at', null)
-        .order('opened_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (openReg?.id && refundAmount > 0) {
-        await supabase.from('cash_transactions').insert({
-          cash_register_id: openReg.id,
-          type: 'expense',
-          category: 'refund',
-          description: refundDescription,
-          amount: refundAmount,
-          payment_method: refundMethod,
-          reference_id: selected.saleId,
-          reference_type: 'package_refund',
-          created_by: user?.id,
-        });
+      // ===== IDEMPOTENCY GUARD =====
+      // Re-fetch sale to ensure it isn't already cancelled
+      const { data: freshSale, error: saleErr } = await supabase
+        .from('single_sales')
+        .select('id, notes')
+        .eq('id', selected.saleId)
+        .single();
+      if (saleErr) throw saleErr;
+      if (freshSale?.notes && freshSale.notes.toUpperCase().includes('CANCELADO')) {
+        throw new Error('Este pacote já foi cancelado.');
       }
 
-      // 2. Register refund in financial_entries (financeiro)
-      if (refundAmount > 0) {
-        await supabase.from('financial_entries').insert({
+      // Check if a refund already exists for this sale (cash_transactions)
+      const { data: existingTx } = await supabase
+        .from('cash_transactions')
+        .select('id')
+        .eq('reference_id', selected.saleId)
+        .eq('reference_type', 'package_refund')
+        .limit(1);
+      const refundAlreadyRegistered = (existingTx?.length || 0) > 0;
+
+      // 1. Register refund in cash_transactions (caixa) — only if not already registered
+      if (!refundAlreadyRegistered && refundAmount > 0) {
+        const { data: openReg } = await supabase
+          .from('cash_registers')
+          .select('id')
+          .is('closed_at', null)
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (openReg?.id) {
+          const { error: txErr } = await supabase.from('cash_transactions').insert({
+            cash_register_id: openReg.id,
+            type: 'expense',
+            category: 'refund',
+            description: refundDescription,
+            amount: refundAmount,
+            payment_method: refundMethod,
+            reference_id: selected.saleId,
+            reference_type: 'package_refund',
+            created_by: user?.id,
+          });
+          if (txErr) throw txErr;
+        }
+      }
+
+      // Check if a financial entry already exists for this refund
+      const { data: existingFE } = await supabase
+        .from('financial_entries')
+        .select('id')
+        .eq('reference_id', selected.saleId)
+        .eq('reference_type', 'package_refund')
+        .limit(1);
+      const feAlreadyRegistered = (existingFE?.length || 0) > 0;
+
+      // 2. Register refund in financial_entries — only if not already registered
+      if (!feAlreadyRegistered && refundAmount > 0) {
+        const { error: feErr } = await supabase.from('financial_entries').insert({
           type: 'expense',
           description: refundDescription,
           amount: refundAmount,
@@ -220,13 +257,21 @@ export function PacotesFinanceiro() {
           due_date: today,
           paid_date: today,
           client_id: selected.clientId,
-          notes: `Devolução de pacote cancelado - Aplicações usadas: ${selected.usedSessions} - Multa: R$ ${penalty}`,
+          reference_id: selected.saleId,
+          reference_type: 'package_refund',
+          notes: `Devolução de pacote cancelado - Aplicações usadas: ${selected.usedSessions} - Multa: R$ ${penalty} - Motivo: ${cancelReason.trim()}`,
           created_by: user?.id,
         });
+        if (feErr) throw feErr;
       }
 
-      // 3. If refund method is "Crédito em Conta" -> add to client credit_balance
-      if (refundMethod.toLowerCase().includes('crédito') && selected.clientId && refundAmount > 0) {
+      // 3. Add to client credit_balance (only if not already credited and method = "Crédito em Conta")
+      if (
+        !refundAlreadyRegistered &&
+        refundMethod.toLowerCase().includes('crédito') &&
+        selected.clientId &&
+        refundAmount > 0
+      ) {
         const { data: cli } = await supabase
           .from('clients')
           .select('credit_balance')
@@ -236,29 +281,46 @@ export function PacotesFinanceiro() {
         await supabase.from('clients').update({ credit_balance: newBalance }).eq('id', selected.clientId);
       }
 
-      // 4. Mark sale as cancelled
+      // 4. Mark sale as cancelled (idempotent — guard above prevented re-entry)
       await supabase
         .from('single_sales')
         .update({
-          notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)} em ${today} via ${refundMethod}`,
+          notes: `CANCELADO - Devolução: R$ ${refundAmount.toFixed(2)} em ${today} via ${refundMethod} - Motivo: ${cancelReason.trim()}`,
         })
         .eq('id', selected.saleId);
 
-      // 5. Find package appointments and delete linked appointments from agenda
+      // 5. SOFT-CANCEL all linked appointments (preserve history) instead of hard delete
       if (selected.packageId) {
         const { data: pkgApps } = await supabase
           .from('package_appointments')
-          .select('id, appointment_id')
+          .select('id, appointment_id, status')
           .eq('package_id', selected.packageId);
+
         const appointmentIds = (pkgApps || [])
           .map(p => p.appointment_id)
           .filter(Boolean) as string[];
+
+        const cancelNote = `Pacote cancelado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} — Motivo: ${cancelReason.trim()}`;
+
         if (appointmentIds.length > 0) {
-          // Hard delete appointments from agenda + client history
-          await supabase.from('appointments').delete().in('id', appointmentIds);
+          // Only update those that aren't already completed/cancelled (preserve completed history)
+          await supabase
+            .from('appointments')
+            .update({ status: 'cancelled', notes: cancelNote })
+            .in('id', appointmentIds)
+            .not('status', 'in', '(completed,cancelled,missed)');
         }
-        // Delete package_appointments records
-        await supabase.from('package_appointments').delete().eq('package_id', selected.packageId);
+
+        // Soft-cancel package_appointments — only those still pending/scheduled
+        await supabase
+          .from('package_appointments')
+          .update({
+            status: 'cancelled',
+            notes: cancelNote,
+          })
+          .eq('package_id', selected.packageId)
+          .in('status', ['pending', 'scheduled']);
+
         // Deactivate package
         await supabase
           .from('service_packages')
@@ -266,10 +328,14 @@ export function PacotesFinanceiro() {
           .eq('id', selected.packageId);
       }
 
-      return { refundAmount };
+      return { refundAmount, alreadyRegistered: refundAlreadyRegistered && feAlreadyRegistered };
     },
     onSuccess: (data) => {
-      toast.success(`Pacote cancelado. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
+      if (data.alreadyRegistered) {
+        toast.info('Cancelamento já havia sido registrado anteriormente.');
+      } else {
+        toast.success(`Pacote cancelado. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
+      }
       setCancelOpen(false);
       queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });

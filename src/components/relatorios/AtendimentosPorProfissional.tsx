@@ -236,31 +236,34 @@ export function AtendimentosPorProfissional() {
 
       {/* Professional list */}
       <div className="space-y-2">
-        {profSummaries.map(item => (
+        {profSummaries.map(item => {
+          const profColor = (item.professional as any).agenda_color || 'hsl(var(--primary))';
+          return (
           <Card
             key={item.professional.id}
-            className="card-hover cursor-pointer transition-all"
+            className="card-hover cursor-pointer transition-all border-l-4 shadow-sm hover:shadow-md"
+            style={{ borderLeftColor: profColor, background: `linear-gradient(to right, ${profColor}10, transparent 25%)` }}
             onClick={() => setSelectedProfessional(item.professional.id)}
           >
             <CardContent className="p-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                <Avatar className="h-10 w-10 ring-2 ring-offset-1" style={{ '--tw-ring-color': `${profColor}40` } as any}>
+                  <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: `${profColor}20`, color: profColor }}>
                     {item.professional.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm truncate">{item.professional.name}</h3>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5">
+                  <h3 className="font-semibold text-sm truncate" style={{ color: profColor }}>{item.professional.name}</h3>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {item.totalServices} atend.
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
                       <DollarSign className="h-3 w-3" />
                       {formatCurrency(item.totalRevenue)}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-amber-600 font-medium">
                       <Percent className="h-3 w-3" />
                       {formatCurrency(item.totalCommission)}
                     </span>
@@ -268,7 +271,7 @@ export function AtendimentosPorProfissional() {
                 </div>
                 <div className="flex items-center gap-2">
                   {item.totalPaidCommissions > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">
+                    <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 bg-emerald-50">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       {formatCurrency(item.totalPaidCommissions)} pago
                     </Badge>
@@ -278,7 +281,8 @@ export function AtendimentosPorProfissional() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
         {profSummaries.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
             <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />

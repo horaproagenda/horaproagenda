@@ -48,10 +48,10 @@ export function RelatorioConsolidado() {
     },
   });
   
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
-  const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useLocalStorage<PeriodFilter>('financeiro:relatorio:period', 'today');
+  const [customDate, setCustomDate] = useLocalStorage<string>('financeiro:relatorio:customDate', format(new Date(), 'yyyy-MM-dd'));
+  const [sourceFilter, setSourceFilter] = useLocalStorage<string>('financeiro:relatorio:source', 'all');
+  const [typeFilter, setTypeFilter] = useLocalStorage<string>('financeiro:relatorio:type', 'all');
 
   // Calculate date range based on period filter
   const dateRange = useMemo(() => {

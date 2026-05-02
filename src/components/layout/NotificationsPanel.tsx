@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
 import { useSystemNotifications, type SystemNotification } from '@/hooks/useSystemNotifications';
+import { dismissNotification, dismissNotifications } from '@/lib/notificationDismissal';
 import { cn } from '@/lib/utils';
 
 const getNotificationIcon = (type: SystemNotification['type']) => {

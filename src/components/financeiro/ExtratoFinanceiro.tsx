@@ -24,6 +24,7 @@ import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries
 import { useCashTransactions, CashTransaction } from '@/hooks/useCashTransactions';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCategoryLabel } from '@/lib/categoryLabels';
 
 interface UnifiedEntry {
   id: string;

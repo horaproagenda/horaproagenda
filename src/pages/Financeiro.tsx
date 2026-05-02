@@ -200,6 +200,10 @@ export default function Financeiro() {
             <MeusCaixas />
           </TabsContent>
 
+          <TabsContent value="pacotes" className="page-enter">
+            <PacotesFinanceiro />
+          </TabsContent>
+
           <TabsContent value="categorias" className="page-enter">
             <CategoriasFinanceiras />
           </TabsContent>

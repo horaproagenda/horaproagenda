@@ -1099,7 +1099,7 @@ const Agenda = () => {
             const profId = apt?.professional_id || apt?.service?.professional_id;
             const prof = professionals.find(p => p.id === profId);
             const absenceProf = absence?.professional ? professionals.find(p => p.id === absence.professional_id) : null;
-            const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
+            const statusStyle = apt ? getAppointmentSlotStyle(apt) : undefined;
             const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
             
             // Calculate slot height based on duration
@@ -1281,7 +1281,7 @@ const Agenda = () => {
                 const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
                 const prof = professionals.find(p => p.id === profId);
-                const statusStyle = apt ? getAppointmentStatusStyle(apt.status) : undefined;
+                const statusStyle = apt ? getAppointmentSlotStyle(apt) : undefined;
                 const isDragging = draggedAppointment?.id === apt?.id;
                 const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
 

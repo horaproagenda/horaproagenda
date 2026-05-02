@@ -499,15 +499,27 @@ export function AppointmentDetailDialog({
   const safeClient = appointment.client || { name: 'Cliente não encontrado', phone: '', credit_balance: 0 };
   const safeService = appointment.service || { name: 'Serviço não disponível', price: 0, professional: null, room: null };
 
-  // Get package session info
+  // Get package session info — counts based on the package's package_appointments array
+  // when available, falling back to the cached counter otherwise.
   const getPackageSessionInfo = () => {
     if (!appointment.package_appointment?.package) return null;
-    const pkg = appointment.package_appointment.package;
+    const pkg: any = appointment.package_appointment.package;
     const totalSessions = pkg.total_sessions || 0;
-    const scheduledSessions = pkg.sessions_scheduled || 0;
-    // After deleting, one more session will be available
-    const remainingSessions = totalSessions - scheduledSessions + 1;
-    return { totalSessions, scheduledSessions, remainingSessions, packageName: pkg.name };
+    const sessions: any[] = Array.isArray(pkg.appointments) ? pkg.appointments : [];
+    const scheduledSessions = sessions.length > 0
+      ? sessions.filter((s) => !!s.appointment_id).length
+      : (pkg.sessions_scheduled || 0);
+    const realizedSessions = sessions.filter((s) => s.status === 'completed' || s.status === 'missed').length;
+    const availableNow = Math.max(0, totalSessions - scheduledSessions);
+    const availableAfterDelete = Math.max(0, Math.min(totalSessions, availableNow + 1));
+    return {
+      totalSessions,
+      scheduledSessions,
+      realizedSessions,
+      availableNow,
+      availableAfterDelete,
+      packageName: pkg.name,
+    };
   };
 
   const packageSessionInfo = getPackageSessionInfo();

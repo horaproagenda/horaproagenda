@@ -648,7 +648,7 @@ export default function Produtos() {
               {/* ── Novo Produto ── */}
               <Dialog open={productDialogOpen} onOpenChange={(open) => { setProductDialogOpen(open); if (!open) setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 }); }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="h-9 gap-1.5 text-xs btn-vibrant">
+                  <Button size="sm" className="h-8 gap-1 text-xs btn-vibrant">
                     <Plus className="h-3.5 w-3.5" />
                     Novo Produto
                   </Button>

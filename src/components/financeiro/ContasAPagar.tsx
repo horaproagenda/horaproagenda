@@ -66,8 +66,8 @@ export function ContasAPagar() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    date: ['month'],
-    status: ['pending'],
+    date: ['all'],
+    status: ['all'],
   });
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [entryToPay, setEntryToPay] = useState<any>(null);
@@ -114,6 +114,7 @@ export function ContasAPagar() {
       id: 'date',
       label: 'Período',
       options: [
+        { value: 'all', label: 'Todos' },
         { value: 'today', label: 'Hoje' },
         { value: 'month', label: 'Este mês' },
       ],
@@ -123,6 +124,7 @@ export function ContasAPagar() {
       id: 'status',
       label: 'Status',
       options: [
+        { value: 'all', label: 'Todos' },
         { value: 'pending', label: 'Pendentes' },
         { value: 'paid', label: 'Pagas' },
       ],

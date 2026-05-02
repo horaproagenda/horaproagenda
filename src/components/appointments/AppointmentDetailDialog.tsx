@@ -534,9 +534,19 @@ export function AppointmentDetailDialog({
   // Check if appointment is part of a recurring series
   const isRecurringSeries = appointment.recurring_group_id != null;
 
+  // Compute amount paid at the package level (for the refund flow). Uses the cached
+  // synchronized package payment value via amountPaid (already package-aware below).
+  const packageTotalPaid = isPackageAppointment ? Number(appointment.amount_paid || 0) : 0;
+
   const handleDelete = async () => {
     // Handle package appointments (delete all from package)
     if (deleteMode === 'all' && appointment.package_appointment?.package_id) {
+      // If the package has any payment registered, route through the refund flow
+      if (packageTotalPaid > 0) {
+        setShowDeleteDialog(false);
+        setShowRefundDialog(true);
+        return;
+      }
       deletePackageAppointments.mutate(appointment.package_appointment.package_id, {
         onSuccess: () => {
           setShowDeleteDialog(false);

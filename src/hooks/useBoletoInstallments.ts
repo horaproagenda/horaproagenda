@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { redistributeActiveBoletoInstallments, syncBoletoPackageAvailability } from '@/lib/boletoInstallmentSync';
 
 export interface BoletoInstallment {
   id: string;
@@ -26,6 +27,13 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['appointments'] });
   queryClient.invalidateQueries({ queryKey: ['reminders'] });
   queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+  queryClient.invalidateQueries({ queryKey: ['cash_register_entries'] });
+  queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+  queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+  queryClient.invalidateQueries({ queryKey: ['client_boleto_status'] });
+  queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+  queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+  queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
 }
 
 export function useBoletoInstallments(saleId?: string) {
@@ -96,6 +104,7 @@ export function useBoletoInstallments(saleId?: string) {
 
   const markAsPaid = useMutation({
     mutationFn: async (params: { id: string; paidDate?: string }) => {
+      const { data: current } = await supabase.from('boleto_installments').select('sale_id').eq('id', params.id).single();
       const { error } = await supabase
         .from('boleto_installments')
         .update({
@@ -105,6 +114,7 @@ export function useBoletoInstallments(saleId?: string) {
         .eq('id', params.id);
 
       if (error) throw error;
+      if (current?.sale_id) await syncBoletoPackageAvailability(current.sale_id);
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -114,12 +124,17 @@ export function useBoletoInstallments(saleId?: string) {
 
   const cancelInstallment = useMutation({
     mutationFn: async (id: string) => {
+      const { data: current } = await supabase.from('boleto_installments').select('sale_id').eq('id', id).single();
       const { error } = await supabase
         .from('boleto_installments')
         .update({ status: 'cancelled' })
         .eq('id', id);
 
       if (error) throw error;
+      if (current?.sale_id) {
+        await redistributeActiveBoletoInstallments(current.sale_id);
+        await syncBoletoPackageAvailability(current.sale_id);
+      }
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -228,6 +243,7 @@ export function useAllBoletoInstallments() {
         .eq('id', params.id);
 
       if (error) throw error;
+      if (current?.sale_id) await syncBoletoPackageAvailability(current.sale_id);
 
       await logAudit({
         boleto_installment_id: params.id,
@@ -258,6 +274,8 @@ export function useAllBoletoInstallments() {
         .in('id', params.ids);
 
       if (error) throw error;
+
+      await Promise.all(Array.from(new Set((currentItems || []).map((item: any) => item.sale_id).filter(Boolean))).map((saleId: string) => syncBoletoPackageAvailability(saleId)));
 
       // Log audit for each
       for (const item of (currentItems || [])) {
@@ -294,6 +312,11 @@ export function useAllBoletoInstallments() {
         .eq('id', id);
 
       if (error) throw error;
+
+      if (current?.sale_id) {
+        await redistributeActiveBoletoInstallments(current.sale_id);
+        await syncBoletoPackageAvailability(current.sale_id);
+      }
 
       await logAudit({
         boleto_installment_id: id,

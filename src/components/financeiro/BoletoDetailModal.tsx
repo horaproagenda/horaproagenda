@@ -56,13 +56,18 @@ export function BoletoDetailModal({
   >(null);
 
   const sorted = useMemo(
-    () => [...installments].sort((a, b) => a.installment_number - b.installment_number),
+    () => [...installments].sort((a, b) => {
+      const saleDiff = String(a.sale_id || '').localeCompare(String(b.sale_id || ''));
+      if (saleDiff !== 0) return saleDiff;
+      return Number(a.installment_number || 0) - Number(b.installment_number || 0);
+    }),
     [installments]
   );
 
-  const pendingInstallments = sorted.filter(i => i.status === 'pending' || i.status === 'overdue');
-  const paidInstallments = sorted.filter(i => i.status === 'paid');
-  const totalAmount = sorted.reduce((s, i) => s + Number(i.amount), 0);
+  const activeInstallments = sorted.filter(i => i.status !== 'cancelled');
+  const pendingInstallments = activeInstallments.filter(i => i.status === 'pending' || i.status === 'overdue');
+  const paidInstallments = activeInstallments.filter(i => i.status === 'paid');
+  const totalAmount = activeInstallments.reduce((s, i) => s + Number(i.amount), 0);
   const totalPaid = paidInstallments.reduce((s, i) => s + Number(i.amount), 0);
   const totalPending = pendingInstallments.reduce((s, i) => s + Number(i.amount), 0);
   const selectedTotal = selectedIds.reduce((s, id) => {
@@ -112,7 +117,7 @@ export function BoletoDetailModal({
   const performSaveEdit = async () => {
     if (!editingId) return;
     const newAmount = parseFloat(editForm.amount);
-    const otherTotal = sorted.filter(i => i.id !== editingId).reduce((s, i) => s + Number(i.amount), 0);
+    const otherTotal = activeInstallments.filter(i => i.id !== editingId).reduce((s, i) => s + Number(i.amount), 0);
     if (otherTotal + newAmount > totalAmount + 0.01 && newAmount > Number(sorted.find(i => i.id === editingId)?.amount || 0)) {
       toast.error('O novo valor faria a soma das parcelas ultrapassar o valor total do boleto.');
       return;

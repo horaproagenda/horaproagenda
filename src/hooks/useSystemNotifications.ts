@@ -29,60 +29,6 @@ export interface SystemNotification {
   clientId?: string;
 }
 
-// Get today's date as string for localStorage key
-const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
-
-// Get session key to track if toasts were shown in this browser session
-const getSessionKey = () => 'notifications_session_shown';
-
-// Check if notifications were already shown in this session (since app open)
-const wasShownThisSession = () => {
-  return sessionStorage.getItem(getSessionKey()) === 'true';
-};
-
-// Mark notifications as shown in this session
-const markAsShownThisSession = () => {
-  sessionStorage.setItem(getSessionKey(), 'true');
-};
-
-// Check if a specific notification was dismissed (for persistent items like reminders)
-const wasNotificationDismissed = (notificationId: string): boolean => {
-  const stored = localStorage.getItem('dismissed_notifications');
-  if (!stored) return false;
-  
-  try {
-    const data = JSON.parse(stored);
-    if (data.date !== getTodayKey()) {
-      // Clear old dismissed notifications
-      localStorage.removeItem('dismissed_notifications');
-      return false;
-    }
-    return data.ids?.includes(notificationId) || false;
-  } catch {
-    return false;
-  }
-};
-
-// Mark a notification as dismissed for today
-const markNotificationDismissed = (notificationId: string) => {
-  const stored = localStorage.getItem('dismissed_notifications');
-  let existingIds: string[] = [];
-  
-  try {
-    const data = JSON.parse(stored || '{}');
-    if (data.date === getTodayKey()) {
-      existingIds = data.ids || [];
-    }
-  } catch {
-    // ignore
-  }
-  
-  localStorage.setItem('dismissed_notifications', JSON.stringify({
-    date: getTodayKey(),
-    ids: [...new Set([...existingIds, notificationId])],
-  }));
-};
-
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
 

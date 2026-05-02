@@ -560,13 +560,25 @@ export function PacotesFinanceiro() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Dinheiro" className="text-xs">Dinheiro</SelectItem>
-                  <SelectItem value="PIX" className="text-xs">PIX</SelectItem>
-                  <SelectItem value="Transferência" className="text-xs">Transferência</SelectItem>
-                  <SelectItem value="Crédito em Conta" className="text-xs">Crédito em Conta do Cliente</SelectItem>
-                  {paymentMethods.filter(m => !m.name.toLowerCase().includes('boleto')).map(m => (
-                    <SelectItem key={m.id} value={m.name} className="text-xs">{m.name}</SelectItem>
-                  ))}
+                  {(() => {
+                    const base = ['Dinheiro', 'PIX', 'Transferência', 'Crédito em Conta'];
+                    const extras = paymentMethods
+                      .map(m => m.name)
+                      .filter(n => !n.toLowerCase().includes('boleto'))
+                      .filter(n => !base.some(b => b.toLowerCase() === n.toLowerCase()));
+                    const all = [...base, ...extras];
+                    const seen = new Set<string>();
+                    return all.filter(n => {
+                      const k = n.toLowerCase().trim();
+                      if (seen.has(k)) return false;
+                      seen.add(k);
+                      return true;
+                    }).map(n => (
+                      <SelectItem key={n} value={n} className="text-xs">
+                        {n === 'Crédito em Conta' ? 'Crédito em Conta do Cliente' : n}
+                      </SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </div>

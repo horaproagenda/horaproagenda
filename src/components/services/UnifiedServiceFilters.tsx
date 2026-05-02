@@ -299,18 +299,6 @@ export function UnifiedServiceFilters({
               <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onRoomChange(null)} />
             </Badge>
           )}
-          {selectedClient && (
-            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-              {clients.find(c => c.id === selectedClient)?.name}
-              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onClientChange(null)} />
-            </Badge>
-          )}
-          {type === 'packages' && selectedSessions && (
-            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-              {selectedSessions} aplicações
-              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onSessionsChange?.(null)} />
-            </Badge>
-          )}
         </div>
       )}
     </div>

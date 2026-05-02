@@ -87,7 +87,7 @@ export function PackageAvailabilityReportDialog() {
                 <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Nenhum pacote vendido encontrado</TableCell></TableRow>
               ) : rows.map(({ pkg, summary }) => (
                 <TableRow key={pkg.id}>
-                  <TableCell className="px-2 py-1.5 font-medium">{pkg.name}</TableCell>
+                  <TableCell className="px-2 py-1.5 font-medium text-[10px] leading-tight">{pkg.name}</TableCell>
                   <TableCell className="px-2 py-1.5">{pkg.client?.name || '-'}</TableCell>
                   <TableCell className="px-2 py-1.5">{summary.totalSessions}</TableCell>
                   <TableCell className="px-2 py-1.5">{summary.existingSessionRecords}</TableCell>

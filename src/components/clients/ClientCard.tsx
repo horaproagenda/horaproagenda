@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Phone, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -55,97 +55,74 @@ export function ClientCard({ client }: ClientCardProps) {
 
   return (
     <>
-      <div 
-        className="group rounded-lg border border-border bg-card p-3 transition-all duration-300 hover:border-primary/20 hover:shadow-md cursor-pointer"
+      <div
+        className="group flex h-[88px] items-center gap-2 rounded-lg border border-border bg-card p-2.5 transition-all duration-200 hover:border-primary/30 hover:shadow-sm cursor-pointer"
         onClick={() => navigate(`/clientes/${client.id}`)}
       >
-        {/* Header with Avatar and Actions */}
-        <div className="flex items-start gap-3">
-          <Avatar className="h-9 w-9 border border-primary/10 transition-transform duration-200 group-hover:scale-105">
-            <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
-              {getInitials(client.name)}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h4 className="font-medium text-sm text-foreground truncate leading-tight">
-                  {client.name}
-                </h4>
-                <Badge 
-                  variant={client.is_active ? "default" : "secondary"} 
-                  className="mt-0.5 text-[9px] px-1.5 py-0 h-4"
+        <Avatar className="h-9 w-9 shrink-0 border border-primary/10">
+          <AvatarFallback className="bg-primary/5 text-primary text-[11px] font-medium">
+            {getInitials(client.name)}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <h4 className="font-medium text-xs text-foreground truncate leading-tight">
+              {client.name}
+            </h4>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  {client.is_active ? 'Ativo' : 'Inativo'}
-                </Badge>
-              </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  >
-                    <MoreVertical className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36">
-                  <DropdownMenuItem 
+                  <MoreVertical className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/clientes/${client.id}`);
+                  }}
+                  className="text-xs"
+                >
+                  <Edit className="h-3.5 w-3.5 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                {canDelete && (
+                  <DropdownMenuItem
+                    className="text-xs text-destructive focus:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/clientes/${client.id}`);
+                      setShowDeleteDialog(true);
                     }}
-                    className="text-xs"
                   >
-                    <Edit className="h-3.5 w-3.5 mr-2" />
-                    Editar
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Excluir
                   </DropdownMenuItem>
-                  {canDelete && (
-                    <DropdownMenuItem
-                      className="text-xs text-destructive focus:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeleteDialog(true);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-2" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
 
-        {/* Contact Info */}
-        <div className="mt-2 space-y-0.5">
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <Phone className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{client.phone}</span>
           </p>
-          {client.email && (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Mail className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">{client.email}</span>
-            </p>
-          )}
-        </div>
 
-        {/* Notes */}
-        {client.notes && (
-          <p className="mt-2 text-[10px] text-muted-foreground/80 border-l border-primary/20 pl-2 italic line-clamp-2">
-            {client.notes}
-          </p>
-        )}
-
-        {/* Footer */}
-        <div className="mt-2 pt-2 border-t border-border/50">
-          <span className="text-[10px] text-muted-foreground">
-            Desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
-          </span>
+          <div className="mt-1 flex items-center justify-between gap-1">
+            <Badge
+              variant={client.is_active ? "default" : "secondary"}
+              className="text-[9px] px-1.5 py-0 h-4"
+            >
+              {client.is_active ? 'Ativo' : 'Inativo'}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground truncate">
+              Desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -406,25 +406,8 @@ export function CashRegisterPanel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="text-sm text-muted-foreground">Saldo Inicial</div>
-              <div className="text-xl font-bold">R$ {currentOpenRegister.opening_balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950">
-              <div className="text-sm text-green-600">Entradas</div>
-              <div className="text-xl font-bold text-green-700">R$ {incomeTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950">
-              <div className="text-sm text-red-600">Saídas</div>
-              <div className="text-xl font-bold text-red-700">R$ {expenseTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <div className="p-4 rounded-lg bg-primary/10">
-              <div className="text-sm text-primary">Saldo Atual</div>
-              <div className="text-xl font-bold text-primary">R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-          </div>
+          {/* Os totais (Entradas, Saídas, Descontos, Taxas Cartão, Líquido, Saldo Atual)
+              são exibidos pela barra "Caixa em tempo real" no topo da página. */}
 
           <Separator />
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Search, X, Check, ChevronDown } from 'lucide-react';
+import { Filter, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -74,16 +74,13 @@ export function UnifiedServiceFilters({
     client: '',
   });
 
-  const hasActiveFilters = selectedCategory || selectedProfessional || selectedRoom || 
-    selectedClient || selectedStatus || (type === 'packages' && selectedSessions);
+  const hasActiveFilters = !!(selectedCategory || selectedProfessional || selectedRoom || selectedStatus);
 
   const activeFilterCount = [
     selectedCategory,
     selectedProfessional,
     selectedRoom,
-    selectedClient,
     selectedStatus,
-    type === 'packages' ? selectedSessions : null,
   ].filter(Boolean).length;
 
   const filteredCategories = useMemo(() => 
@@ -108,23 +105,7 @@ export function UnifiedServiceFilters({
 
   const sessionsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'];
 
-  const sortOptions = type === 'services' ? [
-    { value: 'name-asc', label: 'Nome A-Z' },
-    { value: 'name-desc', label: 'Nome Z-A' },
-    { value: 'price-asc', label: 'Preço ↑' },
-    { value: 'price-desc', label: 'Preço ↓' },
-    { value: 'date-asc', label: 'Mais antigo' },
-    { value: 'date-desc', label: 'Mais recente' },
-  ] : [
-    { value: 'name-asc', label: 'Nome A-Z' },
-    { value: 'name-desc', label: 'Nome Z-A' },
-    { value: 'price-asc', label: 'Preço ↑' },
-    { value: 'price-desc', label: 'Preço ↓' },
-    { value: 'sessions-asc', label: 'Aplicações ↑' },
-    { value: 'sessions-desc', label: 'Aplicações ↓' },
-    { value: 'date-asc', label: 'Mais antigo' },
-    { value: 'date-desc', label: 'Mais recente' },
-  ];
+
 
   const FilterSection = ({ 
     title, 
@@ -224,95 +205,53 @@ export function UnifiedServiceFilters({
 
               <Separator />
 
-              {/* Status */}
-              <FilterSection
-                title="Status"
-                options={[
-                  { id: 'active', label: 'Ativo' },
-                  { id: 'inactive', label: 'Inativo' },
-                ]}
-                selectedValue={selectedStatus}
-                onSelect={onStatusChange}
-              />
-
-              <Separator />
-
-              {/* Category */}
-              <FilterSection
-                title="Categoria"
-                searchKey="category"
-                options={filteredCategories.map(c => ({ id: c, label: c }))}
-                selectedValue={selectedCategory}
-                onSelect={onCategoryChange}
-              />
-
-              <Separator />
-
-              {/* Professional */}
-              <FilterSection
-                title="Profissional"
-                searchKey="professional"
-                options={filteredProfessionals.map(p => ({ id: p.id, label: p.name }))}
-                selectedValue={selectedProfessional}
-                onSelect={onProfessionalChange}
-              />
-
-              <Separator />
-
-              {/* Room */}
-              <FilterSection
-                title="Sala"
-                searchKey="room"
-                options={filteredRooms.map(r => ({ id: r.id, label: r.name }))}
-                selectedValue={selectedRoom}
-                onSelect={onRoomChange}
-              />
-
-              {clients.length > 0 && (
-                <>
-                  <Separator />
+              <ScrollArea className="h-[420px] pr-2">
+                <div className="space-y-3">
+                  {/* Status */}
                   <FilterSection
-                    title="Cliente"
-                    searchKey="client"
-                    options={filteredClients.map(c => ({ id: c.id, label: c.name }))}
-                    selectedValue={selectedClient}
-                    onSelect={onClientChange}
+                    title="Status"
+                    options={[
+                      { id: 'active', label: 'Ativo' },
+                      { id: 'inactive', label: 'Inativo' },
+                    ]}
+                    selectedValue={selectedStatus}
+                    onSelect={onStatusChange}
                   />
-                </>
-              )}
 
-              {type === 'packages' && onSessionsChange && (
-                <>
                   <Separator />
+
+                  {/* Category */}
                   <FilterSection
-                    title="Aplicações"
-                    options={sessionsOptions.map(s => ({ id: s, label: s === '10+' ? '10 ou mais' : `${s} aplicação${s !== '1' ? 'es' : ''}` }))}
-                    selectedValue={selectedSessions || null}
-                    onSelect={onSessionsChange}
+                    title="Categoria"
+                    searchKey="category"
+                    options={filteredCategories.map(c => ({ id: c, label: c }))}
+                    selectedValue={selectedCategory}
+                    onSelect={onCategoryChange}
                   />
-                </>
-              )}
 
-              <Separator />
+                  <Separator />
 
-              {/* Sort */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ordenar</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {sortOptions.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => onSortChange(opt.value)}
-                      className={cn(
-                        "px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-left",
-                        sortBy === opt.value && "bg-muted font-medium"
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {/* Professional */}
+                  <FilterSection
+                    title="Profissional"
+                    searchKey="professional"
+                    options={filteredProfessionals.map(p => ({ id: p.id, label: p.name }))}
+                    selectedValue={selectedProfessional}
+                    onSelect={onProfessionalChange}
+                  />
+
+                  <Separator />
+
+                  {/* Room */}
+                  <FilterSection
+                    title="Sala"
+                    searchKey="room"
+                    options={filteredRooms.map(r => ({ id: r.id, label: r.name }))}
+                    selectedValue={selectedRoom}
+                    onSelect={onRoomChange}
+                  />
                 </div>
-              </div>
+              </ScrollArea>
             </div>
           </PopoverContent>
         </Popover>
@@ -342,18 +281,6 @@ export function UnifiedServiceFilters({
             <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
               {rooms.find(r => r.id === selectedRoom)?.name}
               <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onRoomChange(null)} />
-            </Badge>
-          )}
-          {selectedClient && (
-            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-              {clients.find(c => c.id === selectedClient)?.name}
-              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onClientChange(null)} />
-            </Badge>
-          )}
-          {type === 'packages' && selectedSessions && (
-            <Badge variant="secondary" className="h-6 text-[10px] gap-1 shrink-0">
-              {selectedSessions} aplicações
-              <X className="h-2.5 w-2.5 cursor-pointer" onClick={() => onSessionsChange?.(null)} />
             </Badge>
           )}
         </div>

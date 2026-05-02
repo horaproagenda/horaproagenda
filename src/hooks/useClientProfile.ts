@@ -93,29 +93,139 @@ export function useClientProfile(clientId: string) {
       )
       .subscribe();
 
-    // Subscribe to ALL service_packages for this project (to catch new package sales)
+    // Subscribe to ALL service_packages events for this client (INSERT/UPDATE/DELETE)
     const allPackagesChannel = supabase
       .channel(`all-packages-realtime-for-profile-${clientId}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'service_packages',
         },
         (payload) => {
-          if (payload.new && (payload.new as { client_id?: string }).client_id === clientId) {
-            console.log('New package for this client:', payload);
+          const row = (payload.new || payload.old) as { client_id?: string } | null;
+          if (row && row.client_id === clientId) {
+            console.log('Package change for this client:', payload);
             queryClient.invalidateQueries({ queryKey: ['client_packages', clientId] });
             queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+            queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
             queryClient.invalidateQueries({ queryKey: ['service_packages'] });
             queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+            queryClient.invalidateQueries({ queryKey: ['client_credits', clientId] });
           }
         }
       )
       .subscribe((status) => {
         console.log('Packages subscription for profile status:', status);
       });
+
+    // Subscribe to client_services for this client (paid services availability)
+    const clientServicesChannel = supabase
+      .channel(`client-services-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'client_services',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client_services', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client_credits', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to client_credit_transactions for this client
+    const creditTransactionsChannel = supabase
+      .channel(`client-credit-transactions-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'client_credit_transactions',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['clients'] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to payments_audit for this client (registered payments)
+    const paymentsAuditChannel = supabase
+      .channel(`client-payments-audit-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments_audit',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client-appointments', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to cash_register_entries for this client (cash flow)
+    const cashEntriesChannel = supabase
+      .channel(`client-cash-entries-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cash_register_entries',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to financial_entries for this client
+    const financialEntriesChannel = supabase
+      .channel(`client-financial-entries-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'financial_entries',
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to package_appointments to refresh package usage counts
+    const packageAppointmentsChannel = supabase
+      .channel(`client-package-appointments-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'package_appointments' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['package_details'] });
+          queryClient.invalidateQueries({ queryKey: ['client_credits', clientId] });
+        }
+      )
+      .subscribe();
 
     // Subscribe to client_documents changes (to catch fill-link submissions)
     const documentsChannel = supabase
@@ -171,6 +281,12 @@ export function useClientProfile(clientId: string) {
       supabase.removeChannel(salesChannel);
       supabase.removeChannel(allAppointmentsChannel);
       supabase.removeChannel(allPackagesChannel);
+      supabase.removeChannel(clientServicesChannel);
+      supabase.removeChannel(creditTransactionsChannel);
+      supabase.removeChannel(paymentsAuditChannel);
+      supabase.removeChannel(cashEntriesChannel);
+      supabase.removeChannel(financialEntriesChannel);
+      supabase.removeChannel(packageAppointmentsChannel);
       supabase.removeChannel(documentsChannel);
       supabase.removeChannel(photosChannel);
       supabase.removeChannel(boletoChannel);

@@ -627,6 +627,7 @@ export function useRealtimeSync() {
             ...CLIENT_QUERIES,
             ...APPOINTMENT_QUERIES,
             'dashboard-stats',
+            'client_credit_transactions',
           ]);
           
           if (payload.eventType === 'INSERT') {
@@ -634,7 +635,30 @@ export function useRealtimeSync() {
           }
         }
       )
-      
+
+      // ============ CLIENT CREDIT TRANSACTIONS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_credit_transactions' },
+        (payload) => {
+          invalidateMultiple([
+            'client_credit_transactions',
+            ...CLIENT_QUERIES,
+            ...FINANCIAL_QUERIES,
+            'dashboard-stats',
+          ]);
+
+          if (payload.eventType === 'INSERT') {
+            const newData = payload.new as { transaction_type?: string };
+            if (newData.transaction_type === 'credit_used') {
+              toast.info('💳 Crédito do cliente utilizado', { duration: 2000 });
+            } else if (newData.transaction_type === 'credit_added') {
+              toast.success('💳 Crédito adicionado ao cliente', { duration: 2000 });
+            }
+          }
+        }
+      )
+
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('✅ Realtime sync v2: conectado a todas as tabelas');

@@ -152,6 +152,19 @@ export function useClientProfile(clientId: string) {
       )
       .subscribe();
 
+    // Subscribe to boleto installment changes — refresh sales (which embed boletos)
+    const boletoChannel = supabase
+      .channel(`client-boleto-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'boleto_installments' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          queryClient.refetchQueries({ queryKey: ['client-sales', clientId], type: 'active' });
+        }
+      )
+      .subscribe();
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
@@ -160,6 +173,7 @@ export function useClientProfile(clientId: string) {
       supabase.removeChannel(allPackagesChannel);
       supabase.removeChannel(documentsChannel);
       supabase.removeChannel(photosChannel);
+      supabase.removeChannel(boletoChannel);
     };
   }, [clientId, queryClient]);
 
@@ -501,14 +515,21 @@ export function useClientProfile(clientId: string) {
           }]
         : [];
 
-      const boletoPayments = ((sale as any).boleto_installments || [])
-        .filter((installment: any) => installment.status === 'paid' && installment.paid_date)
-        .map((installment: any) => ({
+      // Active installments: exclude cancelled ones; renumber sequentially
+      const activeInstallments = ((sale as any).boleto_installments || [])
+        .filter((i: any) => i.status !== 'cancelled')
+        .sort((a: any, b: any) => a.installment_number - b.installment_number);
+      const activeTotal = activeInstallments.length;
+
+      const boletoPayments = activeInstallments
+        .map((installment: any, idx: number) => ({ installment, activeIdx: idx + 1 }))
+        .filter(({ installment }) => installment.status === 'paid' && installment.paid_date)
+        .map(({ installment, activeIdx }) => ({
           id: `${sale.id}-boleto-${installment.id}`,
           date: installment.paid_date,
           amount: Number(installment.amount || 0),
-          paymentMethod: `Boleto ${installment.installment_number}/${installment.total_installments}`,
-          suffix: ` - Parcela ${installment.installment_number}/${installment.total_installments}`,
+          paymentMethod: `Boleto ${activeIdx}/${activeTotal}`,
+          suffix: ` - Parcela ${activeIdx}/${activeTotal}`,
         }));
 
       return [...basePayment, ...boletoPayments]

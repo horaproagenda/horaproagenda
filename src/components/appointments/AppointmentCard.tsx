@@ -96,7 +96,9 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         className="group flex items-center gap-2 rounded-md border border-border/50 bg-card/80 backdrop-blur-sm px-2.5 py-2 transition-all duration-300 ease-out hover:border-border hover:shadow-sm hover:bg-card"
         style={{ 
           ...statusStyle,
-          borderLeftWidth: '2px',
+          borderLeftWidth: '3px',
+          borderLeftColor: hexColor,
+          background: `linear-gradient(to right, ${hexColor}10, transparent 40%)`,
         }}
       >
         <div className="flex-1 min-w-0">
@@ -153,7 +155,9 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         className="group rounded-lg border border-border/40 bg-card/90 backdrop-blur-sm p-3 transition-all duration-300 ease-out hover:border-border/60 hover:shadow-md hover:bg-card animate-fade-in"
         style={{ 
           ...statusStyle,
-          borderLeftWidth: '3px',
+          borderLeftWidth: '4px',
+          borderLeftColor: hexColor,
+          background: `linear-gradient(to right, ${hexColor}0d, transparent 35%)`,
         }}
       >
         {/* Header */}
@@ -222,9 +226,17 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
             <div className="flex items-center gap-1">
               <div 
                 className="h-2 w-2 rounded-full transition-transform duration-200 group-hover:scale-110" 
-                style={{ backgroundColor: professionalColor || '#a1a1aa' }}
+                style={{ 
+                  backgroundColor: professionalColor || '#a1a1aa',
+                  boxShadow: `0 0 0 2px ${(professionalColor || '#a1a1aa')}40`,
+                }}
               />
-              <span className="text-[10px] truncate max-w-[80px]">{professional.name}</span>
+              <span 
+                className="text-[10px] font-medium truncate max-w-[80px]"
+                style={{ color: professionalColor || undefined }}
+              >
+                {professional.name}
+              </span>
             </div>
           )}
         </div>

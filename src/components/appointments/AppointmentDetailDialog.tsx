@@ -2323,7 +2323,9 @@ export function AppointmentDetailDialog({
                       <Select value={refundMethodId} onValueChange={setRefundMethodId}>
                         <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
                         <SelectContent>
-                          {(activePaymentMethods || []).map((pm: any) => (
+                          {(activePaymentMethods || [])
+                            .filter((pm: any) => !pm.name.toLowerCase().includes('boleto'))
+                            .map((pm: any) => (
                             <SelectItem key={pm.id} value={pm.name}>{pm.name}</SelectItem>
                           ))}
                         </SelectContent>

@@ -74,16 +74,13 @@ export function UnifiedServiceFilters({
     client: '',
   });
 
-  const hasActiveFilters = selectedCategory || selectedProfessional || selectedRoom || 
-    selectedClient || selectedStatus || (type === 'packages' && selectedSessions);
+  const hasActiveFilters = !!(selectedCategory || selectedProfessional || selectedRoom || selectedStatus);
 
   const activeFilterCount = [
     selectedCategory,
     selectedProfessional,
     selectedRoom,
-    selectedClient,
     selectedStatus,
-    type === 'packages' ? selectedSessions : null,
   ].filter(Boolean).length;
 
   const filteredCategories = useMemo(() => 

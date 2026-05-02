@@ -34,6 +34,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
+import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 
 export default function Financeiro() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -128,6 +129,9 @@ export default function Financeiro() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Live Cash Totals (sincronizado em tempo real com Caixa e Agenda) */}
+        <LiveCashTotalsBar />
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">

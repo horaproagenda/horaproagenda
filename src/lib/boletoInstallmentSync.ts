@@ -84,15 +84,21 @@ export async function syncBoletoPackageAvailability(saleId: string) {
 
   const { data: installments, error: installmentsError } = await supabase
     .from('boleto_installments')
-    .select('status')
+    .select('status, installment_number, due_date')
     .eq('sale_id', saleId);
 
   if (installmentsError) throw installmentsError;
 
-  const activeInstallments = (installments || []).filter((item: any) => item.status !== 'cancelled');
+  const activeInstallments = (installments || [])
+    .filter((item: any) => item.status !== 'cancelled')
+    .sort((a: any, b: any) => {
+      const numberDiff = Number(a.installment_number || 0) - Number(b.installment_number || 0);
+      if (numberDiff !== 0) return numberDiff;
+      return String(a.due_date || '').localeCompare(String(b.due_date || ''));
+    });
   const paidCount = activeInstallments.filter((item: any) => item.status === 'paid').length;
   const shouldActivate = pkg.payment_type === 'boleto_first_paid'
-    ? paidCount >= 1
+    ? activeInstallments[0]?.status === 'paid'
     : activeInstallments.length > 0 && paidCount === activeInstallments.length;
 
   if (shouldActivate && !pkg.is_active) {

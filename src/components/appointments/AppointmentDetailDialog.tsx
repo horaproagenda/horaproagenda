@@ -80,6 +80,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
+import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
@@ -159,6 +160,10 @@ export function AppointmentDetailDialog({
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
   const { settings } = useBusinessSettings();
+  // Fetch real package_appointments to compute realized count for the refund flow
+  const { appointments: pkgSessions } = usePackageAppointments(
+    appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null,
+  );
   const { data: appointmentHistory = [] } = useQuery({
     queryKey: ['appointment-history', appointment?.id],
     enabled: open && !!appointment?.id,
@@ -329,6 +334,13 @@ export function AppointmentDetailDialog({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showClientProfileDialog, setShowClientProfileDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
+  // Refund flow when deleting the entire package
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [refundFeeType, setRefundFeeType] = useState<'percent' | 'fixed'>('percent');
+  const [refundFeeValue, setRefundFeeValue] = useState<string>('0');
+  const [refundMethodId, setRefundMethodId] = useState<string>('');
+  const [refundDeductConsumed, setRefundDeductConsumed] = useState(true);
+  const [refundNote, setRefundNote] = useState('');
   const [recurringDeleteType, setRecurringDeleteType] = useState<'single' | 'following' | 'all'>('single');
   const [showRescheduleOption, setShowRescheduleOption] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -499,15 +511,27 @@ export function AppointmentDetailDialog({
   const safeClient = appointment.client || { name: 'Cliente não encontrado', phone: '', credit_balance: 0 };
   const safeService = appointment.service || { name: 'Serviço não disponível', price: 0, professional: null, room: null };
 
-  // Get package session info
+  // Get package session info — counts based on the package's package_appointments array
+  // when available, falling back to the cached counter otherwise.
   const getPackageSessionInfo = () => {
     if (!appointment.package_appointment?.package) return null;
-    const pkg = appointment.package_appointment.package;
+    const pkg: any = appointment.package_appointment.package;
     const totalSessions = pkg.total_sessions || 0;
-    const scheduledSessions = pkg.sessions_scheduled || 0;
-    // After deleting, one more session will be available
-    const remainingSessions = totalSessions - scheduledSessions + 1;
-    return { totalSessions, scheduledSessions, remainingSessions, packageName: pkg.name };
+    const sessions: any[] = Array.isArray(pkg.appointments) ? pkg.appointments : [];
+    const scheduledSessions = sessions.length > 0
+      ? sessions.filter((s) => !!s.appointment_id).length
+      : (pkg.sessions_scheduled || 0);
+    const realizedSessions = sessions.filter((s) => s.status === 'completed' || s.status === 'missed').length;
+    const availableNow = Math.max(0, totalSessions - scheduledSessions);
+    const availableAfterDelete = Math.max(0, Math.min(totalSessions, availableNow + 1));
+    return {
+      totalSessions,
+      scheduledSessions,
+      realizedSessions,
+      availableNow,
+      availableAfterDelete,
+      packageName: pkg.name,
+    };
   };
 
   const packageSessionInfo = getPackageSessionInfo();
@@ -515,9 +539,18 @@ export function AppointmentDetailDialog({
   // Check if appointment is part of a recurring series
   const isRecurringSeries = appointment.recurring_group_id != null;
 
+  // Compute amount paid at the package level (for the refund flow).
+  const packageTotalPaid = appointment.package_appointment ? Number(appointment.amount_paid || 0) : 0;
+
   const handleDelete = async () => {
     // Handle package appointments (delete all from package)
     if (deleteMode === 'all' && appointment.package_appointment?.package_id) {
+      // If the package has any payment registered, route through the refund flow
+      if (packageTotalPaid > 0) {
+        setShowDeleteDialog(false);
+        setShowRefundDialog(true);
+        return;
+      }
       deletePackageAppointments.mutate(appointment.package_appointment.package_id, {
         onSuccess: () => {
           setShowDeleteDialog(false);
@@ -2095,8 +2128,11 @@ export function AppointmentDetailDialog({
                       </div>
                     )}
                     
-                    {/* Payment warning - show when appointment has payments */}
-                    {amountPaid > 0 && (
+                    {/* Payment warning — only when NOT a package appointment.
+                        For packages, the payment is at the package level and remains
+                        valid for the remaining sessions; deleting one session does
+                        NOT remove any payment from caixa or financeiro. */}
+                    {amountPaid > 0 && !isPackageAppointment && (
                       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <div className="flex items-center gap-2 text-destructive font-medium mb-2">
                           <AlertTriangle className="h-4 w-4" />
@@ -2107,7 +2143,21 @@ export function AppointmentDetailDialog({
                         </p>
                       </div>
                     )}
-                    
+
+                    {amountPaid > 0 && isPackageAppointment && (
+                      <div className="p-3 rounded-lg bg-info/10 border border-info/20">
+                        <div className="flex items-center gap-2 text-info font-medium mb-2">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Pagamento do pacote será preservado</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          O valor pago de <strong>R$ {amountPaid.toFixed(2)}</strong> permanece registrado no caixa e no financeiro,
+                          vinculado ao pacote, e continua valendo para as demais aplicações.
+                          Para devolver o dinheiro ao cliente, exclua o pacote inteiro.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Package session info */}
                     {isPackageAppointment && packageSessionInfo && (
                       <div className="p-3 rounded-lg bg-info/10 border border-info/20">
@@ -2116,14 +2166,14 @@ export function AppointmentDetailDialog({
                           <span>Sessão de Pacote</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Após excluir, a sessão será liberada para reagendamento.
+                          Apenas <strong>1 aplicação</strong> será liberada para reagendamento.
                         </p>
-                        <div className="mt-2 flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <span className="font-medium text-foreground">{packageSessionInfo.remainingSessions}</span>
-                            <span className="text-muted-foreground">sessões disponíveis</span>
-                          </span>
-                          <span className="text-muted-foreground">de {packageSessionInfo.totalSessions} total</span>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Disponíveis agora:</span>
+                          <span className="font-medium text-foreground">{packageSessionInfo.availableNow}</span>
+                          <span>→ após excluir:</span>
+                          <span className="font-medium text-foreground">{packageSessionInfo.availableAfterDelete}</span>
+                          <span>(de {packageSessionInfo.totalSessions} total)</span>
                         </div>
                       </div>
                     )}
@@ -2209,7 +2259,151 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Partial Payment Confirmation Dialog */}
+      {/* Refund Dialog — only shown when deleting an entire paid package */}
+      {(() => {
+        if (!showRefundDialog || !packageData) return null;
+        const totalSessions = packageSessionInfo?.totalSessions || packageData?.total_sessions || 0;
+        const realized = (pkgSessions || []).filter((s: any) => s.status === 'completed' || s.status === 'missed').length
+          || packageSessionInfo?.realizedSessions
+          || 0;
+        const perSession = totalSessions > 0 ? packageTotalPaid / totalSessions : 0;
+        const consumedValue = refundDeductConsumed ? perSession * realized : 0;
+        const baseRefundable = Math.max(0, packageTotalPaid - consumedValue);
+        const feeNum = parseFloat((refundFeeValue || '0').replace(',', '.')) || 0;
+        const feeAmount = refundFeeType === 'percent'
+          ? Math.max(0, (baseRefundable * feeNum) / 100)
+          : Math.max(0, Math.min(feeNum, baseRefundable));
+        const refundAmount = Math.max(0, baseRefundable - feeAmount);
+
+        return (
+          <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+            <AlertDialogContent className="max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-warning" />
+                  Excluir pacote e devolver dinheiro
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-sm">
+                    <p>
+                      Pacote <strong>{packageData?.name}</strong> de <strong>{appointment.client?.name}</strong>.
+                      Configure a devolução abaixo. Os agendamentos do pacote serão excluídos
+                      e os pagamentos originais removidos do caixa/financeiro.
+                    </p>
+
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="flex justify-between"><span>Valor pago no pacote</span><span className="font-medium">R$ {packageTotalPaid.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Aplicações realizadas</span><span className="font-medium">{realized} de {totalSessions}</span></div>
+                      <div className="flex justify-between"><span>Valor por aplicação</span><span className="font-medium">R$ {perSession.toFixed(2)}</span></div>
+                    </div>
+
+                    <div className="flex items-start gap-2 p-2 rounded border">
+                      <input
+                        id="refund-deduct"
+                        type="checkbox"
+                        className="mt-1"
+                        checked={refundDeductConsumed}
+                        onChange={(e) => setRefundDeductConsumed(e.target.checked)}
+                      />
+                      <Label htmlFor="refund-deduct" className="text-xs leading-snug">
+                        Descontar aplicações já realizadas
+                        ({realized} × R$ {perSession.toFixed(2)} = <strong>R$ {(perSession * realized).toFixed(2)}</strong>)
+                      </Label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Tipo de multa</Label>
+                        <Select value={refundFeeType} onValueChange={(v) => setRefundFeeType(v as 'percent' | 'fixed')}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percent">Percentual (%)</SelectItem>
+                            <SelectItem value="fixed">Valor fixo (R$)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Valor da multa</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={refundFeeValue}
+                          onChange={(e) => setRefundFeeValue(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Forma de devolução</Label>
+                      <Select value={refundMethodId} onValueChange={setRefundMethodId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
+                        <SelectContent>
+                          {(activePaymentMethods || []).map((pm: any) => (
+                            <SelectItem key={pm.id} value={pm.name}>{pm.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Observação (opcional)</Label>
+                      <Input
+                        value={refundNote}
+                        onChange={(e) => setRefundNote(e.target.value)}
+                        placeholder="Motivo da devolução"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 space-y-1">
+                      <div className="flex justify-between"><span>Base devolvível</span><span className="font-medium">R$ {baseRefundable.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Multa</span><span className="font-medium">- R$ {feeAmount.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-base pt-1 border-t border-warning/30">
+                        <span className="font-semibold">Total a devolver</span>
+                        <span className="font-bold text-warning">R$ {refundAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowRefundDialog(false)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={!refundMethodId || deletePackageAppointments.isPending}
+                  onClick={() => {
+                    if (!appointment.package_appointment?.package_id) return;
+                    deletePackageAppointments.mutate(
+                      {
+                        packageId: appointment.package_appointment.package_id,
+                        refund: {
+                          amountPaid: packageTotalPaid,
+                          consumedValue,
+                          feeAmount,
+                          refundAmount,
+                          refundMethod: refundMethodId,
+                          note: refundNote,
+                        },
+                      },
+                      {
+                        onSuccess: () => {
+                          setShowRefundDialog(false);
+                          onOpenChange(false);
+                        },
+                      },
+                    );
+                  }}
+                >
+                  Excluir pacote e devolver R$ {refundAmount.toFixed(2)}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
+
+
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

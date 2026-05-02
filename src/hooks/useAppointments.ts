@@ -506,26 +506,33 @@ export function useAppointments() {
         .single();
 
       const hadPayment = (appointment?.amount_paid || 0) > 0;
+      const isPackageLinked = !!appointment?.package_appointment_id;
 
-      // Delete related financial entries for this appointment
-      const { error: finEntryDeleteError } = await supabase
-        .from('financial_entries')
-        .delete()
-        .eq('appointment_id', id);
+      // For PACKAGE appointments: payment is at package level and remains valid for the
+      // remaining sessions. We must NOT remove financial_entries or cash_transactions when
+      // deleting a single session — the money paid for the package stays registered.
+      // It is only refunded/removed when the entire package is deleted (see deletePackageAppointments).
+      if (!isPackageLinked) {
+        // Delete related financial entries for this appointment
+        const { error: finEntryDeleteError } = await supabase
+          .from('financial_entries')
+          .delete()
+          .eq('appointment_id', id);
 
-      if (finEntryDeleteError) {
-        console.error('Error deleting financial entries:', finEntryDeleteError);
-      }
+        if (finEntryDeleteError) {
+          console.error('Error deleting financial entries:', finEntryDeleteError);
+        }
 
-      // Delete related cash transactions for this appointment
-      const { error: cashDeleteError } = await supabase
-        .from('cash_transactions')
-        .delete()
-        .eq('reference_id', id)
-        .eq('reference_type', 'appointment');
+        // Delete related cash transactions for this appointment
+        const { error: cashDeleteError } = await supabase
+          .from('cash_transactions')
+          .delete()
+          .eq('reference_id', id)
+          .eq('reference_type', 'appointment');
 
-      if (cashDeleteError) {
-        console.error('Error deleting cash transactions:', cashDeleteError);
+        if (cashDeleteError) {
+          console.error('Error deleting cash transactions:', cashDeleteError);
+        }
       }
 
       // If linked to a package, release the session first
@@ -594,9 +601,8 @@ export function useAppointments() {
       
       let message = 'Agendamento excluído!';
       if (result.hadPackageSession) {
-        message = 'Agendamento excluído! A sessão do pacote foi liberada.';
-      }
-      if (result.hadPayment) {
+        message = 'Sessão do pacote liberada para reagendamento. O pagamento do pacote permanece registrado.';
+      } else if (result.hadPayment) {
         message += ` R$ ${result.amountDeleted.toFixed(2)} removido dos registros.`;
       }
       toast.success(message);
@@ -608,8 +614,32 @@ export function useAppointments() {
 
   // Function to delete all appointments for a specific package
   const deletePackageAppointments = useMutation({
-    mutationFn: async (packageId: string) => {
-      // First, get all package_appointments for this package
+    mutationFn: async (
+      input:
+        | string
+        | {
+            packageId: string;
+            refund?: {
+              amountPaid: number;
+              consumedValue: number;
+              feeAmount: number;
+              refundAmount: number;
+              refundMethod: string;
+              note?: string;
+            };
+          }
+    ) => {
+      const packageId = typeof input === 'string' ? input : input.packageId;
+      const refund = typeof input === 'string' ? undefined : input.refund;
+
+      // Fetch package context (client, name) for refund bookkeeping
+      const { data: pkgInfo } = await supabase
+        .from('service_packages')
+        .select('id, name, client_id, total_price')
+        .eq('id', packageId)
+        .single();
+
+      // Get all package_appointments for this package
       const { data: pkgAppointments, error: fetchError } = await supabase
         .from('package_appointments')
         .select('appointment_id')
@@ -646,10 +676,10 @@ export function useAppointments() {
       // Reset all package_appointments for this package
       const { error: resetError } = await supabase
         .from('package_appointments')
-        .update({ 
-          appointment_id: null, 
-          scheduled_date: null, 
-          status: 'pending' 
+        .update({
+          appointment_id: null,
+          scheduled_date: null,
+          status: 'pending',
         })
         .eq('package_id', packageId);
 
@@ -663,9 +693,54 @@ export function useAppointments() {
 
       if (pkgUpdateError) throw pkgUpdateError;
 
-      return appointmentIds.length;
+      // If a refund was requested, register it as a cash outflow + financial expense
+      if (refund && refund.refundAmount > 0) {
+        const description =
+          refund.note?.trim() ||
+          `Devolução pacote${pkgInfo?.name ? ` "${pkgInfo.name}"` : ''}` +
+            (refund.feeAmount > 0 ? ` (multa R$ ${refund.feeAmount.toFixed(2)})` : '');
+        const today = new Date().toISOString().split('T')[0];
+
+        // Find an open cash register to attach the outflow to (optional)
+        const { data: openRegister } = await supabase
+          .from('cash_registers')
+          .select('id')
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Record an expense entry in financial_entries
+        await supabase.from('financial_entries').insert({
+          amount: refund.refundAmount,
+          type: 'expense',
+          status: 'paid',
+          description,
+          client_id: pkgInfo?.client_id,
+          due_date: today,
+          paid_date: today,
+          created_by: user?.id,
+        } as any);
+
+        // Record cash transaction as outflow (negative amount, type expense)
+        await supabase.from('cash_transactions').insert({
+          cash_register_id: openRegister?.id ?? null,
+          type: 'expense',
+          category: 'Devolução de pacote',
+          amount: refund.refundAmount,
+          payment_method: refund.refundMethod,
+          description,
+          reference_type: 'package_refund',
+          reference_id: packageId,
+          created_by: user?.id,
+        } as any);
+      }
+
+      return { count: appointmentIds.length, refunded: refund?.refundAmount || 0 };
     },
-    onSuccess: (count) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
@@ -674,7 +749,15 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
-      toast.success(`${count} agendamento(s) do pacote excluído(s) com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      const base = `${result.count} agendamento(s) do pacote excluído(s).`;
+      toast.success(
+        result.refunded > 0
+          ? `${base} Devolução registrada: R$ ${result.refunded.toFixed(2)}.`
+          : base,
+      );
     },
     onError: (error) => {
       toast.error('Erro ao excluir agendamentos do pacote: ' + error.message);

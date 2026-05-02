@@ -601,9 +601,8 @@ export function useAppointments() {
       
       let message = 'Agendamento excluído!';
       if (result.hadPackageSession) {
-        message = 'Agendamento excluído! A sessão do pacote foi liberada.';
-      }
-      if (result.hadPayment) {
+        message = 'Sessão do pacote liberada para reagendamento. O pagamento do pacote permanece registrado.';
+      } else if (result.hadPayment) {
         message += ` R$ ${result.amountDeleted.toFixed(2)} removido dos registros.`;
       }
       toast.success(message);

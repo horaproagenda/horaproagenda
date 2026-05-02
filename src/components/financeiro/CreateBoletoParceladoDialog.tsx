@@ -347,7 +347,20 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div>
                   <Label>CEP</Label>
-                  <Input value={beneficiary.cep} onChange={e => setBeneficiary({ ...beneficiary, cep: e.target.value })} />
+                  <Input
+                    value={beneficiary.cep}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    onChange={e => setBeneficiary({ ...beneficiary, cep: formatCep(e.target.value) })}
+                    onBlur={e => lookupCep(e.target.value, ({ street, neighborhood, city, state }) => {
+                      setBeneficiary(prev => ({
+                        ...prev,
+                        address: [street, neighborhood].filter(Boolean).join(', ') || prev.address,
+                        city: city || prev.city,
+                        state: state || prev.state,
+                      }));
+                    })}
+                  />
                 </div>
                 <div className="col-span-2">
                   <Label>Endereço completo</Label>
@@ -405,7 +418,21 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div>
                   <Label>CEP</Label>
-                  <Input value={payer.cep} onChange={e => setPayer({ ...payer, cep: e.target.value })} />
+                  <Input
+                    value={payer.cep}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    onChange={e => setPayer({ ...payer, cep: formatCep(e.target.value) })}
+                    onBlur={e => lookupCep(e.target.value, ({ street, neighborhood, city, state }) => {
+                      setPayer(prev => ({
+                        ...prev,
+                        street: street || prev.street,
+                        neighborhood: neighborhood || prev.neighborhood,
+                        city: city || prev.city,
+                        state: state || prev.state,
+                      }));
+                    })}
+                  />
                 </div>
                 <div className="col-span-2">
                   <Label>Rua / Logradouro</Label>

@@ -130,13 +130,15 @@ export function useSystemNotifications() {
   }, [cashRegisters]);
 
   // Generate notifications
-  const notifications = useMemo((): SystemNotification[] => {
+  const allNotifications = useMemo((): SystemNotification[] => {
     const result: SystemNotification[] = [];
 
     // Boletos vencendo hoje
     boletosVencendoHoje.forEach(boleto => {
+      const id = `boleto-${boleto.id}`;
       result.push({
-        id: `boleto-${boleto.id}`,
+        id,
+        signature: `${id}|${boleto.due_date}|${Number(boleto.amount).toFixed(2)}|${boleto.status}`,
         type: 'boleto',
         title: 'Boleto vencendo hoje',
         description: `${boleto.description} - R$ ${Number(boleto.amount).toFixed(2)}`,
@@ -148,10 +150,12 @@ export function useSystemNotifications() {
       });
     });
 
-    // Pacotes com poucas sessões - link to client profile
+    // Pacotes com poucas sessões
     packageLowSessions.forEach(pkg => {
+      const id = `package-${pkg.id}`;
       result.push({
-        id: `package-${pkg.id}`,
+        id,
+        signature: `${id}|remaining:${pkg.remaining}`,
         type: 'package',
         title: 'Pacote com poucas sessões',
         description: `${pkg.client?.name}: ${pkg.name} - ${pkg.remaining} sessão(ões) restante(s)`,
@@ -163,10 +167,12 @@ export function useSystemNotifications() {
       });
     });
 
-    // Produtos com estoque baixo (from DB) - link to product detail
+    // Produtos com estoque baixo
     lowStockProducts.forEach(product => {
+      const id = `stock-${product.id}`;
       result.push({
-        id: `stock-${product.id}`,
+        id,
+        signature: `${id}|stock:${product.current_stock}`,
         type: 'stock',
         title: 'Estoque baixo',
         description: `${product.name}: ${product.current_stock} ${product.unit} restante(s)`,
@@ -177,13 +183,14 @@ export function useSystemNotifications() {
       });
     });
 
-    // Produtos próximos de acabar (from usage prediction) - only if not already in stock alerts
     const stockProductIds = new Set(lowStockProducts.map(p => p.id));
-    
+
     usageCritical.forEach(product => {
       if (!stockProductIds.has(product.product_id) && product.is_near_depletion_by_usage) {
+        const id = `usage-${product.product_id}`;
         result.push({
-          id: `usage-${product.product_id}`,
+          id,
+          signature: `${id}|crit|${Math.round(product.predicted_remaining_appointments)}`,
           type: 'usage_prediction',
           title: 'Produto próximo de acabar',
           description: product.alert_message || `${product.product_name}: ~${Math.round(product.predicted_remaining_appointments)} atendimentos`,
@@ -197,8 +204,10 @@ export function useSystemNotifications() {
 
     usageWarning.forEach(product => {
       if (!stockProductIds.has(product.product_id)) {
+        const id = `usage-${product.product_id}`;
         result.push({
-          id: `usage-${product.product_id}`,
+          id,
+          signature: `${id}|warn|${Math.round(product.predicted_remaining_appointments ?? 0)}`,
           type: 'usage_prediction',
           title: 'Atenção: produto',
           description: product.alert_message || `${product.product_name}: uso elevado`,
@@ -210,10 +219,11 @@ export function useSystemNotifications() {
       }
     });
 
-    // Expired products - critical
     expiredProducts.forEach(product => {
+      const id = `expiry-expired-${product.product_id}`;
       result.push({
-        id: `expiry-expired-${product.product_id}`,
+        id,
+        signature: `${id}|${product.expiry_message ?? ''}`,
         type: 'expiry',
         title: 'Produto VENCIDO',
         description: `${product.product_name}: ${product.expiry_message || 'Vencido - descarte imediatamente'}`,
@@ -224,10 +234,11 @@ export function useSystemNotifications() {
       });
     });
 
-    // Products expiring today - critical
     expiringTodayProducts.forEach(product => {
+      const id = `expiry-today-${product.product_id}`;
       result.push({
-        id: `expiry-today-${product.product_id}`,
+        id,
+        signature: `${id}|${product.expiry_message ?? ''}`,
         type: 'expiry',
         title: 'Produto vence HOJE',
         description: `${product.product_name}: ${product.expiry_message || 'Vence hoje - lembre-se de descartá-lo'}`,
@@ -238,10 +249,11 @@ export function useSystemNotifications() {
       });
     });
 
-    // Products expiring soon - warning
     expiringSoonProducts.forEach(product => {
+      const id = `expiry-soon-${product.product_id}`;
       result.push({
-        id: `expiry-soon-${product.product_id}`,
+        id,
+        signature: `${id}|days:${product.days_until_expiry}`,
         type: 'expiry',
         title: 'Produto próximo do vencimento',
         description: `${product.product_name}: ${product.expiry_message || `Vence em ${product.days_until_expiry} dias`}`,
@@ -252,11 +264,12 @@ export function useSystemNotifications() {
       });
     });
 
-    // Today's reminders
     todayReminders.forEach(reminder => {
       const timeStr = reminder.reminder_time ? ` às ${reminder.reminder_time.substring(0, 5)}` : '';
+      const id = `reminder-${reminder.id}`;
       result.push({
-        id: `reminder-${reminder.id}`,
+        id,
+        signature: `${id}|${reminder.reminder_date ?? ''}|${reminder.reminder_time ?? ''}|${reminder.priority ?? ''}`,
         type: 'reminder',
         title: `Lembrete: ${reminder.title}`,
         description: `${reminder.description || 'Lembrete agendado para hoje'}${timeStr}`,
@@ -268,11 +281,12 @@ export function useSystemNotifications() {
       });
     });
 
-    // Old open cash registers (from previous days) - CRITICAL
     oldOpenRegisters.forEach(register => {
       const openedDate = format(parseISO(register.opened_at), "dd/MM/yyyy", { locale: ptBR });
+      const id = `old-cash-register-${register.id}`;
       result.push({
-        id: `old-cash-register-${register.id}`,
+        id,
+        signature: `${id}|${register.opened_at}`,
         type: 'cash_register',
         title: '⚠️ Caixa do dia anterior aberto!',
         description: `Caixa aberto em ${openedDate} não foi fechado. Feche-o antes de continuar.`,
@@ -283,20 +297,21 @@ export function useSystemNotifications() {
       });
     });
 
-    // Cash register open reminder (at end of day)
     if (currentOpenRegister && settings?.closing_time) {
       const now = new Date();
       const currentHour = now.getHours();
       const [closingHour] = settings.closing_time.split(':').map(Number);
-      
-      // Show warning if within 2 hours of closing time or past closing time
+
       if (currentHour >= closingHour - 2) {
+        const id = `cash-register-${currentOpenRegister.id}`;
+        const phase = currentHour >= closingHour ? 'past' : 'pre';
         result.push({
-          id: `cash-register-${currentOpenRegister.id}`,
+          id,
+          signature: `${id}|${format(now, 'yyyy-MM-dd')}|${phase}`,
           type: 'cash_register',
           title: 'Caixa aberto',
-          description: currentHour >= closingHour 
-            ? 'O expediente terminou. Lembre-se de fechar o caixa!' 
+          description: currentHour >= closingHour
+            ? 'O expediente terminou. Lembre-se de fechar o caixa!'
             : 'Lembre-se de fechar o caixa antes de encerrar o expediente',
           severity: currentHour >= closingHour ? 'critical' : 'warning',
           link: '/caixa',
@@ -308,6 +323,12 @@ export function useSystemNotifications() {
 
     return result;
   }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, oldOpenRegisters, settings]);
+
+  // Filter out dismissed (by signature) so they only re-appear when content changes
+  const notifications = useMemo(
+    () => allNotifications.filter(n => !isNotificationDismissed(n.id, n.signature)),
+    [allNotifications]
+  );
 
   // Show toasts for critical notifications (only once per session, when app opens)
   useEffect(() => {

@@ -568,9 +568,19 @@ table {
   touch-action: pan-x pan-y;
 }
 
-/* Body sempre permite scroll vertical da página */
-html, body {
+/* Body permite scroll vertical da página.
+   No mobile, evitar overflow-x para não criar barra horizontal
+   indesejada quando algum filho ultrapassa a largura. */
+html {
   overflow-x: auto;
+}
+body {
+  overflow-x: hidden;
+}
+@media (min-width: 768px) {
+  body {
+    overflow-x: auto;
+  }
 }
 
 /* ===========================================================

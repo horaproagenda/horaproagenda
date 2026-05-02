@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Phone, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';

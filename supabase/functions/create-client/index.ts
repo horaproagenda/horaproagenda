@@ -291,11 +291,20 @@ serve(async (req) => {
         phone: cleanPhone,
         email: body.email?.trim() || null,
         cpf: body.cpf ? body.cpf.replace(/\D/g, '') : null,
+        cnpj: body.cnpj ? body.cnpj.replace(/\D/g, '') : null,
+        company_name: body.company_name?.trim() || null,
         birthdate: body.birthdate || null,
         notes: body.notes?.trim() || null,
         referral_source: body.referral_source?.trim() || null,
         complementary_info: body.complementary_info?.trim() || null,
         assigned_professional_id: body.assigned_professional_id || null,
+        cep: body.cep ? body.cep.replace(/\D/g, '') : null,
+        address_street: body.address_street?.trim() || null,
+        address_number: body.address_number?.trim() || null,
+        address_complement: body.address_complement?.trim() || null,
+        address_neighborhood: body.address_neighborhood?.trim() || null,
+        address_city: body.address_city?.trim() || null,
+        address_state: body.address_state ? body.address_state.trim().toUpperCase() : null,
       })
       .select()
       .single();

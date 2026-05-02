@@ -43,7 +43,7 @@ export default function Financeiro() {
   const { banks } = useBanks();
   const { appointments } = useAppointments();
   const { professionals } = useProfessionals();
-  const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'contas-pagar');
+  const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'relatorio');
 
   // Handle URL query params for deep linking from notifications
   useEffect(() => {

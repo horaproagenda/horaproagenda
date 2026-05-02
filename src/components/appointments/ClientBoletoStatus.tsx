@@ -5,42 +5,67 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   clientId: string | null | undefined;
+  /** Service ID of the current appointment, when applicable */
+  serviceId?: string | null;
+  /** Package ID of the current appointment, when applicable */
+  packageId?: string | null;
 }
 
 /**
- * Shows the boleto installments status for a given client inside the
- * appointment dialog. Displays whether the client has open / overdue boletos.
+ * Shows the boleto installments status ONLY when the service/package being
+ * displayed in the appointment was actually sold to the client via a
+ * "boleto parcelado" sale. If the appointment is for an item the client did
+ * not purchase via boleto, this component renders nothing.
  */
-export function ClientBoletoStatus({ clientId }: Props) {
+export function ClientBoletoStatus({ clientId, serviceId, packageId }: Props) {
   const { data } = useQuery({
-    queryKey: ['client_boleto_status', clientId],
+    queryKey: ['client_boleto_status_for_item', clientId, serviceId || null, packageId || null],
     queryFn: async () => {
       if (!clientId) return null;
-      const { data: sales } = await supabase
-        .from('single_sales')
-        .select('id')
-        .eq('client_id', clientId);
-      const saleIds = (sales || []).map(s => s.id);
-      if (!saleIds.length) return { total: 0, pending: 0, overdue: 0, overdueAmount: 0, pendingAmount: 0 };
+      if (!serviceId && !packageId) return null;
 
+      // Find sales for THIS client that match the service/package of the appointment
+      let salesQuery = supabase
+        .from('single_sales')
+        .select('id, service_id, package_id')
+        .eq('client_id', clientId);
+
+      if (packageId) {
+        salesQuery = salesQuery.eq('package_id', packageId);
+      } else if (serviceId) {
+        salesQuery = salesQuery.eq('service_id', serviceId);
+      }
+
+      const { data: sales } = await salesQuery;
+      const saleIds = (sales || []).map((s) => s.id);
+      if (!saleIds.length) return null;
+
+      // Only show if at least one of those sales has boleto installments
       const { data: insts } = await supabase
         .from('boleto_installments')
         .select('status, amount, due_date')
         .in('sale_id', saleIds);
 
+      if (!insts || insts.length === 0) return null;
+
       const today = new Date().toISOString().split('T')[0];
-      let pending = 0, overdue = 0, pendingAmount = 0, overdueAmount = 0;
-      (insts || []).forEach((i: any) => {
+      let pending = 0;
+      let overdue = 0;
+      let pendingAmount = 0;
+      let overdueAmount = 0;
+      insts.forEach((i: any) => {
         if (i.status === 'paid' || i.status === 'cancelled') return;
         if (i.due_date < today || i.status === 'overdue') {
-          overdue++; overdueAmount += Number(i.amount) || 0;
+          overdue++;
+          overdueAmount += Number(i.amount) || 0;
         } else {
-          pending++; pendingAmount += Number(i.amount) || 0;
+          pending++;
+          pendingAmount += Number(i.amount) || 0;
         }
       });
-      return { total: insts?.length || 0, pending, overdue, pendingAmount, overdueAmount };
+      return { total: insts.length, pending, overdue, pendingAmount, overdueAmount };
     },
-    enabled: !!clientId,
+    enabled: !!clientId && (!!serviceId || !!packageId),
     staleTime: 30_000,
   });
 

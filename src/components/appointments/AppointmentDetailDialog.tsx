@@ -1463,8 +1463,12 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
-              {/* Boleto status alert (cross-appointment) */}
-              <ClientBoletoStatus clientId={appointment.client_id} />
+              {/* Boleto status alert — only when this appointment's service/package was sold via boleto */}
+              <ClientBoletoStatus
+                clientId={appointment.client_id}
+                serviceId={appointment.service_id}
+                packageId={packageIdForBoleto}
+              />
 
               {/* Existing Payments */}
               {appointment.payment_methods && appointment.payment_methods.length > 0 && (

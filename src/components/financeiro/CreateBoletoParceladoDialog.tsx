@@ -284,11 +284,93 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .insert(records);
       if (instErr) throw instErr;
 
+      // 4) Provision bookable inventory so the client can schedule even before paying
+      // (boleto parcelado: package/service is delivered upfront, payment runs in parallel)
+      if (itemType === 'service' && itemId) {
+        await supabase.from('client_services').insert({
+          client_id: payer.client_id,
+          service_id: itemId,
+          sale_id: sale.id,
+          amount_paid: totalAmount,
+          status: 'available',
+          notes: 'Disponibilizado via Boleto Parcelado',
+          created_by: user?.id || null,
+        });
+      } else if (itemType === 'package' && itemId) {
+        // Clone the package template into a client-specific package
+        const { data: packageTemplate } = await (supabase as any)
+          .from('service_packages')
+          .select('*, appointments:package_appointments(*)')
+          .eq('id', itemId)
+          .single();
+
+        if (packageTemplate) {
+          const { data: clientPackage, error: pkgError } = await supabase
+            .from('service_packages')
+            .insert({
+              name: packageTemplate.name,
+              description: packageTemplate.description,
+              client_id: payer.client_id,
+              template_id: packageTemplate.template_id || null,
+              total_sessions: packageTemplate.total_sessions,
+              duration: packageTemplate.duration || 60,
+              interval_days: packageTemplate.interval_days || 7,
+              total_price: totalAmount,
+              package_type: packageTemplate.package_type || 'standard',
+              service_id: packageTemplate.service_id || null,
+              professional_id: packageTemplate.professional_id,
+              room_id: packageTemplate.room_id,
+              equipment: packageTemplate.equipment || [],
+              payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
+              payment_type: 'full',
+              sessions_scheduled: 0,
+              is_active: true,
+              category: packageTemplate.category || 'Pago via Boleto Parcelado',
+            })
+            .select()
+            .single();
+
+          if (!pkgError && clientPackage) {
+            const packageSteps = packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
+              ? packageTemplate.appointments.sort(
+                  (a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number)
+                )
+              : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
+                  service_id: packageTemplate.service_id || null,
+                  interval_after_days: packageTemplate.interval_days || 7,
+                  sequence_order: i + 1,
+                }));
+
+            const sessions = packageSteps.map((step: any, i: number) => ({
+              package_id: clientPackage.id,
+              service_id: step.service_id || packageTemplate.service_id || null,
+              session_number: i + 1,
+              original_session_number: i + 1,
+              sequence_order: step.sequence_order || i + 1,
+              interval_after_days:
+                i === packageSteps.length - 1 ? 0 : step.interval_after_days || packageTemplate.interval_days || 7,
+              status: 'pending',
+              notes: 'Disponibilizado via Boleto Parcelado',
+            }));
+
+            await supabase.from('package_appointments').insert(sessions);
+
+            // Update sale to point to the client-specific package
+            await supabase.from('single_sales').update({ package_id: clientPackage.id }).eq('id', sale.id);
+          }
+        }
+      }
+
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
       queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       queryClient.invalidateQueries({ queryKey: ['single_sales'] });
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      queryClient.invalidateQueries({ queryKey: ['client_services'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-packages'] });
       onOpenChange(false);
 
       // reset

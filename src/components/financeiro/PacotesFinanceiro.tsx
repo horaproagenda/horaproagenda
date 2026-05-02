@@ -571,6 +571,16 @@ export function PacotesFinanceiro() {
               </Select>
             </div>
 
+            <div className="space-y-1">
+              <Label className="text-xs">Motivo do cancelamento *</Label>
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Descreva o motivo (mínimo 5 caracteres)..."
+                className="text-xs min-h-[60px]"
+              />
+            </div>
+
             <div className="p-3 bg-primary/10 rounded space-y-1">
               <p className="text-xs text-muted-foreground">Valor a devolver ao cliente:</p>
               <p className="text-lg font-bold text-primary">R$ {refundAmount.toFixed(2)}</p>
@@ -579,8 +589,14 @@ export function PacotesFinanceiro() {
               </p>
             </div>
 
+            {validationError && (
+              <div className="p-2 bg-destructive/10 border border-destructive/30 rounded text-xs text-destructive">
+                {validationError}
+              </div>
+            )}
+
             <p className="text-[10px] text-muted-foreground">
-              ⚠️ Os agendamentos vinculados a este pacote serão removidos da agenda e do histórico do cliente.
+              ⚠️ Agendamentos pendentes/agendados deste pacote serão marcados como cancelados (com o motivo informado), preservando o histórico do cliente.
             </p>
           </div>
 
@@ -592,7 +608,7 @@ export function PacotesFinanceiro() {
               variant="destructive"
               size="sm"
               onClick={() => cancelMutation.mutate()}
-              disabled={cancelMutation.isPending}
+              disabled={cancelMutation.isPending || !!validationError}
             >
               {cancelMutation.isPending ? 'Processando...' : 'Confirmar Cancelamento'}
             </Button>

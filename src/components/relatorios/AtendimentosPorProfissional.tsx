@@ -236,31 +236,34 @@ export function AtendimentosPorProfissional() {
 
       {/* Professional list */}
       <div className="space-y-2">
-        {profSummaries.map(item => (
+        {profSummaries.map(item => {
+          const profColor = (item.professional as any).agenda_color || 'hsl(var(--primary))';
+          return (
           <Card
             key={item.professional.id}
-            className="card-hover cursor-pointer transition-all"
+            className="card-hover cursor-pointer transition-all border-l-4 shadow-sm hover:shadow-md"
+            style={{ borderLeftColor: profColor, background: `linear-gradient(to right, ${profColor}10, transparent 25%)` }}
             onClick={() => setSelectedProfessional(item.professional.id)}
           >
             <CardContent className="p-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                <Avatar className="h-10 w-10 ring-2 ring-offset-1" style={{ '--tw-ring-color': `${profColor}40` } as any}>
+                  <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: `${profColor}20`, color: profColor }}>
                     {item.professional.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm truncate">{item.professional.name}</h3>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5">
+                  <h3 className="font-semibold text-sm truncate" style={{ color: profColor }}>{item.professional.name}</h3>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {item.totalServices} atend.
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
                       <DollarSign className="h-3 w-3" />
                       {formatCurrency(item.totalRevenue)}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-amber-600 font-medium">
                       <Percent className="h-3 w-3" />
                       {formatCurrency(item.totalCommission)}
                     </span>
@@ -268,7 +271,7 @@ export function AtendimentosPorProfissional() {
                 </div>
                 <div className="flex items-center gap-2">
                   {item.totalPaidCommissions > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">
+                    <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 bg-emerald-50">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       {formatCurrency(item.totalPaidCommissions)} pago
                     </Badge>
@@ -278,7 +281,8 @@ export function AtendimentosPorProfissional() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
         {profSummaries.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
             <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />
@@ -362,21 +366,21 @@ export function AtendimentosPorProfissional() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Data</TableHead>
-                          <TableHead className="text-xs">Valor</TableHead>
-                          <TableHead className="text-xs">Descrição</TableHead>
+                          <TableHead className="text-[11px]">Data</TableHead>
+                          <TableHead className="text-[11px]">Valor</TableHead>
+                          <TableHead className="text-[11px]">Descrição</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedProfPaidCommissions.map((cp: any) => (
-                          <TableRow key={cp.id}>
-                            <TableCell className="text-xs">
+                          <TableRow key={cp.id} className="hover:bg-muted/40 transition-colors">
+                            <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">
                               {cp.created_at ? format(parseISO(cp.created_at), 'dd/MM/yyyy HH:mm') : '-'}
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-emerald-700">
+                            <TableCell className="text-xs py-2 font-semibold text-emerald-700 tabular-nums">
                               {formatCurrency(Number(cp.amount || 0))}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{cp.description}</TableCell>
+                            <TableCell className="text-xs py-2 text-muted-foreground">{cp.description}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -401,13 +405,13 @@ export function AtendimentosPorProfissional() {
                     <AccordionItem key={month.label} value={month.label}>
                       <AccordionTrigger className="text-sm hover:no-underline py-2">
                         <div className="flex items-center gap-3 w-full pr-4">
-                          <span className="capitalize font-medium">{month.label}</span>
-                          <div className="flex items-center gap-3 ml-auto text-[10px] text-muted-foreground">
-                            <Badge variant="secondary" className="text-[10px]">
+                          <span className="capitalize font-semibold text-sm">{month.label}</span>
+                          <div className="flex items-center gap-3 ml-auto text-[11px]">
+                            <Badge variant="secondary" className="text-[10px] h-5">
                               {month.appointments.length} atend.
                             </Badge>
-                            <span>{formatCurrency(monthRevenue)}</span>
-                            <span className="text-blue-600">{formatCurrency(monthCommission)}</span>
+                            <span className="text-emerald-600 font-medium tabular-nums">{formatCurrency(monthRevenue)}</span>
+                            <span className="text-amber-600 font-medium tabular-nums">{formatCurrency(monthCommission)}</span>
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -415,11 +419,11 @@ export function AtendimentosPorProfissional() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Data</TableHead>
-                              <TableHead className="text-xs">Cliente</TableHead>
-                              <TableHead className="text-xs">Serviço</TableHead>
-                              <TableHead className="text-xs text-right">Valor</TableHead>
-                              <TableHead className="text-xs text-right">Comissão</TableHead>
+                              <TableHead className="text-[11px]">Data</TableHead>
+                              <TableHead className="text-[11px]">Cliente</TableHead>
+                              <TableHead className="text-[11px]">Serviço</TableHead>
+                              <TableHead className="text-[11px] text-right">Valor</TableHead>
+                              <TableHead className="text-[11px] text-right">Comissão</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -428,15 +432,15 @@ export function AtendimentosPorProfissional() {
                               const pct = Number(apt.service?.commission_percentage || prof?.commission_percentage || 0);
                               const comm = amt * pct / 100;
                               return (
-                                <TableRow key={apt.id}>
-                                  <TableCell className="text-xs">
+                                <TableRow key={apt.id} className="hover:bg-muted/40 transition-colors">
+                                  <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">
                                     {format(parseISO(apt.start_time), 'dd/MM/yyyy')}
                                   </TableCell>
-                                  <TableCell className="text-xs">{apt.client?.name || '-'}</TableCell>
-                                  <TableCell className="text-xs">{apt.service?.name || '-'}</TableCell>
-                                  <TableCell className="text-xs text-right">{formatCurrency(amt)}</TableCell>
-                                  <TableCell className="text-xs text-right text-blue-600">
-                                    {formatCurrency(comm)} ({pct}%)
+                                  <TableCell className="text-xs py-2 font-medium">{apt.client?.name || '-'}</TableCell>
+                                  <TableCell className="text-xs py-2">{apt.service?.name || '-'}</TableCell>
+                                  <TableCell className="text-xs py-2 text-right font-medium tabular-nums">{formatCurrency(amt)}</TableCell>
+                                  <TableCell className="text-xs py-2 text-right text-amber-600 font-semibold tabular-nums">
+                                    {formatCurrency(comm)} <span className="text-muted-foreground font-normal">({pct}%)</span>
                                   </TableCell>
                                 </TableRow>
                               );

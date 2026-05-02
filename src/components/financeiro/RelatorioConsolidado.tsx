@@ -164,145 +164,57 @@ export function RelatorioConsolidado() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Entradas</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncome)}
-                </p>
-              </div>
-              <ArrowUpCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Saídas</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totalExpense)}
-                </p>
-              </div>
-              <ArrowDownCircle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={cn(
-          "border",
-          balance >= 0 
-            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" 
-            : "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
-        )}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo Período</p>
-                <p className={cn(
-                  "text-2xl font-bold",
-                  balance >= 0 ? "text-blue-600" : "text-orange-600"
-                )}>
-                  {formatCurrency(balance)}
-                </p>
-              </div>
-              <TrendingUp className={cn(
-                "h-8 w-8",
-                balance >= 0 ? "text-blue-500" : "text-orange-500"
-              )} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Caixas Abertos</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {openCashRegisters.length}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(totalCashBalance)}
-                </p>
-              </div>
-              <Wallet className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-4">
+      {/* Os totais de Entradas, Saídas, Saldo do Período e Caixas abertos
+          são exibidos pela barra "Caixa em tempo real" no topo da página Financeiro. */}
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Filtros - {getPeriodLabel()}
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5" />
+            Filtros · {getPeriodLabel()}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
+        <CardContent className="px-3 pb-3 pt-0">
+          <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Período</label>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant={periodFilter === 'today' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('today')}
-                >
-                  Hoje
-                </Button>
-                <Button
-                  variant={periodFilter === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('week')}
-                >
-                  Semana
-                </Button>
-                <Button
-                  variant={periodFilter === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('month')}
-                >
-                  Mês
-                </Button>
-                <Button
-                  variant={periodFilter === 'quarter' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('quarter')}
-                >
-                  Trimestre
-                </Button>
-                <Button
-                  variant={periodFilter === 'custom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriodFilter('custom')}
-                >
-                  Data Específica
-                </Button>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Período</label>
+              <div className="flex gap-1 flex-wrap">
+                {([
+                  ['today', 'Hoje'],
+                  ['week', 'Semana'],
+                  ['month', 'Mês'],
+                  ['quarter', 'Trimestre'],
+                  ['custom', 'Data Específica'],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={periodFilter === value ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => setPeriodFilter(value as any)}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
             </div>
             {periodFilter === 'custom' && (
-              <div className="min-w-[200px]">
-                <label className="text-sm text-muted-foreground mb-1 block">Data</label>
+              <div className="min-w-[180px]">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Data</label>
                 <Input
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="max-w-xs"
+                  className="max-w-xs h-7 text-xs"
                 />
               </div>
             )}
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Origem</label>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Origem</label>
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs h-7 text-xs">
                   <SelectValue placeholder="Todas as origens" />
                 </SelectTrigger>
                 <SelectContent>
@@ -313,10 +225,10 @@ export function RelatorioConsolidado() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-muted-foreground mb-1 block">Tipo</label>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tipo</label>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs h-7 text-xs">
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -333,62 +245,63 @@ export function RelatorioConsolidado() {
 
       {/* Consolidated Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="py-2 px-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+              <DollarSign className="h-3.5 w-3.5" />
               Movimentações Consolidadas ({filteredData.length})
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportFilteredCSV} disabled={filteredData.length === 0}>
-                <Download className="h-3.5 w-3.5 mr-1" /> CSV
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={handleExportFilteredCSV} disabled={filteredData.length === 0}>
+                <Download className="h-3 w-3 mr-1" /> CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportFilteredPDF} disabled={filteredData.length === 0}>
-                <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={handleExportFilteredPDF} disabled={filteredData.length === 0}>
+                <FileText className="h-3 w-3 mr-1" /> PDF
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
+        <CardContent className="px-3 pb-3 pt-0">
+          <div className="rounded-md border overflow-x-auto">
+            <Table className="text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Data</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Descrição</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Origem</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Tipo</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Status</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
                       Nenhuma movimentação encontrada
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredData.slice(0, 50).map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell>
+                      <TableCell className="py-1.5 text-xs whitespace-nowrap">
                         {format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
-                      <TableCell className="max-w-[250px] truncate">
+                      <TableCell className="py-1.5 text-xs max-w-[260px] truncate">
                         {entry.description}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={entry.source === 'caixa' ? 'secondary' : 'outline'}>
+                      <TableCell className="py-1.5">
+                        <Badge variant={entry.source === 'caixa' ? 'secondary' : 'outline'} className="text-[10px] px-1.5 py-0">
                           {entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge 
+                      <TableCell className="py-1.5">
+                        <Badge
                           variant="outline"
                           className={cn(
-                            entry.type === 'income' 
-                              ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30' 
+                            'text-[10px] px-1.5 py-0',
+                            entry.type === 'income'
+                              ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30'
                               : entry.type === 'non_cash'
                               ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
                               : 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
@@ -397,25 +310,26 @@ export function RelatorioConsolidado() {
                           {entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge 
+                      <TableCell className="py-1.5">
+                        <Badge
                           variant="outline"
                           className={cn(
-                            entry.status === 'paid' 
-                              ? 'text-green-600 border-green-300' 
+                            'text-[10px] px-1.5 py-0',
+                            entry.status === 'paid'
+                              ? 'text-green-600 border-green-300'
                               : entry.status === 'pending'
                               ? 'text-yellow-600 border-yellow-300'
                               : 'text-gray-600 border-gray-300'
                           )}
                         >
-                          {entry.status === 'paid' ? 'Pago' : 
-                           entry.status === 'pending' ? 'Pendente' : 
-                           entry.status === 'overdue' ? 'Vencido' : 
+                          {entry.status === 'paid' ? 'Pago' :
+                           entry.status === 'pending' ? 'Pendente' :
+                           entry.status === 'overdue' ? 'Vencido' :
                            entry.status}
                         </Badge>
                       </TableCell>
                       <TableCell className={cn(
-                        "text-right font-medium",
+                        "py-1.5 text-xs text-right font-medium whitespace-nowrap",
                         entry.type === 'income' ? 'text-green-600' : entry.type === 'non_cash' ? 'text-blue-600' : 'text-red-600'
                       )}>
                         {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} {formatCurrency(entry.amount)}
@@ -427,7 +341,7 @@ export function RelatorioConsolidado() {
             </Table>
           </div>
           {filteredData.length > 50 && (
-            <p className="text-sm text-muted-foreground text-center mt-4">
+            <p className="text-[11px] text-muted-foreground text-center mt-2">
               Mostrando 50 de {filteredData.length} registros
             </p>
           )}

@@ -43,7 +43,7 @@ export default function Financeiro() {
   const { banks } = useBanks();
   const { appointments } = useAppointments();
   const { professionals } = useProfessionals();
-  const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'contas-pagar');
+  const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'relatorio');
 
   // Handle URL query params for deep linking from notifications
   useEffect(() => {
@@ -138,29 +138,21 @@ export default function Financeiro() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
-            <TabsTrigger value="dashboard" className="gap-1.5 text-xs tracking-wide h-8">
-              <BarChart3 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="contas-pagar" className="gap-1.5 text-xs tracking-wide h-8">
-              <ArrowDownCircle className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">A Pagar</span>
-            </TabsTrigger>
-            <TabsTrigger value="extrato" className="gap-1.5 text-xs tracking-wide h-8">
+            <TabsTrigger value="relatorio" className="gap-1.5 text-xs tracking-wide h-8">
               <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Extrato</span>
-            </TabsTrigger>
-            <TabsTrigger value="meus-caixas" className="gap-1.5 text-xs tracking-wide h-8">
-              <Wallet className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Caixas</span>
+              <span className="hidden sm:inline">Relatório</span>
             </TabsTrigger>
             <TabsTrigger value="pacotes" className="gap-1.5 text-xs tracking-wide h-8">
               <Tag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Pacotes</span>
             </TabsTrigger>
-            <TabsTrigger value="categorias" className="gap-1.5 text-xs tracking-wide h-8">
-              <Tag className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Categorias</span>
+            <TabsTrigger value="meus-caixas" className="gap-1.5 text-xs tracking-wide h-8">
+              <Wallet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Caixas</span>
+            </TabsTrigger>
+            <TabsTrigger value="extrato" className="gap-1.5 text-xs tracking-wide h-8">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Extrato</span>
             </TabsTrigger>
             <TabsTrigger value="formas-pagamento" className="gap-1.5 text-xs tracking-wide h-8">
               <CreditCard className="h-3.5 w-3.5" />
@@ -170,10 +162,6 @@ export default function Financeiro() {
               <Percent className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Comissões</span>
             </TabsTrigger>
-            <TabsTrigger value="relatorio" className="gap-1.5 text-xs tracking-wide h-8">
-              <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Relatório</span>
-            </TabsTrigger>
             <TabsTrigger value="metas" className="gap-1.5 text-xs tracking-wide h-8">
               <Target className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Metas</span>
@@ -181,6 +169,18 @@ export default function Financeiro() {
             <TabsTrigger value="precificacao" className="gap-1.5 text-xs tracking-wide h-8">
               <Calculator className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Precificação</span>
+            </TabsTrigger>
+            <TabsTrigger value="categorias" className="gap-1.5 text-xs tracking-wide h-8">
+              <Tag className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Categorias</span>
+            </TabsTrigger>
+            <TabsTrigger value="contas-pagar" className="gap-1.5 text-xs tracking-wide h-8">
+              <ArrowDownCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">A Pagar</span>
+            </TabsTrigger>
+            <TabsTrigger value="dashboard" className="gap-1.5 text-xs tracking-wide h-8">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
           </TabsList>
 

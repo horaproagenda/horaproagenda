@@ -97,25 +97,25 @@ export function NewGoalDialog({ open, onOpenChange, editingGoal }: NewGoalDialog
   };
 
   const goalTypes = [
-    { 
-      value: 'revenue', 
-      label: 'Faturamento', 
+    {
+      value: 'revenue',
+      label: 'Faturamento',
       icon: DollarSign,
-      description: 'Soma dos valores recebidos em agendamentos (amount_paid) + vendas avulsas (final_amount)',
+      description: 'Soma de tudo que foi recebido no período (atendimentos pagos + vendas avulsas no caixa).',
       source: 'Agendamentos concluídos + Vendas do Caixa'
     },
-    { 
-      value: 'appointments', 
-      label: 'Atendimentos', 
+    {
+      value: 'appointments',
+      label: 'Atendimentos',
       icon: Users,
-      description: 'Quantidade total de agendamentos concluídos no período',
+      description: 'Quantidade total de atendimentos concluídos no período.',
       source: 'Agenda (status: concluído)'
     },
-    { 
-      value: 'service_appointments', 
-      label: 'Serviço Específico', 
+    {
+      value: 'service_appointments',
+      label: 'Serviço Específico',
       icon: Calendar,
-      description: 'Quantidade de atendimentos de um serviço específico',
+      description: 'Quantidade de atendimentos concluídos de um serviço específico.',
       source: 'Agenda filtrada por serviço'
     }
   ];

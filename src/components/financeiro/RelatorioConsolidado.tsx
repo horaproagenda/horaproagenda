@@ -164,79 +164,9 @@ export function RelatorioConsolidado() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Entradas</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncome)}
-                </p>
-              </div>
-              <ArrowUpCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Saídas</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totalExpense)}
-                </p>
-              </div>
-              <ArrowDownCircle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={cn(
-          "border",
-          balance >= 0 
-            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" 
-            : "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
-        )}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo Período</p>
-                <p className={cn(
-                  "text-2xl font-bold",
-                  balance >= 0 ? "text-blue-600" : "text-orange-600"
-                )}>
-                  {formatCurrency(balance)}
-                </p>
-              </div>
-              <TrendingUp className={cn(
-                "h-8 w-8",
-                balance >= 0 ? "text-blue-500" : "text-orange-500"
-              )} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Caixas Abertos</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {openCashRegisters.length}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(totalCashBalance)}
-                </p>
-              </div>
-              <Wallet className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-4">
+      {/* Os totais de Entradas, Saídas, Saldo do Período e Caixas abertos
+          são exibidos pela barra "Caixa em tempo real" no topo da página Financeiro. */}
 
       {/* Filters */}
       <Card>

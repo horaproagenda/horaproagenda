@@ -421,7 +421,7 @@ export default function Produtos() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-3" align="start">
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-medium">Filtros</h4>
                     {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-[10px]">Limpar</Button>}
@@ -497,11 +497,11 @@ export default function Produtos() {
                     <DialogTitle className="text-base">Adicionar no Estoque</DialogTitle>
                     <DialogDescription className="text-xs">Registre a quantidade atual de um produto no estoque</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div>
                       <Label className="text-xs">Produto *</Label>
                       <Select value={stockForm.product_id} onValueChange={handleStockProductSelect}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
                         <SelectContent>
                           {products.map(p => <SelectItem key={p.id} value={p.id} className="text-sm">{p.name} {p.brand && `(${p.brand})`}</SelectItem>)}
                         </SelectContent>
@@ -516,25 +516,25 @@ export default function Produtos() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <Label className="text-xs">Quantidade *</Label>
-                        <Input type="number" value={stockForm.quantity || ''} onChange={(e) => updateStockQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" />
+                        <Input type="number" value={stockForm.quantity || ''} onChange={(e) => updateStockQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <CurrencyInput value={stockForm.unit_price} onValueChange={updateStockUnitPrice} className="h-8 text-sm" />
+                        <CurrencyInput value={stockForm.unit_price} onValueChange={updateStockUnitPrice} className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Valor Total (R$)</Label>
-                        <CurrencyInput value={stockForm.total_price} onValueChange={updateStockTotalPrice} className="h-8 text-sm" />
+                        <CurrencyInput value={stockForm.total_price} onValueChange={updateStockTotalPrice} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={stockForm.purchase_date} onChange={(e) => setStockForm({ ...stockForm, purchase_date: e.target.value })} className="h-8 text-sm" />
+                        <Input type="date" value={stockForm.purchase_date} onChange={(e) => setStockForm({ ...stockForm, purchase_date: e.target.value })} className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Data de Validade</Label>
-                        <Input type="date" value={stockForm.expiry_date} onChange={(e) => setStockForm({ ...stockForm, expiry_date: e.target.value })} className="h-8 text-sm" />
+                        <Input type="date" value={stockForm.expiry_date} onChange={(e) => setStockForm({ ...stockForm, expiry_date: e.target.value })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
@@ -568,11 +568,11 @@ export default function Produtos() {
                     <DialogTitle className="text-base">Nova Compra</DialogTitle>
                     <DialogDescription className="text-xs">Registre uma nova compra de produto</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div>
                       <Label className="text-xs">Produto *</Label>
                       <Select value={purchaseForm.product_id} onValueChange={handlePurchaseProductSelect}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
                         <SelectContent>
                           {products.map(p => <SelectItem key={p.id} value={p.id} className="text-sm">{p.name} {p.brand && `(${p.brand})`}</SelectItem>)}
                         </SelectContent>
@@ -581,15 +581,15 @@ export default function Produtos() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <Label className="text-xs">Quantidade *</Label>
-                        <Input type="number" value={purchaseForm.quantity || ''} onChange={(e) => updatePurchaseQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-8 text-sm" />
+                        <Input type="number" value={purchaseForm.quantity || ''} onChange={(e) => updatePurchaseQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Preço Unitário (R$)</Label>
-                        <CurrencyInput value={purchaseForm.unit_price} onValueChange={updatePurchaseUnitPrice} className="h-8 text-sm" />
+                        <CurrencyInput value={purchaseForm.unit_price} onValueChange={updatePurchaseUnitPrice} className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Preço Total (R$)</Label>
-                        <CurrencyInput value={purchaseForm.total_price} onValueChange={updatePurchaseTotalPrice} className="h-8 text-sm" />
+                        <CurrencyInput value={purchaseForm.total_price} onValueChange={updatePurchaseTotalPrice} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -602,7 +602,7 @@ export default function Produtos() {
                             setPurchaseForm({ ...purchaseForm, supplier_id: v === "none" ? "" : v, supplier: supplier?.name || "" });
                           }}
                         >
-                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
                             {activeSuppliers.map(s => <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>)}
@@ -611,12 +611,12 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={purchaseForm.purchase_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })} className="h-8 text-sm" />
+                        <Input type="date" value={purchaseForm.purchase_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs">Data de Validade</Label>
-                      <Input type="date" value={purchaseForm.expiry_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, expiry_date: e.target.value })} className="h-8 text-sm" />
+                      <Input type="date" value={purchaseForm.expiry_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, expiry_date: e.target.value })} className="h-7 text-xs" />
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
@@ -658,26 +658,26 @@ export default function Produtos() {
                     <DialogTitle className="text-base">Novo Produto</DialogTitle>
                     <DialogDescription className="text-xs">Cadastre as informações básicas do produto</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Nome *</Label>
-                        <Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder="Nome do produto" className="h-8 text-sm" />
+                        <Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder="Nome do produto" className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Marca</Label>
-                        <Input value={productForm.brand} onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })} placeholder="Marca" className="h-8 text-sm" />
+                        <Input value={productForm.brand} onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })} placeholder="Marca" className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Categoria</Label>
-                        <Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} placeholder="Ex: Tratamento facial" className="h-8 text-sm" />
+                        <Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} placeholder="Ex: Tratamento facial" className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Tipo *</Label>
                         <Select value={productForm.product_type} onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}>
-                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {PRODUCT_TYPES.map(type => (
                               <SelectItem key={type.value} value={type.value} className="text-sm">
@@ -697,7 +697,7 @@ export default function Produtos() {
                           setProductForm({ ...productForm, supplier_id: v === "none" ? "" : v, supplier: supplier?.name || "" });
                         }}
                       >
-                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none" className="text-sm">Nenhum</SelectItem>
                           {activeSuppliers.map(s => <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>)}
@@ -714,7 +714,7 @@ export default function Produtos() {
                     {productForm.is_for_sale && (
                       <div>
                         <Label className="text-xs">Preço de Venda (R$)</Label>
-                        <CurrencyInput value={productForm.sale_price} onValueChange={(value) => setProductForm({ ...productForm, sale_price: value })} className="h-8 text-sm" />
+                        <CurrencyInput value={productForm.sale_price} onValueChange={(value) => setProductForm({ ...productForm, sale_price: value })} className="h-7 text-xs" />
                       </div>
                     )}
                     <div className="flex justify-end gap-2 pt-2">

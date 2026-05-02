@@ -542,8 +542,8 @@ export function FormasPagamento() {
 
       {/* Boleto Detail Modal */}
       <BoletoDetailModal
-        open={!!detailSaleId}
-        onOpenChange={open => { if (!open) setDetailSaleId(null); }}
+        open={!!detailClientKey}
+        onOpenChange={open => { if (!open) setDetailClientKey(null); }}
         installments={detailInstallments}
         sale={detailSale}
         onMarkAsPaid={async (p) => { await markAsPaid.mutateAsync(p); }}

@@ -361,55 +361,60 @@ export function FormasPagamento() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-8">
-                      {pendingFilteredIds.length > 0 && (
-                        <Checkbox checked={selectedBoletoIds.length === pendingFilteredIds.length && pendingFilteredIds.length > 0} onCheckedChange={toggleSelectAll} />
-                      )}
-                    </TableHead>
-                    <TableHead>Parcela</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Boletos</TableHead>
+                    <TableHead className="text-center">Pendentes</TableHead>
+                    <TableHead className="text-center">Atrasados</TableHead>
+                    <TableHead>Próx. Vencimento</TableHead>
+                    <TableHead>Total Pendente</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBoletos.length === 0 ? (
+                  {filteredClientGroups.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBoletos.map((boleto: any) => {
-                      const isPending = boleto.status === 'pending' || boleto.status === 'overdue';
+                    filteredClientGroups.map((group) => {
+                      const all = group.installments;
+                      const pending = all.filter((b: any) => b.status === 'pending' || b.status === 'overdue');
+                      const overdue = all.filter((b: any) =>
+                        b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date())
+                      );
+                      const totalPending = pending.reduce((s: number, b: any) => s + Number(b.amount), 0);
+                      const nextDue = pending
+                        .map((b: any) => b.due_date)
+                        .sort()[0];
                       return (
-                        <TableRow key={boleto.id} className={selectedBoletoIds.includes(boleto.id) ? 'bg-primary/5' : ''}>
-                          <TableCell>
-                            {isPending && (
-                              <Checkbox checked={selectedBoletoIds.includes(boleto.id)} onCheckedChange={() => toggleBoletoSelect(boleto.id)} />
-                            )}
+                        <TableRow key={group.key}>
+                          <TableCell className="text-sm font-medium">
+                            {group.clientName}
+                            {group.clientPhone && <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>}
                           </TableCell>
-                          <TableCell className="text-sm">{boleto.installment_number}/{boleto.total_installments}</TableCell>
-                          <TableCell className="text-sm">{boleto.sale?.client?.name || '-'}</TableCell>
-                          <TableCell className="text-sm">{format(new Date(boleto.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                          <TableCell className="text-sm font-medium">R$ {Number(boleto.amount).toFixed(2)}</TableCell>
-                          <TableCell>{getBoletoBadge(boleto)}</TableCell>
+                          <TableCell className="text-sm text-center">{all.length}</TableCell>
+                          <TableCell className="text-sm text-center text-orange-600 font-medium">{pending.length}</TableCell>
+                          <TableCell className="text-sm text-center">
+                            {overdue.length > 0 ? <span className="text-red-600 font-semibold">{overdue.length}</span> : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium text-orange-700">
+                            R$ {totalPending.toFixed(2)}
+                          </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailSaleId(boleto.sale_id)}>
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                              {isPending && (
-                                <Button variant="outline" size="sm" className="gap-1 text-green-700 border-green-300 hover:bg-green-50 h-7" onClick={() => handleBoletoPayment(boleto)}>
-                                  <Check className="h-3.5 w-3.5" />Baixa
-                                </Button>
-                              )}
-                              {boleto.status === 'paid' && boleto.paid_date && (
-                                <span className="text-xs text-muted-foreground">{format(new Date(boleto.paid_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
-                              )}
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 h-7"
+                              onClick={() => setDetailClientKey(group.key)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Visualizar
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );

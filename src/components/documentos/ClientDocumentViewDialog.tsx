@@ -334,7 +334,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 h-[62vh] px-6 py-4">
+        <ScrollArea className="flex-1 min-h-0 h-[62vh] px-6 py-4">
           {document.content ? (
             <div className="mx-auto w-full max-w-[620px] min-h-[780px] rounded-sm border bg-background p-6 shadow-sm">
               <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">

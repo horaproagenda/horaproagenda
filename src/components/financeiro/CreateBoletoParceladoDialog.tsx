@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
+import type { BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
   const data = await fetchAddressByCep(cep);
@@ -92,6 +94,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     return d.toISOString().split('T')[0];
   });
   const [intervalDays, setIntervalDays] = useState<number>(30);
+  const [packageReleaseRule, setPackageReleaseRule] = useState<BoletoPackageReleaseRule>('boleto_first_paid');
 
   // Fees
   const [interestPctDay, setInterestPctDay] = useState<number>(0.033);
@@ -284,8 +287,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .insert(records);
       if (instErr) throw instErr;
 
-      // 4) Provision bookable inventory so the client can schedule even before paying
-      // (boleto parcelado: package/service is delivered upfront, payment runs in parallel)
+      // 4) Provision inventory. Packages bought by boleto are created inactive and
+      // become bookable only when the configured payment rule is met.
       if (itemType === 'service' && itemId) {
         await supabase.from('client_services').insert({
           client_id: payer.client_id,
@@ -322,9 +325,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               room_id: packageTemplate.room_id,
               equipment: packageTemplate.equipment || [],
               payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
-              payment_type: 'full',
+              payment_type: packageReleaseRule,
               sessions_scheduled: 0,
-              is_active: true,
+              is_active: false,
               category: packageTemplate.category || 'Pago via Boleto Parcelado',
             })
             .select()
@@ -376,7 +379,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       // reset
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
-      setInstallments(2); setNotes('');
+      setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',
         neighborhood: '', city: '', state: '' });

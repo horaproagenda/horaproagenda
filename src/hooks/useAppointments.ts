@@ -506,26 +506,33 @@ export function useAppointments() {
         .single();
 
       const hadPayment = (appointment?.amount_paid || 0) > 0;
+      const isPackageLinked = !!appointment?.package_appointment_id;
 
-      // Delete related financial entries for this appointment
-      const { error: finEntryDeleteError } = await supabase
-        .from('financial_entries')
-        .delete()
-        .eq('appointment_id', id);
+      // For PACKAGE appointments: payment is at package level and remains valid for the
+      // remaining sessions. We must NOT remove financial_entries or cash_transactions when
+      // deleting a single session — the money paid for the package stays registered.
+      // It is only refunded/removed when the entire package is deleted (see deletePackageAppointments).
+      if (!isPackageLinked) {
+        // Delete related financial entries for this appointment
+        const { error: finEntryDeleteError } = await supabase
+          .from('financial_entries')
+          .delete()
+          .eq('appointment_id', id);
 
-      if (finEntryDeleteError) {
-        console.error('Error deleting financial entries:', finEntryDeleteError);
-      }
+        if (finEntryDeleteError) {
+          console.error('Error deleting financial entries:', finEntryDeleteError);
+        }
 
-      // Delete related cash transactions for this appointment
-      const { error: cashDeleteError } = await supabase
-        .from('cash_transactions')
-        .delete()
-        .eq('reference_id', id)
-        .eq('reference_type', 'appointment');
+        // Delete related cash transactions for this appointment
+        const { error: cashDeleteError } = await supabase
+          .from('cash_transactions')
+          .delete()
+          .eq('reference_id', id)
+          .eq('reference_type', 'appointment');
 
-      if (cashDeleteError) {
-        console.error('Error deleting cash transactions:', cashDeleteError);
+        if (cashDeleteError) {
+          console.error('Error deleting cash transactions:', cashDeleteError);
+        }
       }
 
       // If linked to a package, release the session first

@@ -183,8 +183,52 @@ export function FormasPagamento() {
     return <Badge variant="outline" className="text-[10px]">Pendente</Badge>;
   };
 
-  // Detail modal data
-  const detailInstallments = detailSaleId ? allBoletoInstallments.filter((b: any) => b.sale_id === detailSaleId) : [];
+  // Group boletos by client (unified per-client view)
+  const clientGroups = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      clientId: string | null;
+      clientName: string;
+      clientPhone: string | null;
+      installments: any[];
+    }>();
+    for (const b of allBoletoInstallments as any[]) {
+      const clientId = b.sale?.client?.id || null;
+      const clientName = b.sale?.client?.name || 'Sem cliente';
+      const key = clientId || `name:${clientName}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          clientId,
+          clientName,
+          clientPhone: b.sale?.client?.phone || null,
+          installments: [],
+        });
+      }
+      map.get(key)!.installments.push(b);
+    }
+    return Array.from(map.values());
+  }, [allBoletoInstallments]);
+
+  // Filter groups: a group matches if it contains at least one installment matching filter
+  const filteredClientGroups = useMemo(() => {
+    return clientGroups
+      .map(g => ({
+        ...g,
+        filteredInstallments: g.installments.filter((b: any) => {
+          if (boletoFilter === 'all') return true;
+          if (boletoFilter === 'pending') return b.status === 'pending';
+          if (boletoFilter === 'overdue') return b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date());
+          if (boletoFilter === 'paid') return b.status === 'paid';
+          return true;
+        }),
+      }))
+      .filter(g => g.filteredInstallments.length > 0);
+  }, [clientGroups, boletoFilter]);
+
+  // Detail modal data — all installments for the selected client
+  const detailGroup = detailClientKey ? clientGroups.find(g => g.key === detailClientKey) : null;
+  const detailInstallments = detailGroup?.installments || [];
   const detailSale = detailInstallments.length > 0 ? (detailInstallments[0] as any).sale : null;
 
   return (

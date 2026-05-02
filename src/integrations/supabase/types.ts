@@ -546,6 +546,7 @@ export type Database = {
           automation_whatsapp_reminders: boolean | null
           clinic_address: string | null
           clinic_cnpj: string | null
+          clinic_email: string | null
           clinic_name: string | null
           clinic_phone: string | null
           closing_time: string
@@ -573,6 +574,7 @@ export type Database = {
           automation_whatsapp_reminders?: boolean | null
           clinic_address?: string | null
           clinic_cnpj?: string | null
+          clinic_email?: string | null
           clinic_name?: string | null
           clinic_phone?: string | null
           closing_time?: string
@@ -600,6 +602,7 @@ export type Database = {
           automation_whatsapp_reminders?: boolean | null
           clinic_address?: string | null
           clinic_cnpj?: string | null
+          clinic_email?: string | null
           clinic_name?: string | null
           clinic_phone?: string | null
           closing_time?: string

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck, Globe, DollarSign } from 'lucide-react';
+import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck, Globe, DollarSign, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBusinessSettings, BRAZIL_TIMEZONES } from '@/hooks/useBusinessSettings';
+import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
@@ -19,6 +20,7 @@ import { StockAlertSettings } from '@/components/settings/StockAlertSettings';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
+  const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
   
   const [openingTime, setOpeningTime] = useState('08:00');
   const [closingTime, setClosingTime] = useState('20:00');
@@ -33,6 +35,12 @@ const Configuracoes = () => {
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
   const [overdueDaysThreshold, setOverdueDaysThreshold] = useState(0);
+
+  // Clinic info
+  const [clinicName, setClinicName] = useState('');
+  const [clinicPhone, setClinicPhone] = useState('');
+  const [clinicEmail, setClinicEmail] = useState('');
+  const [clinicAddress, setClinicAddress] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -49,8 +57,21 @@ const Configuracoes = () => {
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
       setTimezone(settings.timezone || 'America/Sao_Paulo');
       setOverdueDaysThreshold(settings.overdue_days_threshold ?? 0);
+      setClinicName((settings as any).clinic_name || '');
+      setClinicPhone((settings as any).clinic_phone || '');
+      setClinicEmail((settings as any).clinic_email || '');
+      setClinicAddress((settings as any).clinic_address || '');
     }
   }, [settings]);
+
+  const handleSaveClinic = () => {
+    updateSettings.mutate({
+      clinic_name: clinicName,
+      clinic_phone: clinicPhone,
+      clinic_email: clinicEmail,
+      clinic_address: clinicAddress,
+    } as any);
+  };
 
   const handleSaveHours = () => {
     updateSettings.mutate({
@@ -141,25 +162,54 @@ const Configuracoes = () => {
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome da Clínica</Label>
-                  <Input className="h-8 text-sm" defaultValue="Belezza Estética & Bem-estar" />
+                  <Input
+                    className="h-8 text-sm"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    placeholder="Nome do estabelecimento"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Telefone</Label>
-                    <Input className="h-8 text-sm" defaultValue="(11) 99999-9999" />
+                    <Input
+                      className="h-8 text-sm"
+                      value={clinicPhone}
+                      onChange={(e) => setClinicPhone(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Email</Label>
-                    <Input className="h-8 text-sm" type="email" defaultValue="contato@belezza.com" />
+                    <Input
+                      className="h-8 text-sm"
+                      type="email"
+                      value={clinicEmail}
+                      onChange={(e) => setClinicEmail(e.target.value)}
+                      placeholder="contato@clinica.com"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Endereço</Label>
-                  <Input className="h-8 text-sm" defaultValue="Av. Paulista, 1234 - São Paulo, SP" />
+                  <Input
+                    className="h-8 text-sm"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
+                    placeholder="Rua, número - Cidade, UF"
+                  />
                 </div>
-                <Button size="sm" className="w-full btn-vibrant">Salvar Alterações</Button>
+                <Button
+                  size="sm"
+                  className="w-full btn-vibrant"
+                  onClick={handleSaveClinic}
+                  disabled={updateSettings.isPending}
+                >
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
               </CardContent>
             </Card>
+
 
             <Card className="card-hover">
               <CardHeader className="pb-3">
@@ -381,32 +431,63 @@ const Configuracoes = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
                   <Label className="text-xs">Cor Principal</Label>
-                  <div className="flex gap-2">
-                    {['#D4A5AC', '#E8B4BC', '#C9A86C', '#A8C9A7', '#B8A9C9'].map(color => (
-                      <button
-                        key={color}
-                        className="h-7 w-7 rounded-full border-2 border-border transition-transform hover:scale-110"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                  <p className="text-[10px] text-muted-foreground">
+                    Escolha a cor que será aplicada em toda a agenda. A escolha é salva apenas para você.
+                  </p>
+                  <div className="grid grid-cols-8 gap-2 pt-1">
+                    {PRIMARY_COLOR_PALETTE.map(color => {
+                      const selected = appearance.primaryColor === color.hsl;
+                      return (
+                        <button
+                          key={color.hsl}
+                          type="button"
+                          title={color.name}
+                          aria-label={color.name}
+                          onClick={() => {
+                            updateAppearance({ primaryColor: color.hsl });
+                            toast.success(`Cor principal: ${color.name}`);
+                          }}
+                          className={`relative h-7 w-7 rounded-full border-2 transition-all hover:scale-110 ${
+                            selected ? 'border-foreground ring-2 ring-foreground/30' : 'border-border'
+                          }`}
+                          style={{ backgroundColor: color.hex }}
+                        >
+                          {selected && (
+                            <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-white drop-shadow" strokeWidth={3} />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="flex items-center justify-between py-1">
+                <div className="flex items-center justify-between py-1 border-t pt-3">
                   <div>
                     <Label className="text-xs">Modo escuro</Label>
                     <p className="text-[10px] text-muted-foreground">Tema dark</p>
                   </div>
-                  <Switch />
+                  <Switch
+                    checked={appearance.darkMode}
+                    onCheckedChange={(checked) => {
+                      updateAppearance({ darkMode: checked });
+                      toast.success(checked ? 'Modo escuro ativado' : 'Modo claro ativado');
+                    }}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <div>
                     <Label className="text-xs">Animações</Label>
-                    <p className="text-[10px] text-muted-foreground">Efeitos visuais</p>
+                    <p className="text-[10px] text-muted-foreground">Efeitos visuais e transições</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={appearance.animations}
+                    onCheckedChange={(checked) => {
+                      updateAppearance({ animations: checked });
+                      toast.success(checked ? 'Animações ativadas' : 'Animações desativadas');
+                    }}
+                  />
                 </div>
               </CardContent>
             </Card>

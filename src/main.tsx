@@ -2,6 +2,10 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { bootstrapAppearance } from "./hooks/useAppearanceSettings";
+
+// Apply persisted appearance (primary color, dark mode, animations) before render
+bootstrapAppearance();
 
 // Remove initial loader before React renders
 const initialLoader = document.getElementById("initial-loader");

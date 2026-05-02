@@ -133,7 +133,7 @@ export function NotificationsPanel() {
                     notification.severity === 'critical' && "bg-destructive/5",
                     notification.link && "cursor-pointer hover:bg-muted/50"
                   )}
-                  onClick={() => notification.link && handleNavigate(notification.link)}
+                  onClick={() => notification.link && handleNavigate(notification)}
                 >
                   <div className={cn(
                     "mt-0.5 p-2 rounded-lg",

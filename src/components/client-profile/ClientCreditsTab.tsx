@@ -477,40 +477,59 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <div className="min-w-[720px]">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-[10px] py-1.5 h-auto">Data</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Tipo</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto">Descrição</TableHead>
-                      <TableHead className="text-[10px] py-1.5 h-auto">Profissional</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto">Prof.</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor</TableHead>
-                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo anterior</TableHead>
+                      <TableHead className="text-[10px] py-1.5 h-auto text-right">Saldo ant.</TableHead>
                       <TableHead className="text-[10px] py-1.5 h-auto text-right">Novo saldo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {creditTransactions.map(transaction => (
-                      <TableRow key={transaction.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setSelectedCreditTransaction(transaction)}>
-                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
-                          {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell className="text-xs py-1.5 whitespace-nowrap">
-                          <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
-                            {getClientCreditTransactionTypeLabel(transaction.transaction_type)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs py-1.5 min-w-[220px]">{transaction.description}</TableCell>
-                        <TableCell className="text-xs py-1.5 whitespace-nowrap">{transaction.professional?.name || '-'}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>
-                      </TableRow>
-                    ))}
+                    {creditTransactions.map(transaction => {
+                      // Simplify description: keep only the procedure/service/package name
+                      const rawDescription = transaction.description || '';
+                      const procedureName =
+                        transaction.appointment?.service?.name ||
+                        transaction.sale?.service?.name ||
+                        transaction.sale?.package?.name ||
+                        // Fallback: try to extract a name after a separator like ":" or "—"
+                        (rawDescription.includes(':') ? rawDescription.split(':').pop()?.trim() : rawDescription) ||
+                        '-';
+
+                      // Abbreviate professional name: first name + initial of last
+                      const fullName = transaction.professional?.name || '';
+                      const parts = fullName.trim().split(/\s+/).filter(Boolean);
+                      const abbreviatedProfessional = parts.length === 0
+                        ? '-'
+                        : parts.length === 1
+                          ? parts[0]
+                          : `${parts[0]} ${parts[parts.length - 1][0]}.`;
+
+                      return (
+                        <TableRow key={transaction.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setSelectedCreditTransaction(transaction)}>
+                          <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                            {format(new Date(transaction.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell className="text-xs py-1.5 whitespace-nowrap">
+                            <Badge variant={transaction.transaction_type === 'credit_used' ? 'secondary' : 'outline'} className="text-[10px]">
+                              {getClientCreditTransactionTypeLabel(transaction.transaction_type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs py-1.5 min-w-[160px] truncate max-w-[260px]">{procedureName}</TableCell>
+                          <TableCell className="text-xs py-1.5 whitespace-nowrap" title={fullName || undefined}>{abbreviatedProfessional}</TableCell>
+                          <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(Number(transaction.amount || 0))}</TableCell>
+                          <TableCell className="text-xs py-1.5 text-right">{formatCurrency(Number(transaction.previous_balance || 0))}</TableCell>
+                          <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">{formatCurrency(Number(transaction.new_balance || 0))}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
-                </div>
               </div>
               {creditTransactions.length >= CREDIT_PAGE_SIZE * creditPage && (
                 <div className="mt-2 flex justify-center">

@@ -1435,6 +1435,9 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
+              {/* Boleto status alert (cross-appointment) */}
+              <ClientBoletoStatus clientId={appointment.client_id} />
+
               {/* Existing Payments */}
               {appointment.payment_methods && appointment.payment_methods.length > 0 && (
                 <div className="flex flex-wrap gap-2">

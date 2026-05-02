@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Building2, User, Receipt, Calendar, AlertCircle, Loader2 } from 'lucide-react';
@@ -221,7 +221,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         payment_method_id: boletoPaymentMethod.id,
         sale_date: today(),
         item_type: itemType === 'package' ? 'package' : 'service',
-        installments_count: installments,
+        installments: installments,
         notes: notes || null,
         created_by: user?.id || null,
       };
@@ -295,8 +295,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
             Criar Boleto Parcelado
@@ -306,7 +306,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto px-6 py-3 scrollbar-visible" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="beneficiario"><Building2 className="h-3.5 w-3.5 mr-1" />Beneficiário</TabsTrigger>
@@ -555,9 +555,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               </Alert>
             </TabsContent>
           </Tabs>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="border-t pt-3">
+        <DialogFooter className="border-t px-6 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

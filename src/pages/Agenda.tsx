@@ -41,6 +41,7 @@ import {
   Star,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
@@ -1650,6 +1651,9 @@ const Agenda = () => {
         title="Agenda" 
         subtitle=""
       >
+        <div className="mb-2">
+          <LiveCashTotalsBar compact />
+        </div>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 space-y-3">
             <div className="h-8 w-8 rounded-full border-4 border-muted animate-spin border-t-primary" />

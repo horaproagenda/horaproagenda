@@ -445,3 +445,130 @@ input[type="number"] {
   .px-6 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
   .py-6 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
 }
+
+/* ===========================================================
+   Scrollbars visíveis (vertical + horizontal) globais
+   Garante rolagem por mouse wheel e barra sempre visível
+   =========================================================== */
+@layer utilities {
+  .scrollbar-visible {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scrollbar-visible::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scrollbar-visible::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.3);
+    border-radius: 8px;
+  }
+  .scrollbar-visible::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.45);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+  .scrollbar-visible::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Aplicar scrollbar visível e rolagem completa em diálogos, sheets,
+   popovers, dropdowns, comandos e qualquer área overflow do app */
+[role="dialog"],
+[data-radix-dialog-content],
+[data-radix-sheet-content],
+[data-radix-popper-content-wrapper] [role="menu"],
+[data-radix-popper-content-wrapper] [role="listbox"],
+[cmdk-list],
+[data-radix-scroll-area-viewport],
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
+}
+
+[role="dialog"]::-webkit-scrollbar,
+[data-radix-dialog-content]::-webkit-scrollbar,
+[data-radix-sheet-content]::-webkit-scrollbar,
+[data-radix-popper-content-wrapper] [role="menu"]::-webkit-scrollbar,
+[data-radix-popper-content-wrapper] [role="listbox"]::-webkit-scrollbar,
+[cmdk-list]::-webkit-scrollbar,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[role="dialog"]::-webkit-scrollbar-track,
+[data-radix-dialog-content]::-webkit-scrollbar-track,
+[data-radix-sheet-content]::-webkit-scrollbar-track,
+[cmdk-list]::-webkit-scrollbar-track,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-scroll::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 8px;
+}
+
+[role="dialog"]::-webkit-scrollbar-thumb,
+[data-radix-dialog-content]::-webkit-scrollbar-thumb,
+[data-radix-sheet-content]::-webkit-scrollbar-thumb,
+[cmdk-list]::-webkit-scrollbar-thumb,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.overflow-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.45);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+[role="dialog"]::-webkit-scrollbar-thumb:hover,
+[data-radix-dialog-content]::-webkit-scrollbar-thumb:hover,
+[data-radix-sheet-content]::-webkit-scrollbar-thumb:hover,
+.overflow-auto::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.overflow-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Tabelas: garantir scroll horizontal + vertical com mouse wheel */
+.table-scroll-container,
+[data-table-wrapper],
+table {
+  overflow: auto;
+}
+
+/* Garante rolagem por mouse wheel em containers com overflow:
+   browsers às vezes não fazem scroll quando overflow:hidden está
+   herdado. Forçar touch-action permite scroll por trackpad/wheel */
+[role="dialog"],
+[data-radix-dialog-content],
+[data-radix-sheet-content] {
+  touch-action: pan-x pan-y;
+}
+
+/* Body sempre permite scroll vertical da página */
+html, body {
+  overflow-x: auto;
+}

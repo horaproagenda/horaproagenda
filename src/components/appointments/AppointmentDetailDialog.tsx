@@ -2254,7 +2254,149 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Partial Payment Confirmation Dialog */}
+      {/* Refund Dialog — only shown when deleting an entire paid package */}
+      {(() => {
+        if (!showRefundDialog || !packageData) return null;
+        const totalSessions = packageSessionInfo?.totalSessions || packageData?.total_sessions || 0;
+        const realized = packageSessionInfo?.realizedSessions || 0;
+        const perSession = totalSessions > 0 ? packageTotalPaid / totalSessions : 0;
+        const consumedValue = refundDeductConsumed ? perSession * realized : 0;
+        const baseRefundable = Math.max(0, packageTotalPaid - consumedValue);
+        const feeNum = parseFloat((refundFeeValue || '0').replace(',', '.')) || 0;
+        const feeAmount = refundFeeType === 'percent'
+          ? Math.max(0, (baseRefundable * feeNum) / 100)
+          : Math.max(0, Math.min(feeNum, baseRefundable));
+        const refundAmount = Math.max(0, baseRefundable - feeAmount);
+
+        return (
+          <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+            <AlertDialogContent className="max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-warning" />
+                  Excluir pacote e devolver dinheiro
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-sm">
+                    <p>
+                      Pacote <strong>{packageData?.name}</strong> de <strong>{appointment.client?.name}</strong>.
+                      Configure a devolução abaixo. Os agendamentos do pacote serão excluídos
+                      e os pagamentos originais removidos do caixa/financeiro.
+                    </p>
+
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="flex justify-between"><span>Valor pago no pacote</span><span className="font-medium">R$ {packageTotalPaid.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Aplicações realizadas</span><span className="font-medium">{realized} de {totalSessions}</span></div>
+                      <div className="flex justify-between"><span>Valor por aplicação</span><span className="font-medium">R$ {perSession.toFixed(2)}</span></div>
+                    </div>
+
+                    <div className="flex items-start gap-2 p-2 rounded border">
+                      <input
+                        id="refund-deduct"
+                        type="checkbox"
+                        className="mt-1"
+                        checked={refundDeductConsumed}
+                        onChange={(e) => setRefundDeductConsumed(e.target.checked)}
+                      />
+                      <Label htmlFor="refund-deduct" className="text-xs leading-snug">
+                        Descontar aplicações já realizadas
+                        ({realized} × R$ {perSession.toFixed(2)} = <strong>R$ {(perSession * realized).toFixed(2)}</strong>)
+                      </Label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Tipo de multa</Label>
+                        <Select value={refundFeeType} onValueChange={(v) => setRefundFeeType(v as 'percent' | 'fixed')}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percent">Percentual (%)</SelectItem>
+                            <SelectItem value="fixed">Valor fixo (R$)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Valor da multa</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={refundFeeValue}
+                          onChange={(e) => setRefundFeeValue(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Forma de devolução</Label>
+                      <Select value={refundMethodId} onValueChange={setRefundMethodId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
+                        <SelectContent>
+                          {(activePaymentMethods || []).map((pm: any) => (
+                            <SelectItem key={pm.id} value={pm.name}>{pm.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Observação (opcional)</Label>
+                      <Input
+                        value={refundNote}
+                        onChange={(e) => setRefundNote(e.target.value)}
+                        placeholder="Motivo da devolução"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 space-y-1">
+                      <div className="flex justify-between"><span>Base devolvível</span><span className="font-medium">R$ {baseRefundable.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Multa</span><span className="font-medium">- R$ {feeAmount.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-base pt-1 border-t border-warning/30">
+                        <span className="font-semibold">Total a devolver</span>
+                        <span className="font-bold text-warning">R$ {refundAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowRefundDialog(false)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={!refundMethodId || deletePackageAppointments.isPending}
+                  onClick={() => {
+                    if (!appointment.package_appointment?.package_id) return;
+                    deletePackageAppointments.mutate(
+                      {
+                        packageId: appointment.package_appointment.package_id,
+                        refund: {
+                          amountPaid: packageTotalPaid,
+                          consumedValue,
+                          feeAmount,
+                          refundAmount,
+                          refundMethod: refundMethodId,
+                          note: refundNote,
+                        },
+                      },
+                      {
+                        onSuccess: () => {
+                          setShowRefundDialog(false);
+                          onOpenChange(false);
+                        },
+                      },
+                    );
+                  }}
+                >
+                  Excluir pacote e devolver R$ {refundAmount.toFixed(2)}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
+
+
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

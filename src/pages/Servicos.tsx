@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal, Repeat } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { useListPosition } from '@/hooks/useListPosition';
+import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { NewServiceDialog } from '@/components/services/NewServiceDialog';
 import { NewPackageDialog } from '@/components/services/NewPackageDialog';
@@ -168,6 +170,15 @@ const Servicos: React.FC = () => {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Resume position
+  const { savedState: resumeState, savePosition: savePos, restore: restorePos, dismiss: dismissPos } = useListPosition({ key: 'servicos' });
+  const handleResumePos = () => {
+    if (resumeState?.search) setSearchTerm(resumeState.search);
+    if (resumeState?.lastItemId) setActiveTab(resumeState.lastItemId);
+    restorePos();
+  };
+  useEffect(() => { savePos({ search: searchTerm, lastItemId: activeTab }); }, [searchTerm, activeTab, savePos]);
+
   // Persist filters in localStorage
   const [serviceFilters, setServiceFilters] = useLocalStorage<ServicesFilters>('servicos-service-filters', {
     category: null, professional: null, room: null, client: null, status: null, sort: 'name-asc'
@@ -330,6 +341,7 @@ const Servicos: React.FC = () => {
   return (
     <AppLayout title="Serviços" subtitle="Catálogo de procedimentos e pacotes">
       <div className="space-y-3">
+        <ResumePositionBanner state={resumeState} onResume={handleResumePos} onDismiss={dismissPos} />
         {/* Line 1: Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

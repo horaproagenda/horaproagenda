@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useListPosition } from '@/hooks/useListPosition';
+import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
 import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
@@ -61,6 +63,22 @@ const Clientes = () => {
   
   const isAdmin = hasRole('admin');
   const isReceptionist = hasRole('receptionist');
+
+  // Resume position system
+  const { savedState, savePosition, restore, dismiss } = useListPosition({ key: 'clientes' });
+
+  // Restaura page/search/letter automaticamente quando o banner é aceito,
+  // mas mantém o banner visível enquanto o usuário não decide.
+  const handleResume = () => {
+    if (savedState?.page) setCurrentPage(savedState.page);
+    if (savedState?.search) setSearchTerm(savedState.search);
+    restore();
+  };
+
+  // Salva mudanças relevantes
+  useEffect(() => {
+    savePosition({ page: currentPage, search: searchTerm });
+  }, [currentPage, searchTerm, savePosition]);
 
   const activeClients = clients.filter(c => c.is_active);
   const inactiveClients = clients.filter(c => !c.is_active);
@@ -238,6 +256,13 @@ const Clientes = () => {
       subtitle="Gerencie sua base de clientes"
     >
       <div className="space-y-4 animate-fade-in">
+        {/* Resume position banner */}
+        <ResumePositionBanner
+          state={savedState}
+          onResume={handleResume}
+          onDismiss={dismiss}
+        />
+
         {/* Search - Full width on top */}
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -365,6 +390,13 @@ const Clientes = () => {
                       key={client.id}
                       style={{ animationDelay: `${index * 30}ms` }}
                       className="animate-scale-in"
+                      onClickCapture={() =>
+                        savePosition({
+                          lastItemId: client.id,
+                          lastItemLabel: client.name,
+                          letter: client.name?.charAt(0).toUpperCase(),
+                        })
+                      }
                     >
                       <ClientCard client={client} />
                     </div>
@@ -413,7 +445,14 @@ const Clientes = () => {
                         <TableRow 
                           key={client.id}
                           className="cursor-pointer transition-colors hover:bg-muted/50"
-                          onClick={() => navigate(`/clientes/${client.id}`)}
+                          onClick={() => {
+                            savePosition({
+                              lastItemId: client.id,
+                              lastItemLabel: client.name,
+                              letter: client.name?.charAt(0).toUpperCase(),
+                            });
+                            navigate(`/clientes/${client.id}`);
+                          }}
                           style={{ animationDelay: `${index * 20}ms` }}
                         >
                           <TableCell className="text-sm font-medium py-2">

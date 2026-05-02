@@ -286,56 +286,56 @@ export function CommissionsReport({
 
   return (
     <div className="space-y-4">
-      {/* Summary Cards */}
+      {/* Summary Cards — gradientes sutis e tipografia padronizada */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="overflow-hidden border-l-4 border-l-primary bg-gradient-to-br from-primary/5 to-transparent shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Profissionais</p>
-                <p className="text-xl font-bold">{commissionsData.length}</p>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Profissionais</p>
+                <p className="text-lg font-bold text-primary mt-0.5">{commissionsData.length}</p>
               </div>
-              <Users className="h-8 w-8 text-muted-foreground/20" />
+              <Users className="h-7 w-7 text-primary/30" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="overflow-hidden border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Atendimentos</p>
-                <p className="text-xl font-bold">{totals.totalServices}</p>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Atendimentos</p>
+                <p className="text-lg font-bold text-blue-600 mt-0.5">{totals.totalServices}</p>
               </div>
-              <Calendar className="h-8 w-8 text-muted-foreground/20" />
+              <Calendar className="h-7 w-7 text-blue-500/30" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="overflow-hidden border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Receita Total</p>
-                <p className="text-xl font-bold text-primary">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Receita Total</p>
+                <p className="text-lg font-bold text-emerald-600 mt-0.5">
                   R$ {totals.totalRevenue.toFixed(2)}
                 </p>
               </div>
-              <DollarSign className="h-8 w-8 text-primary/20" />
+              <DollarSign className="h-7 w-7 text-emerald-500/30" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="overflow-hidden border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Total Comissões</p>
-                <p className="text-xl font-bold text-green-600">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total Comissões</p>
+                <p className="text-lg font-bold text-amber-600 mt-0.5">
                   R$ {totals.totalCommissions.toFixed(2)}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600/20" />
+              <TrendingUp className="h-7 w-7 text-amber-500/30" />
             </div>
           </CardContent>
         </Card>
@@ -345,69 +345,72 @@ export function CommissionsReport({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Percent className="h-5 w-5" />
+            <CardTitle className="text-base flex items-center gap-2">
+              <Percent className="h-4 w-4 text-primary" />
               Comissões por Profissional - {dateRangeLabel}
             </CardTitle>
             <Button variant="outline" size="sm" onClick={exportCommissionsReport}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-3.5 w-3.5 mr-2" />
               Exportar
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {commissionsData.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-sm text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>Nenhum atendimento pago no período selecionado</p>
             </div>
           ) : (
             <ScrollArea className="h-[400px]">
               <Accordion type="multiple" className="space-y-2">
-                {commissionsData.map(data => (
+                {commissionsData.map(data => {
+                  const profColor = data.professional.agenda_color || 'hsl(var(--primary))';
+                  return (
                   <AccordionItem
                     key={data.professional.id}
                     value={data.professional.id}
-                    className="border rounded-lg px-4"
+                    className="border rounded-lg px-4 border-l-4 shadow-sm hover:shadow-md transition-all"
+                    style={{ borderLeftColor: profColor, background: `linear-gradient(to right, ${profColor}08, transparent 30%)` }}
                   >
                     <AccordionTrigger className="hover:no-underline py-3">
                       <div className="flex items-center justify-between w-full pr-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: data.professional.agenda_color || '#3B82F6' }}
+                            className="w-3 h-3 rounded-full ring-2 ring-offset-1"
+                            style={{ backgroundColor: profColor, '--tw-ring-color': `${profColor}40` } as any}
                           />
                           <div className="text-left">
-                            <p className="font-medium">{data.professional.name}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="font-semibold text-sm" style={{ color: profColor }}>{data.professional.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
                               {data.totalServices} atendimento{data.totalServices !== 1 ? 's' : ''}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Receita</p>
-                            <p className="font-medium">R$ {data.totalRevenue.toFixed(2)}</p>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Receita</p>
+                            <p className="text-sm font-semibold text-emerald-600">R$ {data.totalRevenue.toFixed(2)}</p>
                           </div>
                           {data.professional.is_commission_based ? (
                             <div className="text-right min-w-[100px]">
-                              <div className="flex items-center gap-2 justify-end mb-1">
-                                <Badge variant="secondary">
+                              <div className="flex items-center gap-1.5 justify-end mb-1">
+                                <Badge variant="secondary" className="text-[10px] h-5">
                                   {data.commissionPercentage}%
                                 </Badge>
                                 {data.isPaid && (
-                                  <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                  <Badge variant="outline" className="text-[10px] h-5 text-emerald-600 border-emerald-300 bg-emerald-50">
+                                    <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                     Pago
                                   </Badge>
                                 )}
                               </div>
-                              <p className="font-bold text-green-600">
+                              <p className="text-sm font-bold text-amber-600">
                                 R$ {data.commissionValue.toFixed(2)}
                               </p>
                             </div>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
                               Sem comissão
                             </Badge>
                           )}
@@ -418,12 +421,12 @@ export function CommissionsReport({
                       <div className="pt-2 pb-4">
                         <Table>
                           <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[100px] text-[10px]">Data</TableHead>
-                              <TableHead className="text-[10px]">Cliente</TableHead>
-                              <TableHead className="text-[10px]">Serviço</TableHead>
-                              <TableHead className="text-right text-[10px]">Valor</TableHead>
-                              <TableHead className="text-right text-[10px]">Comissão</TableHead>
+                            <TableRow style={{ borderBottomColor: `${profColor}40` }}>
+                              <TableHead className="w-[110px] text-[11px]">Data</TableHead>
+                              <TableHead className="text-[11px]">Cliente</TableHead>
+                              <TableHead className="text-[11px]">Serviço</TableHead>
+                              <TableHead className="text-right text-[11px]">Valor</TableHead>
+                              <TableHead className="text-right text-[11px]">Comissão</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -432,20 +435,20 @@ export function CommissionsReport({
                                 ? ((apt.amount_paid || 0) * data.commissionPercentage) / 100
                                 : 0;
                               return (
-                                <TableRow key={apt.id}>
-                                  <TableCell className="text-[11px] py-1.5">
+                                <TableRow key={apt.id} className="hover:bg-muted/40 transition-colors">
+                                  <TableCell className="text-xs py-2 text-muted-foreground tabular-nums">
                                     {format(parseISO(apt.start_time), 'dd/MM/yy HH:mm', { locale: ptBR })}
                                   </TableCell>
-                                  <TableCell className="text-[11px] py-1.5">
+                                  <TableCell className="text-xs py-2 font-medium">
                                     {apt.client?.name || '-'}
                                   </TableCell>
-                                  <TableCell className="text-[11px] py-1.5">
+                                  <TableCell className="text-xs py-2">
                                     {apt.service?.name || '-'}
                                   </TableCell>
-                                  <TableCell className="text-right text-[11px] py-1.5 font-medium">
+                                  <TableCell className="text-right text-xs py-2 font-medium tabular-nums">
                                     R$ {(apt.amount_paid || 0).toFixed(2)}
                                   </TableCell>
-                                  <TableCell className="text-right text-[11px] py-1.5 font-medium text-green-600">
+                                  <TableCell className="text-right text-xs py-2 font-semibold text-amber-600 tabular-nums">
                                     R$ {aptCommission.toFixed(2)}
                                   </TableCell>
                                 </TableRow>
@@ -459,12 +462,12 @@ export function CommissionsReport({
                           <div className="flex items-center justify-between pt-4 border-t mt-4">
                             <div>
                               {data.isPaid ? (
-                                <p className="text-sm text-green-600 flex items-center gap-1">
-                                  <CheckCircle className="h-4 w-4" />
+                                <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                  <CheckCircle className="h-3.5 w-3.5" />
                                   Comissão paga em {data.paidAt ? format(parseISO(data.paidAt), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                                 </p>
                               ) : (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                   Comissão pendente de pagamento
                                 </p>
                               )}
@@ -473,8 +476,10 @@ export function CommissionsReport({
                               <Button 
                                 size="sm" 
                                 onClick={() => handleOpenPaymentDialog(data)}
+                                className="text-xs h-8 shadow-sm"
+                                style={{ backgroundColor: profColor, color: 'white' }}
                               >
-                                <DollarSign className="h-4 w-4 mr-2" />
+                                <DollarSign className="h-3.5 w-3.5 mr-1.5" />
                                 Pagar Comissão
                               </Button>
                             )}
@@ -483,7 +488,8 @@ export function CommissionsReport({
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                ))}
+                  );
+                })}
               </Accordion>
             </ScrollArea>
           )}

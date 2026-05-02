@@ -555,9 +555,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               </Alert>
             </TabsContent>
           </Tabs>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="border-t pt-3">
+        <DialogFooter className="border-t px-6 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

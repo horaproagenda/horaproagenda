@@ -81,6 +81,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const { hasRole } = useAuth();
   
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
+  const queryClient = useQueryClient();
+  const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

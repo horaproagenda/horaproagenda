@@ -145,40 +145,40 @@ const Index = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <Card className="card-hover">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3 w-3" />
                 Total de Clientes
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">{totalClients || 0}</div>
+            <CardContent className="p-3 pt-0">
+              <div className="text-base font-bold">{totalClients || 0}</div>
               <p className="text-[10px] text-muted-foreground">clientes ativos</p>
             </CardContent>
           </Card>
-          
+
           <Card className="card-hover">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-[11px] font-medium text-muted-foreground">
                 Agendamentos do Mês
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">{salesData?.monthAppointmentsCount || 0}</div>
+            <CardContent className="p-3 pt-0">
+              <div className="text-base font-bold">{salesData?.monthAppointmentsCount || 0}</div>
               <p className="text-[10px] text-muted-foreground">realizados este mês</p>
             </CardContent>
           </Card>
-          
+
           <Card className="card-hover">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-[11px] font-medium text-muted-foreground">
                 Mês Anterior
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">
+            <CardContent className="p-3 pt-0">
+              <div className="text-base font-bold">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(salesData?.lastMonth || 0)}
               </div>
               <p className="text-[10px] text-muted-foreground">em vendas</p>

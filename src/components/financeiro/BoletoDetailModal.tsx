@@ -47,6 +47,13 @@ export function BoletoDetailModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', due_date: '' });
   const [batchPaying, setBatchPaying] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    | { kind: 'pay'; id: string; label: string }
+    | { kind: 'cancel'; id: string; label: string }
+    | { kind: 'edit'; id: string; label: string }
+    | { kind: 'batchPay'; ids: string[]; total: number }
+    | null
+  >(null);
 
   const sorted = useMemo(
     () => [...installments].sort((a, b) => a.installment_number - b.installment_number),

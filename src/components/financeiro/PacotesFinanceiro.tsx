@@ -377,6 +377,53 @@ export function PacotesFinanceiro() {
 
   return (
     <div className="space-y-3">
+      {/* Summary cards — real-time alongside table */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Card className="bg-card/50">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="text-lg font-bold">{summary.totalSoldCount}</p>
+                <p className="text-[10px] text-muted-foreground">Pacotes vendidos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <div>
+                <p className="text-lg font-bold">R$ {summary.totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+                <p className="text-[10px] text-muted-foreground">Total pago</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-amber-500" />
+              <div>
+                <p className="text-lg font-bold text-amber-600">{summary.totalCancelled}</p>
+                <p className="text-[10px] text-muted-foreground">Cancelados</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-red-500" />
+              <div>
+                <p className="text-lg font-bold text-red-600">R$ {summary.totalRefunded.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+                <p className="text-[10px] text-muted-foreground">Total devolvido</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

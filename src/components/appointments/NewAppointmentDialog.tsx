@@ -103,6 +103,8 @@ export function NewAppointmentDialog({
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+  const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const queryClient = useQueryClient();
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');

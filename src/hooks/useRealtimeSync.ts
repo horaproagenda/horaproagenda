@@ -70,7 +70,8 @@ export function useRealtimeSync() {
     const FINANCIAL_QUERIES = [
       'financial_entries', 'financial_categories', 'payment_methods',
       'banks', 'cash_registers', 'cash_transactions', 'cash_register_entries', 'card_brands',
-      'card_brand_fees', 'dashboard-stats', 'dashboard_stats', 'goals'
+      'card_brand_fees', 'boleto_installments', 'boleto_installments_all',
+      'dashboard-stats', 'dashboard_stats', 'goals'
     ];
     
     const CLIENT_QUERIES = [
@@ -242,6 +243,22 @@ export function useRealtimeSync() {
           if (payload.eventType === 'INSERT') {
             toast.success('Nova venda registrada!', { duration: 3000 });
           }
+        }
+      )
+
+      // ============ BOLETO INSTALLMENTS ============
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'boleto_installments' },
+        () => {
+          syncFullAgenda();
+          syncPackagesWithAgenda();
+          invalidateMultiple([
+            ...FINANCIAL_QUERIES,
+            ...CLIENT_QUERIES,
+            'single_sales',
+            'reminders',
+          ]);
         }
       )
       

@@ -414,7 +414,7 @@ export default function Produtos() {
             {/* Filters */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                   <Filter className="h-3.5 w-3.5" />
                   Filtros
                   {activeFiltersCount > 0 && <Badge variant="secondary" className="h-4 w-4 p-0 text-[9px] justify-center">{activeFiltersCount}</Badge>}
@@ -468,7 +468,7 @@ export default function Produtos() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                   <Upload className="h-3.5 w-3.5" /><span className="hidden sm:inline">/</span><Download className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -486,7 +486,7 @@ export default function Produtos() {
               {/* ── Adicionar no Estoque ── */}
               <Dialog open={stockDialogOpen} onOpenChange={(open) => { setStockDialogOpen(open); if (!open) setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false }); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                     <WarehouseIcon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Adicionar no Estoque</span>
                     <span className="sm:hidden">Estoque</span>
@@ -557,7 +557,7 @@ export default function Produtos() {
               {/* ── Nova Compra ── */}
               <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, supplier: '', supplier_id: '', purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', is_for_sale: false, skip_cash_transaction: false }); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
+                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                     <ShoppingCart className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Nova Compra</span>
                     <span className="sm:hidden">Compra</span>

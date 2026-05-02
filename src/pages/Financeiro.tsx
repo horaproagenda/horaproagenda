@@ -54,6 +54,7 @@ export default function Financeiro() {
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',
+        'pacotes': 'pacotes',
         'categorias': 'categorias',
         'formas': 'formas-pagamento',
         'comissoes': 'comissoes',

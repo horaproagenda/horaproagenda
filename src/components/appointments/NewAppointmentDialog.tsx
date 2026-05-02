@@ -937,6 +937,23 @@ Até breve! ✨`;
         }
       }
 
+      // Persist per-(professional, service) commission override so it
+      // syncs in real-time with caixa, comissões, financeiro e perfil do profissional.
+      if (
+        serviceType === 'service' &&
+        selectedProfessional &&
+        selectedService &&
+        commissionOverride.enabled
+      ) {
+        try {
+          await saveCommissionOverride(selectedProfessional, selectedService, commissionOverride);
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commission'] });
+        } catch (err: any) {
+          toast.error('Agendamento criado, mas comissão não foi salva: ' + err.message);
+        }
+      }
+
       onOpenChange(false);
       resetForm();
       setHolidayConfirmed(false);

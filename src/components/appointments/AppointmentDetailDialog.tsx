@@ -1137,16 +1137,35 @@ export function AppointmentDetailDialog({
     }
   };
 
+  // Resolve professional color for visual identity in the dialog
+  const dialogProfessionalId = appointment.professional_id || appointment.service?.professional_id;
+  const dialogProfessional = professionals.find(p => p.id === dialogProfessionalId);
+  const dialogProfColor = dialogProfessional?.agenda_color || 'hsl(var(--primary))';
+
+  // Compute responsive font-size for the client name so the status badge always fits.
+  // Long names shrink down to a minimum; short names keep the larger size.
+  const clientNameLength = (appointment.client?.name || '').length;
+  const clientNameSizeClass =
+    clientNameLength > 32 ? 'text-sm' :
+    clientNameLength > 24 ? 'text-base' :
+    clientNameLength > 18 ? 'text-lg' : 'text-xl';
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
+        <DialogContent
+          className="max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden"
+          style={{ borderLeft: `4px solid ${dialogProfColor}` }}
+        >
+          <DialogHeader
+            className="px-6 pt-6 pb-2 flex-shrink-0 border-b"
+            style={{ borderBottomColor: `${dialogProfColor}40` }}
+          >
             <DialogTitle className="flex items-center gap-2">
               {isPackageAppointment ? (
-                <Package className="h-5 w-5 text-primary" />
+                <Package className="h-5 w-5" style={{ color: dialogProfColor }} />
               ) : (
-                <Sparkles className="h-5 w-5 text-primary" />
+                <Sparkles className="h-5 w-5" style={{ color: dialogProfColor }} />
               )}
               {isPackageAppointment 
                 ? packageData?.name || 'Sessão de Pacote'
@@ -1156,47 +1175,64 @@ export function AppointmentDetailDialog({
 
           <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
             {/* Client Info */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <User className="h-5 w-5 mt-0.5 text-primary" />
-              <div className="flex-1">
+            <div
+              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+              style={{ borderLeft: `3px solid ${dialogProfColor}` }}
+            >
+              <User className="h-5 w-5 mt-0.5" style={{ color: dialogProfColor }} />
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <Button
                   type="button"
                   variant="link"
-                  className="h-auto p-0 text-lg font-semibold text-foreground"
+                  className={cn(
+                    'h-auto p-0 font-semibold text-foreground text-left max-w-full whitespace-normal break-words leading-tight',
+                    clientNameSizeClass
+                  )}
                   onClick={() => setShowClientProfileDialog(true)}
                 >
                   {appointment.client?.name}
                 </Button>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-3 w-3" />
-                  {appointment.client?.phone}
+                  <Phone className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{appointment.client?.phone}</span>
                 </div>
+                {dialogProfessional && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span
+                      className="h-2 w-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: dialogProfColor }}
+                    />
+                    <span className="truncate">{dialogProfessional.name}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 {isLockedByOther && (
-                  <Badge variant="outline" className="h-7 gap-1 text-xs">
+                  <Badge variant="outline" className="h-6 gap-1 text-[10px]">
                     <Lock className="h-3 w-3" />
                     {activeLock?.holder_name || activeLock?.user_email || 'Em edição'}
                   </Badge>
                 )}
-                {canEdit && !isEditing && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleStartEdit} disabled={isLockedByOther || isAcquiring}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                )}
-                <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)} disabled={isLockedByOther}>
-                  <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Agendado</SelectItem>
-                    <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="completed">Atendido</SelectItem>
-                    <SelectItem value="cancelled">Cancelado</SelectItem>
-                    <SelectItem value="missed">Faltou</SelectItem>
-                    <SelectItem value="rescheduled">Reagendado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-1.5">
+                  {canEdit && !isEditing && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleStartEdit} disabled={isLockedByOther || isAcquiring}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)} disabled={isLockedByOther}>
+                    <SelectTrigger className={cn('w-auto h-7 text-xs', status.className)}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled">Agendado</SelectItem>
+                      <SelectItem value="confirmed">Confirmado</SelectItem>
+                      <SelectItem value="completed">Atendido</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                      <SelectItem value="missed">Faltou</SelectItem>
+                      <SelectItem value="rescheduled">Reagendado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { deductStockForSale } from '@/lib/saleStockDeduction';
 
 export interface SingleSale {
   id: string;
@@ -243,6 +244,15 @@ export function useSingleSales() {
         payment_method_id: sale.payment_method_id,
         client_id: sale.client_id,
         created_by: user?.id,
+      });
+
+      // 7. Deduzir estoque em tempo real para serviço/pacote vendido
+      await deductStockForSale({
+        saleId: saleData.id,
+        itemType: sale.item_type,
+        serviceId: sale.service_id,
+        packageId: sale.package_id,
+        userId: user?.id ?? null,
       });
 
       return { saleData, clientId: sale.client_id };

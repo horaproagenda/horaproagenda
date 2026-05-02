@@ -283,6 +283,10 @@ export function FormasPagamento() {
                 {' '}({filteredBoletos.length})
               </p>
               <div className="flex gap-2">
+                <Button size="sm" className="gap-1" onClick={() => setCreateBoletoOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Criar Boleto Parcelado
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAuditLog(true)}>
                   <History className="h-3.5 w-3.5" />
                   Histórico

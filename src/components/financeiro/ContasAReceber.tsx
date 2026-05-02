@@ -274,9 +274,12 @@ export function ContasAReceber() {
     return <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Pendente</Badge>;
   };
 
-  const getTypeBadge = (type: 'financial_entry' | 'appointment') => {
+  const getTypeBadge = (type: 'financial_entry' | 'appointment' | 'boleto') => {
     if (type === 'appointment') {
       return <Badge variant="outline" className="text-blue-600 border-blue-300 text-[10px] h-5 px-1.5"><Calendar className="h-2.5 w-2.5 mr-0.5" />Agend.</Badge>;
+    }
+    if (type === 'boleto') {
+      return <Badge variant="outline" className="text-purple-600 border-purple-300 text-[10px] h-5 px-1.5">Boleto</Badge>;
     }
     return null;
   };

@@ -66,9 +66,9 @@ export function DocumentPreviewDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <pre className="whitespace-pre-wrap font-sans text-sm bg-muted/30 rounded-lg p-4 border">
+        <ScrollArea className="flex-1 min-h-0 h-[60vh] px-6 py-4">
+          <div className="prose prose-sm max-w-none dark:prose-invert pr-2">
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
               {template.content}
             </pre>
           </div>

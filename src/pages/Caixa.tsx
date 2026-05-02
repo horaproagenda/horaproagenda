@@ -7,6 +7,7 @@ import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
 import { PackageConsistencyReport } from '@/components/caixa/PackageConsistencyReport';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 
 export default function Caixa() {
   const { closedRegisters, isLoading } = useCashRegisters();
@@ -15,6 +16,7 @@ export default function Caixa() {
   return (
     <AppLayout title="Caixa" subtitle="Vendas e controle financeiro">
       <div className="space-y-4 page-enter">
+        <LiveCashTotalsBar />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="h-9 bg-muted/50">
             <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide">

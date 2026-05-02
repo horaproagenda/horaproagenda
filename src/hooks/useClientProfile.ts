@@ -152,6 +152,19 @@ export function useClientProfile(clientId: string) {
       )
       .subscribe();
 
+    // Subscribe to boleto installment changes — refresh sales (which embed boletos)
+    const boletoChannel = supabase
+      .channel(`client-boleto-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'boleto_installments' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-sales', clientId] });
+          queryClient.refetchQueries({ queryKey: ['client-sales', clientId], type: 'active' });
+        }
+      )
+      .subscribe();
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(appointmentsChannel);
@@ -160,6 +173,7 @@ export function useClientProfile(clientId: string) {
       supabase.removeChannel(allPackagesChannel);
       supabase.removeChannel(documentsChannel);
       supabase.removeChannel(photosChannel);
+      supabase.removeChannel(boletoChannel);
     };
   }, [clientId, queryClient]);
 

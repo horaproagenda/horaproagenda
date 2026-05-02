@@ -180,7 +180,7 @@ export function NotificationsPanel() {
               <Button
                 variant="ghost"
                 className="w-full text-sm text-muted-foreground"
-                onClick={() => setDismissedIds(new Set(notifications.map(n => n.id)))}
+                onClick={handleClearAll}
               >
                 Limpar todas as notificações
               </Button>

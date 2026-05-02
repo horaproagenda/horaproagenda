@@ -221,95 +221,53 @@ export function UnifiedServiceFilters({
 
               <Separator />
 
-              {/* Status */}
-              <FilterSection
-                title="Status"
-                options={[
-                  { id: 'active', label: 'Ativo' },
-                  { id: 'inactive', label: 'Inativo' },
-                ]}
-                selectedValue={selectedStatus}
-                onSelect={onStatusChange}
-              />
-
-              <Separator />
-
-              {/* Category */}
-              <FilterSection
-                title="Categoria"
-                searchKey="category"
-                options={filteredCategories.map(c => ({ id: c, label: c }))}
-                selectedValue={selectedCategory}
-                onSelect={onCategoryChange}
-              />
-
-              <Separator />
-
-              {/* Professional */}
-              <FilterSection
-                title="Profissional"
-                searchKey="professional"
-                options={filteredProfessionals.map(p => ({ id: p.id, label: p.name }))}
-                selectedValue={selectedProfessional}
-                onSelect={onProfessionalChange}
-              />
-
-              <Separator />
-
-              {/* Room */}
-              <FilterSection
-                title="Sala"
-                searchKey="room"
-                options={filteredRooms.map(r => ({ id: r.id, label: r.name }))}
-                selectedValue={selectedRoom}
-                onSelect={onRoomChange}
-              />
-
-              {clients.length > 0 && (
-                <>
-                  <Separator />
+              <ScrollArea className="h-[420px] pr-2">
+                <div className="space-y-3">
+                  {/* Status */}
                   <FilterSection
-                    title="Cliente"
-                    searchKey="client"
-                    options={filteredClients.map(c => ({ id: c.id, label: c.name }))}
-                    selectedValue={selectedClient}
-                    onSelect={onClientChange}
+                    title="Status"
+                    options={[
+                      { id: 'active', label: 'Ativo' },
+                      { id: 'inactive', label: 'Inativo' },
+                    ]}
+                    selectedValue={selectedStatus}
+                    onSelect={onStatusChange}
                   />
-                </>
-              )}
 
-              {type === 'packages' && onSessionsChange && (
-                <>
                   <Separator />
+
+                  {/* Category */}
                   <FilterSection
-                    title="Aplicações"
-                    options={sessionsOptions.map(s => ({ id: s, label: s === '10+' ? '10 ou mais' : `${s} aplicação${s !== '1' ? 'es' : ''}` }))}
-                    selectedValue={selectedSessions || null}
-                    onSelect={onSessionsChange}
+                    title="Categoria"
+                    searchKey="category"
+                    options={filteredCategories.map(c => ({ id: c, label: c }))}
+                    selectedValue={selectedCategory}
+                    onSelect={onCategoryChange}
                   />
-                </>
-              )}
 
-              <Separator />
+                  <Separator />
 
-              {/* Sort */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ordenar</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {sortOptions.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => onSortChange(opt.value)}
-                      className={cn(
-                        "px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-left",
-                        sortBy === opt.value && "bg-muted font-medium"
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {/* Professional */}
+                  <FilterSection
+                    title="Profissional"
+                    searchKey="professional"
+                    options={filteredProfessionals.map(p => ({ id: p.id, label: p.name }))}
+                    selectedValue={selectedProfessional}
+                    onSelect={onProfessionalChange}
+                  />
+
+                  <Separator />
+
+                  {/* Room */}
+                  <FilterSection
+                    title="Sala"
+                    searchKey="room"
+                    options={filteredRooms.map(r => ({ id: r.id, label: r.name }))}
+                    selectedValue={selectedRoom}
+                    onSelect={onRoomChange}
+                  />
                 </div>
-              </div>
+              </ScrollArea>
             </div>
           </PopoverContent>
         </Popover>

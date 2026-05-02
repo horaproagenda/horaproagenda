@@ -2263,7 +2263,9 @@ export function AppointmentDetailDialog({
       {(() => {
         if (!showRefundDialog || !packageData) return null;
         const totalSessions = packageSessionInfo?.totalSessions || packageData?.total_sessions || 0;
-        const realized = packageSessionInfo?.realizedSessions || 0;
+        const realized = (pkgSessions || []).filter((s: any) => s.status === 'completed' || s.status === 'missed').length
+          || packageSessionInfo?.realizedSessions
+          || 0;
         const perSession = totalSessions > 0 ? packageTotalPaid / totalSessions : 0;
         const consumedValue = refundDeductConsumed ? perSession * realized : 0;
         const baseRefundable = Math.max(0, packageTotalPaid - consumedValue);

@@ -238,12 +238,12 @@ export function PacotesFinanceiro() {
         }
       }
 
-      // Check if a financial entry already exists for this refund
+      // Check if a financial entry already exists for this refund (matched by description marker)
+      const refundMarker = `[refund:${selected.saleId}]`;
       const { data: existingFE } = await supabase
         .from('financial_entries')
         .select('id')
-        .eq('reference_id', selected.saleId)
-        .eq('reference_type', 'package_refund')
+        .ilike('description', `%${refundMarker}%`)
         .limit(1);
       const feAlreadyRegistered = (existingFE?.length || 0) > 0;
 
@@ -251,14 +251,12 @@ export function PacotesFinanceiro() {
       if (!feAlreadyRegistered && refundAmount > 0) {
         const { error: feErr } = await supabase.from('financial_entries').insert({
           type: 'expense',
-          description: refundDescription,
+          description: `${refundDescription} ${refundMarker}`,
           amount: refundAmount,
           status: 'paid',
           due_date: today,
           paid_date: today,
           client_id: selected.clientId,
-          reference_id: selected.saleId,
-          reference_type: 'package_refund',
           notes: `Devolução de pacote cancelado - Aplicações usadas: ${selected.usedSessions} - Multa: R$ ${penalty} - Motivo: ${cancelReason.trim()}`,
           created_by: user?.id,
         });

@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 export function ContasAReceber() {
   const { receivables, updateEntry, deleteEntry } = useFinancialEntries();
   const { appointments } = useAppointments();
+  const { installments: allBoletoInstallments, markAsPaid: markBoletoPaid } = useAllBoletoInstallments();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 

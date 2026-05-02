@@ -303,12 +303,20 @@ export function PacotesFinanceiro() {
         const cancelNote = `Pacote cancelado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} — Motivo: ${cancelReason.trim()}`;
 
         if (appointmentIds.length > 0) {
-          // Only update those that aren't already completed/cancelled (preserve completed history)
-          await supabase
+          // Fetch current statuses, then update only non-final ones (preserves history)
+          const { data: existingAppts } = await supabase
             .from('appointments')
-            .update({ status: 'cancelled', notes: cancelNote })
-            .in('id', appointmentIds)
-            .not('status', 'in', '(completed,cancelled,missed)');
+            .select('id, status')
+            .in('id', appointmentIds);
+          const toCancel = (existingAppts || [])
+            .filter(a => !['completed', 'cancelled', 'missed'].includes(a.status as string))
+            .map(a => a.id);
+          if (toCancel.length > 0) {
+            await supabase
+              .from('appointments')
+              .update({ status: 'cancelled', notes: cancelNote })
+              .in('id', toCancel);
+          }
         }
 
         // Soft-cancel package_appointments — only those still pending/scheduled

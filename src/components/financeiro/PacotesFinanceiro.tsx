@@ -15,7 +15,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search, Package, XCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';

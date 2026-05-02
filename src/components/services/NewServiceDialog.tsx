@@ -309,6 +309,15 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               />
             </div>
 
+            {/* Per-service commission override */}
+            {(isAdminOrReceptionist ? form.watch('professional_id') : professionalId) && (
+              <ProfessionalCommissionField
+                professionalId={isAdminOrReceptionist ? form.watch('professional_id') : professionalId}
+                value={commissionOverride}
+                onChange={setCommissionOverride}
+              />
+            )}
+
             {/* Description */}
             <FormField
               control={form.control}

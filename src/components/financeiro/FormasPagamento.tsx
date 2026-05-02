@@ -65,7 +65,7 @@ export function FormasPagamento() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('pending');
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
-  const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
+  const [detailClientKey, setDetailClientKey] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);
   const [createBoletoOpen, setCreateBoletoOpen] = useState(false);
 

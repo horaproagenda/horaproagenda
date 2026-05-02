@@ -44,15 +44,15 @@ const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('clientes:viewMode', 'grid');
+  const [selectedFilters, setSelectedFilters] = useLocalStorage<Record<string, string[]>>('clientes:filters', {
     status: ['all'],
     professional: ['all'],
   });
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortField, setSortField] = useLocalStorage<SortField>('clientes:sortField', 'name');
+  const [sortDirection, setSortDirection] = useLocalStorage<SortDirection>('clientes:sortDirection', 'asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useLocalStorage<number>('clientes:itemsPerPage', 25);
   
   const { clients, isLoading, refetch } = useClients();
   const { professionals } = useProfessionals();

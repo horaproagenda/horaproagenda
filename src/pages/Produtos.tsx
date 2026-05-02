@@ -152,6 +152,14 @@ export default function Produtos() {
   const [filters, setFilters] = useLocalStorage<ProductFilters>('produtos-filters', defaultFilters);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Resume position
+  const { savedState: resumeState, savePosition: savePos, restore: restorePos, dismiss: dismissPos } = useListPosition({ key: 'produtos' });
+  const handleResumePos = () => {
+    if (resumeState?.search) setSearchTerm(resumeState.search);
+    restorePos();
+  };
+  useEffect(() => { savePos({ search: searchTerm }); }, [searchTerm, savePos]);
+
   // ── Dialog states ───────────────────────────────────────
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
@@ -404,7 +412,7 @@ export default function Produtos() {
   return (
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e estoque">
       <div className="space-y-2.5 page-enter">
-        <ResumePositionBannerSlot />
+        <ResumePositionBanner state={resumeState} onResume={handleResumePos} onDismiss={dismissPos} />
         {/* Search */}
         <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

@@ -459,42 +459,69 @@ export type Database = {
       boleto_installments: {
         Row: {
           amount: number
+          beneficiary_snapshot: Json | null
           created_at: string
           created_by: string | null
+          discount_amount: number | null
+          discount_until_date: string | null
+          document_number: string | null
           due_date: string
+          fine_percent: number | null
           id: string
           installment_number: number
+          interest_percent_per_day: number | null
+          nosso_numero: string | null
           notes: string | null
           paid_date: string | null
+          payer_snapshot: Json | null
           sale_id: string
+          service_description: string | null
           status: string
           total_installments: number
           updated_at: string
         }
         Insert: {
           amount?: number
+          beneficiary_snapshot?: Json | null
           created_at?: string
           created_by?: string | null
+          discount_amount?: number | null
+          discount_until_date?: string | null
+          document_number?: string | null
           due_date: string
+          fine_percent?: number | null
           id?: string
           installment_number: number
+          interest_percent_per_day?: number | null
+          nosso_numero?: string | null
           notes?: string | null
           paid_date?: string | null
+          payer_snapshot?: Json | null
           sale_id: string
+          service_description?: string | null
           status?: string
           total_installments: number
           updated_at?: string
         }
         Update: {
           amount?: number
+          beneficiary_snapshot?: Json | null
           created_at?: string
           created_by?: string | null
+          discount_amount?: number | null
+          discount_until_date?: string | null
+          document_number?: string | null
           due_date?: string
+          fine_percent?: number | null
           id?: string
           installment_number?: number
+          interest_percent_per_day?: number | null
+          nosso_numero?: string | null
           notes?: string | null
           paid_date?: string | null
+          payer_snapshot?: Json | null
           sale_id?: string
+          service_description?: string | null
           status?: string
           total_installments?: number
           updated_at?: string
@@ -1039,8 +1066,17 @@ export type Database = {
       }
       clients: {
         Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
           assigned_professional_id: string | null
           birthdate: string | null
+          cep: string | null
+          cnpj: string | null
+          company_name: string | null
           complementary_info: string | null
           cpf: string | null
           created_at: string
@@ -1056,8 +1092,17 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           assigned_professional_id?: string | null
           birthdate?: string | null
+          cep?: string | null
+          cnpj?: string | null
+          company_name?: string | null
           complementary_info?: string | null
           cpf?: string | null
           created_at?: string
@@ -1073,8 +1118,17 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           assigned_professional_id?: string | null
           birthdate?: string | null
+          cep?: string | null
+          cnpj?: string | null
+          company_name?: string | null
           complementary_info?: string | null
           cpf?: string | null
           created_at?: string
@@ -2323,13 +2377,19 @@ export type Database = {
           agenda_color: string | null
           app_role: string | null
           avatar_url: string | null
+          beneficiary_address: string | null
+          beneficiary_cep: string | null
+          beneficiary_city: string | null
+          beneficiary_state: string | null
           bio: string | null
           birthdate: string | null
+          cnpj: string | null
           commission_fixed_value: number | null
           commission_frequency: string | null
           commission_payment_day: number | null
           commission_percentage: number | null
           commission_type: string | null
+          company_name: string | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -2348,13 +2408,19 @@ export type Database = {
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
+          beneficiary_address?: string | null
+          beneficiary_cep?: string | null
+          beneficiary_city?: string | null
+          beneficiary_state?: string | null
           bio?: string | null
           birthdate?: string | null
+          cnpj?: string | null
           commission_fixed_value?: number | null
           commission_frequency?: string | null
           commission_payment_day?: number | null
           commission_percentage?: number | null
           commission_type?: string | null
+          company_name?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -2373,13 +2439,19 @@ export type Database = {
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
+          beneficiary_address?: string | null
+          beneficiary_cep?: string | null
+          beneficiary_city?: string | null
+          beneficiary_state?: string | null
           bio?: string | null
           birthdate?: string | null
+          cnpj?: string | null
           commission_fixed_value?: number | null
           commission_frequency?: string | null
           commission_payment_day?: number | null
           commission_percentage?: number | null
           commission_type?: string | null
+          company_name?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null

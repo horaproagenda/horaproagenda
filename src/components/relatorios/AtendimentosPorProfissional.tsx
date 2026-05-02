@@ -366,21 +366,21 @@ export function AtendimentosPorProfissional() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Data</TableHead>
-                          <TableHead className="text-xs">Valor</TableHead>
-                          <TableHead className="text-xs">Descrição</TableHead>
+                          <TableHead className="text-[11px]">Data</TableHead>
+                          <TableHead className="text-[11px]">Valor</TableHead>
+                          <TableHead className="text-[11px]">Descrição</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedProfPaidCommissions.map((cp: any) => (
-                          <TableRow key={cp.id}>
-                            <TableCell className="text-xs">
+                          <TableRow key={cp.id} className="hover:bg-muted/40 transition-colors">
+                            <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">
                               {cp.created_at ? format(parseISO(cp.created_at), 'dd/MM/yyyy HH:mm') : '-'}
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-emerald-700">
+                            <TableCell className="text-xs py-2 font-semibold text-emerald-700 tabular-nums">
                               {formatCurrency(Number(cp.amount || 0))}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{cp.description}</TableCell>
+                            <TableCell className="text-xs py-2 text-muted-foreground">{cp.description}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

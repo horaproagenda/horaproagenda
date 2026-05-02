@@ -329,6 +329,13 @@ export function AppointmentDetailDialog({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showClientProfileDialog, setShowClientProfileDialog] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'all'>('single');
+  // Refund flow when deleting the entire package
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [refundFeeType, setRefundFeeType] = useState<'percent' | 'fixed'>('percent');
+  const [refundFeeValue, setRefundFeeValue] = useState<string>('0');
+  const [refundMethodId, setRefundMethodId] = useState<string>('');
+  const [refundDeductConsumed, setRefundDeductConsumed] = useState(true);
+  const [refundNote, setRefundNote] = useState('');
   const [recurringDeleteType, setRecurringDeleteType] = useState<'single' | 'following' | 'all'>('single');
   const [showRescheduleOption, setShowRescheduleOption] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState('');

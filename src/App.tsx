@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import Index from "./pages/Index";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
@@ -52,6 +53,7 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
 const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
+  useWheelScrollFix();
 
   return (
     <QueryClientProvider client={queryClient}>

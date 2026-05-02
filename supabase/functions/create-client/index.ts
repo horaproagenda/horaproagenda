@@ -165,6 +165,21 @@ serve(async (req) => {
       errors.push({ field: 'cpf', message: 'Invalid CPF' });
     }
 
+    if (body.cnpj && !validateCNPJFormat(body.cnpj)) {
+      errors.push({ field: 'cnpj', message: 'CNPJ must have 14 digits' });
+    }
+
+    if (body.cep) {
+      const cepDigits = body.cep.replace(/\D/g, '');
+      if (cepDigits.length !== 0 && cepDigits.length !== 8) {
+        errors.push({ field: 'cep', message: 'CEP must have 8 digits' });
+      }
+    }
+
+    if (body.address_state && body.address_state.length > 0 && body.address_state.length !== 2) {
+      errors.push({ field: 'address_state', message: 'UF must be 2 characters' });
+    }
+
     if (body.birthdate) {
       const birthDate = new Date(body.birthdate);
       if (isNaN(birthDate.getTime())) {
@@ -219,6 +234,27 @@ serve(async (req) => {
             success: false, 
             errors: [{ field: 'cpf', message: `CPF already registered to client: ${existingByCPF.name}` }],
             duplicate: existingByCPF
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 4b. Check for duplicate CNPJ if provided
+    if (body.cnpj) {
+      const cleanCNPJ = body.cnpj.replace(/\D/g, '');
+      const { data: existingByCNPJ } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('cnpj', cleanCNPJ)
+        .maybeSingle();
+
+      if (existingByCNPJ) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            errors: [{ field: 'cnpj', message: `CNPJ already registered to client: ${existingByCNPJ.name}` }],
+            duplicate: existingByCNPJ,
           }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

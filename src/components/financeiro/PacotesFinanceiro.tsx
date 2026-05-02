@@ -127,11 +127,57 @@ export function PacotesFinanceiro() {
     return Math.max(0, Math.round(r * 100) / 100);
   }, [selected, costPerApplication, penalty]);
 
+  // Real-time summary cards
+  const summary = useMemo(() => {
+    const totalSold = rows.reduce((s, r) => s + r.totalAmount, 0);
+    const totalPaid = rows.reduce((s, r) => s + r.paidAmount, 0);
+    const cancelledRows = rows.filter(r => r.isCancelled);
+    const totalCancelled = cancelledRows.length;
+    const totalRefunded = cancelledRows.reduce((s, r) => {
+      const m = (r as any).refundedAmount;
+      return s + (typeof m === 'number' ? m : 0);
+    }, 0);
+    return { totalSoldCount: rows.length, totalSold, totalPaid, totalCancelled, totalRefunded };
+  }, [rows]);
+
+  // Form validation — runs on every change to provide immediate feedback
+  const validate = (): string | null => {
+    if (!selected) return 'Pacote não selecionado.';
+    const cost = parseFloat(costPerApplication || '0');
+    const pen = parseFloat(penalty || '0');
+    if (Number.isNaN(cost) || cost < 0) return 'Custo médio por aplicação deve ser um número ≥ 0.';
+    if (Number.isNaN(pen) || pen < 0) return 'Multa/Penalidade deve ser um número ≥ 0.';
+    if (selected.usedSessions < 0 || selected.usedSessions > selected.totalSessions) {
+      return `Quantidade de aplicações usadas inconsistente (${selected.usedSessions}/${selected.totalSessions}).`;
+    }
+    if (cost > selected.paidAmount) {
+      return 'Custo médio por aplicação não pode ser maior que o valor pago.';
+    }
+    const totalDeducted = selected.usedSessions * cost + pen;
+    if (totalDeducted > selected.paidAmount + 0.01) {
+      return `Aplicações usadas + multa (R$ ${totalDeducted.toFixed(2)}) ultrapassam o valor pago (R$ ${selected.paidAmount.toFixed(2)}).`;
+    }
+    if (refundAmount < 0) return 'Valor de devolução não pode ser negativo.';
+    if (!refundMethod || !refundMethod.trim()) return 'Selecione uma forma de devolução.';
+    if (!cancelReason.trim() || cancelReason.trim().length < 5) {
+      return 'Informe um motivo de cancelamento (mínimo 5 caracteres).';
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!cancelOpen) { setValidationError(null); return; }
+    setValidationError(validate());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelOpen, selected, costPerApplication, penalty, refundMethod, cancelReason, refundAmount]);
+
   const openCancel = (row: PackageSaleRow) => {
     setSelected(row);
     setCostPerApplication('0');
     setPenalty('0');
     setRefundMethod('Dinheiro');
+    setCancelReason('');
+    setValidationError(null);
     setCancelOpen(true);
   };
 

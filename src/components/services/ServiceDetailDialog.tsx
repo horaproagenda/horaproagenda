@@ -264,6 +264,17 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
       if (error) throw error;
 
+      // Persist per-service commission override (synced realtime via postgres_changes)
+      if (data.professional_id) {
+        try {
+          await saveCommissionOverride(data.professional_id, service.id, commissionOverride);
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commission'] });
+        } catch (err: any) {
+          toast.error('Serviço salvo, mas comissão não pôde ser atualizada: ' + err.message);
+        }
+      }
+
       toast.success('Serviço atualizado com sucesso!');
       setIsEditing(false);
       onServiceUpdated?.();

@@ -431,32 +431,63 @@ const Configuracoes = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
                   <Label className="text-xs">Cor Principal</Label>
-                  <div className="flex gap-2">
-                    {['#D4A5AC', '#E8B4BC', '#C9A86C', '#A8C9A7', '#B8A9C9'].map(color => (
-                      <button
-                        key={color}
-                        className="h-7 w-7 rounded-full border-2 border-border transition-transform hover:scale-110"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                  <p className="text-[10px] text-muted-foreground">
+                    Escolha a cor que será aplicada em toda a agenda. A escolha é salva apenas para você.
+                  </p>
+                  <div className="grid grid-cols-8 gap-2 pt-1">
+                    {PRIMARY_COLOR_PALETTE.map(color => {
+                      const selected = appearance.primaryColor === color.hsl;
+                      return (
+                        <button
+                          key={color.hsl}
+                          type="button"
+                          title={color.name}
+                          aria-label={color.name}
+                          onClick={() => {
+                            updateAppearance({ primaryColor: color.hsl });
+                            toast.success(`Cor principal: ${color.name}`);
+                          }}
+                          className={`relative h-7 w-7 rounded-full border-2 transition-all hover:scale-110 ${
+                            selected ? 'border-foreground ring-2 ring-foreground/30' : 'border-border'
+                          }`}
+                          style={{ backgroundColor: color.hex }}
+                        >
+                          {selected && (
+                            <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-white drop-shadow" strokeWidth={3} />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="flex items-center justify-between py-1">
+                <div className="flex items-center justify-between py-1 border-t pt-3">
                   <div>
                     <Label className="text-xs">Modo escuro</Label>
                     <p className="text-[10px] text-muted-foreground">Tema dark</p>
                   </div>
-                  <Switch />
+                  <Switch
+                    checked={appearance.darkMode}
+                    onCheckedChange={(checked) => {
+                      updateAppearance({ darkMode: checked });
+                      toast.success(checked ? 'Modo escuro ativado' : 'Modo claro ativado');
+                    }}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <div>
                     <Label className="text-xs">Animações</Label>
-                    <p className="text-[10px] text-muted-foreground">Efeitos visuais</p>
+                    <p className="text-[10px] text-muted-foreground">Efeitos visuais e transições</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={appearance.animations}
+                    onCheckedChange={(checked) => {
+                      updateAppearance({ animations: checked });
+                      toast.success(checked ? 'Animações ativadas' : 'Animações desativadas');
+                    }}
+                  />
                 </div>
               </CardContent>
             </Card>

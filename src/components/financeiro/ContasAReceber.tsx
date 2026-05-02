@@ -372,6 +372,17 @@ export function ContasAReceber() {
                               Pagar
                             </Button>
                           )}
+                          {item.type === 'boleto' && (item as any).boletoId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => markBoletoPaid.mutate({ id: (item as any).boletoId })}
+                              title="Dar baixa no boleto"
+                            >
+                              <Check className="h-3 w-3 text-green-600" />
+                            </Button>
+                          )}
                           {item.type === 'financial_entry' && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(item)}>
                               <Trash2 className="h-3 w-3 text-destructive" />

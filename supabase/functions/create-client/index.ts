@@ -11,12 +11,28 @@ interface ClientRequest {
   phone: string;
   email?: string;
   cpf?: string;
+  cnpj?: string;
+  company_name?: string;
   birthdate?: string;
   notes?: string;
   referral_source?: string;
   complementary_info?: string;
   assigned_professional_id?: string;
+  cep?: string;
+  address_street?: string;
+  address_number?: string;
+  address_complement?: string;
+  address_neighborhood?: string;
+  address_city?: string;
+  address_state?: string;
 }
+
+// CNPJ format validation (14 digits)
+function validateCNPJFormat(cnpj: string): boolean {
+  const clean = cnpj.replace(/\D/g, '');
+  return clean.length === 14;
+}
+
 
 interface ValidationError {
   field: string;

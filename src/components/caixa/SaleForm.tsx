@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { deductStockForSale } from '@/lib/saleStockDeduction';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -606,6 +607,24 @@ export function SaleForm() {
               current_stock: Math.max(0, product.current_stock - item.quantity),
             }).eq('id', item.originalId);
           }
+          await deductStockForSale({
+            saleId: saleRecord.id,
+            itemType: 'product',
+            productId: item.originalId,
+            quantity: item.quantity,
+            userId: user?.id ?? null,
+          });
+        }
+
+        // Deduzir produtos vinculados a serviços/pacotes em tempo real
+        if (item.type === 'service' || item.type === 'package') {
+          await deductStockForSale({
+            saleId: saleRecord.id,
+            itemType: item.type,
+            serviceId: item.type === 'service' ? item.originalId : null,
+            packageId: item.type === 'package' ? item.originalId : null,
+            userId: user?.id ?? null,
+          });
         }
       }
 

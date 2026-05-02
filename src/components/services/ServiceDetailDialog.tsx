@@ -54,6 +54,13 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import {
+  ProfessionalCommissionField,
+  saveCommissionOverride,
+  defaultCommissionOverride,
+  type CommissionOverride,
+} from './ProfessionalCommissionField';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ServiceAppointment {
   id: string;
@@ -103,6 +110,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment: allEquipment } = useEquipment();
+  const queryClient = useQueryClient();
+  const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -254,6 +263,17 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         .eq('id', service.id);
 
       if (error) throw error;
+
+      // Persist per-service commission override (synced realtime via postgres_changes)
+      if (data.professional_id) {
+        try {
+          await saveCommissionOverride(data.professional_id, service.id, commissionOverride);
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commission'] });
+        } catch (err: any) {
+          toast.error('Serviço salvo, mas comissão não pôde ser atualizada: ' + err.message);
+        }
+      }
 
       toast.success('Serviço atualizado com sucesso!');
       setIsEditing(false);
@@ -658,7 +678,16 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   )}
                 />
 
-                {/* Equipment Selection */}
+                {/* Per-service commission override */}
+                {form.watch('professional_id') && (
+                  <ProfessionalCommissionField
+                    professionalId={form.watch('professional_id')}
+                    serviceId={service.id}
+                    value={commissionOverride}
+                    onChange={setCommissionOverride}
+                  />
+                )}
+
                 {allEquipment.filter(e => e.is_active).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Equipamentos</Label>

@@ -388,6 +388,26 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
               />
             </div>
 
+            {/* Commission info for selected professional */}
+            {watchProfessionalId && watchProfessionalId !== '_none' && (() => {
+              const prof = professionals.find(p => p.id === watchProfessionalId) as any;
+              if (!prof) return null;
+              const type = prof.commission_type || 'percentage';
+              const pct = Number(prof.commission_percentage) || 0;
+              const fixed = Number(prof.commission_fixed_value) || 0;
+              return (
+                <div className="rounded-md border p-2 bg-muted/30 text-[11px] text-muted-foreground">
+                  Comissão do profissional para este pacote:{' '}
+                  <span className="font-medium text-foreground">
+                    {type === 'fixed' ? `R$ ${fixed.toFixed(2)} fixo` :
+                     type === 'both' ? `${pct}% + R$ ${fixed.toFixed(2)}` :
+                     `${pct}%`}
+                  </span>
+                  . Para valores específicos por serviço dentro do pacote, edite cada serviço.
+                </div>
+              );
+            })()}
+
             {/* Price */}
             <FormField
               control={form.control}

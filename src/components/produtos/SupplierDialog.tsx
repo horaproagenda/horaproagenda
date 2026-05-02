@@ -128,34 +128,34 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
     }}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="gap-2">
-            <Truck className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            <Truck className="h-3.5 w-3.5" />
             {editingSupplier ? 'Editar' : 'Novo Fornecedor'}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-base">
             {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             {editingSupplier ? 'Atualize as informações do fornecedor' : 'Cadastre um novo fornecedor'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
             <ScrollArea className="flex-1 pr-4">
-              <div className="space-y-4 pb-2">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2.5 pb-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome Fantasia *</FormLabel>
+                        <FormLabel className="text-xs">Nome Fantasia *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nome do fornecedor" {...field} />
+                          <Input className="h-7 text-xs" placeholder="Nome do fornecedor" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -166,9 +166,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                     name="company_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Razão Social</FormLabel>
+                        <FormLabel className="text-xs">Razão Social</FormLabel>
                         <FormControl>
-                          <Input placeholder="Razão social da empresa" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" placeholder="Razão social da empresa" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -176,15 +176,15 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="cnpj"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CNPJ</FormLabel>
+                        <FormLabel className="text-xs">CNPJ</FormLabel>
                         <FormControl>
-                          <Input placeholder="00.000.000/0000-00" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" placeholder="00.000.000/0000-00" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -195,9 +195,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                     name="uf"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>UF</FormLabel>
+                        <FormLabel className="text-xs">UF</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input className="h-7 text-xs" 
                             placeholder="SP" 
                             maxLength={2}
                             {...field} 
@@ -211,15 +211,15 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="state_registration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inscrição Estadual</FormLabel>
+                        <FormLabel className="text-xs">Inscrição Estadual</FormLabel>
                         <FormControl>
-                          <Input placeholder="Inscrição estadual" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" placeholder="Inscrição estadual" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -230,9 +230,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                     name="municipal_registration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inscrição Municipal</FormLabel>
+                        <FormLabel className="text-xs">Inscrição Municipal</FormLabel>
                         <FormControl>
-                          <Input placeholder="Inscrição municipal" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" placeholder="Inscrição municipal" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -245,24 +245,24 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   name="contact_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contato</FormLabel>
+                      <FormLabel className="text-xs">Contato</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nome do contato" {...field} value={field.value || ''} />
+                        <Input className="h-7 text-xs" placeholder="Nome do contato" {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-xs">Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" type="email" placeholder="email@exemplo.com" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -273,9 +273,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone</FormLabel>
+                        <FormLabel className="text-xs">Telefone</FormLabel>
                         <FormControl>
-                          <Input placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
+                          <Input className="h-7 text-xs" placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -288,9 +288,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Endereço</FormLabel>
+                      <FormLabel className="text-xs">Endereço</FormLabel>
                       <FormControl>
-                        <Input placeholder="Endereço completo" {...field} value={field.value || ''} />
+                        <Input className="h-7 text-xs" placeholder="Endereço completo" {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -302,9 +302,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Observações</FormLabel>
+                      <FormLabel className="text-xs">Observações</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea className="text-xs min-h-[60px]" 
                           placeholder="Observações adicionais" 
                           rows={2}
                           {...field} 
@@ -320,9 +320,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   control={form.control}
                   name="is_active"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
+                    <FormItem className="flex flex-row items-center justify-between rounded-md border p-2">
                       <div>
-                        <FormLabel>Fornecedor Ativo</FormLabel>
+                        <FormLabel className="text-xs">Fornecedor Ativo</FormLabel>
                       </div>
                       <FormControl>
                         <Switch
@@ -337,10 +337,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
             </ScrollArea>
             
             {/* Buttons OUTSIDE ScrollArea - always visible */}
-            <div className="flex justify-end gap-2 pt-4 border-t mt-2">
+            <div className="flex justify-end gap-2 pt-3 border-t mt-2">
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   setOpen(false);
                   resetForm();
@@ -351,6 +352,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
               </Button>
               <Button
                 type="submit"
+                size="sm"
                 disabled={createSupplier.isPending || updateSupplier.isPending}
               >
                 {createSupplier.isPending || updateSupplier.isPending ? 'Salvando...' : 'Salvar'}

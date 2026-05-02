@@ -670,17 +670,16 @@ export function ServiceProductsDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Link2 className="h-4 w-4" />
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Link2 className="h-3.5 w-3.5" />
           Vincular Produtos
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Vincular Produtos</DialogTitle>
-          <DialogDescription>
-            Defina quais produtos são usados em cada serviço ou modelo de pacote. 
-            Para líquidos, gel e cremes, informe quantos atendimentos o recipiente em uso dura em média.
+          <DialogTitle className="text-base">Vincular Produtos</DialogTitle>
+          <DialogDescription className="text-xs">
+            Defina quais produtos são usados em cada serviço ou modelo de pacote. Para líquidos, gel e cremes, informe quantos atendimentos o recipiente em uso dura em média.
           </DialogDescription>
         </DialogHeader>
 
@@ -704,34 +703,34 @@ export function ServiceProductsDialog() {
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'packages')}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="services" className="gap-2">
-              <Package className="h-4 w-4" />
+            <TabsTrigger value="services" className="gap-1.5 text-xs h-8">
+              <Package className="h-3.5 w-3.5" />
               Serviços
             </TabsTrigger>
-            <TabsTrigger value="packages" className="gap-2">
-              <Layers className="h-4 w-4" />
+            <TabsTrigger value="packages" className="gap-1.5 text-xs h-8">
+              <Layers className="h-3.5 w-3.5" />
               Modelos de Pacotes
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="services" className="space-y-4">
+          <TabsContent value="services" className="space-y-2.5">
             {canEdit && (
-              <div className="p-4 rounded-lg border bg-muted/30">
+              <div className="p-3 rounded-lg border bg-muted/30">
                 {renderProductForm(false)}
               </div>
             )}
 
             <ScrollArea className="h-[300px]">
-              <Table>
+              <Table className="text-xs">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Serviço</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Consumo</TableHead>
-                    <TableHead>Estoque</TableHead>
-                    <TableHead>Atend. Restantes</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 py-1.5 text-[11px]">Serviço</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Produto</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Método</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Consumo</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Estoque</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Atend. Restantes</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -753,12 +752,12 @@ export function ServiceProductsDialog() {
                       
                       return (
                         <TableRow key={sp.id}>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant="outline">
                               {sp.service?.name || '-'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <div className="flex items-center gap-2">
                               {product && isEstimatedTracking(product.product_type) ? (
                                 <Droplets className="h-3 w-3 text-blue-500" />
@@ -775,12 +774,12 @@ export function ServiceProductsDialog() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-[10px]">
                               {isEstimated ? 'Estimado' : 'Exato'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             {editingId === sp.id ? (
                               <div className="flex items-center gap-1">
                                 {isEstimated ? (
@@ -832,17 +831,17 @@ export function ServiceProductsDialog() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <span className={isLowStock ? 'text-destructive font-medium' : ''}>
                               {product?.current_stock || 0} {PRODUCT_UNITS[product?.unit || ''] || product?.unit}
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant={estimatedAppts < 5 ? 'destructive' : 'secondary'}>
                               {estimatedAppts} atend.
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="py-1.5 text-xs text-right">
                             {canDelete && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -879,24 +878,24 @@ export function ServiceProductsDialog() {
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="packages" className="space-y-4">
+          <TabsContent value="packages" className="space-y-2.5">
             {canEdit && (
-              <div className="p-4 rounded-lg border bg-muted/30">
+              <div className="p-3 rounded-lg border bg-muted/30">
                 {renderProductForm(true)}
               </div>
             )}
 
             <ScrollArea className="h-[300px]">
-              <Table>
+              <Table className="text-xs">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Modelo de Pacote</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Consumo</TableHead>
-                    <TableHead>Estoque</TableHead>
-                    <TableHead>Atend. Restantes</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 py-1.5 text-[11px]">Modelo de Pacote</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Produto</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Método</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Consumo</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Estoque</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px]">Atend. Restantes</TableHead>
+                    <TableHead className="h-8 py-1.5 text-[11px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -916,13 +915,13 @@ export function ServiceProductsDialog() {
                       
                       return (
                         <TableRow key={tp.id}>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant="outline" className="bg-purple-500/10 border-purple-500/30 text-purple-700">
                               <Layers className="h-3 w-3 mr-1" />
                               {tp.template?.name || '-'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <div className="flex items-center gap-2">
                               {product && isEstimatedTracking(product.product_type) ? (
                                 <Droplets className="h-3 w-3 text-blue-500" />
@@ -939,12 +938,12 @@ export function ServiceProductsDialog() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-[10px]">
                               {isEstimated ? 'Estimado' : 'Exato'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             {editingId === tp.id ? (
                               <div className="flex items-center gap-1">
                                 {isEstimated ? (
@@ -996,17 +995,17 @@ export function ServiceProductsDialog() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <span className={isLowStock ? 'text-destructive font-medium' : ''}>
                               {product?.current_stock || 0} {PRODUCT_UNITS[product?.unit || ''] || product?.unit}
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-1.5 text-xs">
                             <Badge variant={estimatedAppts < 5 ? 'destructive' : 'secondary'}>
                               {estimatedAppts} atend.
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="py-1.5 text-xs text-right">
                             {canDelete && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>

@@ -160,6 +160,10 @@ export function AppointmentDetailDialog({
   const { activeCardBrands } = useCardBrands();
   const { currentOpenRegister } = useCashRegisters();
   const { settings } = useBusinessSettings();
+  // Fetch real package_appointments to compute realized count for the refund flow
+  const { appointments: pkgSessions } = usePackageAppointments(
+    appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null,
+  );
   const { data: appointmentHistory = [] } = useQuery({
     queryKey: ['appointment-history', appointment?.id],
     enabled: open && !!appointment?.id,

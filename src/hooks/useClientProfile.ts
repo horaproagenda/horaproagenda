@@ -177,7 +177,7 @@ export function useClientProfile(clientId: string) {
         .maybeSingle();
 
       if (error) throw error;
-      return data as Client | null;
+      return data as unknown as Client | null;
     },
     enabled: !!clientId,
     staleTime: 0, // Always refetch for latest data

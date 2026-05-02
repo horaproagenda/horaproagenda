@@ -28,6 +28,7 @@ import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 import { BoletoDetailModal } from './BoletoDetailModal';
 import { BoletoAuditLogDialog } from './BoletoAuditLogDialog';
+import { CreateBoletoParceladoDialog } from './CreateBoletoParceladoDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -66,6 +67,7 @@ export function FormasPagamento() {
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);
+  const [createBoletoOpen, setCreateBoletoOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {
@@ -281,6 +283,10 @@ export function FormasPagamento() {
                 {' '}({filteredBoletos.length})
               </p>
               <div className="flex gap-2">
+                <Button size="sm" className="gap-1" onClick={() => setCreateBoletoOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Criar Boleto Parcelado
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAuditLog(true)}>
                   <History className="h-3.5 w-3.5" />
                   Histórico
@@ -497,6 +503,7 @@ export function FormasPagamento() {
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
+      <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />
     </Card>
   );
 }

@@ -83,6 +83,7 @@ import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
+import { ClientBoletoStatus } from './ClientBoletoStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
@@ -1433,6 +1434,9 @@ export function AppointmentDetailDialog({
                   </p>
                 </div>
               )}
+
+              {/* Boleto status alert (cross-appointment) */}
+              <ClientBoletoStatus clientId={appointment.client_id} />
 
               {/* Existing Payments */}
               {appointment.payment_methods && appointment.payment_methods.length > 0 && (

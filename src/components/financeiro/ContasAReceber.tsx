@@ -16,6 +16,7 @@ import {
 import { Trash2, Check, Calendar, DollarSign } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ import { cn } from '@/lib/utils';
 export function ContasAReceber() {
   const { receivables, updateEntry, deleteEntry } = useFinancialEntries();
   const { appointments } = useAppointments();
+  const { installments: allBoletoInstallments, markAsPaid: markBoletoPaid } = useAllBoletoInstallments();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -157,10 +159,30 @@ export function ContasAReceber() {
       })
       .filter(apt => apt !== null && apt.amount > 0);
 
-    return [...pendingFinancialEntries, ...pendingAppointments].sort((a, b) => 
+    // Get pending boleto installments (within 30 days or already overdue)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const horizonDate = new Date();
+    horizonDate.setDate(horizonDate.getDate() + 30);
+    const horizonStr = horizonDate.toISOString().split('T')[0];
+
+    const pendingBoletos = (allBoletoInstallments as any[])
+      .filter(b => (b.status === 'pending' || b.status === 'overdue') && b.due_date <= horizonStr)
+      .map(b => ({
+        id: `boleto-${b.id}`,
+        type: 'boleto' as const,
+        date: b.due_date,
+        description: `Boleto ${String(b.installment_number).padStart(2, '0')}/${String(b.total_installments).padStart(2, '0')}${b.service_description ? ` — ${b.service_description}` : ''}`,
+        clientName: b.sale?.client?.name || '-',
+        amount: Number(b.amount),
+        installments: b.total_installments,
+        status: b.due_date < todayStr ? 'overdue' : 'pending',
+        boletoId: b.id,
+      }));
+
+    return [...pendingFinancialEntries, ...pendingAppointments, ...pendingBoletos].sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-  }, [receivables, appointments]);
+  }, [receivables, appointments, allBoletoInstallments]);
 
   // Detect changes and show notifications + highlight rows
   useEffect(() => {
@@ -252,9 +274,12 @@ export function ContasAReceber() {
     return <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Pendente</Badge>;
   };
 
-  const getTypeBadge = (type: 'financial_entry' | 'appointment') => {
+  const getTypeBadge = (type: 'financial_entry' | 'appointment' | 'boleto') => {
     if (type === 'appointment') {
       return <Badge variant="outline" className="text-blue-600 border-blue-300 text-[10px] h-5 px-1.5"><Calendar className="h-2.5 w-2.5 mr-0.5" />Agend.</Badge>;
+    }
+    if (type === 'boleto') {
+      return <Badge variant="outline" className="text-purple-600 border-purple-300 text-[10px] h-5 px-1.5">Boleto</Badge>;
     }
     return null;
   };
@@ -345,6 +370,17 @@ export function ContasAReceber() {
                             >
                               <DollarSign className="h-3 w-3" />
                               Pagar
+                            </Button>
+                          )}
+                          {item.type === 'boleto' && (item as any).boletoId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => markBoletoPaid.mutate({ id: (item as any).boletoId })}
+                              title="Dar baixa no boleto"
+                            >
+                              <Check className="h-3 w-3 text-green-600" />
                             </Button>
                           )}
                           {item.type === 'financial_entry' && (

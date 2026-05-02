@@ -697,8 +697,20 @@ export function useAppointments() {
       if (refund && refund.refundAmount > 0) {
         const description =
           refund.note?.trim() ||
-          `Devolução de pacote${pkgInfo?.name ? ` "${pkgInfo.name}"` : ''}` +
+          `Devolução pacote${pkgInfo?.name ? ` "${pkgInfo.name}"` : ''}` +
             (refund.feeAmount > 0 ? ` (multa R$ ${refund.feeAmount.toFixed(2)})` : '');
+        const today = new Date().toISOString().split('T')[0];
+
+        // Find an open cash register to attach the outflow to (optional)
+        const { data: openRegister } = await supabase
+          .from('cash_registers')
+          .select('id')
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { data: { user } } = await supabase.auth.getUser();
 
         // Record an expense entry in financial_entries
         await supabase.from('financial_entries').insert({
@@ -707,19 +719,22 @@ export function useAppointments() {
           status: 'paid',
           description,
           client_id: pkgInfo?.client_id,
-          due_date: new Date().toISOString(),
-          payment_date: new Date().toISOString(),
+          due_date: today,
+          paid_date: today,
+          created_by: user?.id,
         } as any);
 
-        // Record cash transaction as outflow
+        // Record cash transaction as outflow (negative amount, type expense)
         await supabase.from('cash_transactions').insert({
-          amount: -Math.abs(refund.refundAmount),
+          cash_register_id: openRegister?.id ?? null,
+          type: 'expense',
+          category: 'Devolução de pacote',
+          amount: refund.refundAmount,
           payment_method: refund.refundMethod,
           description,
-          client_id: pkgInfo?.client_id,
           reference_type: 'package_refund',
           reference_id: packageId,
-          transaction_type: 'refund',
+          created_by: user?.id,
         } as any);
       }
 

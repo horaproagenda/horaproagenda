@@ -8,9 +8,16 @@ import { useProductUsagePrediction } from './useProductUsagePrediction';
 import { useReminders } from './useReminders';
 import { useCashRegisters } from './useCashRegisters';
 import { useBusinessSettings } from './useBusinessSettings';
+import {
+  isNotificationDismissed,
+  dismissNotification,
+  wasShownThisSession,
+  markShownThisSession,
+} from '@/lib/notificationDismissal';
 
 export interface SystemNotification {
   id: string;
+  signature: string;
   type: 'boleto' | 'package' | 'stock' | 'usage_prediction' | 'expiry' | 'reminder' | 'cash_register';
   title: string;
   description: string;

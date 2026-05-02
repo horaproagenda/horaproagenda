@@ -614,8 +614,32 @@ export function useAppointments() {
 
   // Function to delete all appointments for a specific package
   const deletePackageAppointments = useMutation({
-    mutationFn: async (packageId: string) => {
-      // First, get all package_appointments for this package
+    mutationFn: async (
+      input:
+        | string
+        | {
+            packageId: string;
+            refund?: {
+              amountPaid: number;
+              consumedValue: number;
+              feeAmount: number;
+              refundAmount: number;
+              refundMethod: string;
+              note?: string;
+            };
+          }
+    ) => {
+      const packageId = typeof input === 'string' ? input : input.packageId;
+      const refund = typeof input === 'string' ? undefined : input.refund;
+
+      // Fetch package context (client, name) for refund bookkeeping
+      const { data: pkgInfo } = await supabase
+        .from('service_packages')
+        .select('id, name, client_id, total_price')
+        .eq('id', packageId)
+        .single();
+
+      // Get all package_appointments for this package
       const { data: pkgAppointments, error: fetchError } = await supabase
         .from('package_appointments')
         .select('appointment_id')
@@ -652,10 +676,10 @@ export function useAppointments() {
       // Reset all package_appointments for this package
       const { error: resetError } = await supabase
         .from('package_appointments')
-        .update({ 
-          appointment_id: null, 
-          scheduled_date: null, 
-          status: 'pending' 
+        .update({
+          appointment_id: null,
+          scheduled_date: null,
+          status: 'pending',
         })
         .eq('package_id', packageId);
 
@@ -669,9 +693,39 @@ export function useAppointments() {
 
       if (pkgUpdateError) throw pkgUpdateError;
 
-      return appointmentIds.length;
+      // If a refund was requested, register it as a cash outflow + financial expense
+      if (refund && refund.refundAmount > 0) {
+        const description =
+          refund.note?.trim() ||
+          `Devolução de pacote${pkgInfo?.name ? ` "${pkgInfo.name}"` : ''}` +
+            (refund.feeAmount > 0 ? ` (multa R$ ${refund.feeAmount.toFixed(2)})` : '');
+
+        // Record an expense entry in financial_entries
+        await supabase.from('financial_entries').insert({
+          amount: refund.refundAmount,
+          type: 'expense',
+          status: 'paid',
+          description,
+          client_id: pkgInfo?.client_id,
+          due_date: new Date().toISOString(),
+          payment_date: new Date().toISOString(),
+        } as any);
+
+        // Record cash transaction as outflow
+        await supabase.from('cash_transactions').insert({
+          amount: -Math.abs(refund.refundAmount),
+          payment_method: refund.refundMethod,
+          description,
+          client_id: pkgInfo?.client_id,
+          reference_type: 'package_refund',
+          reference_id: packageId,
+          transaction_type: 'refund',
+        } as any);
+      }
+
+      return { count: appointmentIds.length, refunded: refund?.refundAmount || 0 };
     },
-    onSuccess: (count) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
@@ -680,7 +734,15 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
-      toast.success(`${count} agendamento(s) do pacote excluído(s) com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      const base = `${result.count} agendamento(s) do pacote excluído(s).`;
+      toast.success(
+        result.refunded > 0
+          ? `${base} Devolução registrada: R$ ${result.refunded.toFixed(2)}.`
+          : base,
+      );
     },
     onError: (error) => {
       toast.error('Erro ao excluir agendamentos do pacote: ' + error.message);

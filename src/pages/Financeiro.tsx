@@ -28,6 +28,7 @@ import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServic
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
 import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
 import { FinancialDivergenceAlert } from '@/components/financeiro/FinancialDivergenceAlert';
+import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';

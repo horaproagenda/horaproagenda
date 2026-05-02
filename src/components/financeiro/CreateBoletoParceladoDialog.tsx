@@ -24,6 +24,19 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { fetchAddressByCep, formatCep } from '@/lib/viacep';
+
+async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
+  const data = await fetchAddressByCep(cep);
+  if (!data) return;
+  apply({
+    street: data.logradouro,
+    neighborhood: data.bairro,
+    city: data.localidade,
+    state: data.uf,
+  });
+  toast.success('Endereço preenchido pelo CEP');
+}
 
 interface Props {
   open: boolean;

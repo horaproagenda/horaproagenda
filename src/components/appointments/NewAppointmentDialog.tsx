@@ -61,6 +61,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
 import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
+import {
+  ProfessionalCommissionField,
+  saveCommissionOverride,
+  defaultCommissionOverride,
+  type CommissionOverride,
+} from '@/components/services/ProfessionalCommissionField';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
   type: 'professional' | 'room' | 'equipment' | 'absence';
@@ -96,6 +103,8 @@ export function NewAppointmentDialog({
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+  const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const queryClient = useQueryClient();
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -928,6 +937,23 @@ Até breve! ✨`;
         }
       }
 
+      // Persist per-(professional, service) commission override so it
+      // syncs in real-time with caixa, comissões, financeiro e perfil do profissional.
+      if (
+        serviceType === 'service' &&
+        selectedProfessional &&
+        selectedService &&
+        commissionOverride.enabled
+      ) {
+        try {
+          await saveCommissionOverride(selectedProfessional, selectedService, commissionOverride);
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+          queryClient.invalidateQueries({ queryKey: ['professional_service_commission'] });
+        } catch (err: any) {
+          toast.error('Agendamento criado, mas comissão não foi salva: ' + err.message);
+        }
+      }
+
       onOpenChange(false);
       resetForm();
       setHolidayConfirmed(false);
@@ -942,6 +968,7 @@ Até breve! ✨`;
     setSelectedProfessional('');
     setSelectedRoom('');
     setSelectedEquipment([]);
+    setCommissionOverride(defaultCommissionOverride);
     setDate(undefined);
     setTime('');
     setNotes('');
@@ -1691,6 +1718,16 @@ Até breve! ✨`;
                 emptyMessage="Nenhum profissional encontrado"
               />
             </div>
+
+            {/* Per-service commission for selected professional (auto-loads existing override, editable) */}
+            {selectedProfessional && serviceType === 'service' && selectedService && (
+              <ProfessionalCommissionField
+                professionalId={selectedProfessional}
+                serviceId={selectedService}
+                value={commissionOverride}
+                onChange={setCommissionOverride}
+              />
+            )}
 
             <div className="space-y-2">
               <Label>Sala</Label>

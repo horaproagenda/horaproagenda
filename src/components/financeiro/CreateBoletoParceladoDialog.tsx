@@ -306,7 +306,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto px-6 py-3 scrollbar-visible" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="beneficiario"><Building2 className="h-3.5 w-3.5 mr-1" />Beneficiário</TabsTrigger>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck, Globe, DollarSign } from 'lucide-react';
+import { Building2, Clock, Bell, Palette, GripVertical, CalendarCheck, Globe, DollarSign, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBusinessSettings, BRAZIL_TIMEZONES } from '@/hooks/useBusinessSettings';
+import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
 import { toast } from 'sonner';
 import UserManagement from '@/components/settings/UserManagement';
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';

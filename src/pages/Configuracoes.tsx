@@ -20,6 +20,7 @@ import { StockAlertSettings } from '@/components/settings/StockAlertSettings';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
+  const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
   
   const [openingTime, setOpeningTime] = useState('08:00');
   const [closingTime, setClosingTime] = useState('20:00');
@@ -34,6 +35,12 @@ const Configuracoes = () => {
   const [autoCompleteAppointments, setAutoCompleteAppointments] = useState(false);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
   const [overdueDaysThreshold, setOverdueDaysThreshold] = useState(0);
+
+  // Clinic info
+  const [clinicName, setClinicName] = useState('');
+  const [clinicPhone, setClinicPhone] = useState('');
+  const [clinicEmail, setClinicEmail] = useState('');
+  const [clinicAddress, setClinicAddress] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -50,8 +57,21 @@ const Configuracoes = () => {
       setAutoCompleteAppointments(settings.auto_complete_appointments ?? false);
       setTimezone(settings.timezone || 'America/Sao_Paulo');
       setOverdueDaysThreshold(settings.overdue_days_threshold ?? 0);
+      setClinicName((settings as any).clinic_name || '');
+      setClinicPhone((settings as any).clinic_phone || '');
+      setClinicEmail((settings as any).clinic_email || '');
+      setClinicAddress((settings as any).clinic_address || '');
     }
   }, [settings]);
+
+  const handleSaveClinic = () => {
+    updateSettings.mutate({
+      clinic_name: clinicName,
+      clinic_phone: clinicPhone,
+      clinic_email: clinicEmail,
+      clinic_address: clinicAddress,
+    } as any);
+  };
 
   const handleSaveHours = () => {
     updateSettings.mutate({

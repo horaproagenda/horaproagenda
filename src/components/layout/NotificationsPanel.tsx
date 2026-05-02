@@ -151,7 +151,7 @@ export function NotificationsPanel() {
                         className="h-6 w-6 -mt-1 -mr-1 shrink-0"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDismiss(notification.id);
+                          handleDismiss(notification);
                         }}
                       >
                         <X className="h-3 w-3" />

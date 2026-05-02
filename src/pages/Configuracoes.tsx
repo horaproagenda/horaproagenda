@@ -162,25 +162,54 @@ const Configuracoes = () => {
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome da Clínica</Label>
-                  <Input className="h-8 text-sm" defaultValue="Belezza Estética & Bem-estar" />
+                  <Input
+                    className="h-8 text-sm"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    placeholder="Nome do estabelecimento"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Telefone</Label>
-                    <Input className="h-8 text-sm" defaultValue="(11) 99999-9999" />
+                    <Input
+                      className="h-8 text-sm"
+                      value={clinicPhone}
+                      onChange={(e) => setClinicPhone(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Email</Label>
-                    <Input className="h-8 text-sm" type="email" defaultValue="contato@belezza.com" />
+                    <Input
+                      className="h-8 text-sm"
+                      type="email"
+                      value={clinicEmail}
+                      onChange={(e) => setClinicEmail(e.target.value)}
+                      placeholder="contato@clinica.com"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Endereço</Label>
-                  <Input className="h-8 text-sm" defaultValue="Av. Paulista, 1234 - São Paulo, SP" />
+                  <Input
+                    className="h-8 text-sm"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
+                    placeholder="Rua, número - Cidade, UF"
+                  />
                 </div>
-                <Button size="sm" className="w-full btn-vibrant">Salvar Alterações</Button>
+                <Button
+                  size="sm"
+                  className="w-full btn-vibrant"
+                  onClick={handleSaveClinic}
+                  disabled={updateSettings.isPending}
+                >
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
               </CardContent>
             </Card>
+
 
             <Card className="card-hover">
               <CardHeader className="pb-3">

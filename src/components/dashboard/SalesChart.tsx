@@ -25,61 +25,62 @@ export function SalesChart({ salesData, clientsData }: SalesChartProps) {
 
   return (
     <Card className="lg:col-span-2">
-      <CardHeader>
-        <CardTitle className="text-lg">Evolução</CardTitle>
+      <CardHeader className="p-3 pb-1">
+        <CardTitle className="text-sm">Evolução</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 pt-0">
         <Tabs defaultValue="sales" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="sales">Vendas por Mês</TabsTrigger>
-            <TabsTrigger value="clients">Novos Clientes</TabsTrigger>
+          <TabsList className="mb-2 h-7">
+            <TabsTrigger value="sales" className="text-[11px] h-6 px-2">Vendas por Mês</TabsTrigger>
+            <TabsTrigger value="clients" className="text-[11px] h-6 px-2">Novos Clientes</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sales" className="h-[300px]">
+          <TabsContent value="sales" className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesData}>
+              <BarChart data={salesData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis 
-                  tickFormatter={formatCurrency} 
-                  className="text-xs" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  width={80}
+                <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                <YAxis
+                  tickFormatter={formatCurrency}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  width={60}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => [formatCurrency(value), 'Receita']}
                   labelFormatter={(label, payload) => payload?.[0]?.payload?.fullMonth || label}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
+                    fontSize: '11px',
                   }}
                 />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </TabsContent>
 
-          <TabsContent value="clients" className="h-[300px]">
+          <TabsContent value="clients" className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={clientsData}>
+              <LineChart data={clientsData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <Tooltip 
+                <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={28} />
+                <Tooltip
                   formatter={(value: number) => [value, 'Novos Clientes']}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
+                    fontSize: '11px',
                   }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="hsl(var(--primary))" 
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
+                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>

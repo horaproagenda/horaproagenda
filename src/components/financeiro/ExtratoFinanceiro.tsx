@@ -155,7 +155,7 @@ export function ExtratoFinanceiro() {
         id: `fin-${entry.id}`,
         date: entry.paid_date || entry.due_date,
         description: isPartial ? `${desc} (parcial)` : desc,
-        category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
+        category: entry.category?.name || (isCommission ? formatCategoryLabel('commission') : '-'),
         type: isIncome ? 'income' : 'expense',
         grossAmount,
         discount: 0,

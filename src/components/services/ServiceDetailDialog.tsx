@@ -54,6 +54,13 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import {
+  ProfessionalCommissionField,
+  saveCommissionOverride,
+  defaultCommissionOverride,
+  type CommissionOverride,
+} from './ProfessionalCommissionField';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ServiceAppointment {
   id: string;

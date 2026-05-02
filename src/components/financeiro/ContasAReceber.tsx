@@ -159,10 +159,30 @@ export function ContasAReceber() {
       })
       .filter(apt => apt !== null && apt.amount > 0);
 
-    return [...pendingFinancialEntries, ...pendingAppointments].sort((a, b) => 
+    // Get pending boleto installments (within 30 days or already overdue)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const horizonDate = new Date();
+    horizonDate.setDate(horizonDate.getDate() + 30);
+    const horizonStr = horizonDate.toISOString().split('T')[0];
+
+    const pendingBoletos = (allBoletoInstallments as any[])
+      .filter(b => (b.status === 'pending' || b.status === 'overdue') && b.due_date <= horizonStr)
+      .map(b => ({
+        id: `boleto-${b.id}`,
+        type: 'boleto' as const,
+        date: b.due_date,
+        description: `Boleto ${String(b.installment_number).padStart(2, '0')}/${String(b.total_installments).padStart(2, '0')}${b.service_description ? ` — ${b.service_description}` : ''}`,
+        clientName: b.sale?.client?.name || '-',
+        amount: Number(b.amount),
+        installments: b.total_installments,
+        status: b.due_date < todayStr ? 'overdue' : 'pending',
+        boletoId: b.id,
+      }));
+
+    return [...pendingFinancialEntries, ...pendingAppointments, ...pendingBoletos].sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-  }, [receivables, appointments]);
+  }, [receivables, appointments, allBoletoInstallments]);
 
   // Detect changes and show notifications + highlight rows
   useEffect(() => {

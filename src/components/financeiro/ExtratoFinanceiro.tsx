@@ -119,7 +119,7 @@ export function ExtratoFinanceiro() {
         id: `cash-${tx.id}`,
         date: tx.created_at,
         description: tx.description || tx.category,
-        category: isProduct ? 'Produto' : (tx.category || '-'),
+        category: isProduct ? formatCategoryLabel('product') : formatCategoryLabel(tx.category),
         type: isIncome ? 'income' : 'expense',
         grossAmount,
         discount,

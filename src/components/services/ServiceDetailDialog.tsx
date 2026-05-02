@@ -110,6 +110,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment: allEquipment } = useEquipment();
+  const queryClient = useQueryClient();
+  const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

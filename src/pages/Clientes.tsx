@@ -445,7 +445,14 @@ const Clientes = () => {
                         <TableRow 
                           key={client.id}
                           className="cursor-pointer transition-colors hover:bg-muted/50"
-                          onClick={() => navigate(`/clientes/${client.id}`)}
+                          onClick={() => {
+                            savePosition({
+                              lastItemId: client.id,
+                              lastItemLabel: client.name,
+                              letter: client.name?.charAt(0).toUpperCase(),
+                            });
+                            navigate(`/clientes/${client.id}`);
+                          }}
                           style={{ animationDelay: `${index * 20}ms` }}
                         >
                           <TableCell className="text-sm font-medium py-2">

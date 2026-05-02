@@ -143,6 +143,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
                 <NavLink
                   key={item.name}
                   to={item.href}
+                  end={item.href === '/'}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',

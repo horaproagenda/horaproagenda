@@ -172,6 +172,7 @@ export function CashRegisterPanel() {
     // Convert pending appointments to receivable format
     const appointmentReceivables = pendingAppointments.map(apt => ({
       id: apt.id,
+      appointment_id: apt.id,
       type: 'appointment' as const,
       description: `Agendamento: ${apt.service?.name || apt.package_appointment?.package?.name || 'Serviço'}`,
       client: apt.client,
@@ -179,8 +180,12 @@ export function CashRegisterPanel() {
       amount: apt.service?.price || apt.package_appointment?.package?.total_price || 0,
       status: 'pending' as const,
     }));
-    
-    const allReceivables = [...periodReceivables, ...appointmentReceivables];
+
+    // Avoid duplicates: a financial_entry pointing to the same appointment
+    const appointmentIdsSet = new Set(appointmentReceivables.map(a => a.appointment_id));
+    const filteredPeriodReceivables = periodReceivables.filter((e: any) => !e.appointment_id || !appointmentIdsSet.has(e.appointment_id));
+
+    const allReceivables = [...filteredPeriodReceivables, ...appointmentReceivables];
     
     return {
       entries: allReceivables,
@@ -628,20 +633,24 @@ export function CashRegisterPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right py-1 px-2">
-                          {entry.type === 'appointment' ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-5 text-[10px] px-1.5"
-                              onClick={() => navigate(`/agenda?appointment=${entry.id}`)}
-                              title="Abrir agendamento para dar baixa"
-                            >
-                              <DollarSign className="h-2.5 w-2.5 mr-0.5" />
-                              Pagar
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">-</span>
-                          )}
+                          {(() => {
+                            const aptId = (entry as any).appointment_id || (entry.type === 'appointment' ? entry.id : null);
+                            if (aptId) {
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                                  onClick={() => navigate(`/agenda?appointment=${aptId}`)}
+                                  title="Abrir agendamento para dar baixa"
+                                >
+                                  <DollarSign className="h-3 w-3 mr-1" />
+                                  Pagar
+                                </Button>
+                              );
+                            }
+                            return <span className="text-[10px] text-muted-foreground">-</span>;
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -401,15 +401,15 @@ export default function Produtos() {
 
   return (
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e estoque">
-      <div className="space-y-4 page-enter">
+      <div className="space-y-2.5 page-enter">
         {/* Search */}
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="search" placeholder="Buscar por nome, marca ou categoria..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="Buscar por nome, marca ou categoria..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-xs" />
         </div>
 
         {/* Actions Row */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-1.5 flex-wrap" data-filters>
           <div className="flex items-center gap-2">
             {/* Filters */}
             <Popover>

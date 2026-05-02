@@ -1,10 +1,9 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Wallet, History, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Wallet, History } from 'lucide-react';
 import { SaleForm } from '@/components/caixa/SaleForm';
 import { CashRegisterPanel } from '@/components/caixa/CashRegisterPanel';
 import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
-import { PackageConsistencyReport } from '@/components/caixa/PackageConsistencyReport';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
@@ -13,11 +12,14 @@ export default function Caixa() {
   const { closedRegisters, isLoading } = useCashRegisters();
   const [activeTab, setActiveTab] = useLocalStorage('caixa-tab', 'vendas');
 
+  // Migrate old saved tab if user had "consistencia" selected
+  const safeTab = activeTab === 'consistencia' ? 'vendas' : activeTab;
+
   return (
     <AppLayout title="Caixa" subtitle="Vendas e controle financeiro">
       <div className="space-y-4 page-enter">
         <LiveCashTotalsBar />
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={safeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="h-9 bg-muted/50">
             <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide">
               <ShoppingCart className="h-3.5 w-3.5" />
@@ -30,10 +32,6 @@ export default function Caixa() {
             <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide">
               <History className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Histórico</span>
-            </TabsTrigger>
-            <TabsTrigger value="consistencia" className="gap-2 text-xs tracking-wide">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Consistência</span>
             </TabsTrigger>
           </TabsList>
 
@@ -50,10 +48,6 @@ export default function Caixa() {
               closedRegisters={closedRegisters} 
               isLoading={isLoading} 
             />
-          </TabsContent>
-
-          <TabsContent value="consistencia" className="page-enter">
-            <PackageConsistencyReport />
           </TabsContent>
         </Tabs>
       </div>

@@ -156,11 +156,11 @@ export function BoletoDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Detalhes do Boleto Bancário
+            Boletos do Cliente — {clientName}
           </DialogTitle>
         </DialogHeader>
 

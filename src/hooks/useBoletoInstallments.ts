@@ -242,6 +242,7 @@ export function useAllBoletoInstallments() {
         .eq('id', params.id);
 
       if (error) throw error;
+      if (current?.sale_id) await syncBoletoPackageAvailability(current.sale_id);
 
       await logAudit({
         boleto_installment_id: params.id,
@@ -272,6 +273,8 @@ export function useAllBoletoInstallments() {
         .in('id', params.ids);
 
       if (error) throw error;
+
+      await Promise.all(Array.from(new Set((currentItems || []).map((item: any) => item.sale_id).filter(Boolean))).map((saleId: string) => syncBoletoPackageAvailability(saleId)));
 
       // Log audit for each
       for (const item of (currentItems || [])) {
@@ -308,6 +311,11 @@ export function useAllBoletoInstallments() {
         .eq('id', id);
 
       if (error) throw error;
+
+      if (current?.sale_id) {
+        await redistributeActiveBoletoInstallments(current.sale_id);
+        await syncBoletoPackageAvailability(current.sale_id);
+      }
 
       await logAudit({
         boleto_installment_id: id,

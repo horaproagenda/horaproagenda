@@ -34,10 +34,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
       />
       <div className={cn(
         "min-h-screen flex flex-col transition-all duration-300 ease-in-out",
-        isSidebarCollapsed ? "pl-[72px]" : "pl-64"
+        "pl-0 md:pl-[72px]",
+        !isSidebarCollapsed && "md:pl-64"
       )}>
         <Header title={title} subtitle={subtitle} />
-        <main className="flex-1 p-6 pb-24 overflow-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 pb-20 md:pb-24 overflow-auto">
           {children}
         </main>
       </div>

@@ -83,6 +83,7 @@ import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
+import { ClientBoletoStatus } from './ClientBoletoStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';

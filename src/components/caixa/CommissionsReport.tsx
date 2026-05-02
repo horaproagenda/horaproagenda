@@ -419,11 +419,11 @@ export function CommissionsReport({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-[120px]">Data</TableHead>
-                              <TableHead>Cliente</TableHead>
-                              <TableHead>Serviço</TableHead>
-                              <TableHead className="text-right">Valor</TableHead>
-                              <TableHead className="text-right">Comissão</TableHead>
+                              <TableHead className="w-[100px] text-[10px]">Data</TableHead>
+                              <TableHead className="text-[10px]">Cliente</TableHead>
+                              <TableHead className="text-[10px]">Serviço</TableHead>
+                              <TableHead className="text-right text-[10px]">Valor</TableHead>
+                              <TableHead className="text-right text-[10px]">Comissão</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -433,19 +433,19 @@ export function CommissionsReport({
                                 : 0;
                               return (
                                 <TableRow key={apt.id}>
-                                  <TableCell className="text-sm">
+                                  <TableCell className="text-[11px] py-1.5">
                                     {format(parseISO(apt.start_time), 'dd/MM/yy HH:mm', { locale: ptBR })}
                                   </TableCell>
-                                  <TableCell className="text-sm">
+                                  <TableCell className="text-[11px] py-1.5">
                                     {apt.client?.name || '-'}
                                   </TableCell>
-                                  <TableCell className="text-sm">
+                                  <TableCell className="text-[11px] py-1.5">
                                     {apt.service?.name || '-'}
                                   </TableCell>
-                                  <TableCell className="text-right text-sm font-medium">
+                                  <TableCell className="text-right text-[11px] py-1.5 font-medium">
                                     R$ {(apt.amount_paid || 0).toFixed(2)}
                                   </TableCell>
-                                  <TableCell className="text-right text-sm font-medium text-green-600">
+                                  <TableCell className="text-right text-[11px] py-1.5 font-medium text-green-600">
                                     R$ {aptCommission.toFixed(2)}
                                   </TableCell>
                                 </TableRow>

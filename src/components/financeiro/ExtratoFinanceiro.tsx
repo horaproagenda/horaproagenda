@@ -87,50 +87,32 @@ export function ExtratoFinanceiro() {
   }, [queryClient]);
 
   // Unify all entries from different sources
+  // STRATEGY: cash_transactions is the canonical source for sales/payments.
+  // financial_entries that mirror caixa (description starting with "Caixa:" or
+  // matching by date+amount+payment_method) are suppressed to avoid duplicates.
   const unifiedEntries = useMemo(() => {
     const unified: UnifiedEntry[] = [];
 
-    // 1. Financial entries - only include PAID entries in the extrato (pending ones belong in Contas a Pagar)
-    entries.forEach((entry: FinancialEntry) => {
-      if (entry.status !== 'paid') return;
-      
-      const isIncome = entry.type === 'receivable';
-      const grossAmount = Number(entry.amount);
-      const isCommission = (entry.description || '').toLowerCase().includes('comiss');
-      const isPartial = (entry.notes || '').toLowerCase().includes('pagamento parcial');
-      
-      unified.push({
-        id: `fin-${entry.id}`,
-        date: entry.paid_date || entry.due_date,
-        description: isPartial ? `${entry.description} (parcial)` : entry.description,
-        category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
-        type: isIncome ? 'income' : 'expense',
-        grossAmount,
-        discount: 0,
-        cardFee: 0,
-        netAmount: grossAmount,
-        paymentMethod: entry.payment_method?.name || '-',
-        status: entry.status,
-        source: isCommission ? 'commission' : 'financial',
-      });
-    });
+    // Build a dedup key set from cash transactions (canonical)
+    const cashKeys = new Set<string>();
+    const makeKey = (date: string, amount: number, method: string | null | undefined) => {
+      const day = (date || '').slice(0, 10);
+      const amt = Math.round(Number(amount || 0) * 100);
+      const m = (method || '').toLowerCase().trim();
+      return `${day}|${amt}|${m}`;
+    };
 
-    // 2. Cash transactions (vendas, pagamentos de clientes)
+    // 1. Cash transactions FIRST (canonical source)
     transactions.forEach((tx: CashTransaction) => {
       const isIncome = tx.type === 'income';
       const grossAmount = Number(tx.amount);
       const cardFee = Number(tx.card_fee_amount || 0);
       const discount = Number(tx.discount_amount || 0);
       const netAmount = grossAmount - cardFee;
-      const isProduct = (tx.description || '').toLowerCase().includes('produto') || 
+      const isProduct = (tx.description || '').toLowerCase().includes('produto') ||
                         tx.category === 'product_sale' || tx.category === 'product_purchase';
 
-      // Avoid duplicating entries already in financial_entries
-      const alreadyInFinancial = entries.some(e => 
-        e.description === tx.description && 
-        Math.abs(Number(e.amount) - grossAmount) < 0.01
-      );
-      if (alreadyInFinancial) return;
+      cashKeys.add(makeKey(tx.created_at, grossAmount, tx.payment_method_name));
 
       unified.push({
         id: `cash-${tx.id}`,
@@ -145,6 +127,42 @@ export function ExtratoFinanceiro() {
         paymentMethod: tx.payment_method_name || '-',
         status: 'paid',
         source: isProduct ? 'product' : 'cash',
+      });
+    });
+
+    // 2. Financial entries - only PAID, and skip mirrors of cash transactions
+    entries.forEach((entry: FinancialEntry) => {
+      if (entry.status !== 'paid') return;
+
+      const desc = entry.description || '';
+      const lowerDesc = desc.toLowerCase();
+
+      // Skip auto-mirrored caixa entries (created by useCashTransactions sync)
+      if (lowerDesc.startsWith('caixa:')) return;
+
+      const isIncome = entry.type === 'receivable';
+      const grossAmount = Number(entry.amount);
+      const isCommission = lowerDesc.includes('comiss');
+      const isPartial = (entry.notes || '').toLowerCase().includes('pagamento parcial');
+      const paymentMethodName = entry.payment_method?.name || '';
+
+      // Skip if same payment already exists in cash (date+amount+method)
+      const dedupKey = makeKey(entry.paid_date || entry.due_date, grossAmount, paymentMethodName);
+      if (cashKeys.has(dedupKey)) return;
+
+      unified.push({
+        id: `fin-${entry.id}`,
+        date: entry.paid_date || entry.due_date,
+        description: isPartial ? `${desc} (parcial)` : desc,
+        category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
+        type: isIncome ? 'income' : 'expense',
+        grossAmount,
+        discount: 0,
+        cardFee: 0,
+        netAmount: grossAmount,
+        paymentMethod: paymentMethodName || '-',
+        status: entry.status,
+        source: isCommission ? 'commission' : 'financial',
       });
     });
 

@@ -203,22 +203,10 @@ export function useCashTransactions(cashRegisterId?: string) {
 
       if (error) throw error;
 
-      // Sync with financial_entries for tracking
-      const financialType = transaction.type === 'income' ? 'receivable' : 'payable';
-      const { error: entryError } = await supabase.from('financial_entries').insert({
-        type: financialType,
-        description: `Caixa: ${transaction.description || transaction.category}`,
-        amount: transaction.amount,
-        due_date: new Date().toISOString().split('T')[0],
-        paid_date: new Date().toISOString().split('T')[0],
-        status: 'paid',
-        bank_id: transaction.bank_id,
-        created_by: user?.id,
-      });
-
-      if (entryError) {
-        console.error('Error syncing with financial_entries:', entryError);
-      }
+      // NOTE: Do NOT mirror to financial_entries here.
+      // cash_transactions is the canonical source of truth for cashier movements.
+      // The Extrato unifies cash_transactions + financial_entries (non-cashier),
+      // so mirroring would duplicate every payment ("Caixa: ..." entry).
 
       return data;
     },

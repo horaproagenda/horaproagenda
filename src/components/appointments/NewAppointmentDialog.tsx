@@ -968,6 +968,7 @@ Até breve! ✨`;
     setSelectedProfessional('');
     setSelectedRoom('');
     setSelectedEquipment([]);
+    setCommissionOverride(defaultCommissionOverride);
     setDate(undefined);
     setTime('');
     setNotes('');

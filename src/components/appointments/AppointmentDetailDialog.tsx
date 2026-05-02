@@ -80,6 +80,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
+import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';

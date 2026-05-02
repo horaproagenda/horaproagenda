@@ -66,6 +66,22 @@ export function PacotesFinanceiro() {
         .eq('item_type', 'package')
         .order('sale_date', { ascending: false });
       if (error) throw error;
+
+      const saleIds = (sales || []).map((s: any) => s.id);
+      // Fetch refund cash_transactions for all sales (idempotent records)
+      const refundsBySale = new Map<string, number>();
+      if (saleIds.length > 0) {
+        const { data: refunds } = await supabase
+          .from('cash_transactions')
+          .select('reference_id, amount')
+          .eq('reference_type', 'package_refund')
+          .in('reference_id', saleIds);
+        (refunds || []).forEach((r: any) => {
+          const cur = refundsBySale.get(r.reference_id) || 0;
+          refundsBySale.set(r.reference_id, cur + Number(r.amount || 0));
+        });
+      }
+
       return (sales || []).map((s: any): PackageSaleRow => {
         const apps = s.package?.appointments || [];
         const used = apps.filter((a: any) => a.status === 'completed' || a.status === 'missed').length;
@@ -84,6 +100,7 @@ export function PacotesFinanceiro() {
           totalSessions: total,
           usedSessions: used,
           isCancelled,
+          refundedAmount: refundsBySale.get(s.id) || 0,
         };
       });
     },

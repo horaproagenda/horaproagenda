@@ -741,3 +741,44 @@ table { font-feature-settings: "tnum"; }
 [data-radix-dialog-content] [data-radix-scroll-area-viewport] {
   max-height: min(70vh, 100%);
 }
+
+/* ============================================================
+   Sticky table headers + smooth mobile scroll
+   ============================================================ */
+.table-scroll,
+[data-radix-scroll-area-viewport] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Make THEAD stick to the top inside any scrollable container */
+table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: hsl(var(--background));
+}
+table thead th {
+  background: hsl(var(--muted) / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+/* When inside a Radix ScrollArea viewport, ensure header sits on top */
+[data-radix-scroll-area-viewport] table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+@media (max-width: 640px) {
+  /* Smoother momentum scrolling on iOS/Android */
+  [data-radix-scroll-area-viewport],
+  .overflow-x-auto,
+  .overflow-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+}
+

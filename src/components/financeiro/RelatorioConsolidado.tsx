@@ -13,6 +13,7 @@ import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSig
 import { cn, formatCurrency } from '@/lib/utils';
 import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
@@ -47,10 +48,10 @@ export function RelatorioConsolidado() {
     },
   });
   
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('today');
-  const [customDate, setCustomDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useLocalStorage<PeriodFilter>('financeiro:relatorio:period', 'today');
+  const [customDate, setCustomDate] = useLocalStorage<string>('financeiro:relatorio:customDate', format(new Date(), 'yyyy-MM-dd'));
+  const [sourceFilter, setSourceFilter] = useLocalStorage<string>('financeiro:relatorio:source', 'all');
+  const [typeFilter, setTypeFilter] = useLocalStorage<string>('financeiro:relatorio:type', 'all');
 
   // Calculate date range based on period filter
   const dateRange = useMemo(() => {

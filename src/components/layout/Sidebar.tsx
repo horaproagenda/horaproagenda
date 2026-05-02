@@ -122,6 +122,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
                   <TooltipTrigger asChild>
                     <NavLink
                       to={item.href}
+                      end={item.href === '/'}
                       className={({ isActive }) =>
                         cn(
                           'flex items-center justify-center rounded-lg p-3 transition-all duration-200',
@@ -142,6 +143,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: Sid
                 <NavLink
                   key={item.name}
                   to={item.href}
+                  end={item.href === '/'}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',

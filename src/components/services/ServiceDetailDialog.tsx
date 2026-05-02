@@ -678,7 +678,16 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   )}
                 />
 
-                {/* Equipment Selection */}
+                {/* Per-service commission override */}
+                {form.watch('professional_id') && (
+                  <ProfessionalCommissionField
+                    professionalId={form.watch('professional_id')}
+                    serviceId={service.id}
+                    value={commissionOverride}
+                    onChange={setCommissionOverride}
+                  />
+                )}
+
                 {allEquipment.filter(e => e.is_active).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Equipamentos</Label>

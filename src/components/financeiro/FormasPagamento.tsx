@@ -67,6 +67,7 @@ export function FormasPagamento() {
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);
+  const [createBoletoOpen, setCreateBoletoOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {

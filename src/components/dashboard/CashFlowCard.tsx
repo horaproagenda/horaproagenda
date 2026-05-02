@@ -23,16 +23,16 @@ export function CashFlowCard({ data }: CashFlowCardProps) {
   if (!data) {
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" />
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <Wallet className="h-3.5 w-3.5 text-primary" />
             Fluxo de Caixa
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <AlertCircle className="h-10 w-10 text-muted-foreground/50 mb-2" />
-            <p className="text-sm text-muted-foreground">
+        <CardContent className="p-3 pt-0">
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <AlertCircle className="h-7 w-7 text-muted-foreground/50 mb-1.5" />
+            <p className="text-xs text-muted-foreground">
               Nenhum caixa aberto hoje
             </p>
           </div>
@@ -43,41 +43,41 @@ export function CashFlowCard({ data }: CashFlowCardProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+        <CardTitle className="text-sm flex items-center gap-1.5">
+          <Wallet className="h-3.5 w-3.5 text-primary" />
           Fluxo de Caixa
         </CardTitle>
-        <Badge variant={data.status === 'open' ? 'default' : 'secondary'}>
+        <Badge variant={data.status === 'open' ? 'default' : 'secondary'} className="h-4 px-1.5 text-[10px]">
           {data.status === 'open' ? 'Aberto' : 'Fechado'}
         </Badge>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between text-sm">
+      <CardContent className="p-3 pt-0 space-y-2">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Abertura</span>
           <span className="font-medium">{formatCurrency(data.opening)}</span>
         </div>
-        
-        <div className="flex items-center justify-between text-sm">
+
+        <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground flex items-center gap-1">
-            <ArrowUpCircle className="h-4 w-4 text-green-500" />
+            <ArrowUpCircle className="h-3 w-3 text-green-500" />
             Entradas
           </span>
           <span className="font-medium text-green-500">+{formatCurrency(data.income)}</span>
         </div>
-        
-        <div className="flex items-center justify-between text-sm">
+
+        <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground flex items-center gap-1">
-            <ArrowDownCircle className="h-4 w-4 text-red-500" />
+            <ArrowDownCircle className="h-3 w-3 text-red-500" />
             Saídas
           </span>
           <span className="font-medium text-red-500">-{formatCurrency(data.expense)}</span>
         </div>
-        
-        <div className="border-t border-border pt-3">
+
+        <div className="border-t border-border pt-2">
           <div className="flex items-center justify-between">
-            <span className="font-medium">Saldo Atual</span>
-            <span className="text-xl font-bold text-foreground">{formatCurrency(data.current)}</span>
+            <span className="text-xs font-medium">Saldo Atual</span>
+            <span className="text-base font-bold text-foreground">{formatCurrency(data.current)}</span>
           </div>
         </div>
       </CardContent>

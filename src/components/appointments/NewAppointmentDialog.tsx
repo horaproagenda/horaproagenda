@@ -1711,7 +1711,8 @@ Até breve! ✨`;
               />
             )}
 
-
+            <div className="space-y-2">
+              <Label>Sala</Label>
               <SearchableSelect
                 options={activeRooms.map(r => ({
                   value: r.id,

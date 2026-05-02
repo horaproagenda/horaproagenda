@@ -503,6 +503,7 @@ export function FormasPagamento() {
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
+      <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />
     </Card>
   );
 }

@@ -170,10 +170,10 @@ export function RelatorioConsolidado() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Filtros - {getPeriodLabel()}
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5" />
+            Filtros · {getPeriodLabel()}
           </CardTitle>
         </CardHeader>
         <CardContent>

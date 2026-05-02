@@ -1039,6 +1039,23 @@ const Agenda = () => {
     setDraggedAppointment(null);
   }, []);
 
+  // When viewing a single professional (professional view OR a professional filter is active),
+  // color appointments by status. Otherwise, color them by the professional's agenda_color so
+  // multiple professionals are visually separated in shared views.
+  const isSingleProfessionalView = viewType === 'professional' || professionalFilter !== 'all';
+  const getAppointmentSlotStyle = useCallback((apt: Appointment) => {
+    if (isSingleProfessionalView) {
+      return getAppointmentStatusStyle(apt.status);
+    }
+    const profId = apt.professional_id || apt.service?.professional_id;
+    const prof = professionals.find(p => p.id === profId);
+    const color = prof?.agenda_color || '#a1a1aa';
+    return {
+      backgroundColor: `${color}24`,
+      borderLeft: `3px solid ${color}`,
+    } as React.CSSProperties;
+  }, [isSingleProfessionalView, professionals]);
+
   // Render time slot grid for day view - Clean, compact and mobile optimized
   const renderTimeSlotDayView = () => {
     const holiday = getHolidayForDate(selectedDate);

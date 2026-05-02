@@ -13,6 +13,7 @@ import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSig
 import { cn, formatCurrency } from '@/lib/utils';
 import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';

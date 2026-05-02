@@ -260,6 +260,12 @@ export function BoletoDetailModal({
                           />
                         )}
                       </TableCell>
+                      <TableCell className="text-xs max-w-[180px]">
+                        <div className="font-medium truncate">{inst.sale?.description || inst.service_description || '—'}</div>
+                        {inst.document_number && (
+                          <div className="text-[10px] text-muted-foreground truncate">Doc: {inst.document_number}</div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm font-medium">
                         {inst.installment_number}/{inst.total_installments}
                       </TableCell>

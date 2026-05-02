@@ -334,20 +334,15 @@ export function useSystemNotifications() {
   useEffect(() => {
     if (hasShownToasts.current || notifications.length === 0) return;
 
-    const criticalNotifications = notifications.filter(n => 
-      n.severity === 'critical' && !wasNotificationDismissed(n.id)
-    );
-    
+    const criticalNotifications = notifications.filter(n => n.severity === 'critical');
+
     if (criticalNotifications.length > 0) {
       hasShownToasts.current = true;
-      markAsShownThisSession();
+      markShownThisSession();
 
       // Show first 3 critical notifications as toasts
       criticalNotifications.slice(0, 3).forEach((notification, index) => {
         setTimeout(() => {
-          // Mark this notification as shown so it won't appear again today
-          markNotificationDismissed(notification.id);
-          
           if (notification.type === 'boleto') {
             toast.error(notification.title, {
               description: notification.description,

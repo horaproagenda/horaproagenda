@@ -501,11 +501,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         )}
                       </TableCell>
                       <TableCell className="py-1.5">
-                        {payment.saleId && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancelDialog(payment)}>
-                            <XCircle className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        {/* Devolução removida — gerenciar pelo Financeiro > Pacotes */}
                       </TableCell>
                     </TableRow>
                   ))}

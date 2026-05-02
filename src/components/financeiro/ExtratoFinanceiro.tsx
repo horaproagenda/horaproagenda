@@ -24,6 +24,7 @@ import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries
 import { useCashTransactions, CashTransaction } from '@/hooks/useCashTransactions';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCategoryLabel } from '@/lib/categoryLabels';
 
 interface UnifiedEntry {
   id: string;
@@ -118,7 +119,7 @@ export function ExtratoFinanceiro() {
         id: `cash-${tx.id}`,
         date: tx.created_at,
         description: tx.description || tx.category,
-        category: isProduct ? 'Produto' : (tx.category || '-'),
+        category: isProduct ? formatCategoryLabel('product') : formatCategoryLabel(tx.category),
         type: isIncome ? 'income' : 'expense',
         grossAmount,
         discount,
@@ -154,7 +155,7 @@ export function ExtratoFinanceiro() {
         id: `fin-${entry.id}`,
         date: entry.paid_date || entry.due_date,
         description: isPartial ? `${desc} (parcial)` : desc,
-        category: entry.category?.name || (isCommission ? 'Comissão' : '-'),
+        category: entry.category?.name || (isCommission ? formatCategoryLabel('commission') : '-'),
         type: isIncome ? 'income' : 'expense',
         grossAmount,
         discount: 0,

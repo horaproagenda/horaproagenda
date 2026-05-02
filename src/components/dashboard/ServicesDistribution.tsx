@@ -1,6 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCategoryColor } from '@/lib/categoryColors';
 
 interface ServiceData {
   name: string;
@@ -12,18 +11,43 @@ interface ServicesDistributionProps {
   data: ServiceData[];
 }
 
-const COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
+// Distinct, accessible palette so EACH service gets its own color.
+// Colors stay aligned between the pie slice and the legend label.
+const SERVICE_COLORS = [
+  '#6366F1', // indigo
+  '#EC4899', // pink
+  '#10B981', // emerald
+  '#F59E0B', // amber
+  '#3B82F6', // blue
+  '#EF4444', // red
+  '#8B5CF6', // violet
+  '#14B8A6', // teal
+  '#F97316', // orange
+  '#22C55E', // green
+  '#06B6D4', // cyan
+  '#A855F7', // purple
+  '#EAB308', // yellow
+  '#0EA5E9', // sky
+  '#D946EF', // fuchsia
 ];
+
+const colorForService = (name: string, index: number): string => {
+  // Deterministic color per service name so colors are stable across renders,
+  // with index fallback to keep visual distinction when names hash collide.
+  if (!name) return SERVICE_COLORS[index % SERVICE_COLORS.length];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  }
+  const base = Math.abs(hash) % SERVICE_COLORS.length;
+  // Offset by index to reduce adjacent collisions in the legend.
+  return SERVICE_COLORS[(base + index) % SERVICE_COLORS.length];
+};
 
 export function ServicesDistribution({ data }: ServicesDistributionProps) {
   const chartData = data.map((item, index) => ({
     ...item,
-    fill: getCategoryColor(item.category).hex || COLORS[index % COLORS.length],
+    fill: colorForService(item.name, index),
   }));
 
   const total = data.reduce((sum, item) => sum + item.count, 0);

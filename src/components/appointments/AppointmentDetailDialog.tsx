@@ -1929,10 +1929,27 @@ export function AppointmentDetailDialog({
                   </div>
                 </div>
               ) : remainingAmount > 0 ? (
-                <Button onClick={() => setShowPaymentForm(true)} className="w-full">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Dar Baixa no Pagamento
-                </Button>
+                shouldRedirectToBoleto ? (
+                  <Button
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem('openBoletoClientId', appointment.client_id || '');
+                      } catch {}
+                      onOpenChange(false);
+                      navigate('/financeiro?tab=formas');
+                    }}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Dar baixa no boleto bancário
+                  </Button>
+                ) : (
+                  <Button onClick={() => setShowPaymentForm(true)} className="w-full">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Dar Baixa no Pagamento
+                  </Button>
+                )
               ) : null}
             </div>
 

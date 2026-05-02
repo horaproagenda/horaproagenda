@@ -24,6 +24,19 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { fetchAddressByCep, formatCep } from '@/lib/viacep';
+
+async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
+  const data = await fetchAddressByCep(cep);
+  if (!data) return;
+  apply({
+    street: data.logradouro,
+    neighborhood: data.bairro,
+    city: data.localidade,
+    state: data.uf,
+  });
+  toast.success('Endereço preenchido pelo CEP');
+}
 
 interface Props {
   open: boolean;
@@ -334,7 +347,20 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div>
                   <Label>CEP</Label>
-                  <Input value={beneficiary.cep} onChange={e => setBeneficiary({ ...beneficiary, cep: e.target.value })} />
+                  <Input
+                    value={beneficiary.cep}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    onChange={e => setBeneficiary({ ...beneficiary, cep: formatCep(e.target.value) })}
+                    onBlur={e => lookupCep(e.target.value, ({ street, neighborhood, city, state }) => {
+                      setBeneficiary(prev => ({
+                        ...prev,
+                        address: [street, neighborhood].filter(Boolean).join(', ') || prev.address,
+                        city: city || prev.city,
+                        state: state || prev.state,
+                      }));
+                    })}
+                  />
                 </div>
                 <div className="col-span-2">
                   <Label>Endereço completo</Label>
@@ -392,7 +418,21 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div>
                   <Label>CEP</Label>
-                  <Input value={payer.cep} onChange={e => setPayer({ ...payer, cep: e.target.value })} />
+                  <Input
+                    value={payer.cep}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    onChange={e => setPayer({ ...payer, cep: formatCep(e.target.value) })}
+                    onBlur={e => lookupCep(e.target.value, ({ street, neighborhood, city, state }) => {
+                      setPayer(prev => ({
+                        ...prev,
+                        street: street || prev.street,
+                        neighborhood: neighborhood || prev.neighborhood,
+                        city: city || prev.city,
+                        state: state || prev.state,
+                      }));
+                    })}
+                  />
                 </div>
                 <div className="col-span-2">
                   <Label>Rua / Logradouro</Label>

@@ -47,21 +47,38 @@ interface SidebarProps {
   onNewAppointment: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
   };
 
+  const handleNavClick = () => {
+    if (onMobileClose) onMobileClose();
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
+      {/* Backdrop mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={onMobileClose}
+          aria-hidden
+        />
+      )}
       <aside 
         className={cn(
           "fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
-          isCollapsed ? "w-[72px]" : "w-64"
+          isCollapsed ? "w-[72px]" : "w-64",
+          // Mobile: oculta por padrão, abre como drawer
+          "md:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         <div className="flex h-full flex-col">

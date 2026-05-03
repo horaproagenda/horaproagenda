@@ -49,6 +49,8 @@ export function PacotesFinanceiro() {
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [cancelReason, setCancelReason] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [autoCostInfo, setAutoCostInfo] = useState<string | null>(null);
+  const [calculatingCost, setCalculatingCost] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['package-sales-financial'],

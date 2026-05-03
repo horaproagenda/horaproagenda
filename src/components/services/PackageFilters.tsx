@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, X, Search, Download, ArrowUpDown } from 'lucide-react';
+import { X, Search, Download, ArrowUpDown, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
 import { cn } from '@/lib/utils';
 
 interface PackageFiltersProps {
@@ -66,299 +69,234 @@ export function PackageFilters({
   onClearFilters,
   onExport,
 }: PackageFiltersProps) {
+  const [open, setOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
   const [professionalSearch, setProfessionalSearch] = useState('');
   const [roomSearch, setRoomSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
-  const [sessionsSearch, setSessionsSearch] = useState('');
 
-  const hasActiveFilters = selectedCategory || selectedProfessional || selectedRoom || selectedClient || selectedSessions || selectedStatus || searchTerm;
+  const activeCount = [
+    selectedCategory,
+    selectedProfessional,
+    selectedRoom,
+    selectedClient,
+    selectedSessions,
+    selectedStatus,
+  ].filter(Boolean).length;
 
-  const filteredProfessionals = useMemo(() => 
-    professionals.filter(p => p.name.toLowerCase().includes(professionalSearch.toLowerCase())),
-    [professionals, professionalSearch]
+  const hasActiveFilters = activeCount > 0 || !!searchTerm;
+
+  const filteredCategories = useMemo(
+    () =>
+      categories.filter((c) =>
+        c.toLowerCase().includes(categorySearch.toLowerCase()),
+      ),
+    [categories, categorySearch],
+  );
+  const filteredProfessionals = useMemo(
+    () =>
+      professionals.filter((p) =>
+        p.name.toLowerCase().includes(professionalSearch.toLowerCase()),
+      ),
+    [professionals, professionalSearch],
+  );
+  const filteredRooms = useMemo(
+    () =>
+      rooms.filter((r) =>
+        r.name.toLowerCase().includes(roomSearch.toLowerCase()),
+      ),
+    [rooms, roomSearch],
+  );
+  const filteredClients = useMemo(
+    () =>
+      clients.filter((c) =>
+        c.name.toLowerCase().includes(clientSearch.toLowerCase()),
+      ),
+    [clients, clientSearch],
   );
 
-  const filteredRooms = useMemo(() => 
-    rooms.filter(r => r.name.toLowerCase().includes(roomSearch.toLowerCase())),
-    [rooms, roomSearch]
-  );
-
-  const filteredClients = useMemo(() => 
-    clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())),
-    [clients, clientSearch]
+  const renderSection = <T,>({
+    title,
+    items,
+    selected,
+    onSelect,
+    getId,
+    getLabel,
+    search,
+    setSearch,
+    showSearchAfter = 5,
+  }: {
+    title: string;
+    items: T[];
+    selected: string | null;
+    onSelect: (v: string | null) => void;
+    getId: (item: T) => string;
+    getLabel: (item: T) => string;
+    search?: string;
+    setSearch?: (v: string) => void;
+    showSearchAfter?: number;
+  }) => (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+        {title}
+      </p>
+      {setSearch && items.length > showSearchAfter && (
+        <Input
+          placeholder={`Buscar ${title.toLowerCase()}...`}
+          value={search ?? ''}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-7 text-[11px]"
+        />
+      )}
+      <div className="space-y-0.5 max-h-[140px] overflow-y-auto">
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          className={cn(
+            'w-full flex items-center justify-between px-2 py-1 text-[11px] rounded text-left transition-colors',
+            !selected ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
+          )}
+        >
+          <span>Todos</span>
+          {!selected && <Check className="h-3 w-3" />}
+        </button>
+        {items.map((item) => {
+          const id = getId(item);
+          const isSel = selected === id;
+          return (
+            <button
+              type="button"
+              key={id}
+              onClick={() => onSelect(id)}
+              className={cn(
+                'w-full flex items-center justify-between px-2 py-1 text-[11px] rounded text-left transition-colors',
+                isSel ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
+              )}
+            >
+              <span className="truncate">{getLabel(item)}</span>
+              {isSel && <Check className="h-3 w-3 flex-shrink-0" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 
   return (
     <div className="space-y-3">
-      {/* All Filters - Compact Layout */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <div className="relative min-w-[180px] max-w-[250px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative min-w-[180px] max-w-[260px] flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-9"
+            className="pl-8 h-7 text-[11px]"
           />
         </div>
 
-        {/* Status filter badges */}
-        <div className="flex items-center gap-1 border rounded-md px-2 py-1 bg-background">
-          <Badge
-            variant="outline"
-            className={cn(
-              'cursor-pointer transition-colors text-xs px-2 py-0.5',
-              !selectedStatus && 'bg-primary text-primary-foreground border-primary'
-            )}
-            onClick={() => onStatusChange(null)}
-          >
-            Todos
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn(
-              'cursor-pointer transition-colors text-xs px-2 py-0.5',
-              selectedStatus === 'active' && 'bg-green-500 text-white border-green-500'
-            )}
-            onClick={() => onStatusChange('active')}
-          >
-            Ativos
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn(
-              'cursor-pointer transition-colors text-xs px-2 py-0.5',
-              selectedStatus === 'inactive' && 'bg-muted-foreground text-white border-muted-foreground'
-            )}
-            onClick={() => onStatusChange('inactive')}
-          >
-            Inativos
-          </Badge>
-        </div>
-
-        {/* Category dropdown */}
-        <Popover>
+        {/* Filtros (popover unificado) */}
+        <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-1">
-              <Filter className="h-3.5 w-3.5" />
-              {selectedCategory || 'Categoria'}
-            </Button>
+            <CompactFilterTrigger activeCount={activeCount} />
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-2">
-            <div className="space-y-1 max-h-[250px] overflow-y-auto">
-              <Button
-                variant={!selectedCategory ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-8"
-                onClick={() => onCategoryChange(null)}
-              >
-                Todas categorias
-              </Button>
-              {categories.map(category => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm h-8"
-                  onClick={() => onCategoryChange(category)}
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Professional filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 max-w-[150px] truncate">
-              {selectedProfessional 
-                ? professionals.find(p => p.id === selectedProfessional)?.name 
-                : 'Profissional'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-2">
-            <Input
-              placeholder="Buscar..."
-              value={professionalSearch}
-              onChange={(e) => setProfessionalSearch(e.target.value)}
-              className="mb-2 h-8"
-            />
-            <div className="max-h-[200px] overflow-y-auto space-y-1">
-              <Button
-                variant={!selectedProfessional ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-8"
-                onClick={() => {
-                  onProfessionalChange(null);
-                  setProfessionalSearch('');
-                }}
-              >
-                Todos
-              </Button>
-              {filteredProfessionals.map(prof => (
-                <Button
-                  key={prof.id}
-                  variant={selectedProfessional === prof.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm h-8"
-                  onClick={() => {
-                    onProfessionalChange(prof.id);
-                    setProfessionalSearch('');
-                  }}
-                >
-                  {prof.name}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Room filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 max-w-[130px] truncate">
-              {selectedRoom 
-                ? rooms.find(r => r.id === selectedRoom)?.name 
-                : 'Sala'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-2">
-            <Input
-              placeholder="Buscar..."
-              value={roomSearch}
-              onChange={(e) => setRoomSearch(e.target.value)}
-              className="mb-2 h-8"
-            />
-            <div className="max-h-[200px] overflow-y-auto space-y-1">
-              <Button
-                variant={!selectedRoom ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-8"
-                onClick={() => {
-                  onRoomChange(null);
-                  setRoomSearch('');
-                }}
-              >
-                Todas
-              </Button>
-              {filteredRooms.map(room => (
-                <Button
-                  key={room.id}
-                  variant={selectedRoom === room.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm h-8"
-                  onClick={() => {
-                    onRoomChange(room.id);
-                    setRoomSearch('');
-                  }}
-                >
-                  {room.name}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Client filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 max-w-[130px] truncate">
-              {selectedClient 
-                ? clients.find(c => c.id === selectedClient)?.name 
-                : 'Cliente'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-2">
-            <Input
-              placeholder="Buscar..."
-              value={clientSearch}
-              onChange={(e) => setClientSearch(e.target.value)}
-              className="mb-2 h-8"
-            />
-            <div className="max-h-[200px] overflow-y-auto space-y-1">
-              <Button
-                variant={!selectedClient ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-8"
-                onClick={() => {
-                  onClientChange(null);
-                  setClientSearch('');
-                }}
-              >
-                Todos
-              </Button>
-              {filteredClients.map(client => (
-                <Button
-                  key={client.id}
-                  variant={selectedClient === client.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm h-8"
-                  onClick={() => {
-                    onClientChange(client.id);
-                    setClientSearch('');
-                  }}
-                >
-                  {client.name}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Sessions filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
-              {selectedSessions 
-                ? selectedSessions === '10+' ? '10+ sessões' : `${selectedSessions} sess.`
-                : 'Sessões'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[180px] p-2">
-            <Input
-              placeholder="Número..."
-              value={sessionsSearch}
-              onChange={(e) => setSessionsSearch(e.target.value)}
-              type="number"
-              min="1"
-              className="mb-2 h-8"
-            />
-            <div className="space-y-1">
-              <Button
-                variant={!selectedSessions ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-8"
-                onClick={() => {
-                  onSessionsChange(null);
-                  setSessionsSearch('');
-                }}
-              >
-                Todas
-              </Button>
-              {sessionsSearch && (
+          <PopoverContent align="start" className="w-72 p-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
+              {activeCount > 0 && (
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-sm h-8"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
                   onClick={() => {
-                    onSessionsChange(sessionsSearch);
-                    setSessionsSearch('');
+                    onClearFilters();
+                    setOpen(false);
                   }}
                 >
-                  {sessionsSearch} sessão(ões)
+                  <X className="h-3 w-3" />
+                  Limpar
                 </Button>
               )}
-              {['1', '5', '10', '10+'].map(val => (
-                <Button
-                  key={val}
-                  variant={selectedSessions === val ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sm h-8"
-                  onClick={() => onSessionsChange(val)}
-                >
-                  {val === '1' ? '1 sessão' : val === '10+' ? '10+ sessões' : `${val} sessões`}
-                </Button>
-              ))}
             </div>
+
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-3 pr-2 pb-1">
+                {renderSection({
+                  title: 'Status',
+                  items: [
+                    { id: 'active', name: 'Ativo' },
+                    { id: 'inactive', name: 'Inativo' },
+                  ],
+                  selected: selectedStatus,
+                  onSelect: onStatusChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                })}
+                <Separator />
+                {renderSection({
+                  title: 'Categoria',
+                  items: filteredCategories.map((c) => ({ id: c, name: c })),
+                  selected: selectedCategory,
+                  onSelect: onCategoryChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                  search: categorySearch,
+                  setSearch: setCategorySearch,
+                })}
+                <Separator />
+                {renderSection({
+                  title: 'Profissional',
+                  items: filteredProfessionals,
+                  selected: selectedProfessional,
+                  onSelect: onProfessionalChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                  search: professionalSearch,
+                  setSearch: setProfessionalSearch,
+                })}
+                <Separator />
+                {renderSection({
+                  title: 'Sala',
+                  items: filteredRooms,
+                  selected: selectedRoom,
+                  onSelect: onRoomChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                  search: roomSearch,
+                  setSearch: setRoomSearch,
+                })}
+                <Separator />
+                {renderSection({
+                  title: 'Cliente',
+                  items: filteredClients,
+                  selected: selectedClient,
+                  onSelect: onClientChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                  search: clientSearch,
+                  setSearch: setClientSearch,
+                })}
+                <Separator />
+                {renderSection({
+                  title: 'Sessões',
+                  items: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'].map(
+                    (v) => ({ id: v, name: v === '10+' ? '10+ sessões' : `${v} sessões` }),
+                  ),
+                  selected: selectedSessions,
+                  onSelect: onSessionsChange,
+                  getId: (i) => i.id,
+                  getLabel: (i) => i.name,
+                })}
+              </div>
+            </ScrollArea>
           </PopoverContent>
         </Popover>
 
         {/* Sort */}
         <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[140px] h-9">
-            <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
+          <SelectTrigger className="w-[140px] h-7 text-[11px]">
+            <ArrowUpDown className="h-3 w-3 mr-1" />
             <SelectValue placeholder="Ordenar" />
           </SelectTrigger>
           <SelectContent>
@@ -374,19 +312,91 @@ export function PackageFilters({
         </Select>
 
         {/* Export */}
-        <Button variant="outline" size="sm" className="h-9" onClick={onExport}>
-          <Download className="h-3.5 w-3.5 mr-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-[11px] px-2"
+          onClick={onExport}
+        >
+          <Download className="h-3 w-3 mr-1" />
           Exportar
         </Button>
 
-        {/* Clear filters */}
+        {/* Clear */}
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" className="h-9" onClick={onClearFilters}>
-            <X className="h-3.5 w-3.5 mr-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] px-2"
+            onClick={onClearFilters}
+          >
+            <X className="h-3 w-3 mr-1" />
             Limpar
           </Button>
         )}
       </div>
+
+      {/* Active badges */}
+      {activeCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          {selectedStatus && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {selectedStatus === 'active' ? 'Ativo' : 'Inativo'}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onStatusChange(null)}
+              />
+            </Badge>
+          )}
+          {selectedCategory && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {selectedCategory}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onCategoryChange(null)}
+              />
+            </Badge>
+          )}
+          {selectedProfessional && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {professionals.find((p) => p.id === selectedProfessional)?.name}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onProfessionalChange(null)}
+              />
+            </Badge>
+          )}
+          {selectedRoom && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {rooms.find((r) => r.id === selectedRoom)?.name}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onRoomChange(null)}
+              />
+            </Badge>
+          )}
+          {selectedClient && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {clients.find((c) => c.id === selectedClient)?.name}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onClientChange(null)}
+              />
+            </Badge>
+          )}
+          {selectedSessions && (
+            <Badge variant="secondary" className="h-5 text-[10px] gap-1">
+              {selectedSessions === '10+'
+                ? '10+ sessões'
+                : `${selectedSessions} sessões`}
+              <X
+                className="h-2.5 w-2.5 cursor-pointer"
+                onClick={() => onSessionsChange(null)}
+              />
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   );
 }

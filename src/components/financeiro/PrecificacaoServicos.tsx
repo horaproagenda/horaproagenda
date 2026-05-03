@@ -54,6 +54,7 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { calculateProductLinkCostPerUse } from '@/lib/productCostCalculation';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 

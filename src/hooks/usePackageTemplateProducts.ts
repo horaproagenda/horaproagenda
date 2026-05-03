@@ -48,6 +48,18 @@ export function usePackageTemplateProducts(templateId?: string) {
     },
   });
 
+  // Realtime sync — recalcula precificação automaticamente quando produtos
+  // vinculados ao template forem alterados em qualquer sessão.
+  useEffect(() => {
+    const ch = supabase
+      .channel('package-template-products-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
+
   const createTemplateProduct = useMutation({
     mutationFn: async (templateProduct: {
       template_id: string;

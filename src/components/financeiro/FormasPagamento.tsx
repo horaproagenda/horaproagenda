@@ -32,6 +32,7 @@ import { CreateBoletoParceladoDialog } from './CreateBoletoParceladoDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro',

@@ -313,20 +313,44 @@ export function FormasPagamento() {
           {/* Boleto Tab */}
           <TabsContent value="boleto" className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p><p className="text-base font-bold tabular-nums">{boletoStats.total}</p>
-              </div>
-              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pendentes</p><p className="text-base font-bold text-orange-600 tabular-nums">{boletoStats.pending}</p>
-                <p className="text-[10px] text-muted-foreground tabular-nums">R$ {boletoStats.totalPending.toFixed(2)}</p>
-              </div>
-              <div className="rounded-lg border border-red-200 p-2 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
-                <p className="text-[10px] uppercase tracking-wide text-red-600">Atrasados</p><p className="text-base font-bold text-red-600 tabular-nums">{boletoStats.overdue}</p>
-                <p className="text-[10px] text-red-500 tabular-nums">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
-              </div>
-              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pagos</p><p className="text-base font-bold text-green-600 tabular-nums">{boletoStats.paid}</p>
-              </div>
+              <button type="button" onClick={() => setBoletoFilter('all')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-blue-500", boletoFilter === 'all' && "bg-muted/50 ring-1 ring-blue-500/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
+                  <LayoutList className="h-3.5 w-3.5 text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Total</p>
+                  <p className="text-sm font-bold tabular-nums leading-tight text-blue-600">{boletoStats.total}</p>
+                </div>
+              </button>
+              <button type="button" onClick={() => setBoletoFilter('pending')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-orange-500", boletoFilter === 'pending' && "bg-muted/50 ring-1 ring-orange-500/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-orange-500/10">
+                  <Clock className="h-3.5 w-3.5 text-orange-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Pendentes</p>
+                  <p className="text-sm font-bold text-orange-600 tabular-nums leading-tight">{boletoStats.pending}</p>
+                  <p className="text-[9px] text-muted-foreground tabular-nums leading-tight">R$ {boletoStats.totalPending.toFixed(2)}</p>
+                </div>
+              </button>
+              <button type="button" onClick={() => setBoletoFilter('overdue')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-red-50 dark:hover:bg-red-950/20 border-l-2 border-l-red-500", boletoFilter === 'overdue' && "bg-red-50 dark:bg-red-950/20 ring-1 ring-red-500/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-red-500/10">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-red-600 leading-tight">Atrasados</p>
+                  <p className="text-sm font-bold text-red-600 tabular-nums leading-tight">{boletoStats.overdue}</p>
+                  <p className="text-[9px] text-red-500 tabular-nums leading-tight">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
+                </div>
+              </button>
+              <button type="button" onClick={() => setBoletoFilter('paid')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-emerald-500", boletoFilter === 'paid' && "bg-muted/50 ring-1 ring-emerald-500/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Pagos</p>
+                  <p className="text-sm font-bold text-emerald-600 tabular-nums leading-tight">{boletoStats.paid}</p>
+                </div>
+              </button>
             </div>
 
             {boletoStats.overdue > 0 && (

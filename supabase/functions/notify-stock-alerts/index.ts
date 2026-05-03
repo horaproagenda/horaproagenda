@@ -88,13 +88,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    // Use the validated, whitelisted alerts from here on
-    const alertsValidated = safeAlerts;
-      return new Response(
-        JSON.stringify({ success: true, message: 'No alerts to process' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Reassign for downstream code that uses `alerts`
+    const alertsArr = safeAlerts;
 
     const results = {
       whatsapp_sent: false,

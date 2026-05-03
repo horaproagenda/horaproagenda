@@ -192,14 +192,71 @@ export function PacotesFinanceiro() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selected, costPerApplication, penalty, refundMethod, cancelReason, refundAmount]);
 
-  const openCancel = (row: PackageSaleRow) => {
+  const openCancel = async (row: PackageSaleRow) => {
     setSelected(row);
     setCostPerApplication('0');
     setPenalty('0');
     setRefundMethod('Dinheiro');
     setCancelReason('');
     setValidationError(null);
+    setAutoCostInfo(null);
     setCancelOpen(true);
+
+    if (!row.packageId) return;
+
+    // Auto-calc material cost per application using linked products
+    // (template_products preferred; fallback to service_products of the base service)
+    setCalculatingCost(true);
+    try {
+      const { data: pkg } = await supabase
+        .from('service_packages')
+        .select('id, template_id, service_id')
+        .eq('id', row.packageId)
+        .maybeSingle();
+
+      if (!pkg) { setCalculatingCost(false); return; }
+
+      let links: any[] = [];
+      let source = '';
+
+      if (pkg.template_id) {
+        const { data: tplLinks } = await supabase
+          .from('package_template_products')
+          .select('quantity_per_use, tracking_method, container_amount, container_unit, estimated_appointments, product:products(unit, unit_price, total_price, quantity_purchased)')
+          .eq('template_id', pkg.template_id);
+        if (tplLinks && tplLinks.length > 0) {
+          links = tplLinks;
+          source = 'template do pacote';
+        }
+      }
+
+      if (links.length === 0 && pkg.service_id) {
+        const { data: srvLinks } = await supabase
+          .from('service_products')
+          .select('quantity_per_use, tracking_method, container_amount, container_unit, estimated_appointments, product:products(unit, unit_price, total_price, quantity_purchased)')
+          .eq('service_id', pkg.service_id);
+        if (srvLinks && srvLinks.length > 0) {
+          links = srvLinks;
+          source = 'serviço do pacote';
+        }
+      }
+
+      if (links.length > 0) {
+        const cost = calculateTotalCostPerUse(links as any);
+        if (cost > 0) {
+          setCostPerApplication(cost.toFixed(2));
+          setAutoCostInfo(`Custo auto-calculado a partir dos produtos vinculados ao ${source} (${links.length} produto(s)).`);
+        } else {
+          setAutoCostInfo('Produtos vinculados não possuem preço cadastrado. Informe manualmente.');
+        }
+      } else {
+        setAutoCostInfo('Nenhum produto vinculado a este pacote. Informe o custo manualmente, se aplicável.');
+      }
+    } catch (e) {
+      console.error('[PacotesFinanceiro] Erro ao auto-calcular custo:', e);
+    } finally {
+      setCalculatingCost(false);
+    }
   };
 
   const cancelMutation = useMutation({

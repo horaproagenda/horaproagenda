@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NotificationsPanel } from './NotificationsPanel';
+import { OfflineStatusBadge } from '@/components/shared/OfflineStatusBadge';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 interface HeaderProps {

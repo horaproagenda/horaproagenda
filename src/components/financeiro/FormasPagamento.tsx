@@ -378,19 +378,19 @@ export function FormasPagamento() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="text-center">Boletos</TableHead>
-                    <TableHead className="text-center">Pendentes</TableHead>
-                    <TableHead className="text-center">Atrasados</TableHead>
-                    <TableHead>Próx. Vencimento</TableHead>
-                    <TableHead>Total Pendente</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="text-[11px]">Cliente</TableHead>
+                    <TableHead className="text-[11px] text-center hidden sm:table-cell">Boletos</TableHead>
+                    <TableHead className="text-[11px] text-center">Pend.</TableHead>
+                    <TableHead className="text-[11px] text-center hidden xs:table-cell">Atras.</TableHead>
+                    <TableHead className="text-[11px] hidden sm:table-cell">Próx. Venc.</TableHead>
+                    <TableHead className="text-[11px]">Total</TableHead>
+                    <TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredClientGroups.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">
                         {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
                       </TableCell>
                     </TableRow>
@@ -407,30 +407,30 @@ export function FormasPagamento() {
                         .sort()[0];
                       return (
                         <TableRow key={group.key}>
-                          <TableCell className="text-sm font-medium">
-                            {group.clientName}
+                          <TableCell className="text-xs font-medium py-2">
+                            <div className="truncate max-w-[140px]">{group.clientName}</div>
                             {group.clientPhone && <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>}
                           </TableCell>
-                          <TableCell className="text-sm text-center">{all.length}</TableCell>
-                          <TableCell className="text-sm text-center text-orange-600 font-medium">{pending.length}</TableCell>
-                          <TableCell className="text-sm text-center">
+                          <TableCell className="text-xs text-center hidden sm:table-cell tabular-nums">{all.length}</TableCell>
+                          <TableCell className="text-xs text-center text-orange-600 font-medium tabular-nums">{pending.length}</TableCell>
+                          <TableCell className="text-xs text-center hidden xs:table-cell tabular-nums">
                             {overdue.length > 0 ? <span className="text-red-600 font-semibold">{overdue.length}</span> : '-'}
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-xs hidden sm:table-cell tabular-nums">
                             {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                           </TableCell>
-                          <TableCell className="text-sm font-medium text-orange-700">
+                          <TableCell className="text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap">
                             R$ {totalPending.toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right sticky right-0 bg-background">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1 h-7"
+                              className="gap-1 h-7 text-[11px] px-2"
                               onClick={() => setDetailClientKey(group.key)}
                             >
-                              <Eye className="h-3.5 w-3.5" />
-                              Visualizar
+                              <Eye className="h-3 w-3" />
+                              Ver
                             </Button>
                           </TableCell>
                         </TableRow>

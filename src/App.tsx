@@ -55,6 +55,7 @@ const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
   useWheelScrollFix();
+  useAppUpdater();
 
   return (
     <QueryClientProvider client={queryClient}>

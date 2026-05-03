@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, X, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
 import { cn } from '@/lib/utils';
 
 interface FilterOption {

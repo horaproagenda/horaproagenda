@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
+import { useAppUpdater } from "@/hooks/useAppUpdater";
 import Index from "./pages/Index";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";

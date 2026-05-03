@@ -119,6 +119,7 @@ import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/app
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
+import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 

@@ -86,47 +86,56 @@ export default function Financeiro() {
         {/* Divergence Alert */}
         <FinancialDivergenceAlert />
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="card-hover">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
+        {/* Summary Cards — minimalistas com ícones coloridos */}
+        <div className="grid grid-cols-3 gap-2">
+          <Card className="card-hover border-l-2 border-l-red-500">
+            <CardContent className="p-2 sm:p-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-red-500/10">
+                  <ArrowDownCircle className="h-4 w-4 text-red-500" />
+                </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground tracking-wide">A Pagar</p>
-                  <p className="text-lg font-bold text-red-600 truncate">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">A Pagar</p>
+                  <p className="text-sm sm:text-base font-bold text-red-600 truncate tabular-nums leading-tight">
                     R$ {totalPayables.toFixed(0)}
                   </p>
                 </div>
-                <ArrowDownCircle className="h-6 w-6 text-red-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
-          <Card className="card-hover">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
+          <Card className={cn("card-hover border-l-2", balance >= 0 ? "border-l-emerald-500" : "border-l-red-500")}>
+            <CardContent className="p-2 sm:p-2.5">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                  balance >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"
+                )}>
+                  <TrendingUp className={cn("h-4 w-4", balance >= 0 ? "text-emerald-600" : "text-red-500")} />
+                </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground tracking-wide">Saldo</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Saldo</p>
                   <p className={cn(
-                    "text-lg font-bold truncate",
-                    balance >= 0 ? "text-green-600" : "text-red-600"
+                    "text-sm sm:text-base font-bold truncate tabular-nums leading-tight",
+                    balance >= 0 ? "text-emerald-600" : "text-red-600"
                   )}>
                     R$ {balance.toFixed(0)}
                   </p>
                 </div>
-                <TrendingUp className="h-6 w-6 text-primary shrink-0" />
               </div>
             </CardContent>
           </Card>
-          <Card className="card-hover">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
+          <Card className="card-hover border-l-2 border-l-blue-500">
+            <CardContent className="p-2 sm:p-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
+                  <Landmark className="h-4 w-4 text-blue-600" />
+                </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground tracking-wide">Bancos</p>
-                  <p className="text-lg font-bold truncate">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Bancos</p>
+                  <p className="text-sm sm:text-base font-bold truncate tabular-nums leading-tight text-blue-600">
                     {banks.filter(b => b.is_active).length}
                   </p>
                 </div>
-                <Landmark className="h-6 w-6 text-primary shrink-0" />
               </div>
             </CardContent>
           </Card>

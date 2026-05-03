@@ -160,6 +160,12 @@ export default function Produtos() {
   };
   useEffect(() => { savePos({ search: searchTerm }); }, [searchTerm, savePos]);
 
+  // Marca o body para ativar regras CSS de densidade compacta na página de produtos
+  useEffect(() => {
+    document.body.setAttribute('data-page', 'produtos');
+    return () => { document.body.removeAttribute('data-page'); };
+  }, []);
+
   // ── Dialog states ───────────────────────────────────────
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);

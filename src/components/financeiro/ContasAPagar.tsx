@@ -881,82 +881,82 @@ export function ContasAPagar() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{batchConfirmStep ? 'Confirmar Baixa em Lote' : 'Baixa em Lote'}</DialogTitle>
+            <DialogTitle className="text-sm">{batchConfirmStep ? 'Confirmar Baixa em Lote' : 'Baixa em Lote'}</DialogTitle>
           </DialogHeader>
 
           {batchConfirmStep ? (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                <div className="flex justify-between text-sm">
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Parcelas selecionadas:</span>
-                  <span className="font-bold">{selectedEntries.length}</span>
+                  <span className="font-bold tabular-nums">{selectedEntries.length}</span>
                 </div>
                 <Separator />
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {selectedEntries.map(e => (
-                    <div key={e.id} className="flex justify-between text-xs">
+                    <div key={e.id} className="flex justify-between text-[11px]">
                       <span className="truncate mr-2">{e.description}</span>
-                      <span className="font-medium shrink-0">R$ {Number(e.amount).toFixed(2)}</span>
+                      <span className="font-medium shrink-0 tabular-nums">R$ {Number(e.amount).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
                 <Separator />
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Valor total:</span>
-                  <span className="font-bold text-green-600">R$ {batchTotal.toFixed(2)}</span>
+                  <span className="font-bold text-green-600 tabular-nums">R$ {batchTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Forma de pagamento:</span>
                   <span className="font-medium">{batchSelectedPaymentMethod?.name || '-'}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Conta bancária:</span>
                   <span className="font-medium">{batchSelectedBank?.name || '-'}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Data:</span>
-                  <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                  <span className="font-medium tabular-nums">{format(new Date(), 'dd/MM/yyyy')}</span>
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
-                <Button onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
-                  <Check className="h-4 w-4 mr-2" />
+                <Button size="sm" variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
+                <Button size="sm" onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
                   Confirmar Pagamento
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="rounded-lg border bg-muted/30 p-3">
-                <p className="text-sm font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
-                <p className="text-lg font-bold text-green-600">Total: R$ {batchTotal.toFixed(2)}</p>
+                <p className="text-xs font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
+                <p className="text-base font-bold text-green-600 tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
               </div>
-              <div>
-                <Label>Forma de Pagamento</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Forma de Pagamento</Label>
                 <Select value={batchPaymentMethodId} onValueChange={setBatchPaymentMethodId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {activePaymentMethods.map(pm => (
-                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                      <SelectItem key={pm.id} value={pm.id} className="text-xs">{pm.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Conta Bancária</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Conta Bancária</Label>
                 <Select value={batchPaymentBankId} onValueChange={setBatchPaymentBankId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {activeBanks.map(bank => (
-                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      <SelectItem key={bank.id} value={bank.id} className="text-xs">{bank.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setBatchPayDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={() => {
+                <Button size="sm" variant="outline" onClick={() => setBatchPayDialogOpen(false)}>Cancelar</Button>
+                <Button size="sm" onClick={() => {
                   if (!batchPaymentMethodId) { toast.error('Selecione a forma de pagamento'); return; }
                   setBatchConfirmStep(true);
                 }} className="bg-green-600 hover:bg-green-700">

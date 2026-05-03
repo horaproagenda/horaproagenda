@@ -3,14 +3,68 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      className="relative w-full overflow-auto scrollbar-visible"
-      style={{ touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
-    >
-      <table ref={ref} className={cn("w-full caption-bottom text-xs sm:text-sm", className)} {...props} />
-    </div>
-  ),
+  ({ className, ...props }, ref) => {
+    const topScrollRef = React.useRef<HTMLDivElement>(null);
+    const bottomScrollRef = React.useRef<HTMLDivElement>(null);
+    const tableRef = React.useRef<HTMLTableElement>(null);
+    const [scrollWidth, setScrollWidth] = React.useState(0);
+    const [hasOverflow, setHasOverflow] = React.useState(false);
+    const syncing = React.useRef<"top" | "bottom" | null>(null);
+
+    React.useImperativeHandle(ref, () => tableRef.current as HTMLTableElement);
+
+    React.useEffect(() => {
+      const table = tableRef.current;
+      const container = bottomScrollRef.current;
+      if (!table || !container) return;
+      const update = () => {
+        setScrollWidth(table.scrollWidth);
+        setHasOverflow(table.scrollWidth > container.clientWidth + 1);
+      };
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(table);
+      ro.observe(container);
+      return () => ro.disconnect();
+    }, []);
+
+    const onScroll = (source: "top" | "bottom") => () => {
+      if (syncing.current && syncing.current !== source) return;
+      syncing.current = source;
+      const top = topScrollRef.current;
+      const bottom = bottomScrollRef.current;
+      if (top && bottom) {
+        if (source === "top") bottom.scrollLeft = top.scrollLeft;
+        else top.scrollLeft = bottom.scrollLeft;
+      }
+      requestAnimationFrame(() => {
+        syncing.current = null;
+      });
+    };
+
+    return (
+      <div className="relative w-full">
+        {hasOverflow && (
+          <div
+            ref={topScrollRef}
+            onScroll={onScroll("top")}
+            className="overflow-x-auto overflow-y-hidden h-2.5 mb-1 scrollbar-visible"
+            aria-hidden="true"
+          >
+            <div style={{ width: scrollWidth, height: 1 }} />
+          </div>
+        )}
+        <div
+          ref={bottomScrollRef}
+          onScroll={onScroll("bottom")}
+          className="relative w-full overflow-auto scrollbar-visible"
+          style={{ touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+        >
+          <table ref={tableRef} className={cn("w-full caption-bottom text-xs sm:text-sm", className)} {...props} />
+        </div>
+      </div>
+    );
+  },
 );
 Table.displayName = "Table";
 

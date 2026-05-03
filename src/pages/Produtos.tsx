@@ -803,22 +803,22 @@ export default function Produtos() {
         <Card className="card-hover">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table className="text-xs">
+              <Table className="text-[11px]">
                 <TableHeader>
-                  <TableRow className="h-8">
-                    <TableHead className="h-8 py-1.5 text-[11px]">Produto</TableHead>
-                    <TableHead className="h-8 py-1.5 text-[11px]">Estoque</TableHead>
-                    <TableHead className="h-8 py-1.5 text-[11px]">Tipo de Uso</TableHead>
-                    <TableHead className="h-8 py-1.5 text-[11px]">Atend.</TableHead>
-                    <TableHead className="h-8 py-1.5 text-[11px]">Status</TableHead>
-                    <TableHead className="h-8 py-1.5 text-[11px] text-right">Ações</TableHead>
+                  <TableRow className="h-7">
+                    <TableHead className="h-7 py-1 text-[10px]">Produto</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Estoque</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Tipo de Uso</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Atend.</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Status</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-xs">
-                        <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                        <Package className="h-7 w-7 mx-auto mb-2 opacity-20" />
                         <p>Nenhum produto cadastrado</p>
                       </TableCell>
                     </TableRow>
@@ -833,50 +833,50 @@ export default function Produtos() {
                           className={cn("cursor-pointer hover:bg-muted/50", isLowStock && "bg-amber-50/50 dark:bg-amber-950/20")}
                           onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }}
                         >
-                          <TableCell className="py-1.5">
+                          <TableCell className="py-1">
                             <div>
-                              <p className="font-medium text-xs leading-tight">{product.name}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-                                {product.brand && <span>{product.brand}</span>}
-                                {product.category && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">{product.category}</Badge>}
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">{getTypeLabel(product.product_type)}</Badge>
+                              <p className="font-medium text-[11px] leading-tight">{product.name}</p>
+                              <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-0.5">
+                                {product.brand && <span className="truncate max-w-[70px]">{product.brand}</span>}
+                                {product.category && <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 leading-none font-normal">{product.category}</Badge>}
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 leading-none font-normal">{getTypeLabel(product.product_type)}</Badge>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="py-1.5">
-                            <span className={cn("font-medium text-xs", isLowStock && "text-amber-600")}>
+                          <TableCell className="py-1">
+                            <span className={cn("font-medium text-[11px] tabular-nums", isLowStock && "text-amber-600")}>
                               {product.current_stock} {getUnitLabel(product.unit)}
                             </span>
-                            {isLowStock && <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 h-4 border-amber-500 text-amber-600">Baixo</Badge>}
+                            {isLowStock && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal border-amber-500 text-amber-600">Baixo</Badge>}
                           </TableCell>
-                          <TableCell className="py-1.5">
+                          <TableCell className="py-1">
                             {product.is_for_sale ? (
                               <div className="flex items-center gap-1 text-green-600">
-                                <Store className="h-3 w-3" /><span className="text-[11px]">Venda</span>
+                                <Store className="h-2.5 w-2.5" /><span className="text-[10px]">Venda</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-blue-600">
-                                <Building2 className="h-3 w-3" /><span className="text-[11px]">Clínica</span>
+                                <Building2 className="h-2.5 w-2.5" /><span className="text-[10px]">Clínica</span>
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="py-1.5">
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{totalAppointments}</Badge>
+                          <TableCell className="py-1">
+                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none font-normal tabular-nums">{totalAppointments}</Badge>
                           </TableCell>
-                          <TableCell className="py-1.5">
-                            <Badge variant={product.is_active ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 h-4">
+                          <TableCell className="py-1">
+                            <Badge variant={product.is_active ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0 h-4 leading-none font-normal">
                               {product.is_active ? 'Ativo' : 'Inativo'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="py-1 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex gap-0.5 justify-end">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }} title="Ver detalhes">
-                                <Eye className="h-3.5 w-3.5" />
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }} title="Ver detalhes">
+                                <Eye className="h-3 w-3" />
                               </Button>
                               {canDelete && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>

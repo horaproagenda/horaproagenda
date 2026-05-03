@@ -589,16 +589,26 @@ export function PacotesFinanceiro() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Custo médio por aplicação ao profissional (R$)</Label>
+              <Label className="text-xs flex items-center gap-1">
+                Custo de material por aplicação (R$)
+                {calculatingCost && <span className="text-[10px] text-muted-foreground">(calculando...)</span>}
+              </Label>
               <Input
                 type="number"
                 step="0.01"
                 value={costPerApplication}
-                onChange={(e) => setCostPerApplication(e.target.value)}
+                onChange={(e) => { setCostPerApplication(e.target.value); setAutoCostInfo(null); }}
                 className="h-8 text-xs"
               />
+              {autoCostInfo && (
+                <p className="text-[10px] text-emerald-600 flex items-start gap-1">
+                  <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
+                  <span>{autoCostInfo}</span>
+                </p>
+              )}
               <p className="text-[10px] text-muted-foreground">
-                Total descontado: R$ {((selected?.usedSessions || 0) * (parseFloat(costPerApplication) || 0)).toFixed(2)}
+                Total descontado por material consumido: R$ {((selected?.usedSessions || 0) * (parseFloat(costPerApplication) || 0)).toFixed(2)}
+                <span className="block">({selected?.usedSessions || 0} aplicação(ões) × R$ {(parseFloat(costPerApplication) || 0).toFixed(2)})</span>
               </p>
             </div>
 

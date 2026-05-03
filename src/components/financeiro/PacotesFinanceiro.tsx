@@ -16,9 +16,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
 import { toast } from 'sonner';
 
 interface PackageSaleRow {

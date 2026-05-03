@@ -15,11 +15,17 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
+import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
+import { DoubleScroll } from '@/components/shared/DoubleScroll';
 import { toast } from 'sonner';
 
 interface PackageSaleRow {
@@ -42,6 +48,10 @@ export function PacotesFinanceiro() {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled'>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [selected, setSelected] = useState<PackageSaleRow | null>(null);
   const [costPerApplication, setCostPerApplication] = useState('0');
@@ -131,13 +141,24 @@ export function PacotesFinanceiro() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(r =>
-      r.packageName.toLowerCase().includes(q) ||
-      r.clientName.toLowerCase().includes(q) ||
-      r.paymentMethodName.toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+    return rows.filter((r) => {
+      if (q) {
+        const matchesQ =
+          r.packageName.toLowerCase().includes(q) ||
+          r.clientName.toLowerCase().includes(q) ||
+          r.paymentMethodName.toLowerCase().includes(q);
+        if (!matchesQ) return false;
+      }
+      if (statusFilter === 'active' && r.isCancelled) return false;
+      if (statusFilter === 'cancelled' && !r.isCancelled) return false;
+      if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
+      if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
+      return true;
+    });
+  }, [rows, search, statusFilter, dateFrom, dateTo]);
+
+  const activeFilterCount =
+    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const refundAmount = useMemo(() => {
     if (!selected) return 0;
@@ -484,17 +505,95 @@ export function PacotesFinanceiro() {
           </CardContent>
         </Card>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar por pacote, cliente ou forma de pagamento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9 text-xs"
+            className="pl-8 h-7 text-[11px]"
           />
         </div>
-        <Badge variant="outline" className="text-xs">
+
+        {/* Filtros compactos (mesmo padrão da Agenda) */}
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger asChild>
+            <CompactFilterTrigger activeCount={activeFilterCount} />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 max-w-[calc(100vw-1rem)] p-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setDateFrom('');
+                    setDateTo('');
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {/* Status */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Status do pacote
+                </p>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+                >
+                  <SelectTrigger className="h-7 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="cancelled">Cancelados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Data */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    De
+                  </p>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-7 text-[11px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    Até
+                  </p>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-7 text-[11px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Badge variant="outline" className="text-[10px] h-7 px-2">
           <Package className="h-3 w-3 mr-1" /> {filtered.length} pacotes
         </Badge>
       </div>
@@ -506,7 +605,7 @@ export function PacotesFinanceiro() {
           ) : filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pacote vendido encontrado.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <DoubleScroll>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -561,7 +660,7 @@ export function PacotesFinanceiro() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </DoubleScroll>
           )}
         </CardContent>
       </Card>

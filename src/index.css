@@ -999,3 +999,38 @@ table thead th {
 .settings-page .space-y-6 > * + * { margin-top: 0.875rem; }
 .settings-page .space-y-4 > * + * { margin-top: 0.625rem; }
 
+
+/* === Fix: input time/date/datetime ícones nativos sobrepondo texto === */
+input[type="time"],
+input[type="date"],
+input[type="datetime-local"] {
+  /* Reserva espaço à direita para o ícone do calendário/relógio nativo */
+  padding-right: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Webkit (Chrome/Safari/Edge): posicionar e dar espaço ao picker indicator */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Em mobile, ainda mais espaço para evitar sobreposição com o valor digitado */
+@media (max-width: 480px) {
+  input[type="time"],
+  input[type="date"],
+  input[type="datetime-local"] {
+    padding-right: 2.25rem;
+    font-size: 0.85rem;
+  }
+}

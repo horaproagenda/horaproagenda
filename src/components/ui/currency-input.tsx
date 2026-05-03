@@ -33,7 +33,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
 
     return (
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-muted-foreground font-medium">R$</span>
         <Input
           ref={ref}
           inputMode="decimal"
@@ -61,7 +61,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
             setDisplayValue(formatCurrencyInput(normalizedValue));
             setIsEditing(false);
           }}
-          className={className ? `pl-9 ${className}` : 'pl-9'}
+          className={className ? `pl-10 ${className}` : 'pl-10'}
           {...props}
         />
       </div>

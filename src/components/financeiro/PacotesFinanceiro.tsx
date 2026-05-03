@@ -135,13 +135,24 @@ export function PacotesFinanceiro() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(r =>
-      r.packageName.toLowerCase().includes(q) ||
-      r.clientName.toLowerCase().includes(q) ||
-      r.paymentMethodName.toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+    return rows.filter((r) => {
+      if (q) {
+        const matchesQ =
+          r.packageName.toLowerCase().includes(q) ||
+          r.clientName.toLowerCase().includes(q) ||
+          r.paymentMethodName.toLowerCase().includes(q);
+        if (!matchesQ) return false;
+      }
+      if (statusFilter === 'active' && r.isCancelled) return false;
+      if (statusFilter === 'cancelled' && !r.isCancelled) return false;
+      if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
+      if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
+      return true;
+    });
+  }, [rows, search, statusFilter, dateFrom, dateTo]);
+
+  const activeFilterCount =
+    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const refundAmount = useMemo(() => {
     if (!selected) return 0;

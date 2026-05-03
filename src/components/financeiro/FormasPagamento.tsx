@@ -289,7 +289,7 @@ export function FormasPagamento() {
                 </DialogContent>
               </Dialog>
             </div>
-            <ScrollArea className="h-[400px]">
+            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
               <Table>
                 <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Parcelas</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -399,7 +399,7 @@ export function FormasPagamento() {
 
             <Separator />
 
-            <ScrollArea className="h-[350px]">
+            <div className="max-h-[350px] overflow-y-auto overflow-x-visible">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -482,7 +482,7 @@ export function FormasPagamento() {
           {/* Banks Tab */}
           <TabsContent value="banks" className="space-y-4">
             <div className="flex justify-end"><ManageBanksDialog /></div>
-            <ScrollArea className="h-[400px]">
+            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
               <Table>
                 <TableHeader><TableRow><TableHead>Banco</TableHead><TableHead>Código</TableHead><TableHead>Agência</TableHead><TableHead>Conta</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -555,7 +555,7 @@ export function FormasPagamento() {
                 </DialogContent>
               </Dialog>
             </div>
-            <ScrollArea className="h-[400px]">
+            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
               <Table>
                 <TableHeader><TableRow><TableHead className="text-[11px]">Bandeira</TableHead><TableHead className="text-[11px]">Tipo</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Quem paga taxa</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Parcelas</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Status</TableHead><TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead></TableRow></TableHeader>
                 <TableBody>

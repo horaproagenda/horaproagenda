@@ -758,19 +758,19 @@ export function ContasAPagar() {
             <TableHeader>
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
-                <TableHead>Data</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Forma Pgto</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-[11px]">Data</TableHead>
+                <TableHead className="text-[11px]">Descrição</TableHead>
+                <TableHead className="text-[11px]">Categoria</TableHead>
+                <TableHead className="text-[11px]">Forma Pgto</TableHead>
+                <TableHead className="text-[11px]">Valor</TableHead>
+                <TableHead className="text-[11px]">Status</TableHead>
+                <TableHead className="text-[11px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-xs text-muted-foreground">
                     Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
@@ -778,7 +778,7 @@ export function ContasAPagar() {
                 filteredPayables.map((entry) => (
                   <TableRow key={entry.id}>
                     {batchMode && (
-                      <TableCell>
+                      <TableCell className="py-2">
                         {entry.status !== 'paid' && (
                           <Checkbox
                             checked={selectedEntryIds.has(entry.id)}
@@ -787,30 +787,30 @@ export function ContasAPagar() {
                         )}
                       </TableCell>
                     )}
-                    <TableCell>{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>{entry.description}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-xs py-2 max-w-[280px] truncate" title={entry.description}>{entry.description}</TableCell>
+                    <TableCell className="text-[11px] py-2 text-muted-foreground">
                       {entry.category?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-[11px] py-2">
                       {entry.payment_method?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-red-600 font-medium">
+                    <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs py-2">
                       {getStatusDisplay(entry)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-xs py-2 text-right">
                       <div className="flex justify-end gap-1">
                         {entry.status !== 'paid' && !batchMode && (
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => openPayDialog(entry)} 
-                            className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                            className="h-7 px-2 gap-1 text-[11px] text-green-700 border-green-300 hover:bg-green-50"
                           >
-                            <DollarSign className="h-3.5 w-3.5" />
+                            <DollarSign className="h-3 w-3" />
                             Dar Baixa
                           </Button>
                         )}
@@ -819,18 +819,20 @@ export function ContasAPagar() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
+                              className="h-7 w-7"
                               onClick={() => openPayDialog(entry, true)} 
                               title="Editar pagamento"
                             >
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
+                              className="h-7 w-7"
                               onClick={() => openCancelDialog(entry)} 
                               title="Cancelar baixa"
                             >
-                              <Undo2 className="h-4 w-4 text-orange-500" />
+                              <Undo2 className="h-3.5 w-3.5 text-orange-500" />
                             </Button>
                           </>
                         )}

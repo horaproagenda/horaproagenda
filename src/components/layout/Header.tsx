@@ -26,7 +26,9 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Global Refresh Button */}
+        <OfflineStatusBadge />
+
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

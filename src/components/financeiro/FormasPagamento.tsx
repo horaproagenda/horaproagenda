@@ -250,19 +250,19 @@ export function FormasPagamento() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Formas de Pagamento</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4 text-primary" />Formas de Pagamento</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="methods" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="methods"><Banknote className="h-4 w-4 mr-2" />Métodos</TabsTrigger>
-            <TabsTrigger value="boleto">
-              <FileText className="h-4 w-4 mr-2" />Boleto
-              {boletoStats.overdue > 0 && <Badge className="ml-1 bg-red-500 text-white text-[9px] px-1 py-0">{boletoStats.overdue}</Badge>}
+          <TabsList className="w-full grid grid-cols-4 h-auto">
+            <TabsTrigger value="methods" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><Banknote className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Métodos</span></TabsTrigger>
+            <TabsTrigger value="boleto" className="text-[11px] sm:text-xs gap-1 px-1 h-9">
+              <FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Boleto</span>
+              {boletoStats.overdue > 0 && <Badge className="ml-0.5 bg-red-500 text-white text-[9px] px-1 py-0">{boletoStats.overdue}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="banks"><Landmark className="h-4 w-4 mr-2" />Bancos</TabsTrigger>
-            <TabsTrigger value="cards"><CreditCard className="h-4 w-4 mr-2" />Cartões</TabsTrigger>
+            <TabsTrigger value="banks" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><Landmark className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Bancos</span></TabsTrigger>
+            <TabsTrigger value="cards" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><CreditCard className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Cartões</span></TabsTrigger>
           </TabsList>
 
           {/* Payment Methods Tab */}

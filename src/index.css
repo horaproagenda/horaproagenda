@@ -1083,3 +1083,41 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     font-size: 0.85rem;
   }
 }
+
+/* ============================================================
+   Compact badges/buttons em listas (Produtos, Financeiro, Agenda)
+   Padroniza tamanhos para visual minimalista e alinhado.
+   ============================================================ */
+@layer components {
+  /* Badges dentro de tabelas: altura uniforme, fonte 9px, padding mínimo */
+  table tbody [data-slot="badge"],
+  table tbody .badge,
+  table tbody [class*="bg-secondary"][class*="rounded"],
+  table tbody [class*="border"][class*="rounded-full"] {
+    font-size: 9px !important;
+    line-height: 1 !important;
+    padding: 0 6px !important;
+    height: 16px !important;
+    font-weight: 500 !important;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Botões-ícone em linhas de tabela: 24px uniformes */
+  table tbody button[class*="h-7"],
+  table tbody button[class*="h-8"] {
+    height: 24px !important;
+    width: 24px !important;
+  }
+  table tbody button[class*="h-7"] svg,
+  table tbody button[class*="h-8"] svg {
+    height: 12px !important;
+    width: 12px !important;
+  }
+
+  /* Densidade vertical das células (mantém legibilidade) */
+  table tbody td {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+}

@@ -94,17 +94,17 @@ serve(async (req) => {
     const results = {
       whatsapp_sent: false,
       whatsapp_error: null as string | null,
-      alerts_processed: alerts.length,
+      alerts_processed: alertsArr.length,
     };
 
     // Build notification message
     let message = `🚨 *ALERTA DE PRODUTOS*\n\n`;
     
-    const expiredAlerts = alerts.filter(a => a.alert_type === 'expired');
-    const expiringTodayAlerts = alerts.filter(a => a.alert_type === 'expiring_today');
-    const expiringSoonAlerts = alerts.filter(a => a.alert_type === 'expiring_soon');
-    const criticalAlerts = alerts.filter(a => a.alert_type === 'low_stock');
-    const warningAlerts = alerts.filter(a => a.alert_type === 'near_depletion');
+    const expiredAlerts = alertsArr.filter(a => a.alert_type === 'expired');
+    const expiringTodayAlerts = alertsArr.filter(a => a.alert_type === 'expiring_today');
+    const expiringSoonAlerts = alertsArr.filter(a => a.alert_type === 'expiring_soon');
+    const criticalAlerts = alertsArr.filter(a => a.alert_type === 'low_stock');
+    const warningAlerts = alertsArr.filter(a => a.alert_type === 'near_depletion');
 
     // Expired products - most critical
     if (expiredAlerts.length > 0) {
@@ -218,7 +218,7 @@ serve(async (req) => {
       action: 'stock_alert_notification',
       table_name: 'products',
       new_data: {
-        alerts: alerts.map(a => ({ product_id: a.product_id, product_name: a.product_name, alert_type: a.alert_type })),
+        alerts: alertsArr.map(a => ({ product_id: a.product_id, product_name: a.product_name, alert_type: a.alert_type })),
         whatsapp_sent: results.whatsapp_sent,
         whatsapp_error: results.whatsapp_error,
       },

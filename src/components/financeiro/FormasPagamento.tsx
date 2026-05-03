@@ -308,7 +308,7 @@ export function FormasPagamento() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* Boleto Tab */}
@@ -464,7 +464,7 @@ export function FormasPagamento() {
                   )}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
 
             <Separator />
 
@@ -498,7 +498,7 @@ export function FormasPagamento() {
                   {banks.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum banco cadastrado.</TableCell></TableRow>}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* Card Brands Tab */}
@@ -577,7 +577,7 @@ export function FormasPagamento() {
                   {cardBrands.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-xs">Nenhuma bandeira cadastrada</TableCell></TableRow>}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

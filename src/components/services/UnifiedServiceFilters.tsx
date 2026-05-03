@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, X, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
 import { cn } from '@/lib/utils';
 
 interface FilterOption {
@@ -167,37 +168,23 @@ export function UnifiedServiceFilters({
       {/* Filter button */}
       <Popover open={filterOpen} onOpenChange={setFilterOpen}>
         <PopoverTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={cn(
-              "h-8 gap-1.5",
-              hasActiveFilters && "border-primary text-primary"
-            )}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            <span className="text-xs">Filtros</span>
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="h-4 px-1 text-[10px] min-w-4 justify-center">
-                {activeFilterCount}
-              </Badge>
-            )}
-          </Button>
+          <CompactFilterTrigger activeCount={activeFilterCount} />
         </PopoverTrigger>
           <PopoverContent align="start" className="w-72 p-3">
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">Filtros</p>
+              <div className="flex items-center justify-between px-1">
+                <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                    className="h-6 px-2 text-[10px] gap-1"
                     onClick={() => {
                       onClearFilters();
                       setFilterOpen(false);
                     }}
                   >
+                    <X className="h-3 w-3" />
                     Limpar
                   </Button>
                 )}

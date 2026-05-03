@@ -638,6 +638,55 @@ input[type="number"] {
   }
 }
 
+/* ============================================================
+ * MOBILE: densidade compacta global em diálogos, formulários e produtos
+ * Aplica padding/fonte reduzidos sem afetar desktop.
+ * ============================================================ */
+@media (max-width: 767px) {
+  /* Diálogos: títulos, labels e inputs compactos */
+  [role="dialog"] h2,
+  [role="dialog"] [data-slot="dialog-title"] {
+    font-size: 0.95rem !important;
+    line-height: 1.25 !important;
+  }
+  [role="dialog"] [data-slot="dialog-description"] {
+    font-size: 0.72rem !important;
+  }
+  [role="dialog"] label {
+    font-size: 0.72rem !important;
+    margin-bottom: 0.125rem !important;
+  }
+  [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
+  [role="dialog"] textarea,
+  [role="dialog"] [role="combobox"] {
+    font-size: 0.78rem !important;
+  }
+  [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
+  [role="dialog"] [role="combobox"] {
+    height: 2.25rem !important;
+  }
+  [role="dialog"] textarea {
+    min-height: 4rem !important;
+  }
+
+  /* Página Produtos: layout minimalista no mobile */
+  body[data-page="produtos"] h1,
+  body[data-page="produtos"] .text-2xl {
+    font-size: 1rem !important;
+  }
+  body[data-page="produtos"] .text-xl {
+    font-size: 0.95rem !important;
+  }
+  body[data-page="produtos"] table th {
+    font-size: 0.68rem !important;
+    padding: 0.4rem 0.4rem !important;
+  }
+  body[data-page="produtos"] table td {
+    font-size: 0.72rem !important;
+    padding: 0.4rem 0.4rem !important;
+  }
+}
+
 
 @layer utilities {
   .scrollbar-visible {

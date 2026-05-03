@@ -111,24 +111,10 @@ export function CategoriasFinanceiras() {
     overdue_tolerance_days: '0',
   });
 
-  // Create default categories if none exist
-  useEffect(() => {
-    if (categories.length === 0) {
-      const seen = new Set<string>();
-      DEFAULT_CATEGORIES.forEach(cat => {
-        const key = `${cat.name}|${cat.type}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        createCategory.mutate({
-          name: cat.name,
-          type: cat.type as 'income' | 'expense',
-          is_recurring: false,
-          description: '',
-          is_active: true,
-        });
-      });
-    }
-  }, [categories.length]);
+  // NOTE: Auto-criação de categorias padrão foi REMOVIDA porque causava
+  // duplicatas em race-condition (re-execuções do effect antes do invalidate
+  // chegar). O índice único (lower(name), type) no banco agora protege contra
+  // duplicatas, e o usuário deve criar suas próprias categorias manualmente.
 
   // Use deduplicated categories from hook
   const expenseCats = expenseCategories;

@@ -222,16 +222,10 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
         });
       }
 
-      await supabase.from('financial_entries').insert({
-        type: 'payable',
-        description: refundDescription,
-        amount: refundAmount,
-        due_date: today,
-        paid_date: today,
-        status: 'paid',
-        notes: `Cancelamento de venda - Serviço: ${selectedSale?.serviceName || '-'} - Cliente: ${clientName}`,
-        created_by: user?.id,
-      });
+      // NOTE: NÃO criar financial_entry do tipo 'payable' aqui.
+      // A devolução já está registrada como cash_transaction (saída) e aparece
+      // corretamente no Extrato/Caixa. Criar como 'payable' fazia ela aparecer
+      // indevidamente em "Contas a Pagar" como se fosse uma conta pendente.
 
       if (saleId && serviceId) {
         await supabase

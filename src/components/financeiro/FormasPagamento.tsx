@@ -250,19 +250,19 @@ export function FormasPagamento() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Formas de Pagamento</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4 text-primary" />Formas de Pagamento</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="methods" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="methods"><Banknote className="h-4 w-4 mr-2" />Métodos</TabsTrigger>
-            <TabsTrigger value="boleto">
-              <FileText className="h-4 w-4 mr-2" />Boleto
-              {boletoStats.overdue > 0 && <Badge className="ml-1 bg-red-500 text-white text-[9px] px-1 py-0">{boletoStats.overdue}</Badge>}
+          <TabsList className="w-full grid grid-cols-4 h-auto">
+            <TabsTrigger value="methods" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><Banknote className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Métodos</span></TabsTrigger>
+            <TabsTrigger value="boleto" className="text-[11px] sm:text-xs gap-1 px-1 h-9">
+              <FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Boleto</span>
+              {boletoStats.overdue > 0 && <Badge className="ml-0.5 bg-red-500 text-white text-[9px] px-1 py-0">{boletoStats.overdue}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="banks"><Landmark className="h-4 w-4 mr-2" />Bancos</TabsTrigger>
-            <TabsTrigger value="cards"><CreditCard className="h-4 w-4 mr-2" />Cartões</TabsTrigger>
+            <TabsTrigger value="banks" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><Landmark className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Bancos</span></TabsTrigger>
+            <TabsTrigger value="cards" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><CreditCard className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Cartões</span></TabsTrigger>
           </TabsList>
 
           {/* Payment Methods Tab */}
@@ -311,21 +311,21 @@ export function FormasPagamento() {
           </TabsContent>
 
           {/* Boleto Tab */}
-          <TabsContent value="boleto" className="space-y-4">
-            <div className="grid grid-cols-4 gap-3">
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
-                <p className="text-xs text-muted-foreground">Total</p><p className="text-lg font-bold">{boletoStats.total}</p>
+          <TabsContent value="boleto" className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p><p className="text-base font-bold tabular-nums">{boletoStats.total}</p>
               </div>
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
-                <p className="text-xs text-muted-foreground">Pendentes</p><p className="text-lg font-bold text-orange-600">{boletoStats.pending}</p>
-                <p className="text-[10px] text-muted-foreground">R$ {boletoStats.totalPending.toFixed(2)}</p>
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pendentes</p><p className="text-base font-bold text-orange-600 tabular-nums">{boletoStats.pending}</p>
+                <p className="text-[10px] text-muted-foreground tabular-nums">R$ {boletoStats.totalPending.toFixed(2)}</p>
               </div>
-              <div className="rounded-lg border border-red-200 p-3 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
-                <p className="text-xs text-red-600">Atrasados</p><p className="text-lg font-bold text-red-600">{boletoStats.overdue}</p>
-                <p className="text-[10px] text-red-500">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
+              <div className="rounded-lg border border-red-200 p-2 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
+                <p className="text-[10px] uppercase tracking-wide text-red-600">Atrasados</p><p className="text-base font-bold text-red-600 tabular-nums">{boletoStats.overdue}</p>
+                <p className="text-[10px] text-red-500 tabular-nums">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
               </div>
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
-                <p className="text-xs text-muted-foreground">Pagos</p><p className="text-lg font-bold text-green-600">{boletoStats.paid}</p>
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pagos</p><p className="text-base font-bold text-green-600 tabular-nums">{boletoStats.paid}</p>
               </div>
             </div>
 
@@ -378,19 +378,19 @@ export function FormasPagamento() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="text-center">Boletos</TableHead>
-                    <TableHead className="text-center">Pendentes</TableHead>
-                    <TableHead className="text-center">Atrasados</TableHead>
-                    <TableHead>Próx. Vencimento</TableHead>
-                    <TableHead>Total Pendente</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="text-[11px]">Cliente</TableHead>
+                    <TableHead className="text-[11px] text-center hidden sm:table-cell">Boletos</TableHead>
+                    <TableHead className="text-[11px] text-center">Pend.</TableHead>
+                    <TableHead className="text-[11px] text-center hidden xs:table-cell">Atras.</TableHead>
+                    <TableHead className="text-[11px] hidden sm:table-cell">Próx. Venc.</TableHead>
+                    <TableHead className="text-[11px]">Total</TableHead>
+                    <TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredClientGroups.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">
                         {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
                       </TableCell>
                     </TableRow>
@@ -407,30 +407,30 @@ export function FormasPagamento() {
                         .sort()[0];
                       return (
                         <TableRow key={group.key}>
-                          <TableCell className="text-sm font-medium">
-                            {group.clientName}
+                          <TableCell className="text-xs font-medium py-2">
+                            <div className="truncate max-w-[140px]">{group.clientName}</div>
                             {group.clientPhone && <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>}
                           </TableCell>
-                          <TableCell className="text-sm text-center">{all.length}</TableCell>
-                          <TableCell className="text-sm text-center text-orange-600 font-medium">{pending.length}</TableCell>
-                          <TableCell className="text-sm text-center">
+                          <TableCell className="text-xs text-center hidden sm:table-cell tabular-nums">{all.length}</TableCell>
+                          <TableCell className="text-xs text-center text-orange-600 font-medium tabular-nums">{pending.length}</TableCell>
+                          <TableCell className="text-xs text-center hidden xs:table-cell tabular-nums">
                             {overdue.length > 0 ? <span className="text-red-600 font-semibold">{overdue.length}</span> : '-'}
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-xs hidden sm:table-cell tabular-nums">
                             {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                           </TableCell>
-                          <TableCell className="text-sm font-medium text-orange-700">
+                          <TableCell className="text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap">
                             R$ {totalPending.toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right sticky right-0 bg-background">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1 h-7"
+                              className="gap-1 h-7 text-[11px] px-2"
                               onClick={() => setDetailClientKey(group.key)}
                             >
-                              <Eye className="h-3.5 w-3.5" />
-                              Visualizar
+                              <Eye className="h-3 w-3" />
+                              Ver
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -532,24 +532,24 @@ export function FormasPagamento() {
             </div>
             <ScrollArea className="h-[400px]">
               <Table>
-                <TableHeader><TableRow><TableHead>Bandeira</TableHead><TableHead>Tipo</TableHead><TableHead>Quem paga taxa</TableHead><TableHead>Parcelas</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead className="text-[11px]">Bandeira</TableHead><TableHead className="text-[11px]">Tipo</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Quem paga taxa</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Parcelas</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Status</TableHead><TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {cardBrands.map(brand => (
                     <TableRow key={brand.id}>
-                      <TableCell className="font-medium">{brand.name}</TableCell>
-                      <TableCell><Badge variant="outline">{brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}</Badge></TableCell>
-                      <TableCell>{brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'}</TableCell>
-                      <TableCell>{brand.fees?.length || 0} configuradas</TableCell>
-                      <TableCell><Badge variant={brand.is_active ? 'default' : 'secondary'}>{brand.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-medium text-xs">{brand.name}</TableCell>
+                      <TableCell className="text-xs"><Badge variant="outline" className="text-[10px]">{brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}</Badge></TableCell>
+                      <TableCell className="text-xs hidden sm:table-cell">{brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'}</TableCell>
+                      <TableCell className="text-xs hidden sm:table-cell">{brand.fees?.length || 0} configuradas</TableCell>
+                      <TableCell className="text-xs hidden sm:table-cell"><Badge variant={brand.is_active ? 'default' : 'secondary'} className="text-[10px]">{brand.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
+                      <TableCell className="text-right sticky right-0 bg-background">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openBrandEdit(brand)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteCardBrand.mutate(brand.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openBrandEdit(brand)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCardBrand.mutate(brand.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {cardBrands.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma bandeira cadastrada</TableCell></TableRow>}
+                  {cardBrands.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-xs">Nenhuma bandeira cadastrada</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </ScrollArea>

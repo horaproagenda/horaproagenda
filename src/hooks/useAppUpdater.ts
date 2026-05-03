@@ -101,7 +101,9 @@ export function useAppUpdater() {
 
     return () => {
       if (updateInterval) window.clearInterval(updateInterval);
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      if ('serviceWorker' in navigator && navigator.serviceWorker?.removeEventListener) {
+        navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      }
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', checkForUpdate);
     };

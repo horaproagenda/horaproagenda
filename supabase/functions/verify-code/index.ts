@@ -29,24 +29,60 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Find the verification code
-    const { data: verificationData, error: findError } = await supabaseClient
+    // Find the most recent unused code for this email (don't filter by code -
+    // we want to count attempts even on wrong guesses)
+    const { data: latestCode, error: findError } = await supabaseClient
       .from("verification_codes")
       .select("*")
       .eq("email", email.toLowerCase())
-      .eq("code", code)
-      .single();
+      .is("used_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (findError || !verificationData) {
-      console.error("Code not found:", findError);
+    if (findError || !latestCode) {
+      console.error("No active code:", findError);
       return new Response(
-        JSON.stringify({ valid: false, error: "Código inválido" }),
+        JSON.stringify({ valid: false, error: "Código inválido ou expirado" }),
         {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
+
+    // Check expiry first
+    if (new Date(latestCode.expires_at) < new Date()) {
+      await supabaseClient.from("verification_codes").delete().eq("id", latestCode.id);
+      return new Response(
+        JSON.stringify({ valid: false, error: "Código expirado" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Brute-force protection: lock after 5 wrong attempts
+    const MAX_ATTEMPTS = 5;
+    if ((latestCode.attempts ?? 0) >= MAX_ATTEMPTS) {
+      await supabaseClient.from("verification_codes").delete().eq("id", latestCode.id);
+      return new Response(
+        JSON.stringify({ valid: false, error: "Muitas tentativas. Solicite um novo código." }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Wrong code? Increment attempts and reject
+    if (latestCode.code !== code) {
+      await supabaseClient
+        .from("verification_codes")
+        .update({ attempts: (latestCode.attempts ?? 0) + 1 })
+        .eq("id", latestCode.id);
+      return new Response(
+        JSON.stringify({ valid: false, error: "Código inválido" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const verificationData = latestCode;
 
     // Check if code is expired
     const expiresAt = new Date(verificationData.expires_at);

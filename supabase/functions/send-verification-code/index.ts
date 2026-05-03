@@ -66,6 +66,23 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Cooldown: reject if a code was issued in the last 60 seconds
+    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    const { data: recent } = await supabaseClient
+      .from("verification_codes")
+      .select("id, created_at")
+      .eq("email", email.toLowerCase())
+      .gte("created_at", sixtySecondsAgo)
+      .limit(1)
+      .maybeSingle();
+
+    if (recent) {
+      return new Response(
+        JSON.stringify({ error: "Aguarde 60 segundos antes de solicitar um novo código." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Delete any existing codes for this email
     await supabaseClient
       .from("verification_codes")

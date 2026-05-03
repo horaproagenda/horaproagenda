@@ -27,36 +27,84 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
 
+    // --- AuthN/AuthZ: require valid JWT and admin/receptionist role ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const userId = claimsData.claims.sub;
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await req.json();
-    const { alerts, notifyPhone } = body as { alerts: StockAlert[], notifyPhone?: string };
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    const roles = (roleRows ?? []).map((r: any) => r.role);
+    if (!roles.includes('admin') && !roles.includes('receptionist')) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
+    const body = await req.json();
+    const { alerts } = body as { alerts: StockAlert[] };
+
+    // Whitelist alert_type values to prevent log injection
+    const ALLOWED_TYPES = new Set(['low_stock', 'near_depletion', 'expiring_today', 'expiring_soon', 'expired']);
+    const safeAlerts = (Array.isArray(alerts) ? alerts : []).filter((a) => a && ALLOWED_TYPES.has(a.alert_type));
+
+    // Derive notification phone from business_settings (NOT from request body)
+    const { data: settings } = await supabase
+      .from('business_settings')
+      .select('phone, whatsapp_phone')
+      .limit(1)
+      .maybeSingle();
+    const notifyPhone: string | undefined = (settings as any)?.whatsapp_phone || (settings as any)?.phone || undefined;
+
+    if (!safeAlerts || safeAlerts.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: 'No alerts to process' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // Reassign for downstream code that uses `alerts`
+    const alertsArr = safeAlerts;
 
     const results = {
       whatsapp_sent: false,
       whatsapp_error: null as string | null,
-      alerts_processed: alerts.length,
+      alerts_processed: alertsArr.length,
     };
 
     // Build notification message
     let message = `🚨 *ALERTA DE PRODUTOS*\n\n`;
     
-    const expiredAlerts = alerts.filter(a => a.alert_type === 'expired');
-    const expiringTodayAlerts = alerts.filter(a => a.alert_type === 'expiring_today');
-    const expiringSoonAlerts = alerts.filter(a => a.alert_type === 'expiring_soon');
-    const criticalAlerts = alerts.filter(a => a.alert_type === 'low_stock');
-    const warningAlerts = alerts.filter(a => a.alert_type === 'near_depletion');
+    const expiredAlerts = alertsArr.filter(a => a.alert_type === 'expired');
+    const expiringTodayAlerts = alertsArr.filter(a => a.alert_type === 'expiring_today');
+    const expiringSoonAlerts = alertsArr.filter(a => a.alert_type === 'expiring_soon');
+    const criticalAlerts = alertsArr.filter(a => a.alert_type === 'low_stock');
+    const warningAlerts = alertsArr.filter(a => a.alert_type === 'near_depletion');
 
     // Expired products - most critical
     if (expiredAlerts.length > 0) {
@@ -170,7 +218,7 @@ serve(async (req) => {
       action: 'stock_alert_notification',
       table_name: 'products',
       new_data: {
-        alerts: alerts.map(a => ({ product_id: a.product_id, product_name: a.product_name, alert_type: a.alert_type })),
+        alerts: alertsArr.map(a => ({ product_id: a.product_id, product_name: a.product_name, alert_type: a.alert_type })),
         whatsapp_sent: results.whatsapp_sent,
         whatsapp_error: results.whatsapp_error,
       },

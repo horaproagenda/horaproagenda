@@ -504,17 +504,95 @@ export function PacotesFinanceiro() {
           </CardContent>
         </Card>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar por pacote, cliente ou forma de pagamento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9 text-xs"
+            className="pl-8 h-7 text-[11px]"
           />
         </div>
-        <Badge variant="outline" className="text-xs">
+
+        {/* Filtros compactos (mesmo padrão da Agenda) */}
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger asChild>
+            <CompactFilterTrigger activeCount={activeFilterCount} />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 max-w-[calc(100vw-1rem)] p-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setDateFrom('');
+                    setDateTo('');
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {/* Status */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Status do pacote
+                </p>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+                >
+                  <SelectTrigger className="h-7 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="cancelled">Cancelados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Data */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    De
+                  </p>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-7 text-[11px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    Até
+                  </p>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-7 text-[11px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Badge variant="outline" className="text-[10px] h-7 px-2">
           <Package className="h-3 w-3 mr-1" /> {filtered.length} pacotes
         </Badge>
       </div>

@@ -140,6 +140,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                     <NavLink
                       to={item.href}
                       end={item.href === '/'}
+                      onClick={handleNavClick}
                       className={({ isActive }) =>
                         cn(
                           'flex items-center justify-center rounded-lg p-3 transition-all duration-200',
@@ -161,6 +162,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   key={item.name}
                   to={item.href}
                   end={item.href === '/'}
+                  onClick={handleNavClick}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',

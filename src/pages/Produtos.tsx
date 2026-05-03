@@ -780,20 +780,20 @@ export default function Produtos() {
         {/* Low Stock Alert */}
         {lowStockProducts.length > 0 && !filters.lowStock && (
           <Card className="border-warning/50 bg-warning/5 card-hover">
-            <CardHeader className="py-2 px-3">
-              <CardTitle className="text-sm flex items-center gap-2 text-warning">
-                <AlertTriangle className="h-4 w-4" />
+            <CardHeader className="py-1.5 px-2.5">
+              <CardTitle className="text-[11px] flex items-center gap-1.5 text-warning">
+                <AlertTriangle className="h-3 w-3" />
                 Estoque Baixo ({lowStockProducts.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="py-2 px-3">
-              <div className="flex flex-wrap gap-1.5">
+            <CardContent className="py-1.5 px-2.5">
+              <div className="flex flex-wrap gap-1">
                 {lowStockProducts.slice(0, 5).map(p => (
-                  <Badge key={p.id} variant="outline" className="border-warning/50 text-warning text-[10px] cursor-pointer hover:bg-warning/10" onClick={() => { setSelectedProduct(p); setDetailDialogOpen(true); }}>
+                  <Badge key={p.id} variant="outline" className="border-warning/50 text-warning text-[9px] px-1.5 py-0 h-4 cursor-pointer hover:bg-warning/10" onClick={() => { setSelectedProduct(p); setDetailDialogOpen(true); }}>
                     {p.name} ({p.current_stock} {getUnitLabel(p.unit)})
                   </Badge>
                 ))}
-                {lowStockProducts.length > 5 && <Badge variant="outline" className="text-[10px]">+{lowStockProducts.length - 5} mais</Badge>}
+                {lowStockProducts.length > 5 && <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">+{lowStockProducts.length - 5} mais</Badge>}
               </div>
             </CardContent>
           </Card>

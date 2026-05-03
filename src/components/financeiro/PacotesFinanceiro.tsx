@@ -16,9 +16,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
 import { toast } from 'sonner';
 
 interface PackageSaleRow {
@@ -48,6 +49,8 @@ export function PacotesFinanceiro() {
   const [refundMethod, setRefundMethod] = useState('Dinheiro');
   const [cancelReason, setCancelReason] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [autoCostInfo, setAutoCostInfo] = useState<string | null>(null);
+  const [calculatingCost, setCalculatingCost] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['package-sales-financial'],
@@ -189,14 +192,71 @@ export function PacotesFinanceiro() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selected, costPerApplication, penalty, refundMethod, cancelReason, refundAmount]);
 
-  const openCancel = (row: PackageSaleRow) => {
+  const openCancel = async (row: PackageSaleRow) => {
     setSelected(row);
     setCostPerApplication('0');
     setPenalty('0');
     setRefundMethod('Dinheiro');
     setCancelReason('');
     setValidationError(null);
+    setAutoCostInfo(null);
     setCancelOpen(true);
+
+    if (!row.packageId) return;
+
+    // Auto-calc material cost per application using linked products
+    // (template_products preferred; fallback to service_products of the base service)
+    setCalculatingCost(true);
+    try {
+      const { data: pkg } = await supabase
+        .from('service_packages')
+        .select('id, template_id, service_id')
+        .eq('id', row.packageId)
+        .maybeSingle();
+
+      if (!pkg) { setCalculatingCost(false); return; }
+
+      let links: any[] = [];
+      let source = '';
+
+      if (pkg.template_id) {
+        const { data: tplLinks } = await supabase
+          .from('package_template_products')
+          .select('quantity_per_use, tracking_method, container_amount, container_unit, estimated_appointments, product:products(unit, unit_price, total_price, quantity_purchased)')
+          .eq('template_id', pkg.template_id);
+        if (tplLinks && tplLinks.length > 0) {
+          links = tplLinks;
+          source = 'template do pacote';
+        }
+      }
+
+      if (links.length === 0 && pkg.service_id) {
+        const { data: srvLinks } = await supabase
+          .from('service_products')
+          .select('quantity_per_use, tracking_method, container_amount, container_unit, estimated_appointments, product:products(unit, unit_price, total_price, quantity_purchased)')
+          .eq('service_id', pkg.service_id);
+        if (srvLinks && srvLinks.length > 0) {
+          links = srvLinks;
+          source = 'serviço do pacote';
+        }
+      }
+
+      if (links.length > 0) {
+        const cost = calculateTotalCostPerUse(links as any);
+        if (cost > 0) {
+          setCostPerApplication(cost.toFixed(2));
+          setAutoCostInfo(`Custo auto-calculado a partir dos produtos vinculados ao ${source} (${links.length} produto(s)).`);
+        } else {
+          setAutoCostInfo('Produtos vinculados não possuem preço cadastrado. Informe manualmente.');
+        }
+      } else {
+        setAutoCostInfo('Nenhum produto vinculado a este pacote. Informe o custo manualmente, se aplicável.');
+      }
+    } catch (e) {
+      console.error('[PacotesFinanceiro] Erro ao auto-calcular custo:', e);
+    } finally {
+      setCalculatingCost(false);
+    }
   };
 
   const cancelMutation = useMutation({
@@ -529,16 +589,26 @@ export function PacotesFinanceiro() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Custo médio por aplicação ao profissional (R$)</Label>
+              <Label className="text-xs flex items-center gap-1">
+                Custo de material por aplicação (R$)
+                {calculatingCost && <span className="text-[10px] text-muted-foreground">(calculando...)</span>}
+              </Label>
               <Input
                 type="number"
                 step="0.01"
                 value={costPerApplication}
-                onChange={(e) => setCostPerApplication(e.target.value)}
+                onChange={(e) => { setCostPerApplication(e.target.value); setAutoCostInfo(null); }}
                 className="h-8 text-xs"
               />
+              {autoCostInfo && (
+                <p className="text-[10px] text-emerald-600 flex items-start gap-1">
+                  <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
+                  <span>{autoCostInfo}</span>
+                </p>
+              )}
               <p className="text-[10px] text-muted-foreground">
-                Total descontado: R$ {((selected?.usedSessions || 0) * (parseFloat(costPerApplication) || 0)).toFixed(2)}
+                Total descontado por material consumido: R$ {((selected?.usedSessions || 0) * (parseFloat(costPerApplication) || 0)).toFixed(2)}
+                <span className="block">({selected?.usedSessions || 0} aplicação(ões) × R$ {(parseFloat(costPerApplication) || 0).toFixed(2)})</span>
               </p>
             </div>
 

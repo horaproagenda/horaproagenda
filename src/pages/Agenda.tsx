@@ -1818,123 +1818,29 @@ const Agenda = () => {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-3" align="end">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-semibold text-foreground">Filtros</h4>
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-[10px] gap-1">
-                    <X className="h-3 w-3" />
-                    Limpar
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Profissional</label>
-                  <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                    <SelectTrigger className="h-7 text-[11px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {activeProfessionals.map((prof) => (
-                        <SelectItem key={prof.id} value={prof.id}>
-                          <div className="flex items-center gap-1.5">
-                            {prof.agenda_color && (
-                              <div 
-                                className="h-2 w-2 rounded-full flex-shrink-0" 
-                                style={{ backgroundColor: prof.agenda_color }}
-                              />
-                            )}
-                            <span className="truncate text-xs">{prof.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sala</label>
-                  <Select value={roomFilter} onValueChange={setRoomFilter}>
-                    <SelectTrigger className="h-7 text-[11px]">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
-                      {activeRooms.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          <span className="text-xs">{room.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-7 text-[11px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="scheduled">Agendado</SelectItem>
-                      <SelectItem value="confirmed">Confirmado</SelectItem>
-                      <SelectItem value="completed">Concluído</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                      <SelectItem value="missed">Faltou</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Pagamento</label>
-                  <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                    <SelectTrigger className="h-7 text-[11px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
-                      <SelectItem value="partial">Parcial</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="client_credit">{CLIENT_CREDIT_SOURCE_LABEL}</SelectItem>
-                      <SelectItem value="non_cash">{NON_CASH_PAYMENT_LABEL}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Equipamento</label>
-                  <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
-                    <SelectTrigger className="h-7 text-[11px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {activeEquipment.map((eq) => (
-                        <SelectItem key={eq.id} value={eq.id}>
-                          <span className="text-xs">{eq.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator className="my-2" />
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="hide-sunday"
-                      checked={hideSunday}
-                      onCheckedChange={saveHideSunday}
-                    />
-                    <Label htmlFor="hide-sunday" className="text-xs">Ocultar Domingo</Label>
-                  </div>
-                </div>
-              </div>
+            <PopoverContent className="w-80 p-3" align="end">
+              <AgendaFiltersContent
+                professionalFilter={professionalFilter}
+                setProfessionalFilter={setProfessionalFilter}
+                roomFilter={roomFilter}
+                setRoomFilter={setRoomFilter}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                paymentFilter={paymentFilter}
+                setPaymentFilter={setPaymentFilter}
+                equipmentFilter={equipmentFilter}
+                setEquipmentFilter={setEquipmentFilter}
+                hideSunday={hideSunday}
+                setHideSunday={saveHideSunday}
+                professionals={activeProfessionals}
+                rooms={activeRooms}
+                equipment={activeEquipment}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+                clientCreditLabel={CLIENT_CREDIT_SOURCE_LABEL}
+                nonCashLabel={NON_CASH_PAYMENT_LABEL}
+                maxHeightClass="max-h-[55vh]"
+              />
             </PopoverContent>
           </Popover>
 

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import Index from "./pages/Index";
@@ -37,17 +38,23 @@ import PreencherDocumento from "./pages/PreencherDocumento";
 const createQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutos - reduz refetches
-      gcTime: 1000 * 60 * 10, // 10 minutos - mantém cache mais tempo
-      refetchOnWindowFocus: false, // Evita refetch desnecessário
-      retry: 1, // Menos retries
+      // staleTime curto: garante que ao trocar de tela/aba/dispositivo
+      // os dados sejam revalidados rapidamente.
+      staleTime: 1000 * 30, // 30s
+      gcTime: 1000 * 60 * 10, // 10 minutos - mantém cache p/ navegação rápida
+      // Revalida ao focar a janela e ao voltar online -> sincroniza
+      // automaticamente celular/tablet/desktop quando o usuário volta a usar.
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: 'always',
+      retry: 1,
     },
   },
 });
 
-// Componente wrapper para ativar realtime sync
+// Componente wrapper para ativar realtime sync + sincronização entre dispositivos
 function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useRealtimeSync();
+  useCrossDeviceSync();
   return <>{children}</>;
 }
 

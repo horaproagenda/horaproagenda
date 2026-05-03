@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Product } from './useProducts';
@@ -43,6 +44,18 @@ export function useServiceProducts(serviceId?: string) {
       return data as ServiceProduct[];
     },
   });
+
+  // Realtime sync — auto-recalc no PrecificacaoServicos quando alguém alterar
+  // produtos vinculados em qualquer sessão.
+  useEffect(() => {
+    const ch = supabase
+      .channel('service-products-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['service_products'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const createServiceProduct = useMutation({
     mutationFn: async (serviceProduct: {

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Product } from './useProducts';
@@ -46,6 +47,18 @@ export function usePackageTemplateProducts(templateId?: string) {
       return data as PackageTemplateProduct[];
     },
   });
+
+  // Realtime sync — recalcula precificação automaticamente quando produtos
+  // vinculados ao template forem alterados em qualquer sessão.
+  useEffect(() => {
+    const ch = supabase
+      .channel('package-template-products-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const createTemplateProduct = useMutation({
     mutationFn: async (templateProduct: {

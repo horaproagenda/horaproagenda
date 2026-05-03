@@ -784,3 +784,31 @@ table thead th {
   }
 }
 
+/* ===== Settings page — minimalista, tipografia compacta e centralizada ===== */
+.settings-page .text-base { font-size: 0.8125rem; line-height: 1.15rem; }
+.settings-page .text-lg   { font-size: 0.875rem;  line-height: 1.25rem; }
+.settings-page .text-xl   { font-size: 0.95rem;   line-height: 1.35rem; }
+.settings-page .text-2xl  { font-size: 1rem;      line-height: 1.4rem; }
+.settings-page .text-sm   { font-size: 0.75rem;   line-height: 1.05rem; }
+.settings-page label,
+.settings-page .text-xs   { font-size: 0.7rem;    line-height: 1rem; }
+.settings-page .text-\[10px\] { font-size: 0.6rem; line-height: 0.85rem; }
+.settings-page input,
+.settings-page select,
+.settings-page textarea,
+.settings-page button,
+.settings-page [role="combobox"] { font-size: 0.75rem; }
+.settings-page input:not([type="checkbox"]):not([type="radio"]),
+.settings-page select,
+.settings-page [role="combobox"] { height: 2rem; }
+.settings-page .h-10 { height: 2rem; }
+.settings-page .h-9  { height: 1.875rem; }
+.settings-page svg.h-5,
+.settings-page svg.w-5 { width: 0.95rem; height: 0.95rem; }
+.settings-page .p-4 { padding: 0.75rem; }
+.settings-page .p-3 { padding: 0.625rem; }
+.settings-page .gap-4 { gap: 0.625rem; }
+.settings-page .gap-6 { gap: 0.875rem; }
+.settings-page .space-y-6 > * + * { margin-top: 0.875rem; }
+.settings-page .space-y-4 > * + * { margin-top: 0.625rem; }
+

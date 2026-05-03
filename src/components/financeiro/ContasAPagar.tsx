@@ -726,17 +726,17 @@ export function ContasAPagar() {
       <CardContent>
         {/* Batch mode bar */}
         {batchMode && (
-          <div className="flex items-center justify-between mb-4 p-3 rounded-lg border bg-muted/30">
+          <div className="flex items-center justify-between mb-3 p-2.5 rounded-lg border bg-muted/30">
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={selectedEntryIds.size === pendingFiltered.length && pendingFiltered.length > 0}
                 onCheckedChange={toggleSelectAll}
               />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 {selectedEntryIds.size} parcela(s) selecionada(s)
               </span>
               {selectedEntryIds.size > 0 && (
-                <Badge variant="outline" className="text-sm">
+                <Badge variant="outline" className="text-[11px] tabular-nums">
                   Total: R$ {batchTotal.toFixed(2)}
                 </Badge>
               )}
@@ -745,9 +745,9 @@ export function ContasAPagar() {
               size="sm" 
               onClick={openBatchPayDialog} 
               disabled={selectedEntryIds.size === 0}
-              className="bg-green-600 hover:bg-green-700"
+              className="h-8 text-xs bg-green-600 hover:bg-green-700"
             >
-              <DollarSign className="h-4 w-4 mr-1" />
+              <DollarSign className="h-3.5 w-3.5 mr-1" />
               Dar Baixa ({selectedEntryIds.size})
             </Button>
           </div>
@@ -758,19 +758,19 @@ export function ContasAPagar() {
             <TableHeader>
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
-                <TableHead>Data</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Forma Pgto</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-[11px]">Data</TableHead>
+                <TableHead className="text-[11px]">Descrição</TableHead>
+                <TableHead className="text-[11px]">Categoria</TableHead>
+                <TableHead className="text-[11px]">Forma Pgto</TableHead>
+                <TableHead className="text-[11px]">Valor</TableHead>
+                <TableHead className="text-[11px]">Status</TableHead>
+                <TableHead className="text-[11px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-xs text-muted-foreground">
                     Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
@@ -778,7 +778,7 @@ export function ContasAPagar() {
                 filteredPayables.map((entry) => (
                   <TableRow key={entry.id}>
                     {batchMode && (
-                      <TableCell>
+                      <TableCell className="py-2">
                         {entry.status !== 'paid' && (
                           <Checkbox
                             checked={selectedEntryIds.has(entry.id)}
@@ -787,30 +787,30 @@ export function ContasAPagar() {
                         )}
                       </TableCell>
                     )}
-                    <TableCell>{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>{entry.description}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-xs py-2 max-w-[280px] truncate" title={entry.description}>{entry.description}</TableCell>
+                    <TableCell className="text-[11px] py-2 text-muted-foreground">
                       {entry.category?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-[11px] py-2">
                       {entry.payment_method?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-red-600 font-medium">
+                    <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs py-2">
                       {getStatusDisplay(entry)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-xs py-2 text-right">
                       <div className="flex justify-end gap-1">
                         {entry.status !== 'paid' && !batchMode && (
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => openPayDialog(entry)} 
-                            className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                            className="h-7 px-2 gap-1 text-[11px] text-green-700 border-green-300 hover:bg-green-50"
                           >
-                            <DollarSign className="h-3.5 w-3.5" />
+                            <DollarSign className="h-3 w-3" />
                             Dar Baixa
                           </Button>
                         )}
@@ -819,18 +819,20 @@ export function ContasAPagar() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
+                              className="h-7 w-7"
                               onClick={() => openPayDialog(entry, true)} 
                               title="Editar pagamento"
                             >
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
+                              className="h-7 w-7"
                               onClick={() => openCancelDialog(entry)} 
                               title="Cancelar baixa"
                             >
-                              <Undo2 className="h-4 w-4 text-orange-500" />
+                              <Undo2 className="h-3.5 w-3.5 text-orange-500" />
                             </Button>
                           </>
                         )}
@@ -879,82 +881,82 @@ export function ContasAPagar() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{batchConfirmStep ? 'Confirmar Baixa em Lote' : 'Baixa em Lote'}</DialogTitle>
+            <DialogTitle className="text-sm">{batchConfirmStep ? 'Confirmar Baixa em Lote' : 'Baixa em Lote'}</DialogTitle>
           </DialogHeader>
 
           {batchConfirmStep ? (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                <div className="flex justify-between text-sm">
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Parcelas selecionadas:</span>
-                  <span className="font-bold">{selectedEntries.length}</span>
+                  <span className="font-bold tabular-nums">{selectedEntries.length}</span>
                 </div>
                 <Separator />
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {selectedEntries.map(e => (
-                    <div key={e.id} className="flex justify-between text-xs">
+                    <div key={e.id} className="flex justify-between text-[11px]">
                       <span className="truncate mr-2">{e.description}</span>
-                      <span className="font-medium shrink-0">R$ {Number(e.amount).toFixed(2)}</span>
+                      <span className="font-medium shrink-0 tabular-nums">R$ {Number(e.amount).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
                 <Separator />
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Valor total:</span>
-                  <span className="font-bold text-green-600">R$ {batchTotal.toFixed(2)}</span>
+                  <span className="font-bold text-green-600 tabular-nums">R$ {batchTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Forma de pagamento:</span>
                   <span className="font-medium">{batchSelectedPaymentMethod?.name || '-'}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Conta bancária:</span>
                   <span className="font-medium">{batchSelectedBank?.name || '-'}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Data:</span>
-                  <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                  <span className="font-medium tabular-nums">{format(new Date(), 'dd/MM/yyyy')}</span>
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
-                <Button onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
-                  <Check className="h-4 w-4 mr-2" />
+                <Button size="sm" variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
+                <Button size="sm" onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
                   Confirmar Pagamento
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="rounded-lg border bg-muted/30 p-3">
-                <p className="text-sm font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
-                <p className="text-lg font-bold text-green-600">Total: R$ {batchTotal.toFixed(2)}</p>
+                <p className="text-xs font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
+                <p className="text-base font-bold text-green-600 tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
               </div>
-              <div>
-                <Label>Forma de Pagamento</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Forma de Pagamento</Label>
                 <Select value={batchPaymentMethodId} onValueChange={setBatchPaymentMethodId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {activePaymentMethods.map(pm => (
-                      <SelectItem key={pm.id} value={pm.id}>{pm.name}</SelectItem>
+                      <SelectItem key={pm.id} value={pm.id} className="text-xs">{pm.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Conta Bancária</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Conta Bancária</Label>
                 <Select value={batchPaymentBankId} onValueChange={setBatchPaymentBankId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {activeBanks.map(bank => (
-                      <SelectItem key={bank.id} value={bank.id}>{bank.name}</SelectItem>
+                      <SelectItem key={bank.id} value={bank.id} className="text-xs">{bank.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setBatchPayDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={() => {
+                <Button size="sm" variant="outline" onClick={() => setBatchPayDialogOpen(false)}>Cancelar</Button>
+                <Button size="sm" onClick={() => {
                   if (!batchPaymentMethodId) { toast.error('Selecione a forma de pagamento'); return; }
                   setBatchConfirmStep(true);
                 }} className="bg-green-600 hover:bg-green-700">

@@ -102,7 +102,7 @@ export function AdvancedFilters({
           className={className}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3" align="start">
+      <PopoverContent className="w-72 max-w-[calc(100vw-1rem)] p-3" align="start">
         {/* Header padrão Agenda */}
         <div className="flex items-center justify-between mb-2 px-1">
           <h4 className="text-xs font-semibold text-foreground">Filtros</h4>

@@ -123,23 +123,23 @@ export function UnifiedServiceFilters({
     onSelect: (value: string | null) => void;
     renderOption?: (option: { id: string; label: string }) => React.ReactNode;
   }) => (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
       {searchKey && options.length > 5 && (
         <Input
           placeholder={`Buscar ${title.toLowerCase()}...`}
           value={localSearch[searchKey]}
           onChange={(e) => setLocalSearch(prev => ({ ...prev, [searchKey]: e.target.value }))}
-          className="h-7 text-xs"
+          className="h-7 text-[11px]"
         />
       )}
-      <ScrollArea className={cn("pr-2", options.length > 5 ? "h-[120px]" : "")}>
+      <ScrollArea className={cn("pr-2", options.length > 5 ? "h-[140px]" : "")}>
         <div className="space-y-0.5">
           <button
             onClick={() => onSelect(null)}
             className={cn(
-              "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-left",
-              !selectedValue && "bg-muted font-medium"
+              "w-full flex items-center justify-between px-2 py-1 text-[11px] rounded hover:bg-muted transition-colors text-left",
+              !selectedValue && "bg-primary/10 text-primary"
             )}
           >
             <span>Todos</span>
@@ -150,8 +150,8 @@ export function UnifiedServiceFilters({
               key={option.id}
               onClick={() => onSelect(option.id)}
               className={cn(
-                "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-left",
-                selectedValue === option.id && "bg-muted font-medium"
+                "w-full flex items-center justify-between px-2 py-1 text-[11px] rounded hover:bg-muted transition-colors text-left",
+                selectedValue === option.id && "bg-primary/10 text-primary"
               )}
             >
               {renderOption ? renderOption(option) : <span className="truncate">{option.label}</span>}
@@ -170,7 +170,7 @@ export function UnifiedServiceFilters({
         <PopoverTrigger asChild>
           <CompactFilterTrigger activeCount={activeFilterCount} />
         </PopoverTrigger>
-          <PopoverContent align="start" className="w-72 p-3">
+          <PopoverContent align="start" className="w-72 max-w-[calc(100vw-1rem)] p-3">
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <h4 className="text-xs font-semibold text-foreground">Filtros</h4>

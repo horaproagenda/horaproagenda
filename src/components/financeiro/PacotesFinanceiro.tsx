@@ -604,7 +604,7 @@ export function PacotesFinanceiro() {
           ) : filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pacote vendido encontrado.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <DoubleScroll>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -659,7 +659,7 @@ export function PacotesFinanceiro() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </DoubleScroll>
           )}
         </CardContent>
       </Card>

@@ -311,21 +311,21 @@ export function FormasPagamento() {
           </TabsContent>
 
           {/* Boleto Tab */}
-          <TabsContent value="boleto" className="space-y-4">
-            <div className="grid grid-cols-4 gap-3">
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
-                <p className="text-xs text-muted-foreground">Total</p><p className="text-lg font-bold">{boletoStats.total}</p>
+          <TabsContent value="boleto" className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('all')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p><p className="text-base font-bold tabular-nums">{boletoStats.total}</p>
               </div>
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
-                <p className="text-xs text-muted-foreground">Pendentes</p><p className="text-lg font-bold text-orange-600">{boletoStats.pending}</p>
-                <p className="text-[10px] text-muted-foreground">R$ {boletoStats.totalPending.toFixed(2)}</p>
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('pending')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pendentes</p><p className="text-base font-bold text-orange-600 tabular-nums">{boletoStats.pending}</p>
+                <p className="text-[10px] text-muted-foreground tabular-nums">R$ {boletoStats.totalPending.toFixed(2)}</p>
               </div>
-              <div className="rounded-lg border border-red-200 p-3 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
-                <p className="text-xs text-red-600">Atrasados</p><p className="text-lg font-bold text-red-600">{boletoStats.overdue}</p>
-                <p className="text-[10px] text-red-500">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
+              <div className="rounded-lg border border-red-200 p-2 text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => setBoletoFilter('overdue')}>
+                <p className="text-[10px] uppercase tracking-wide text-red-600">Atrasados</p><p className="text-base font-bold text-red-600 tabular-nums">{boletoStats.overdue}</p>
+                <p className="text-[10px] text-red-500 tabular-nums">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
               </div>
-              <div className="rounded-lg border p-3 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
-                <p className="text-xs text-muted-foreground">Pagos</p><p className="text-lg font-bold text-green-600">{boletoStats.paid}</p>
+              <div className="rounded-lg border p-2 text-center cursor-pointer hover:bg-muted/50" onClick={() => setBoletoFilter('paid')}>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pagos</p><p className="text-base font-bold text-green-600 tabular-nums">{boletoStats.paid}</p>
               </div>
             </div>
 

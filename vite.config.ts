@@ -63,11 +63,25 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Não pré-cacheia HTML: garante que o índice sempre venha da rede.
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        // HTML sempre via rede (com fallback de cache curto) -> qualquer
+        // novo deploy é entregue imediatamente em todos os dispositivos.
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            // Documentos HTML / navegações
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-cache",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 5 },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
@@ -80,16 +94,15 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-api-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5,
-              },
-              networkTimeoutSeconds: 10,
-            },
+            // Realtime do Supabase NUNCA deve passar pelo SW
+            urlPattern: /^https:\/\/.*\.supabase\.co\/realtime\/.*/i,
+            handler: "NetworkOnly",
+          },
+          {
+            // Auth / RPC / functions / storage devem ir direto na rede
+            // para não retornarem dados velhos em outras abas/dispositivos.
+            urlPattern: /^https:\/\/.*\.supabase\.co\/(auth|rest|functions|storage)\/.*/i,
+            handler: "NetworkOnly",
           },
         ],
       },

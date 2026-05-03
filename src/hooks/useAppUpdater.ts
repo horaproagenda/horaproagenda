@@ -87,8 +87,9 @@ export function useAppUpdater() {
         });
       });
 
-      // Polling a cada 60s
-      updateInterval = window.setInterval(checkForUpdate, 60_000);
+      // Polling agressivo a cada 20s — garante que toda nova versão
+      // publicada seja detectada rapidamente em qualquer dispositivo.
+      updateInterval = window.setInterval(checkForUpdate, 20_000);
       // Checagem inicial
       checkForUpdate();
     });

@@ -1669,9 +1669,7 @@ const Agenda = () => {
         title="Agenda" 
         subtitle=""
       >
-        <div className="mb-2">
-          <LiveCashTotalsBar compact />
-        </div>
+        {/* Barra financeira removida da agenda mobile — informações financeiras pertencem às páginas Caixa/Financeiro. */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 space-y-3">
             <div className="h-8 w-8 rounded-full border-4 border-muted animate-spin border-t-primary" />

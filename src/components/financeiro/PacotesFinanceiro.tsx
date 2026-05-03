@@ -609,14 +609,14 @@ export function PacotesFinanceiro() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-[10px]">Pacote</TableHead>
-                    <TableHead className="text-[10px]">Cliente</TableHead>
-                    <TableHead className="text-[10px]">Data</TableHead>
-                    <TableHead className="text-[10px] text-right">Valor</TableHead>
-                    <TableHead className="text-[10px] text-right">Pago</TableHead>
-                    <TableHead className="text-[10px]">Pagamento</TableHead>
-                    <TableHead className="text-[10px] text-center">Aplicações</TableHead>
-                    <TableHead className="text-[10px]">Status</TableHead>
+                    <TableHead className="text-[10px] whitespace-nowrap">Pacote</TableHead>
+                    <TableHead className="text-[10px] whitespace-nowrap">Cliente</TableHead>
+                    <TableHead className="text-[10px] whitespace-nowrap">Data</TableHead>
+                    <TableHead className="text-[10px] text-right whitespace-nowrap">Valor</TableHead>
+                    <TableHead className="text-[10px] text-right whitespace-nowrap">Pago</TableHead>
+                    <TableHead className="text-[10px] whitespace-nowrap">Pagamento</TableHead>
+                    <TableHead className="text-[10px] text-center whitespace-nowrap">Aplicações</TableHead>
+                    <TableHead className="text-[10px] whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-[10px] w-12"></TableHead>
                   </TableRow>
                 </TableHeader>

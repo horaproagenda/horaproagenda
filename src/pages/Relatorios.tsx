@@ -392,15 +392,17 @@ const Relatorios = () => {
                 className="h-9 text-sm"
               />
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleExport}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Exportar
-            </Button>
+            {activeTab !== 'atendimentos' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExport}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            )}
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

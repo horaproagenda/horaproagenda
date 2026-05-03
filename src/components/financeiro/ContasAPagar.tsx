@@ -726,17 +726,17 @@ export function ContasAPagar() {
       <CardContent>
         {/* Batch mode bar */}
         {batchMode && (
-          <div className="flex items-center justify-between mb-4 p-3 rounded-lg border bg-muted/30">
+          <div className="flex items-center justify-between mb-3 p-2.5 rounded-lg border bg-muted/30">
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={selectedEntryIds.size === pendingFiltered.length && pendingFiltered.length > 0}
                 onCheckedChange={toggleSelectAll}
               />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 {selectedEntryIds.size} parcela(s) selecionada(s)
               </span>
               {selectedEntryIds.size > 0 && (
-                <Badge variant="outline" className="text-sm">
+                <Badge variant="outline" className="text-[11px] tabular-nums">
                   Total: R$ {batchTotal.toFixed(2)}
                 </Badge>
               )}
@@ -745,9 +745,9 @@ export function ContasAPagar() {
               size="sm" 
               onClick={openBatchPayDialog} 
               disabled={selectedEntryIds.size === 0}
-              className="bg-green-600 hover:bg-green-700"
+              className="h-8 text-xs bg-green-600 hover:bg-green-700"
             >
-              <DollarSign className="h-4 w-4 mr-1" />
+              <DollarSign className="h-3.5 w-3.5 mr-1" />
               Dar Baixa ({selectedEntryIds.size})
             </Button>
           </div>

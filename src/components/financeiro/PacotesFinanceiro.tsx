@@ -42,6 +42,10 @@ export function PacotesFinanceiro() {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled'>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [selected, setSelected] = useState<PackageSaleRow | null>(null);
   const [costPerApplication, setCostPerApplication] = useState('0');

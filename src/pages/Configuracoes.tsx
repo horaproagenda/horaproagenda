@@ -91,7 +91,7 @@ const Configuracoes = () => {
   return (
     <AppLayout title="Configurações" subtitle="Personalize seu sistema">
       <PageTransition>
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           {/* User Management */}
           <UserManagement />
 

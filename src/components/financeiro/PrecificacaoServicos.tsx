@@ -109,20 +109,20 @@ export function PrecificacaoServicos() {
   const linkedProducts = calculationType === 'service' ? linkedServiceProducts : linkedPackageProducts;
 
   // Calculate product costs for service or package
+  // Uses unified calculation that respects tracking_method (exact vs estimated)
+  // and unit conversion (ml↔l, g↔kg) — fonte única da verdade.
   const productCosts = useMemo(() => {
     return linkedProducts.map(sp => {
       const product = sp.product;
-      if (!product) return { 
-        ...sp, 
+      if (!product) return {
+        ...sp,
         costPerUse: 0,
         productName: 'Produto não encontrado',
         productUnit: 'un',
       };
-      
-      // Calculate cost per unit based on product pricing
-      const costPerUnit = product.unit_price;
-      const costPerUse = costPerUnit * sp.quantity_per_use;
-      
+
+      const costPerUse = calculateProductLinkCostPerUse(sp as any);
+
       return {
         ...sp,
         costPerUse,

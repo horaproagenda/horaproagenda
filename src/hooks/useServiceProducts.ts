@@ -45,6 +45,18 @@ export function useServiceProducts(serviceId?: string) {
     },
   });
 
+  // Realtime sync — auto-recalc no PrecificacaoServicos quando alguém alterar
+  // produtos vinculados em qualquer sessão.
+  useEffect(() => {
+    const ch = supabase
+      .channel('service-products-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['service_products'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
+
   const createServiceProduct = useMutation({
     mutationFn: async (serviceProduct: {
       service_id: string;

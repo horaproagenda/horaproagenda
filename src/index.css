@@ -491,10 +491,135 @@ input[type="number"] {
   .flex { min-width: 0; }
 }
 
-/* ===========================================================
-   Scrollbars visíveis (vertical + horizontal) globais
-   Garante rolagem por mouse wheel e barra sempre visível
-   =========================================================== */
+/* ============================================================
+   GLOBAL RESPONSIVE LAYER — DENSIDADE & GRIDS CONSISTENTES
+   Tokens unificados para Cards/Grids/Containers em TODAS as
+   telas, com breakpoints alinhados ao Tailwind (sm/md/lg).
+   ============================================================ */
+:root {
+  --density-card-padding: 0.625rem;
+  --density-card-gap: 0.5rem;
+  --density-grid-gap: 0.625rem;
+  --density-section-gap: 0.75rem;
+  --density-text-xs: 0.7rem;
+  --density-text-sm: 0.78rem;
+}
+
+@media (min-width: 480px) {
+  :root {
+    --density-card-padding: 0.75rem;
+    --density-card-gap: 0.625rem;
+    --density-grid-gap: 0.75rem;
+    --density-section-gap: 1rem;
+    --density-text-xs: 0.72rem;
+    --density-text-sm: 0.8rem;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --density-card-padding: 1rem;
+    --density-card-gap: 0.75rem;
+    --density-grid-gap: 1rem;
+    --density-section-gap: 1.25rem;
+    --density-text-xs: 0.75rem;
+    --density-text-sm: 0.875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --density-card-padding: 1.25rem;
+    --density-grid-gap: 1.25rem;
+    --density-section-gap: 1.5rem;
+  }
+}
+
+/* Densidade aplicada a Cards shadcn/radix em mobile e tablet */
+@media (max-width: 767px) {
+  [data-slot="card-header"],
+  [data-slot="card-content"],
+  [data-slot="card-footer"] {
+    padding: var(--density-card-padding) !important;
+  }
+  [data-slot="card-content"] { padding-top: 0 !important; }
+  [data-slot="card-header"] + [data-slot="card-content"] { padding-top: 0 !important; }
+
+  [data-slot="card-title"] {
+    font-size: 0.95rem !important;
+    line-height: 1.25 !important;
+  }
+  [data-slot="card-description"] {
+    font-size: var(--density-text-xs) !important;
+    line-height: 1.35 !important;
+  }
+
+  .min-h-screen { min-height: 100dvh; }
+}
+
+/* ============================================================
+   GRIDS RESPONSIVOS PADRONIZADOS — utilities reutilizáveis
+   ============================================================ */
+@layer utilities {
+  .grid-cards-summary {
+    display: grid;
+    gap: var(--density-grid-gap);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 768px) {
+    .grid-cards-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1024px) {
+    .grid-cards-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  .grid-cards-auto {
+    display: grid;
+    gap: var(--density-grid-gap);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  }
+
+  .grid-cards-mini {
+    display: grid;
+    gap: var(--density-grid-gap);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  }
+
+  .stack-density {
+    display: flex;
+    flex-direction: column;
+    gap: var(--density-section-gap);
+  }
+
+  .page-container {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--density-card-padding);
+    max-width: 100%;
+  }
+  @media (min-width: 1024px) { .page-container { max-width: 1280px; } }
+  @media (min-width: 1536px) { .page-container { max-width: 1400px; } }
+}
+
+/* Grids existentes não estouram em mobile/tablet pequeno */
+@media (max-width: 767px) {
+  .grid.grid-cols-3:not(.no-mobile-collapse),
+  .grid.grid-cols-4:not(.no-mobile-collapse),
+  .grid.grid-cols-5:not(.no-mobile-collapse),
+  .grid.grid-cols-6:not(.no-mobile-collapse) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--density-grid-gap) !important;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .grid.grid-cols-5:not(.no-mobile-collapse),
+  .grid.grid-cols-6:not(.no-mobile-collapse) {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+
 @layer utilities {
   .scrollbar-visible {
     scrollbar-width: thin;

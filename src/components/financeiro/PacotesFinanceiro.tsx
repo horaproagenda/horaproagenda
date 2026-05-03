@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
 import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
+import { DoubleScroll } from '@/components/shared/DoubleScroll';
 import { toast } from 'sonner';
 
 interface PackageSaleRow {

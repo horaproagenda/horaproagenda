@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function normalizeEvolutionApiKey(rawKey: string | undefined) {
+  return (rawKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -58,11 +62,10 @@ serve(async (req) => {
 
     const evolutionApiUrlRaw = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiUrl = (evolutionApiUrlRaw || '').replace(/\/+$/, '');
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionApiKey = normalizeEvolutionApiKey(Deno.env.get('EVOLUTION_API_KEY'));
     let evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
     const evoHeaders = {
-      'apikey': evolutionApiKey || '',
-      'Authorization': `Bearer ${evolutionApiKey || ''}`,
+      'apikey': evolutionApiKey,
     } as Record<string, string>;
     if (professional_id) {
       const { data: prof } = await supaAdmin
@@ -139,7 +142,8 @@ serve(async (req) => {
     }
 
     // Connect instance to get QR code
-    const connectResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
+    const encodedInstance = encodeURIComponent(evolutionInstance);
+    const connectResponse = await fetch(`${evolutionApiUrl}/instance/connect/${encodedInstance}`, {
       method: 'GET',
       headers: evoHeaders,
     });
@@ -149,7 +153,7 @@ serve(async (req) => {
       console.error('Failed to connect instance:', errorText);
       
       // Try to restart the instance
-      const restartResponse = await fetch(`${evolutionApiUrl}/instance/restart/${evolutionInstance}`, {
+      const restartResponse = await fetch(`${evolutionApiUrl}/instance/restart/${encodedInstance}`, {
         method: 'PUT',
         headers: evoHeaders,
       });
@@ -158,7 +162,7 @@ serve(async (req) => {
         // Wait a moment and try again
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        const retryResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
+        const retryResponse = await fetch(`${evolutionApiUrl}/instance/connect/${encodedInstance}`, {
           method: 'GET',
           headers: evoHeaders,
         });
@@ -197,7 +201,7 @@ serve(async (req) => {
 
     if (!qrcode) {
       // Instance might already be connected
-      const stateResponse = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
+      const stateResponse = await fetch(`${evolutionApiUrl}/instance/connectionState/${encodedInstance}`, {
         method: 'GET',
         headers: evoHeaders,
       });

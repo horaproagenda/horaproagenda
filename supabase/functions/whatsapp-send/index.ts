@@ -50,6 +50,19 @@ serve(async (req) => {
     const userId = claimsData.claims.sub;
     console.log('Authenticated user:', userId);
 
+    // Role check: only admin or receptionist can send WhatsApp messages
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
+    if (!roles.includes('admin') && !roles.includes('receptionist')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden - insufficient role' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';

@@ -56,9 +56,14 @@ serve(async (req) => {
     try { body = await req.json(); } catch { body = {}; }
     const professional_id: string | undefined = body?.professional_id;
 
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiUrlRaw = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiUrl = (evolutionApiUrlRaw || '').replace(/\/+$/, '');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     let evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    const evoHeaders = {
+      'apikey': evolutionApiKey || '',
+      'Authorization': `Bearer ${evolutionApiKey || ''}`,
+    } as Record<string, string>;
     if (professional_id) {
       const { data: prof } = await supaAdmin
         .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
@@ -80,9 +85,7 @@ serve(async (req) => {
     // First check if instance exists
     const instanceCheckResponse = await fetch(`${evolutionApiUrl}/instance/fetchInstances`, {
       method: 'GET',
-      headers: {
-        'apikey': evolutionApiKey,
-      },
+      headers: evoHeaders,
     });
 
     let instanceExists = false;
@@ -98,10 +101,7 @@ serve(async (req) => {
       console.log('Creating new instance:', evolutionInstance);
       const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
         method: 'POST',
-        headers: {
-          'apikey': evolutionApiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...evoHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instanceName: evolutionInstance,
           qrcode: true,
@@ -141,9 +141,7 @@ serve(async (req) => {
     // Connect instance to get QR code
     const connectResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
       method: 'GET',
-      headers: {
-        'apikey': evolutionApiKey,
-      },
+      headers: evoHeaders,
     });
 
     if (!connectResponse.ok) {
@@ -153,9 +151,7 @@ serve(async (req) => {
       // Try to restart the instance
       const restartResponse = await fetch(`${evolutionApiUrl}/instance/restart/${evolutionInstance}`, {
         method: 'PUT',
-        headers: {
-          'apikey': evolutionApiKey,
-        },
+        headers: evoHeaders,
       });
       
       if (restartResponse.ok) {
@@ -164,9 +160,7 @@ serve(async (req) => {
         
         const retryResponse = await fetch(`${evolutionApiUrl}/instance/connect/${evolutionInstance}`, {
           method: 'GET',
-          headers: {
-            'apikey': evolutionApiKey,
-          },
+          headers: evoHeaders,
         });
         
         if (retryResponse.ok) {
@@ -205,9 +199,7 @@ serve(async (req) => {
       // Instance might already be connected
       const stateResponse = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
         method: 'GET',
-        headers: {
-          'apikey': evolutionApiKey,
-        },
+        headers: evoHeaders,
       });
       
       if (stateResponse.ok) {

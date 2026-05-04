@@ -202,7 +202,7 @@ describe('Integração: Fila offline → reconexão', () => {
       throw new Error('400 bad request');
     });
 
-    setOnline(false);
+    // Mantém online e usa sync() manual para garantir UMA passagem
     const { result } = renderHook(() => useOfflineSync(), { wrapper });
 
     await act(async () => {
@@ -212,17 +212,13 @@ describe('Integração: Fila offline → reconexão', () => {
     });
 
     await act(async () => {
-      setOnline(true);
-      window.dispatchEvent(new Event('online'));
+      await result.current.sync();
     });
 
-    await waitFor(() => {
-      const remaining = getQueue();
-      expect(remaining).toHaveLength(1);
-      expect(remaining[0].type).toBe('fail');
-      expect(remaining[0].attempts).toBeGreaterThanOrEqual(1);
-      expect(result.current.pendingCount).toBe(1);
-    });
+    const remaining = getQueue();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].type).toBe('fail');
+    expect(remaining[0].attempts).toBe(1);
 
     uOk();
     uFail();

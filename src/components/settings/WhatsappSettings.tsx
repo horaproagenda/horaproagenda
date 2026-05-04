@@ -95,6 +95,39 @@ export function WhatsappSettings() {
     }
   };
 
+  const runConnectionTest = async (customKey?: string) => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-test-connection', {
+        body: customKey ? { api_key: customKey } : {},
+      });
+      if (error) {
+        setTestResult({ ok: false, stage: 'invoke', error: error.message });
+        toast.error('Falha ao testar: ' + error.message);
+        return;
+      }
+      setTestResult(data);
+      if (data?.ok) toast.success(data.message || 'Conexão validada!');
+      else toast.error(data?.error || 'Falha na validação');
+    } catch (e: any) {
+      setTestResult({ ok: false, stage: 'invoke', error: e.message });
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const validateKeyFormat = (key: string): string[] => {
+    const k = key.trim();
+    const issues: string[] = [];
+    if (k.length > 0 && k.length < 16) issues.push('Chave curta demais (esperado ≥ 16 caracteres).');
+    if (/\s/.test(k)) issues.push('Remova espaços da chave.');
+    if (/^Bearer/i.test(k)) issues.push('Não inclua o prefixo "Bearer".');
+    if (/^['"].*['"]$/.test(k)) issues.push('Não inclua aspas em volta da chave.');
+    return issues;
+  };
+
   const getStatusBadge = () => {
     if (isLoading) return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Verificando...</Badge>;
     if (!connectionStatus?.configured) return <Badge variant="outline">Não configurado</Badge>;

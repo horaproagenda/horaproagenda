@@ -283,6 +283,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   };
 
   const handleEdit = (professional: any) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem editar profissionais.');
+      return;
+    }
     setEditingId(professional.id);
     const existingPermissions = professional.permissions || defaultPermissions;
     form.reset({
@@ -290,7 +294,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       cpf: professional.cpf || '',
       birthdate: professional.birthdate || '',
       email: professional.email || '',
+      password: '',
       phone: professional.phone || '',
+      whatsapp_from_number: professional.whatsapp_from_number || '',
       specialties: professional.specialties?.join(', ') || '',
       bio: professional.bio || '',
       agenda_color: professional.agenda_color || '#3B82F6',

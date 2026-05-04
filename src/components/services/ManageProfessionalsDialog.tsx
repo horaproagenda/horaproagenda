@@ -255,7 +255,12 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         // If password provided when editing, also update auth user via edge function
         if (data.password && data.password.length >= 8) {
           const { error: fnErr } = await supabase.functions.invoke('admin-create-professional', {
-            body: { email: data.email, password: data.password, full_name: data.name, professional_id: editingId, payload },
+            body: {
+              email: data.email, password: data.password, full_name: data.name,
+              professional_id: editingId, payload,
+              require_password_change: data.require_password_change,
+              store_temp_password: data.store_temp_password,
+            },
           });
           if (fnErr) throw fnErr;
         }
@@ -267,7 +272,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           return;
         }
         const { data: result, error } = await supabase.functions.invoke('admin-create-professional', {
-          body: { email: data.email, password: data.password, full_name: data.name, payload },
+          body: {
+            email: data.email, password: data.password, full_name: data.name, payload,
+            require_password_change: data.require_password_change,
+            store_temp_password: data.store_temp_password,
+          },
         });
         if (error) throw error;
         if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');

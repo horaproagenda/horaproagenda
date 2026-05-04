@@ -27,10 +27,12 @@ export function useWhatsapp() {
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
 
-  const checkConnection = useCallback(async () => {
+  const checkConnection = useCallback(async (professional_id?: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-check-connection');
+      const { data, error } = await supabase.functions.invoke('whatsapp-check-connection', {
+        body: professional_id ? { professional_id } : {},
+      });
       
       if (error) throw error;
       
@@ -52,13 +54,15 @@ export function useWhatsapp() {
     }
   }, []);
 
-  const getQRCode = useCallback(async () => {
+  const getQRCode = useCallback(async (professional_id?: string) => {
     setIsLoadingQR(true);
     setQrCode(null);
     setPairingCode(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-get-qrcode');
+      const { data, error } = await supabase.functions.invoke('whatsapp-get-qrcode', {
+        body: professional_id ? { professional_id } : {},
+      });
       
       if (error) throw error;
       
@@ -66,7 +70,7 @@ export function useWhatsapp() {
       
       if (response.connected) {
         toast.success('WhatsApp já está conectado!');
-        await checkConnection();
+        await checkConnection(professional_id);
         return { connected: true };
       }
       

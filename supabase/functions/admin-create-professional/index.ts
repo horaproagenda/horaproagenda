@@ -86,6 +86,18 @@ serve(async (req) => {
       await supaAdmin.from('user_roles').insert({ user_id: userId, role: 'professional' });
     }
 
+    // 4. Audit log (service-role bypasses the auth.uid() trigger, so we log the admin explicitly)
+    const { data: adminUser } = await supaAdmin.auth.admin.getUserById(callerId);
+    await supaAdmin.from('audit_logs').insert({
+      table_name: 'professionals',
+      record_id: profId,
+      action: professional_id ? 'ADMIN_UPDATE_PROFESSIONAL' : 'ADMIN_CREATE_PROFESSIONAL',
+      new_data: { email, full_name, professional_id: profId, target_user_id: userId },
+      user_id: callerId,
+      user_email: adminUser?.user?.email ?? null,
+      ip_address: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,
+    });
+
     return new Response(JSON.stringify({ success: true, user_id: userId, professional_id: profId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

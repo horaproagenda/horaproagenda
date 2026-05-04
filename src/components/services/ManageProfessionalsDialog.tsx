@@ -590,6 +590,39 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
+                    name="require_password_change"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                        <div className="pr-2">
+                          <FormLabel className="text-xs">Exigir troca no 1º login</FormLabel>
+                          <p className="text-[10px] text-muted-foreground">Profissional define a própria senha</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="store_temp_password"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                        <div className="pr-2">
+                          <FormLabel className="text-xs">Senha visível p/ admin</FormLabel>
+                          <p className="text-[10px] text-amber-600">⚠️ Reduz a segurança</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
                     name="phone"
                     render={({ field }) => (
                       <FormItem>

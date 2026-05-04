@@ -1,0 +1,2 @@
+ALTER TABLE public.business_settings ALTER COLUMN reminder_provider SET DEFAULT 'twilio_whatsapp';
+UPDATE public.business_settings SET reminder_provider = 'twilio_whatsapp' WHERE reminder_provider = 'whatsapp' OR reminder_provider IS NULL;

@@ -20,14 +20,14 @@ const ReminderConfigSettings = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
   const [hours, setHours] = useState<number[]>([24, 1]);
   const [newHour, setNewHour] = useState('');
-  const [provider, setProvider] = useState<string>('whatsapp');
+  const [provider, setProvider] = useState<string>('twilio_whatsapp');
   const [twilioFrom, setTwilioFrom] = useState<string>('');
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (!settings) return;
     setHours(settings.reminder_hours_before?.length ? settings.reminder_hours_before : [24, 1]);
-    setProvider(settings.reminder_provider || 'whatsapp');
+    setProvider(settings.reminder_provider || 'twilio_whatsapp');
     setTwilioFrom(settings.twilio_from_number || '');
   }, [settings]);
 

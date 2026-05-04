@@ -3430,6 +3430,8 @@ export type Database = {
           is_active: boolean
           message: string
           name: string
+          professional_id: string | null
+          send_offset_hours: number | null
           type: string
           updated_at: string
           updated_by: string | null
@@ -3442,6 +3444,8 @@ export type Database = {
           is_active?: boolean
           message: string
           name: string
+          professional_id?: string | null
+          send_offset_hours?: number | null
           type?: string
           updated_at?: string
           updated_by?: string | null
@@ -3454,11 +3458,21 @@ export type Database = {
           is_active?: boolean
           message?: string
           name?: string
+          professional_id?: string | null
+          send_offset_hours?: number | null
           type?: string
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

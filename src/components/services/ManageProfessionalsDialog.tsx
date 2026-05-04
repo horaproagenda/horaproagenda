@@ -152,6 +152,8 @@ interface ManageProfessionalsDialogProps {
 
 export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialogProps) {
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -160,7 +162,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const [searchQuery, setSearchQuery] = useState('');
   const { professionals, refetch } = useProfessionals();
 
-  // Reset to list view when dialog opens
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
@@ -170,7 +171,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
     }
   };
 
-  // Filter professionals by search
   const filteredProfessionals = professionals.filter(prof => 
     prof.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     prof.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -184,7 +184,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       cpf: '',
       birthdate: '',
       email: '',
+      password: '',
       phone: '',
+      whatsapp_from_number: '',
       specialties: '',
       bio: '',
       agenda_color: '#3B82F6',

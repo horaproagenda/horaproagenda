@@ -47,7 +47,7 @@ const packageSchema = z.object({
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
-  professional_id: z.string().optional(),
+  professional_id: z.string().min(1, 'Selecione o profissional').refine(v => v && v !== '_none', 'Selecione o profissional responsável'),
   room_id: z.string().optional(),
   equipment: z.array(z.string()).optional(),
 });
@@ -91,7 +91,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
       interval_days: 7,
       duration: 60,
       price: 0,
-      professional_id: '_none',
+      professional_id: '',
       room_id: '_none',
       equipment: [],
     },
@@ -345,15 +345,14 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                 name="professional_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Profissional</FormLabel>
+                    <FormLabel className="text-xs">Profissional *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione o profissional" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="_none" className="text-sm">Nenhum</SelectItem>
                         {professionals.filter(p => p.is_active).map(prof => (
                           <SelectItem key={prof.id} value={prof.id} className="text-sm">{prof.name}</SelectItem>
                         ))}

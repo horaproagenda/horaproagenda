@@ -38,6 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 
@@ -125,8 +126,10 @@ const professionalSchema = z.object({
     { message: 'CPF inválido. Verifique os números digitados.' }
   ),
   birthdate: z.string().optional(),
-  email: z.string().trim().email('Email inválido').optional().or(z.literal('')),
+  email: z.string().trim().email('Email inválido'),
+  password: z.string().optional(),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
+  whatsapp_from_number: z.string().trim().max(60, 'Número muito longo').optional(),
   specialties: z.string().optional(),
   bio: z.string().trim().max(500, 'Bio muito longa').optional(),
   agenda_color: z.string().default('#3B82F6'),
@@ -149,6 +152,8 @@ interface ManageProfessionalsDialogProps {
 
 export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialogProps) {
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -157,7 +162,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const [searchQuery, setSearchQuery] = useState('');
   const { professionals, refetch } = useProfessionals();
 
-  // Reset to list view when dialog opens
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
@@ -167,7 +171,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
     }
   };
 
-  // Filter professionals by search
   const filteredProfessionals = professionals.filter(prof => 
     prof.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     prof.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -181,7 +184,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       cpf: '',
       birthdate: '',
       email: '',
+      password: '',
       phone: '',
+      whatsapp_from_number: '',
       specialties: '',
       bio: '',
       agenda_color: '#3B82F6',
@@ -204,6 +209,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const permissions = form.watch('permissions');
 
   const onSubmit = async (data: ProfessionalFormData) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem cadastrar ou editar profissionais.');
+      return;
+    }
     setIsLoading(true);
     try {
       const specialtiesArray = data.specialties
@@ -216,6 +225,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         birthdate: data.birthdate || null,
         email: data.email || null,
         phone: data.phone || null,
+        whatsapp_from_number: data.whatsapp_from_number || null,
         specialties: specialtiesArray,
         bio: data.bio || null,
         agenda_color: data.agenda_color,
@@ -238,13 +248,26 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           .update(payload)
           .eq('id', editingId);
         if (error) throw error;
+        // If password provided when editing, also update auth user via edge function
+        if (data.password && data.password.length >= 8) {
+          const { error: fnErr } = await supabase.functions.invoke('admin-create-professional', {
+            body: { email: data.email, password: data.password, full_name: data.name, professional_id: editingId, payload },
+          });
+          if (fnErr) throw fnErr;
+        }
         toast.success('Profissional atualizado com sucesso!');
       } else {
-        const { error } = await supabase
-          .from('professionals')
-          .insert(payload);
+        if (!data.password || data.password.length < 8) {
+          toast.error('Defina uma senha de pelo menos 8 caracteres para o profissional.');
+          setIsLoading(false);
+          return;
+        }
+        const { data: result, error } = await supabase.functions.invoke('admin-create-professional', {
+          body: { email: data.email, password: data.password, full_name: data.name, payload },
+        });
         if (error) throw error;
-        toast.success('Profissional cadastrado com sucesso!');
+        if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');
+        toast.success('Profissional cadastrado! Ele pode acessar com o e-mail e senha definidos.');
       }
 
       form.reset();
@@ -253,13 +276,17 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       setPermissionsOpen(false);
       refetch();
     } catch (error: any) {
-      toast.error('Erro: ' + error.message);
+      toast.error('Erro: ' + (error.message || error));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleEdit = (professional: any) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem editar profissionais.');
+      return;
+    }
     setEditingId(professional.id);
     const existingPermissions = professional.permissions || defaultPermissions;
     form.reset({
@@ -267,7 +294,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       cpf: professional.cpf || '',
       birthdate: professional.birthdate || '',
       email: professional.email || '',
+      password: '',
       phone: professional.phone || '',
+      whatsapp_from_number: professional.whatsapp_from_number || '',
       specialties: professional.specialties?.join(', ') || '',
       bio: professional.bio || '',
       agenda_color: professional.agenda_color || '#3B82F6',
@@ -361,11 +390,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     className="pl-9 h-9 text-sm"
                   />
                 </div>
-                <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
-                  <Plus className="h-4 w-4" />
-                  Novo Profissional
-                </Button>
+                {isAdmin && (
+                  <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
+                    <Plus className="h-4 w-4" />
+                    Novo Profissional
+                  </Button>
+                )}
               </div>
+
+              {!isAdmin && (
+                <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                  Apenas administradores podem cadastrar, editar ou excluir profissionais.
+                </div>
+              )}
 
               <div className="text-xs text-muted-foreground">
                 {filteredProfessionals.length} profissional(is) encontrado(s)
@@ -428,24 +465,28 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                       >
                         <Eye className="h-4 w-4 text-primary" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEdit(prof)}
-                        title="Editar"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleDelete(prof.id)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {isAdmin && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEdit(prof)}
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(prof.id)}
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -508,14 +549,32 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Email</FormLabel>
+                        <FormLabel className="text-xs">Email de acesso *</FormLabel>
                         <FormControl>
-                          <Input placeholder="email@exemplo.com" className="h-9 text-sm" {...field} />
+                          <Input type="email" placeholder="email@exemplo.com" className="h-9 text-sm" {...field} />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">
+                          {editingId ? 'Nova senha (opcional, mín. 8)' : 'Senha de acesso * (mín. 8)'}
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" autoComplete="new-password" className="h-9 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="phone"
@@ -524,6 +583,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         <FormLabel className="text-xs">Telefone</FormLabel>
                         <FormControl>
                           <Input placeholder="(11) 99999-9999" className="h-9 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="whatsapp_from_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Nº WhatsApp do remetente</FormLabel>
+                        <FormControl>
+                          <Input placeholder="instância ou whatsapp:+55..." className="h-9 text-sm" {...field} />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

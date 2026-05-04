@@ -2448,6 +2448,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           user_id: string | null
+          whatsapp_from_number: string | null
         }
         Insert: {
           agenda_color?: string | null
@@ -2479,6 +2480,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null
+          whatsapp_from_number?: string | null
         }
         Update: {
           agenda_color?: string | null
@@ -2510,6 +2512,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null
+          whatsapp_from_number?: string | null
         }
         Relationships: []
       }

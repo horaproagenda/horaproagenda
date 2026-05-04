@@ -38,6 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 
@@ -125,8 +126,10 @@ const professionalSchema = z.object({
     { message: 'CPF inválido. Verifique os números digitados.' }
   ),
   birthdate: z.string().optional(),
-  email: z.string().trim().email('Email inválido').optional().or(z.literal('')),
+  email: z.string().trim().email('Email inválido'),
+  password: z.string().optional(),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
+  whatsapp_from_number: z.string().trim().max(60, 'Número muito longo').optional(),
   specialties: z.string().optional(),
   bio: z.string().trim().max(500, 'Bio muito longa').optional(),
   agenda_color: z.string().default('#3B82F6'),

@@ -209,6 +209,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const permissions = form.watch('permissions');
 
   const onSubmit = async (data: ProfessionalFormData) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem cadastrar ou editar profissionais.');
+      return;
+    }
     setIsLoading(true);
     try {
       const specialtiesArray = data.specialties
@@ -221,6 +225,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         birthdate: data.birthdate || null,
         email: data.email || null,
         phone: data.phone || null,
+        whatsapp_from_number: data.whatsapp_from_number || null,
         specialties: specialtiesArray,
         bio: data.bio || null,
         agenda_color: data.agenda_color,
@@ -243,13 +248,26 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           .update(payload)
           .eq('id', editingId);
         if (error) throw error;
+        // If password provided when editing, also update auth user via edge function
+        if (data.password && data.password.length >= 8) {
+          const { error: fnErr } = await supabase.functions.invoke('admin-create-professional', {
+            body: { email: data.email, password: data.password, full_name: data.name, professional_id: editingId, payload },
+          });
+          if (fnErr) throw fnErr;
+        }
         toast.success('Profissional atualizado com sucesso!');
       } else {
-        const { error } = await supabase
-          .from('professionals')
-          .insert(payload);
+        if (!data.password || data.password.length < 8) {
+          toast.error('Defina uma senha de pelo menos 8 caracteres para o profissional.');
+          setIsLoading(false);
+          return;
+        }
+        const { data: result, error } = await supabase.functions.invoke('admin-create-professional', {
+          body: { email: data.email, password: data.password, full_name: data.name, payload },
+        });
         if (error) throw error;
-        toast.success('Profissional cadastrado com sucesso!');
+        if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');
+        toast.success('Profissional cadastrado! Ele pode acessar com o e-mail e senha definidos.');
       }
 
       form.reset();
@@ -258,7 +276,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       setPermissionsOpen(false);
       refetch();
     } catch (error: any) {
-      toast.error('Erro: ' + error.message);
+      toast.error('Erro: ' + (error.message || error));
     } finally {
       setIsLoading(false);
     }

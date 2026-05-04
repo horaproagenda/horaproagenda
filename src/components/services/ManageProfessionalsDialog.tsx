@@ -390,11 +390,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     className="pl-9 h-9 text-sm"
                   />
                 </div>
-                <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
-                  <Plus className="h-4 w-4" />
-                  Novo Profissional
-                </Button>
+                {isAdmin && (
+                  <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
+                    <Plus className="h-4 w-4" />
+                    Novo Profissional
+                  </Button>
+                )}
               </div>
+
+              {!isAdmin && (
+                <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                  Apenas administradores podem cadastrar, editar ou excluir profissionais.
+                </div>
+              )}
 
               <div className="text-xs text-muted-foreground">
                 {filteredProfessionals.length} profissional(is) encontrado(s)

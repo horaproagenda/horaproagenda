@@ -16,6 +16,7 @@ import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplat
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
+import ReminderConfigSettings from '@/components/settings/ReminderConfigSettings';
 import { StockAlertSettings } from '@/components/settings/StockAlertSettings';
 
 const Configuracoes = () => {
@@ -103,6 +104,9 @@ const Configuracoes = () => {
 
           {/* Automation Settings */}
           <AutomationSettings />
+
+          {/* Reminder Configuration */}
+          <ReminderConfigSettings />
 
           {/* Stock Alert Settings */}
           <StockAlertSettings />

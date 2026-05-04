@@ -114,11 +114,22 @@ serve(async (req) => {
 
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
-        console.error('Failed to create instance:', errorText);
+        console.error('Failed to create instance:', errorText, 'status:', createResponse.status);
+        let friendly = `Falha ao criar instância (HTTP ${createResponse.status}).`;
+        if (createResponse.status === 401 || createResponse.status === 403) {
+          friendly = 'Chave rejeitada pelo Evolution API. A AUTHENTICATION_API_KEY (chave global do servidor) parece inválida ou não é a chave global. Vá em Configurações → WhatsApp → "Testar conexão" para validar.';
+        } else if (createResponse.status === 404) {
+          friendly = 'EVOLUTION_API_URL não encontrado (404). Verifique a URL da sua instância Evolution.';
+        } else if (createResponse.status >= 500) {
+          friendly = `Evolution API retornou erro ${createResponse.status}. Verifique se o servidor está online.`;
+        }
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: `Failed to create instance: ${errorText}` 
+          JSON.stringify({
+            success: false,
+            stage: 'create_instance',
+            status: createResponse.status,
+            error: friendly,
+            evolution_response: errorText?.slice(0, 500),
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

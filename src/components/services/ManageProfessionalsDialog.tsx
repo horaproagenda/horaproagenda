@@ -537,14 +537,32 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Email</FormLabel>
+                        <FormLabel className="text-xs">Email de acesso *</FormLabel>
                         <FormControl>
-                          <Input placeholder="email@exemplo.com" className="h-9 text-sm" {...field} />
+                          <Input type="email" placeholder="email@exemplo.com" className="h-9 text-sm" {...field} />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">
+                          {editingId ? 'Nova senha (opcional, mín. 8)' : 'Senha de acesso * (mín. 8)'}
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" autoComplete="new-password" className="h-9 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="phone"
@@ -553,6 +571,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         <FormLabel className="text-xs">Telefone</FormLabel>
                         <FormControl>
                           <Input placeholder="(11) 99999-9999" className="h-9 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="whatsapp_from_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Nº WhatsApp do remetente</FormLabel>
+                        <FormControl>
+                          <Input placeholder="instância ou whatsapp:+55..." className="h-9 text-sm" {...field} />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

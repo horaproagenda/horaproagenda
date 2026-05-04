@@ -6,28 +6,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TWILIO_GATEWAY = 'https://connector-gateway.lovable.dev/twilio';
-
 function cleanPhoneBR(raw: string): string {
-  let p = raw.replace(/\D/g, '');
+  let p = (raw || '').replace(/\D/g, '');
   if (p.startsWith('0')) p = p.substring(1);
   if (!p.startsWith('55')) p = '55' + p;
   return p;
 }
 
-function buildMessage(client: string, service: string, when: Date, hours: number) {
-  const data = when.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
-  const hora = when.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-  const quando = hours >= 24 ? `amanhã (${data})` : `daqui a aproximadamente ${hours}h`;
-  return `Olá ${client}! 👋\n\nLembrete do seu agendamento ${quando}:\n📅 ${service}\n⏰ ${hora}\n\nSe precisar reagendar, entre em contato. Até breve! ✨`;
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+}
+function fmtTime(d: Date) {
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
 
-async function sendViaEvolution(phone: string, message: string) {
-  const url = (Deno.env.get('EVOLUTION_API_URL') || '').trim();
-  const key = Deno.env.get('EVOLUTION_API_KEY');
-  const instance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
-  if (!url || !key) throw new Error('Evolution não configurado');
-  const r = await fetch(`${new URL(url).origin}/message/sendText/${encodeURIComponent(instance)}`, {
+function renderTemplate(tpl: string, vars: Record<string, string>): string {
+  return tpl
+    .replace(/\{\{\s*cliente\s*\}\}/g, vars.cliente || '')
+    .replace(/\{\{\s*data\s*\}\}/g, vars.data || '')
+    .replace(/\{\{\s*horario\s*\}\}/g, vars.horario || '')
+    .replace(/\{\{\s*servico\s*\}\}/g, vars.servico || '')
+    .replace(/\{\{\s*profissional\s*\}\}/g, vars.profissional || '')
+    .replace(/\{nome\}/g, vars.cliente || '')
+    .replace(/\{servico\}/g, vars.servico || '')
+    .replace(/\{data\}/g, vars.data || '')
+    .replace(/\{horario\}/g, vars.horario || '');
+}
+
+async function sendViaEvolution(baseUrl: string, key: string, instance: string, phone: string, message: string) {
+  const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: key },
     body: JSON.stringify({ number: cleanPhoneBR(phone), text: message }),
@@ -36,117 +43,197 @@ async function sendViaEvolution(phone: string, message: string) {
   return await r.json();
 }
 
-async function sendViaTwilio(phone: string, message: string, channel: 'sms' | 'whatsapp') {
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-  const twilioKey = Deno.env.get('TWILIO_API_KEY');
-  const from = Deno.env.get('TWILIO_FROM_NUMBER');
-  if (!lovableKey) throw new Error('LOVABLE_API_KEY ausente');
-  if (!twilioKey) throw new Error('TWILIO_API_KEY ausente');
-  if (!from) throw new Error('TWILIO_FROM_NUMBER ausente (configure nas Configurações)');
-
-  const to = '+' + cleanPhoneBR(phone);
-  const body = new URLSearchParams({
-    To: channel === 'whatsapp' ? `whatsapp:${to}` : to,
-    From: channel === 'whatsapp' ? (from.startsWith('whatsapp:') ? from : `whatsapp:${from}`) : from,
-    Body: message,
-  });
-
-  const r = await fetch(`${TWILIO_GATEWAY}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': twilioKey,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(`Twilio ${r.status}: ${JSON.stringify(data)}`);
-  return data;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, serviceKey);
-
-  const summary: Record<string, unknown> = { sent: 0, skipped: 0, errors: [] as string[] };
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, follow_up: 0, birthday: 0 } };
 
   try {
-    const { data: settings, error: setErr } = await supabase
-      .from('business_settings')
-      .select('*')
-      .limit(1)
-      .single();
-    if (setErr) throw setErr;
+    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
     if (!settings?.automation_whatsapp_reminders) {
-      return new Response(JSON.stringify({ success: true, message: 'Lembretes desativados', summary }), {
+      return new Response(JSON.stringify({ success: true, message: 'Envios desativados', summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const hoursList: number[] = (settings.reminder_hours_before && settings.reminder_hours_before.length > 0)
-      ? settings.reminder_hours_before
-      : [24, 1];
-    const provider: string = settings.reminder_provider || 'whatsapp';
-    if (settings.twilio_from_number) Deno.env.set('TWILIO_FROM_NUMBER', settings.twilio_from_number);
+    const evoUrlRaw = (Deno.env.get('EVOLUTION_API_URL') || '').trim();
+    const evoKey = Deno.env.get('EVOLUTION_API_KEY');
+    const defaultInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    if (!evoUrlRaw || !evoKey) throw new Error('Evolution não configurado');
+    const evoBase = new URL(evoUrlRaw).origin;
+
+    // Load active templates
+    const { data: templatesAll } = await supabase
+      .from('whatsapp_templates')
+      .select('*')
+      .eq('is_active', true);
+    const templates = templatesAll ?? [];
+
+    const tplByType = (type: string) => templates.filter((t: any) => t.type === type);
+
+    // Helper to pick the right template for a professional
+    const pickTpl = (type: string, professional_id: string | null) => {
+      const list = tplByType(type);
+      const own = list.find((t: any) => t.professional_id === professional_id);
+      return own || list.find((t: any) => t.professional_id == null) || null;
+    };
+
+    const instanceFor = async (professional_id: string | null): Promise<string> => {
+      if (!professional_id) return defaultInstance;
+      const { data } = await supabase.from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
+      const v = (data?.whatsapp_from_number || '').trim();
+      return v.length > 0 ? v : defaultInstance;
+    };
 
     const now = Date.now();
-    // Window covers all reminder hours; we filter per-hour below
-    const maxH = Math.max(...hoursList);
-    const minH = Math.min(...hoursList);
-    const fromIso = new Date(now + (minH - 1) * 3600 * 1000).toISOString();
-    const toIso = new Date(now + (maxH + 1) * 3600 * 1000).toISOString();
 
-    const { data: appts, error: aErr } = await supabase
-      .from('appointments')
-      .select('id, start_time, status, client:clients(name, phone), service:services(name)')
-      .gte('start_time', fromIso)
-      .lte('start_time', toIso)
-      .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
-    if (aErr) throw aErr;
+    // ============ REMINDERS (before appointment) ============
+    const reminderTpls = tplByType('reminder');
+    if (reminderTpls.length > 0) {
+      const allHours = reminderTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
+      if (allHours.length > 0) {
+        const minH = Math.min(...allHours);
+        const maxH = Math.max(...allHours);
+        const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
+        const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
 
-    for (const apt of appts || []) {
-      const phone = (apt as any).client?.phone;
-      const clientName = (apt as any).client?.name || 'cliente';
-      const serviceName = (apt as any).service?.name || 'atendimento';
-      if (!phone) { (summary.skipped as number)++; continue; }
-      const start = new Date(apt.start_time as string).getTime();
-      const hoursDiff = (start - now) / 3600000;
+        const { data: appts } = await supabase
+          .from('appointments')
+          .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .gte('start_time', fromIso)
+          .lte('start_time', toIso)
+          .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
-      for (const h of hoursList) {
-        // Trigger if appointment is within [h-0.5, h] hours from now (30 min window)
-        if (hoursDiff > h || hoursDiff < h - 0.5) continue;
+        for (const apt of appts || []) {
+          const phone = (apt as any).client?.phone;
+          if (!phone) { summary.skipped++; continue; }
+          const start = new Date(apt.start_time as string);
+          const hoursDiff = (start.getTime() - now) / 3600_000;
+          const tpl = pickTpl('reminder', (apt as any).professional_id ?? null);
+          if (!tpl) continue;
+          const h = Number(tpl.hours_before);
+          if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
 
-        // Already sent?
+          const { data: existing } = await supabase
+            .from('appointment_reminder_log')
+            .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').maybeSingle();
+          if (existing) continue;
+
+          const message = renderTemplate(tpl.message, {
+            cliente: (apt as any).client?.name || 'cliente',
+            data: fmtDate(start), horario: fmtTime(start),
+            servico: (apt as any).service?.name || 'atendimento',
+            profissional: (apt as any).professional?.name || '',
+          });
+          try {
+            const inst = await instanceFor((apt as any).professional_id ?? null);
+            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            await supabase.from('appointment_reminder_log').insert({
+              appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
+            });
+            summary.sent++; summary.byType.reminder++;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            summary.errors.push(`reminder:${apt.id}@${h}h: ${msg}`);
+          }
+        }
+      }
+    }
+
+    // ============ FOLLOW-UP (after appointment) ============
+    const followTpls = tplByType('follow_up');
+    if (followTpls.length > 0) {
+      const offsets = followTpls.map((t: any) => Number(t.send_offset_hours)).filter((n: number) => Number.isFinite(n) && n > 0);
+      if (offsets.length > 0) {
+        const minO = Math.min(...offsets);
+        const maxO = Math.max(...offsets);
+        const fromIso = new Date(now - (maxO + 1) * 3600_000).toISOString();
+        const toIso = new Date(now - (minO - 1) * 3600_000).toISOString();
+
+        const { data: appts } = await supabase
+          .from('appointments')
+          .select('id, end_time, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .gte('end_time', fromIso)
+          .lte('end_time', toIso)
+          .eq('status', 'completed');
+
+        for (const apt of appts || []) {
+          const phone = (apt as any).client?.phone;
+          if (!phone) { summary.skipped++; continue; }
+          const end = new Date((apt as any).end_time || apt.start_time);
+          const hoursAfter = (now - end.getTime()) / 3600_000;
+          const tpl = pickTpl('follow_up', (apt as any).professional_id ?? null);
+          if (!tpl) continue;
+          const off = Number(tpl.send_offset_hours);
+          if (!(hoursAfter >= off && hoursAfter <= off + 0.5)) continue;
+
+          const { data: existing } = await supabase
+            .from('appointment_reminder_log')
+            .select('id').eq('appointment_id', apt.id).eq('hours_before', -off).eq('provider', 'whatsapp_followup').maybeSingle();
+          if (existing) continue;
+
+          const message = renderTemplate(tpl.message, {
+            cliente: (apt as any).client?.name || 'cliente',
+            data: fmtDate(end), horario: fmtTime(end),
+            servico: (apt as any).service?.name || 'atendimento',
+            profissional: (apt as any).professional?.name || '',
+          });
+          try {
+            const inst = await instanceFor((apt as any).professional_id ?? null);
+            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            await supabase.from('appointment_reminder_log').insert({
+              appointment_id: apt.id, hours_before: -off, provider: 'whatsapp_followup', channel: 'whatsapp', status: 'sent',
+            });
+            summary.sent++; summary.byType.follow_up++;
+          } catch (e) {
+            summary.errors.push(`followup:${apt.id}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+    }
+
+    // ============ BIRTHDAY ============
+    const bdayTpls = tplByType('birthday');
+    if (bdayTpls.length > 0) {
+      const today = new Date();
+      const nowHourLocal = Number(today.toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+      const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(today.getUTCDate()).padStart(2, '0');
+
+      // Pull all clients with birthday today
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, name, phone, birthdate, assigned_professional_id')
+        .not('birthdate', 'is', null);
+
+      for (const c of clients || []) {
+        if (!c.phone || !c.birthdate) continue;
+        const bd = String(c.birthdate);
+        if (bd.substring(5, 7) !== mm || bd.substring(8, 10) !== dd) continue;
+
+        const tpl = pickTpl('birthday', (c as any).assigned_professional_id ?? null);
+        if (!tpl) continue;
+        const sendHour = Number(tpl.send_offset_hours ?? 9);
+        if (nowHourLocal !== sendHour) continue;
+
+        // Dedup: use appointment_reminder_log with appointment_id null is not allowed; use a key trick
+        const dedupKey = `bday-${c.id}-${today.getUTCFullYear()}`;
         const { data: existing } = await supabase
           .from('appointment_reminder_log')
-          .select('id')
-          .eq('appointment_id', apt.id)
-          .eq('hours_before', h)
-          .eq('provider', provider)
-          .maybeSingle();
+          .select('id').eq('provider', 'whatsapp_birthday').eq('error', dedupKey).maybeSingle();
         if (existing) continue;
 
-        const message = buildMessage(clientName, serviceName, new Date(apt.start_time as string), h);
+        const message = renderTemplate(tpl.message, { cliente: c.name || 'cliente', data: '', horario: '', servico: '', profissional: '' });
         try {
-          let channel = 'whatsapp';
-          if (provider === 'twilio_sms') { await sendViaTwilio(phone, message, 'sms'); channel = 'sms'; }
-          else if (provider === 'twilio_whatsapp') { await sendViaTwilio(phone, message, 'whatsapp'); channel = 'whatsapp'; }
-          else { await sendViaEvolution(phone, message); channel = 'whatsapp'; }
-
+          const inst = await instanceFor((c as any).assigned_professional_id ?? null);
+          await sendViaEvolution(evoBase, evoKey, inst, c.phone, message);
           await supabase.from('appointment_reminder_log').insert({
-            appointment_id: apt.id, hours_before: h, provider, channel, status: 'sent',
+            appointment_id: null, hours_before: sendHour, provider: 'whatsapp_birthday', channel: 'whatsapp', status: 'sent', error: dedupKey,
           });
-          (summary.sent as number)++;
+          summary.sent++; summary.byType.birthday++;
         } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          (summary.errors as string[]).push(`${apt.id}@${h}h: ${msg}`);
-          await supabase.from('appointment_reminder_log').insert({
-            appointment_id: apt.id, hours_before: h, provider, channel: 'unknown', status: 'failed', error: msg,
-          });
+          summary.errors.push(`birthday:${c.id}: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
     }

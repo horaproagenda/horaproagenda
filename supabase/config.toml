@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.send-appointment-reminders]
 verify_jwt = false
+
+[functions.admin-create-professional]
+verify_jwt = false

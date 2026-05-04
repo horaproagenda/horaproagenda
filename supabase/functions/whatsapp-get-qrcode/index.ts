@@ -30,23 +30,19 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
+    const supaAdmin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Invalid token' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Role check: only admin can pair WhatsApp / generate QR code
     const { data: roleRows } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
+      .from('user_roles').select('role').eq('user_id', user.id);
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.includes('admin')) {
       return new Response(
@@ -55,9 +51,20 @@ serve(async (req) => {
       );
     }
 
+    // Optional: per-professional instance
+    let body: any = {};
+    try { body = await req.json(); } catch { body = {}; }
+    const professional_id: string | undefined = body?.professional_id;
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    let evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    if (professional_id) {
+      const { data: prof } = await supaAdmin
+        .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
+      const v = (prof?.whatsapp_from_number || '').trim();
+      if (v.length > 0) evolutionInstance = v;
+    }
 
     if (!evolutionApiUrl || !evolutionApiKey) {
       return new Response(

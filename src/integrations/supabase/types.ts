@@ -178,6 +178,39 @@ export type Database = {
           },
         ]
       }
+      appointment_reminder_log: {
+        Row: {
+          appointment_id: string
+          channel: string
+          error: string | null
+          hours_before: number
+          id: string
+          provider: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          appointment_id: string
+          channel: string
+          error?: string | null
+          hours_before: number
+          id?: string
+          provider: string
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          appointment_id?: string
+          channel?: string
+          error?: string | null
+          hours_before?: number
+          id?: string
+          provider?: string
+          sent_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           amount_paid: number | null
@@ -555,12 +588,15 @@ export type Database = {
           id: string
           opening_time: string
           overdue_days_threshold: number
+          reminder_hours_before: number[]
+          reminder_provider: string
           saturday_closing_time: string | null
           saturday_opening_time: string | null
           slot_interval: number
           sunday_closing_time: string | null
           sunday_opening_time: string | null
           timezone: string | null
+          twilio_from_number: string | null
           updated_at: string
           work_saturdays: boolean
           work_sundays: boolean
@@ -583,12 +619,15 @@ export type Database = {
           id?: string
           opening_time?: string
           overdue_days_threshold?: number
+          reminder_hours_before?: number[]
+          reminder_provider?: string
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
           slot_interval?: number
           sunday_closing_time?: string | null
           sunday_opening_time?: string | null
           timezone?: string | null
+          twilio_from_number?: string | null
           updated_at?: string
           work_saturdays?: boolean
           work_sundays?: boolean
@@ -611,12 +650,15 @@ export type Database = {
           id?: string
           opening_time?: string
           overdue_days_threshold?: number
+          reminder_hours_before?: number[]
+          reminder_provider?: string
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
           slot_interval?: number
           sunday_closing_time?: string | null
           sunday_opening_time?: string | null
           timezone?: string | null
+          twilio_from_number?: string | null
           updated_at?: string
           work_saturdays?: boolean
           work_sundays?: boolean

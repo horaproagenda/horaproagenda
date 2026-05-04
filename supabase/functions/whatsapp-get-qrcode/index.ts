@@ -56,9 +56,14 @@ serve(async (req) => {
     try { body = await req.json(); } catch { body = {}; }
     const professional_id: string | undefined = body?.professional_id;
 
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiUrlRaw = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionApiUrl = (evolutionApiUrlRaw || '').replace(/\/+$/, '');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     let evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    const evoHeaders = {
+      'apikey': evolutionApiKey || '',
+      'Authorization': `Bearer ${evolutionApiKey || ''}`,
+    } as Record<string, string>;
     if (professional_id) {
       const { data: prof } = await supaAdmin
         .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();

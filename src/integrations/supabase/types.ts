@@ -3503,6 +3503,13 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
+      get_sensitive_business_settings: {
+        Args: never
+        Returns: {
+          clinic_cnpj: string
+          twilio_from_number: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

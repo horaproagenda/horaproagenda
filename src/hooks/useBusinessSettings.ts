@@ -50,13 +50,24 @@ export function useBusinessSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['business-settings'],
     queryFn: async () => {
+      // Select non-sensitive columns explicitly. CNPJ and Twilio number
+      // are restricted to admin/receptionist via column-level grants and
+      // fetched separately through get_sensitive_business_settings RPC.
       const { data, error } = await supabase
         .from('business_settings')
-        .select('*')
+        .select('id, opening_time, closing_time, slot_interval, work_saturdays, work_sundays, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, drag_and_drop_enabled, auto_complete_appointments, timezone, overdue_days_threshold, automation_whatsapp_reminders, automation_waitlist, automation_gap_finder, automation_occupancy_dashboard, automation_smart_recurrence, reminder_hours_before, reminder_provider, clinic_name, clinic_phone, clinic_address, clinic_email, created_at, updated_at')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+
+      // Try to fetch sensitive fields (only succeeds for admin/receptionist)
+      if (data) {
+        const { data: sensitive } = await supabase.rpc('get_sensitive_business_settings');
+        const row = Array.isArray(sensitive) ? sensitive[0] : sensitive;
+        (data as any).clinic_cnpj = row?.clinic_cnpj ?? null;
+        (data as any).twilio_from_number = row?.twilio_from_number ?? null;
+      }
       
       // Format time fields to ensure they're in HH:mm format
       if (data) {
@@ -68,7 +79,7 @@ export function useBusinessSettings() {
         data.sunday_closing_time = data.sunday_closing_time?.substring(0, 5) || '18:00';
       }
       
-      return data as BusinessSettings | null;
+      return data as unknown as BusinessSettings | null;
     },
   });
 

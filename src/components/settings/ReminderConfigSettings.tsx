@@ -27,7 +27,7 @@ const ReminderConfigSettings = () => {
   useEffect(() => {
     if (!settings) return;
     setHours(settings.reminder_hours_before?.length ? settings.reminder_hours_before : [24, 1]);
-    setProvider(settings.reminder_provider || 'whatsapp');
+    setProvider(settings.reminder_provider || 'twilio_whatsapp');
     setTwilioFrom(settings.twilio_from_number || '');
   }, [settings]);
 

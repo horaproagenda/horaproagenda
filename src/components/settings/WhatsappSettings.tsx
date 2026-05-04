@@ -29,6 +29,13 @@ export function WhatsappSettings() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedProfId, setSelectedProfId] = useState<string>('clinic');
+  const [testKey, setTestKey] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<null | {
+    ok: boolean; stage?: string; status?: number; message?: string; error?: string;
+    formatHints?: string[]; instances_count?: number; instance_name?: string;
+    instance_exists?: boolean; evolution_response?: string;
+  }>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qrExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

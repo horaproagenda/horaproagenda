@@ -180,7 +180,7 @@ export type Database = {
       }
       appointment_reminder_log: {
         Row: {
-          appointment_id: string
+          appointment_id: string | null
           channel: string
           error: string | null
           hours_before: number
@@ -190,7 +190,7 @@ export type Database = {
           status: string
         }
         Insert: {
-          appointment_id: string
+          appointment_id?: string | null
           channel: string
           error?: string | null
           hours_before: number
@@ -200,7 +200,7 @@ export type Database = {
           status?: string
         }
         Update: {
-          appointment_id?: string
+          appointment_id?: string | null
           channel?: string
           error?: string | null
           hours_before?: number

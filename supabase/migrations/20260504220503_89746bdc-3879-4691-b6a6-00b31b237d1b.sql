@@ -1,0 +1,1 @@
+ALTER TABLE public.appointment_reminder_log ALTER COLUMN appointment_id DROP NOT NULL;

@@ -23,6 +23,9 @@ export interface BusinessSettings {
   automation_gap_finder: boolean;
   automation_occupancy_dashboard: boolean;
   automation_smart_recurrence: boolean;
+  reminder_hours_before: number[];
+  reminder_provider: 'whatsapp' | 'twilio_sms' | 'twilio_whatsapp';
+  twilio_from_number: string | null;
   created_at: string;
   updated_at: string;
 }

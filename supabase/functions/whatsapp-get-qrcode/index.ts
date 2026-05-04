@@ -42,6 +42,19 @@ serve(async (req) => {
       );
     }
 
+    // Role check: only admin can pair WhatsApp / generate QR code
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
+    if (!roles.includes('admin')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden - admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';

@@ -79,7 +79,7 @@ export function useBusinessSettings() {
         data.sunday_closing_time = data.sunday_closing_time?.substring(0, 5) || '18:00';
       }
       
-      return data as BusinessSettings | null;
+      return data as unknown as BusinessSettings | null;
     },
   });
 

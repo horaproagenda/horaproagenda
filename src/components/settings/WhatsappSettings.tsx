@@ -284,6 +284,93 @@ export function WhatsappSettings() {
             Verificar
           </Button>
         </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <h4 className="font-medium flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-green-600" />
+                Testar conexão com Evolution API
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Valida a <strong>AUTHENTICATION_API_KEY</strong> global salva no secret e confirma se o QR Code poderá ser gerado.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => runConnectionTest()} disabled={isTesting}>
+              {isTesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+              Testar conexão
+            </Button>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+            <Label className="text-xs flex items-center gap-1">
+              <KeyRound className="h-3 w-3" /> Validar uma chave antes de salvar
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Cole aqui a chave que você pretende salvar como <code>EVOLUTION_API_KEY</code>. Ela será testada diretamente no Evolution API e <strong>não será gravada</strong> no banco.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="Cole a AUTHENTICATION_API_KEY do .env do Evolution"
+                value={testKey}
+                onChange={(e) => setTestKey(e.target.value)}
+                autoComplete="off"
+              />
+              <Button
+                variant="secondary"
+                onClick={() => runConnectionTest(testKey.trim())}
+                disabled={isTesting || !testKey.trim() || validateKeyFormat(testKey).length > 0}
+              >
+                {isTesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Validar
+              </Button>
+            </div>
+            {testKey && validateKeyFormat(testKey).length > 0 && (
+              <ul className="text-[11px] text-destructive list-disc pl-4">
+                {validateKeyFormat(testKey).map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            )}
+          </div>
+
+          {testResult && (
+            <Alert variant={testResult.ok ? 'default' : 'destructive'}>
+              {testResult.ok
+                ? <CheckCircle className="h-4 w-4 text-green-600" />
+                : <AlertCircle className="h-4 w-4" />}
+              <AlertTitle>
+                {testResult.ok ? 'Conexão validada' : `Falha (${testResult.stage || 'erro'}${testResult.status ? ` · HTTP ${testResult.status}` : ''})`}
+              </AlertTitle>
+              <AlertDescription className="space-y-1 text-xs">
+                <p>{testResult.message || testResult.error}</p>
+                {testResult.ok && (
+                  <p className="opacity-80">
+                    Instâncias visíveis: <strong>{testResult.instances_count ?? 0}</strong>
+                    {testResult.instance_name && <> · Instância padrão <code>{testResult.instance_name}</code> {testResult.instance_exists ? '✓ existe' : '(será criada na 1ª conexão)'}</>}
+                  </p>
+                )}
+                {testResult.formatHints && testResult.formatHints.length > 0 && (
+                  <ul className="list-disc pl-4 opacity-80">
+                    {testResult.formatHints.map((h, i) => <li key={i}>{h}</li>)}
+                  </ul>
+                )}
+                {testResult.evolution_response && (
+                  <details className="opacity-70">
+                    <summary className="cursor-pointer">Resposta bruta do Evolution</summary>
+                    <pre className="text-[10px] whitespace-pre-wrap break-all">{testResult.evolution_response}</pre>
+                  </details>
+                )}
+                {testResult.stage === 'global_auth' && (
+                  <p className="font-medium">
+                    💡 Acesse o <code>.env</code> do seu servidor Evolution e copie o valor exato de <code>AUTHENTICATION_API_KEY</code>. Depois atualize o secret <code>EVOLUTION_API_KEY</code>.
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

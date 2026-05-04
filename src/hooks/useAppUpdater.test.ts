@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe('useAppUpdater', () => {
-  it('verifica atualizações periodicamente (60s) e ao montar', async () => {
+  it('verifica atualizações periodicamente (20s) e ao montar', async () => {
     renderHook(() => useAppUpdater());
     // Aguarda promessa de getRegistration resolver
     await act(async () => { await Promise.resolve(); });
@@ -70,12 +70,12 @@ describe('useAppUpdater', () => {
     expect(mockRegistration.update).toHaveBeenCalledTimes(1); // checagem inicial
 
     await act(async () => {
-      vi.advanceTimersByTime(60_000);
+      vi.advanceTimersByTime(20_000);
     });
     expect(mockRegistration.update).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      vi.advanceTimersByTime(60_000);
+      vi.advanceTimersByTime(20_000);
     });
     expect(mockRegistration.update).toHaveBeenCalledTimes(3);
   });

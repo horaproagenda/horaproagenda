@@ -105,6 +105,9 @@ const Configuracoes = () => {
           {/* Automation Settings */}
           <AutomationSettings />
 
+          {/* Reminder Configuration */}
+          <ReminderConfigSettings />
+
           {/* Stock Alert Settings */}
           <StockAlertSettings />
 

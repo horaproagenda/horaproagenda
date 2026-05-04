@@ -213,18 +213,45 @@ export default function Auth() {
       return;
     }
 
+    // Client-side cooldown (defesa adicional — Supabase Auth já aplica rate limit por IP no servidor)
+    const key = `login_attempts_${loginEmail.toLowerCase()}`;
+    const raw = localStorage.getItem(key);
+    const state = raw ? JSON.parse(raw) as { count: number; lockedUntil: number } : { count: 0, lockedUntil: 0 };
+    const now = Date.now();
+    if (state.lockedUntil && now < state.lockedUntil) {
+      const secs = Math.ceil((state.lockedUntil - now) / 1000);
+      toast({
+        title: 'Muitas tentativas',
+        description: `Aguarde ${secs}s antes de tentar novamente.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     setLoading(false);
 
     if (error) {
-      toast({ 
-        title: 'Erro ao entrar', 
-        description: error.message === 'Invalid login credentials' 
-          ? 'Email ou senha incorretos' 
-          : error.message, 
-        variant: 'destructive' 
+      const next = state.count + 1;
+      // Cooldown progressivo: 3→15s, 5→60s, 7→300s, 10→900s
+      let lock = 0;
+      if (next >= 10) lock = 15 * 60 * 1000;
+      else if (next >= 7) lock = 5 * 60 * 1000;
+      else if (next >= 5) lock = 60 * 1000;
+      else if (next >= 3) lock = 15 * 1000;
+      const lockedUntil = lock ? now + lock : 0;
+      localStorage.setItem(key, JSON.stringify({ count: next, lockedUntil }));
+
+      const baseMsg = error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message;
+      const lockMsg = lock ? ` Bloqueado por ${Math.ceil(lock / 1000)}s após ${next} tentativas.` : '';
+      toast({
+        title: 'Erro ao entrar',
+        description: baseMsg + lockMsg,
+        variant: 'destructive'
       });
+    } else {
+      localStorage.removeItem(key);
     }
   };
 

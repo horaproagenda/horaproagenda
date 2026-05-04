@@ -41,6 +41,7 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
+import { ProfessionalCredentialView } from './ProfessionalCredentialView';
 
 const AGENDA_COLORS = [
   { value: '#3B82F6', label: 'Azul' },
@@ -478,6 +479,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                       >
                         <Eye className="h-4 w-4 text-primary" />
                       </Button>
+                      {isAdmin && (
+                        <ProfessionalCredentialView professionalId={prof.id} />
+                      )}
                       {isAdmin && (
                         <>
                           <Button

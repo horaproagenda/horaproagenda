@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, RefreshCw, QrCode, Smartphone, Copy, Check } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, RefreshCw, QrCode, Smartphone, Copy, Check, ShieldCheck, KeyRound } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export function WhatsappSettings() {
   const { 

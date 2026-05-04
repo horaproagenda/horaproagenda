@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ForcePasswordChangeGate } from "@/components/auth/ForcePasswordChangeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
@@ -71,6 +72,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <ForcePasswordChangeGate>
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
@@ -100,6 +102,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            </ForcePasswordChangeGate>
           </TooltipProvider>
         </RealtimeSyncProvider>
       </AuthProvider>

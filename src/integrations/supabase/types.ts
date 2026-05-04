@@ -2369,6 +2369,47 @@ export type Database = {
           },
         ]
       }
+      professional_credentials: {
+        Row: {
+          must_change_password: boolean
+          password_changed_at: string | null
+          professional_id: string
+          set_at: string
+          set_by: string | null
+          temp_password: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          must_change_password?: boolean
+          password_changed_at?: string | null
+          professional_id: string
+          set_at?: string
+          set_by?: string | null
+          temp_password?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          must_change_password?: boolean
+          password_changed_at?: string | null
+          professional_id?: string
+          set_at?: string
+          set_by?: string | null
+          temp_password?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_service_commissions: {
         Row: {
           commission_fixed_value: number | null
@@ -3531,6 +3572,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_password_changed: { Args: never; Returns: undefined }
+      must_change_password_for_current_user: { Args: never; Returns: boolean }
       process_payment_low:
         | {
             Args: {

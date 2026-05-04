@@ -39,8 +39,10 @@ serve(async (req) => {
     const body = await req.json();
     const {
       email, password, full_name,
-      professional_id, // when set, only updates app_role/permissions/credentials
-      payload, // full professional payload for INSERT
+      professional_id,
+      payload,
+      require_password_change, // boolean
+      store_temp_password,     // boolean - admin opted to store the password in plain
     } = body;
 
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string' || password.length < 8) {
@@ -48,27 +50,28 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 1. Create or find auth user
+    // 1. Create or update auth user
     let userId: string | null = null;
     const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({
       email, password, email_confirm: true,
       user_metadata: { full_name: full_name || email },
     });
     if (createErr) {
-      // If user already exists, look up id
       const msg = (createErr as any).message || '';
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered') || msg.toLowerCase().includes('exists')) {
         const { data: list } = await supaAdmin.auth.admin.listUsers();
         const existing = list?.users?.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
         if (!existing) throw createErr;
         userId = existing.id;
+        // Update password for existing user
+        await supaAdmin.auth.admin.updateUserById(userId, { password });
       } else { throw createErr; }
     } else {
       userId = created.user?.id ?? null;
     }
     if (!userId) throw new Error('Falha ao obter user id.');
 
-    // 2. Insert/update professional record (service role bypasses RLS)
+    // 2. Insert/update professional record
     let profId = professional_id ?? null;
     if (!profId) {
       const insertPayload = { ...(payload || {}), email, name: payload?.name || full_name || email, user_id: userId };
@@ -86,13 +89,29 @@ serve(async (req) => {
       await supaAdmin.from('user_roles').insert({ user_id: userId, role: 'professional' });
     }
 
-    // 4. Audit log (service-role bypasses the auth.uid() trigger, so we log the admin explicitly)
+    // 4. Save credentials record (temp password + force-change flag)
+    await supaAdmin.from('professional_credentials').upsert({
+      professional_id: profId,
+      user_id: userId,
+      temp_password: store_temp_password ? password : null,
+      must_change_password: !!require_password_change,
+      set_at: new Date().toISOString(),
+      set_by: callerId,
+      password_changed_at: null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'professional_id' });
+
+    // 5. Audit log
     const { data: adminUser } = await supaAdmin.auth.admin.getUserById(callerId);
     await supaAdmin.from('audit_logs').insert({
       table_name: 'professionals',
       record_id: profId,
       action: professional_id ? 'ADMIN_UPDATE_PROFESSIONAL' : 'ADMIN_CREATE_PROFESSIONAL',
-      new_data: { email, full_name, professional_id: profId, target_user_id: userId },
+      new_data: {
+        email, full_name, professional_id: profId, target_user_id: userId,
+        require_password_change: !!require_password_change,
+        password_stored: !!store_temp_password,
+      },
       user_id: callerId,
       user_email: adminUser?.user?.email ?? null,
       ip_address: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,

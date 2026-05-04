@@ -41,6 +41,7 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
+import { ProfessionalCredentialView } from './ProfessionalCredentialView';
 
 const AGENDA_COLORS = [
   { value: '#3B82F6', label: 'Azul' },
@@ -128,6 +129,8 @@ const professionalSchema = z.object({
   birthdate: z.string().optional(),
   email: z.string().trim().email('Email inválido'),
   password: z.string().optional(),
+  require_password_change: z.boolean().default(true),
+  store_temp_password: z.boolean().default(true),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
   whatsapp_from_number: z.string().trim().max(60, 'Número muito longo').optional(),
   specialties: z.string().optional(),
@@ -185,6 +188,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       birthdate: '',
       email: '',
       password: '',
+      require_password_change: true,
+      store_temp_password: true,
       phone: '',
       whatsapp_from_number: '',
       specialties: '',
@@ -251,7 +256,12 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         // If password provided when editing, also update auth user via edge function
         if (data.password && data.password.length >= 8) {
           const { error: fnErr } = await supabase.functions.invoke('admin-create-professional', {
-            body: { email: data.email, password: data.password, full_name: data.name, professional_id: editingId, payload },
+            body: {
+              email: data.email, password: data.password, full_name: data.name,
+              professional_id: editingId, payload,
+              require_password_change: data.require_password_change,
+              store_temp_password: data.store_temp_password,
+            },
           });
           if (fnErr) throw fnErr;
         }
@@ -263,7 +273,11 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           return;
         }
         const { data: result, error } = await supabase.functions.invoke('admin-create-professional', {
-          body: { email: data.email, password: data.password, full_name: data.name, payload },
+          body: {
+            email: data.email, password: data.password, full_name: data.name, payload,
+            require_password_change: data.require_password_change,
+            store_temp_password: data.store_temp_password,
+          },
         });
         if (error) throw error;
         if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');
@@ -466,6 +480,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         <Eye className="h-4 w-4 text-primary" />
                       </Button>
                       {isAdmin && (
+                        <ProfessionalCredentialView professionalId={prof.id} />
+                      )}
+                      {isAdmin && (
                         <>
                           <Button
                             variant="ghost"
@@ -569,6 +586,39 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                           <Input type="password" placeholder="••••••••" autoComplete="new-password" className="h-9 text-sm" {...field} />
                         </FormControl>
                         <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="require_password_change"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                        <div className="pr-2">
+                          <FormLabel className="text-xs">Exigir troca no 1º login</FormLabel>
+                          <p className="text-[10px] text-muted-foreground">Profissional define a própria senha</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="store_temp_password"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                        <div className="pr-2">
+                          <FormLabel className="text-xs">Senha visível p/ admin</FormLabel>
+                          <p className="text-[10px] text-amber-600">⚠️ Reduz a segurança</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
                       </FormItem>
                     )}
                   />

@@ -127,6 +127,11 @@ export function useCrossDeviceSync() {
       } catch {
         /* noop */
       }
+      try {
+        authSub.subscription.unsubscribe();
+      } catch {
+        /* noop */
+      }
       delete (window as unknown as { __broadcastDataChange?: () => void }).__broadcastDataChange;
     };
   }, [queryClient]);

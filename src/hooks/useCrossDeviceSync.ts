@@ -49,12 +49,14 @@ export function useCrossDeviceSync() {
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 2. Heartbeat de segurança (a cada 30s) — só refetch ativo
+    // 2. Heartbeat agressivo (a cada 2s) — refetch ativo das queries visíveis.
+    // Mantém a UI sempre atualizada mesmo se o WebSocket Realtime falhar
+    // ou se a aba estiver em segundo plano por pouco tempo.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 30_000);
+    }, 2_000);
 
     // 3. Sincronização entre abas via BroadcastChannel
     let bc: BroadcastChannel | null = null;
@@ -95,6 +97,21 @@ export function useCrossDeviceSync() {
       }
     });
 
+    // 5. Em cada login / refresh de sessão -> força refetch global imediato.
+    // Garante que ao abrir o app em um novo celular/notebook/navegador, os
+    // dados mais recentes do servidor sejam baixados antes da UI renderizar
+    // qualquer valor obsoleto vindo de cache local.
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        // bypassa throttle: novo login deve sincronizar AGORA
+        lastInvalidate = 0;
+        invalidateAll(`auth:${event}`);
+      }
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+      }
+    });
+
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);
@@ -107,6 +124,11 @@ export function useCrossDeviceSync() {
       }
       try {
         supabase.removeChannel(heartbeatChannel);
+      } catch {
+        /* noop */
+      }
+      try {
+        authSub.subscription.unsubscribe();
       } catch {
         /* noop */
       }

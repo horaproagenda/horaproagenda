@@ -151,7 +151,6 @@ export default function Financeiro() {
             {[
               { v: 'relatorio', label: 'Relatório', Icon: FileText },
               { v: 'pacotes', label: 'Pacotes', Icon: Tag },
-              { v: 'meus-caixas', label: 'Caixas', Icon: Wallet },
               { v: 'extrato', label: 'Extrato', Icon: FileText },
               { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard },
               { v: 'comissoes', label: 'Comissões', Icon: Percent },

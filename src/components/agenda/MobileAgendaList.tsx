@@ -299,44 +299,44 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-border/40 active:bg-muted/50 transition-colors"
+      className="flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/40 active:bg-muted/50 transition-colors overflow-hidden"
       style={{ 
         borderLeftColor: profColor, 
         borderLeftWidth: '3px',
         background: `linear-gradient(to right, ${profColor}10, transparent 30%)`,
       }}
     >
-      <div className="flex-shrink-0 w-10 text-center">
-        <span className="text-[12px] font-bold text-foreground leading-tight">{timeStr}</span>
-        <p className="text-[9px] text-muted-foreground">{apt.service?.duration || 30}min</p>
+      <div className="flex-shrink-0 w-9 text-center">
+        <span className="text-[11px] font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
+        <p className="text-[8px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
       </div>
       
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-[12px] font-semibold text-foreground truncate leading-tight">
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
           {apt.client?.name || 'Cliente'}
         </p>
-        <p className="text-[11px] text-muted-foreground truncate leading-tight">
+        <p className="text-[10px] text-muted-foreground truncate leading-tight">
           {displayName}
         </p>
         {applicationLabel && (
-          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+          <p className="text-[9px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
         )}
         {prof && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 mt-0.5 min-w-0">
             <div 
-              className="h-1.5 w-1.5 rounded-full flex-shrink-0" 
-              style={{ backgroundColor: profColor, boxShadow: `0 0 0 1.5px ${profColor}40` }} 
+              className="h-1 w-1 rounded-full flex-shrink-0" 
+              style={{ backgroundColor: profColor, boxShadow: `0 0 0 1px ${profColor}40` }} 
             />
-            <span className="text-[10px] font-medium truncate" style={{ color: profColor }}>
+            <span className="text-[9px] font-medium truncate" style={{ color: profColor }}>
               {prof.name.split(' ')[0]}
             </span>
           </div>
         )}
       </div>
       
-      <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-        <div className={cn('h-2 w-2 rounded-full', dot)} />
-        <PaymentIcon className={cn('h-3.5 w-3.5', payment.className)} />
+      <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1 pl-1">
+        <div className={cn('h-1.5 w-1.5 rounded-full', dot)} />
+        <PaymentIcon className={cn('h-3 w-3', payment.className)} />
       </div>
     </div>
   );

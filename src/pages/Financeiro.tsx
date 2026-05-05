@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   FileText, 
   ArrowDownCircle, 
-  Wallet,
+  
   Tag,
   CreditCard,
   TrendingUp,

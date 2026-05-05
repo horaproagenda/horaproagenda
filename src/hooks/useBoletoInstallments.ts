@@ -206,7 +206,7 @@ export function useAllBoletoInstallments() {
       return data || [];
     },
     staleTime: 0,
-    refetchInterval: 1000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: false,
   });
 

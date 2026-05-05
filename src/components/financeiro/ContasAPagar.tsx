@@ -755,6 +755,7 @@ export function ContasAPagar() {
         )}
 
         <ScrollArea className="h-[500px]">
+          <div className="min-w-[760px]">
           <Table>
             <TableHeader>
               <TableRow>

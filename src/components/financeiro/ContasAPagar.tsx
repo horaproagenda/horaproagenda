@@ -845,6 +845,7 @@ export function ContasAPagar() {
               )}
             </TableBody>
           </Table>
+          </div>
         </ScrollArea>
       </CardContent>
 

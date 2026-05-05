@@ -546,9 +546,9 @@ export function ContasAPagar() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle>Contas a Pagar</CardTitle>
-        <div className="flex items-center gap-4 flex-wrap">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2 pb-3">
+        <CardTitle className="text-base">Contas a Pagar</CardTitle>
+        <div className="flex items-center gap-1.5 flex-wrap">
           <AdvancedFilters
             groups={filterGroups}
             selectedFilters={selectedFilters}
@@ -557,18 +557,19 @@ export function ContasAPagar() {
           <Button
             variant={batchMode ? 'default' : 'outline'}
             size="sm"
+            className="h-7 px-2 text-[11px] gap-1"
             onClick={() => {
               setBatchMode(!batchMode);
               setSelectedEntryIds(new Set());
             }}
           >
-            <ListChecks className="h-4 w-4 mr-2" />
-            {batchMode ? 'Cancelar Seleção' : 'Baixa em Lote'}
+            <ListChecks className="h-3.5 w-3.5" />
+            {batchMode ? 'Cancelar' : 'Baixa em Lote'}
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="h-7 px-2 text-[11px] gap-1">
+                <Plus className="h-3.5 w-3.5" />
                 Nova Conta
               </Button>
             </DialogTrigger>

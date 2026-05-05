@@ -97,6 +97,21 @@ export function useCrossDeviceSync() {
       }
     });
 
+    // 5. Em cada login / refresh de sessão -> força refetch global imediato.
+    // Garante que ao abrir o app em um novo celular/notebook/navegador, os
+    // dados mais recentes do servidor sejam baixados antes da UI renderizar
+    // qualquer valor obsoleto vindo de cache local.
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        // bypassa throttle: novo login deve sincronizar AGORA
+        lastInvalidate = 0;
+        invalidateAll(`auth:${event}`);
+      }
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+      }
+    });
+
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);

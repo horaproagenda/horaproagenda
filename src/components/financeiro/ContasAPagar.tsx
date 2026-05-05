@@ -754,10 +754,10 @@ export function ContasAPagar() {
           </div>
         )}
 
-        <ScrollArea className="h-[500px]">
-          <div className="min-w-[760px]">
-          <Table>
-            <TableHeader>
+        <div className="w-full overflow-x-auto rounded-md border">
+          <div className="max-h-[500px] overflow-y-auto">
+          <Table className="min-w-[860px]">
+            <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
                 <TableHead className="text-[11px]">Data</TableHead>
@@ -791,19 +791,19 @@ export function ContasAPagar() {
                     )}
                     <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="text-xs py-2 max-w-[280px] truncate" title={entry.description}>{entry.description}</TableCell>
-                    <TableCell className="text-[11px] py-2 text-muted-foreground">
+                    <TableCell className="text-[11px] py-2 text-muted-foreground whitespace-nowrap">
                       {entry.category?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-[11px] py-2">
+                    <TableCell className="text-[11px] py-2 whitespace-nowrap">
                       {entry.payment_method?.name || '-'}
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums">
+                    <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums whitespace-nowrap">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-xs py-2">
+                    <TableCell className="text-xs py-2 whitespace-nowrap">
                       {getStatusDisplay(entry)}
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right">
+                    <TableCell className="text-xs py-2 text-right whitespace-nowrap">
                       <div className="flex justify-end gap-1">
                         {entry.status !== 'paid' && !batchMode && (
                           <Button 
@@ -846,7 +846,7 @@ export function ContasAPagar() {
             </TableBody>
           </Table>
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
 
       {/* Cancel Payment Confirmation */}

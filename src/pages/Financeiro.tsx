@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   FileText, 
   ArrowDownCircle, 
-  Wallet,
+  
   Tag,
   CreditCard,
   TrendingUp,
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
-import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
+
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';
@@ -151,7 +151,6 @@ export default function Financeiro() {
             {[
               { v: 'relatorio', label: 'Relatório', Icon: FileText },
               { v: 'pacotes', label: 'Pacotes', Icon: Tag },
-              { v: 'meus-caixas', label: 'Caixas', Icon: Wallet },
               { v: 'extrato', label: 'Extrato', Icon: FileText },
               { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard },
               { v: 'comissoes', label: 'Comissões', Icon: Percent },
@@ -184,10 +183,6 @@ export default function Financeiro() {
 
           <TabsContent value="extrato" className="page-enter">
             <ExtratoFinanceiro />
-          </TabsContent>
-
-          <TabsContent value="meus-caixas" className="page-enter">
-            <MeusCaixas />
           </TabsContent>
 
           <TabsContent value="pacotes" className="page-enter">

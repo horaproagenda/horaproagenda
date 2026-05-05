@@ -76,6 +76,8 @@ export function FinancialDashboard() {
       return { sales: sales || [], cashTx: cashTx || [], boletos: boletos || [], finEntries: finEntries || [] };
     },
     staleTime: 0,
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
   });
 
   // Payment method totals

@@ -49,12 +49,14 @@ export function useCrossDeviceSync() {
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 2. Heartbeat de segurança (a cada 30s) — só refetch ativo
+    // 2. Heartbeat agressivo (a cada 2s) — refetch ativo das queries visíveis.
+    // Mantém a UI sempre atualizada mesmo se o WebSocket Realtime falhar
+    // ou se a aba estiver em segundo plano por pouco tempo.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 30_000);
+    }, 2_000);
 
     // 3. Sincronização entre abas via BroadcastChannel
     let bc: BroadcastChannel | null = null;

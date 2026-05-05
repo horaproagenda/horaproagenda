@@ -158,6 +158,22 @@ export function CommissionsReport({
   const commissionsData = useMemo(() => {
     const professionalsMap: Record<string, ProfessionalCommission> = {};
 
+    // Seed map with ALL active professionals so they always appear
+    professionals.forEach((professional) => {
+      if ((professional as any).is_active === false) return;
+      const paidInfo = paidCommissions.find(pc => pc.professionalName === professional.name);
+      professionalsMap[professional.id] = {
+        professional,
+        totalServices: 0,
+        totalRevenue: 0,
+        commissionPercentage: professional.commission_percentage || 0,
+        commissionValue: 0,
+        appointments: [],
+        isPaid: !!paidInfo,
+        paidAt: paidInfo?.paidAt || undefined,
+      };
+    });
+
     // Filter paid appointments within the date range
     const filteredAppointments = appointments.filter(apt => {
       if (apt.payment_status !== 'paid' || !apt.amount_paid || apt.amount_paid <= 0) {
@@ -172,10 +188,9 @@ export function CommissionsReport({
       const profId = apt.professional_id || apt.service?.professional_id;
       if (!profId) return;
 
-      const professional = professionals.find(p => p.id === profId);
-      if (!professional) return;
-
       if (!professionalsMap[profId]) {
+        const professional = professionals.find(p => p.id === profId);
+        if (!professional) return;
         const paidInfo = paidCommissions.find(pc => pc.professionalName === professional.name);
         professionalsMap[profId] = {
           professional,
@@ -205,7 +220,6 @@ export function CommissionsReport({
         const amount = apt.amount_paid || 0;
         const serviceId = apt.service_id;
         
-        // Check for per-service override
         const override = serviceId ? serviceCommissions.find(
           (sc: any) => sc.professional_id === prof.id && sc.service_id === serviceId
         ) : null;

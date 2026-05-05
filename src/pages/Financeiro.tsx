@@ -146,52 +146,33 @@ export default function Financeiro() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid grid-cols-6 sm:grid-cols-11 h-auto gap-1 bg-muted/50 p-1 w-full">
-            <TabsTrigger value="relatorio" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Relatório">
-              <FileText className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Relatório</span>
-            </TabsTrigger>
-            <TabsTrigger value="pacotes" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Pacotes">
-              <Tag className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Pacotes</span>
-            </TabsTrigger>
-            <TabsTrigger value="meus-caixas" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Caixas">
-              <Wallet className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Caixas</span>
-            </TabsTrigger>
-            <TabsTrigger value="extrato" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Extrato">
-              <FileText className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Extrato</span>
-            </TabsTrigger>
-            <TabsTrigger value="formas-pagamento" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Formas de Pagamento">
-              <CreditCard className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Pagamento</span>
-            </TabsTrigger>
-            <TabsTrigger value="comissoes" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Comissões">
-              <Percent className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Comissões</span>
-            </TabsTrigger>
-            <TabsTrigger value="metas" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Metas">
-              <Target className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Metas</span>
-            </TabsTrigger>
-            <TabsTrigger value="precificacao" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Precificação">
-              <Calculator className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Precificação</span>
-            </TabsTrigger>
-            <TabsTrigger value="categorias" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Categorias">
-              <Tag className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Categorias</span>
-            </TabsTrigger>
-            <TabsTrigger value="contas-pagar" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="A Pagar">
-              <ArrowDownCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">A Pagar</span>
-            </TabsTrigger>
-            <TabsTrigger value="dashboard" className="gap-1.5 text-[11px] tracking-wide h-9 px-1" title="Dashboard">
-              <BarChart3 className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
+          <div className="overflow-x-auto -mx-2 px-2 scrollbar-thin">
+          <TabsList className="inline-flex w-max min-w-full h-auto gap-1.5 bg-muted/50 p-1">
+            {[
+              { v: 'relatorio', label: 'Relatório', Icon: FileText },
+              { v: 'pacotes', label: 'Pacotes', Icon: Tag },
+              { v: 'meus-caixas', label: 'Caixas', Icon: Wallet },
+              { v: 'extrato', label: 'Extrato', Icon: FileText },
+              { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard },
+              { v: 'comissoes', label: 'Comissões', Icon: Percent },
+              { v: 'metas', label: 'Metas', Icon: Target },
+              { v: 'precificacao', label: 'Precificação', Icon: Calculator },
+              { v: 'categorias', label: 'Categorias', Icon: Tag },
+              { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle },
+              { v: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
+            ].map(({ v, label, Icon }) => (
+              <TabsTrigger
+                key={v}
+                value={v}
+                title={label}
+                className="flex items-center gap-1.5 whitespace-nowrap text-[11px] tracking-wide h-8 px-2.5"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
+          </div>
 
           <TabsContent value="dashboard" className="page-enter">
             <FinancialDashboard />

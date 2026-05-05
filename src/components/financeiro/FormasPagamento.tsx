@@ -363,22 +363,22 @@ export function FormasPagamento() {
               </Alert>
             )}
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-xs font-medium">
                 {boletoFilter === 'all' ? 'Todos' : boletoFilter === 'pending' ? 'Pendentes' : boletoFilter === 'overdue' ? 'Atrasados' : 'Pagos'}
                 {' '}({filteredBoletos.length})
               </p>
-              <div className="flex gap-2">
-                <Button size="sm" className="gap-1" onClick={() => setCreateBoletoOpen(true)}>
-                  <Plus className="h-3.5 w-3.5" />
-                  Criar Boleto Parcelado
+              <div className="flex gap-1.5 flex-wrap">
+                <Button size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={() => setCreateBoletoOpen(true)}>
+                  <Plus className="h-3 w-3" />
+                  Criar Boleto
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAuditLog(true)}>
-                  <History className="h-3.5 w-3.5" />
+                <Button variant="outline" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={() => setShowAuditLog(true)}>
+                  <History className="h-3 w-3" />
                   Histórico
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => triggerSync.mutate()} disabled={triggerSync.isPending}>
-                  <RefreshCw className={`h-3.5 w-3.5 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
+                <Button variant="outline" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={() => triggerSync.mutate()} disabled={triggerSync.isPending}>
+                  <RefreshCw className={`h-3 w-3 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
                   Sincronizar
                 </Button>
               </div>

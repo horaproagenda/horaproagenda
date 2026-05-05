@@ -90,7 +90,7 @@ export function CommissionsReport({
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [bankId, setBankId] = useState<string>('');
 
-  // Fetch per-service commission overrides
+  // Fetch per-service commission overrides (real-time)
   const { data: serviceCommissions = [] } = useQuery({
     queryKey: ['professional_service_commissions_all'],
     queryFn: async () => {
@@ -100,7 +100,38 @@ export function CommissionsReport({
       if (error) throw error;
       return data as any[];
     },
+    refetchInterval: 2000,
+    staleTime: 0,
   });
+
+  // Force commissions to refresh every 1s by invalidating source data
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['professionals'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [queryClient]);
+
+  // Realtime subscriptions for commissions related tables
+  useEffect(() => {
+    const ch = supabase
+      .channel('commissions-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'professional_service_commissions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'professionals' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['professionals'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   // Check if a commission was already paid
   const paidCommissions = useMemo(() => {

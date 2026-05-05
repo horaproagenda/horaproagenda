@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { ContasAPagar } from '@/components/financeiro/ContasAPagar';
 import { ExtratoFinanceiro } from '@/components/financeiro/ExtratoFinanceiro';
-import { MeusCaixas } from '@/components/financeiro/MeusCaixas';
+
 import { CategoriasFinanceiras } from '@/components/financeiro/CategoriasFinanceiras';
 import { FormasPagamento } from '@/components/financeiro/FormasPagamento';
 import { CommissionsReport } from '@/components/caixa/CommissionsReport';

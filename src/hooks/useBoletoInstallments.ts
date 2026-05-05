@@ -206,6 +206,8 @@ export function useAllBoletoInstallments() {
       return data || [];
     },
     staleTime: 0,
+    refetchInterval: 1000,
+    refetchIntervalInBackground: false,
   });
 
   const logAudit = async (params: {

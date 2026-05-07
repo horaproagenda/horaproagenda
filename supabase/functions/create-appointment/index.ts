@@ -146,6 +146,62 @@ serve(async (req) => {
     const body = await req.json() as AppointmentRequest;
     const errors: ValidationError[] = [];
 
+    // SECURITY: Scope check for professional-only callers (admins/receptionists are unrestricted).
+    const isAdminOrReceptionist = roles.includes('admin') || roles.includes('receptionist');
+    if (!isAdminOrReceptionist && roles.includes('professional')) {
+      // Resolve caller's professional record
+      const { data: callerProf, error: callerProfError } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (callerProfError || !callerProf) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Forbidden - Professional record not found' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const callerProfId = callerProf.id;
+
+      // Must specify and match own professional_id
+      if (!body.professional_id || body.professional_id !== callerProfId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Forbidden - Professionals can only book appointments for themselves' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Must have access to the client (assigned to them or has a prior appointment with them)
+      if (body.client_id) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('id, assigned_professional_id')
+          .eq('id', body.client_id)
+          .maybeSingle();
+
+        let allowed = clientRow?.assigned_professional_id === callerProfId;
+        if (!allowed) {
+          const { data: priorAppt } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('client_id', body.client_id)
+            .eq('professional_id', callerProfId)
+            .limit(1)
+            .maybeSingle();
+          allowed = !!priorAppt;
+        }
+
+        if (!allowed) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Forbidden - Client is not assigned to this professional' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     console.log('Creating appointment with data:', JSON.stringify(body));
 
     // 1. Basic input validation

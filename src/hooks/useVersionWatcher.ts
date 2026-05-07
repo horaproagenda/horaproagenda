@@ -54,16 +54,17 @@ export function useVersionWatcher() {
     if (!initialSignature) return; // SSR/prerender ou ambiente atípico
 
     const promptUpdate = () => {
+      logVersionEvent('new_version_detected');
       toast.success('Nova versão disponível!', {
         description: 'Atualizando para garantir que tudo esteja sincronizado...',
         duration: 5000,
         icon: '🚀',
         action: {
           label: 'Atualizar agora',
-          onClick: triggerReload,
+          onClick: () => triggerReload('user_action'),
         },
       });
-      setTimeout(triggerReload, 4000);
+      setTimeout(() => triggerReload('auto_after_detection'), 4000);
     };
 
     const checkVersion = async () => {

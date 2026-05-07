@@ -54,12 +54,32 @@ interface SidebarProps {
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile } = useAuth();
+  const location = useLocation();
+  const navRef = useRef<HTMLElement | null>(null);
+  const SCROLL_KEY = 'sidebar-nav-scroll';
+
+  // Restore scroll on mount and after route changes
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) el.scrollTop = parseInt(saved, 10) || 0;
+  }, [location.pathname]);
+
+  const handleNavScroll = () => {
+    if (navRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
   };
 
   const handleNavClick = () => {
+    if (navRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+    }
     if (onMobileClose) onMobileClose();
   };
 

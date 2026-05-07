@@ -3648,14 +3648,24 @@ export type Database = {
         }
         Returns: undefined
       }
-      submit_document_fill_by_token: {
-        Args: {
-          p_filled_content: string
-          p_filled_variables?: Json
-          p_token: string
-        }
-        Returns: string
-      }
+      submit_document_fill_by_token:
+        | {
+            Args: {
+              p_filled_content: string
+              p_filled_variables?: Json
+              p_token: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_cpf?: string
+              p_filled_content: string
+              p_filled_variables?: Json
+              p_token: string
+            }
+            Returns: string
+          }
     }
     Enums: {
       app_role: "admin" | "receptionist" | "professional"

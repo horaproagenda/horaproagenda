@@ -58,12 +58,19 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';
 
-  // Restore scroll on mount and after route changes
-  useEffect(() => {
+  // Restore scroll synchronously before paint to avoid any visible jump
+  useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
     const saved = sessionStorage.getItem(SCROLL_KEY);
-    if (saved) el.scrollTop = parseInt(saved, 10) || 0;
+    if (saved) {
+      const target = parseInt(saved, 10) || 0;
+      el.scrollTop = target;
+      // Re-apply on next frame in case nav children mount with delay
+      requestAnimationFrame(() => {
+        if (el.scrollTop !== target) el.scrollTop = target;
+      });
+    }
   }, [location.pathname]);
 
   const handleNavScroll = () => {

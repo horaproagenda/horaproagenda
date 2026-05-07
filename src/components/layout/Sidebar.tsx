@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -53,12 +54,32 @@ interface SidebarProps {
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile } = useAuth();
+  const location = useLocation();
+  const navRef = useRef<HTMLElement | null>(null);
+  const SCROLL_KEY = 'sidebar-nav-scroll';
+
+  // Restore scroll on mount and after route changes
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) el.scrollTop = parseInt(saved, 10) || 0;
+  }, [location.pathname]);
+
+  const handleNavScroll = () => {
+    if (navRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
   };
 
   const handleNavClick = () => {
+    if (navRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+    }
     if (onMobileClose) onMobileClose();
   };
 
@@ -132,7 +153,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-2 py-2 overflow-y-auto">
+          <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 space-y-1 px-2 py-2 overflow-y-auto overscroll-contain">
             {navigation.map((item) => (
               isCollapsed ? (
                 <Tooltip key={item.name}>

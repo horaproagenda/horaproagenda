@@ -65,6 +65,7 @@ const App = () => {
   const [queryClient] = useState(createQueryClient);
   useWheelScrollFix();
   useAppUpdater();
+  useVersionWatcher();
 
   return (
     <QueryClientProvider client={queryClient}>

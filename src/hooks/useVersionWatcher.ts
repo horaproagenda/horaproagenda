@@ -31,11 +31,15 @@ export function useVersionWatcher() {
     // Em dev, não vale a pena (HMR já cuida disso)
     if (import.meta.env.DEV) return;
 
-    const triggerReload = () => {
+    const triggerReload = (reason: string) => {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
+      captureFormState(reason);
+      logVersionEvent('reload_triggered', { reason });
       window.location.reload();
     };
+
+    logVersionEvent('watcher_started');
 
     const getCurrentSignature = (): string => {
       const scripts = Array.from(document.querySelectorAll('script[src]')) as HTMLScriptElement[];

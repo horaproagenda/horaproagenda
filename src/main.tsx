@@ -3,6 +3,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { bootstrapAppearance } from "./hooks/useAppearanceSettings";
+import { restoreUrlIfNeeded, scheduleFormRestore } from "./lib/preReloadState";
+import { logVersionEvent } from "./lib/appVersionLog";
+
+// Restore URL (route) saved before a version-update reload, so the app
+// boots on the same screen the user was viewing — must run BEFORE Router mounts.
+restoreUrlIfNeeded();
 
 // Apply persisted appearance (primary color, dark mode, animations) before render
 bootstrapAppearance();
@@ -19,6 +25,10 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
+
+// After React mounts, restore any form state captured before a reload.
+scheduleFormRestore();
+logVersionEvent('watcher_started', { boot: true });
 
 // Register PWA service worker after React is mounted
 if ('serviceWorker' in navigator) {

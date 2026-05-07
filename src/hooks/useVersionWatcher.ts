@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { logVersionEvent } from '@/lib/appVersionLog';
+import { captureFormState } from '@/lib/preReloadState';
 
 /**
  * useVersionWatcher
@@ -29,11 +31,15 @@ export function useVersionWatcher() {
     // Em dev, não vale a pena (HMR já cuida disso)
     if (import.meta.env.DEV) return;
 
-    const triggerReload = () => {
+    const triggerReload = (reason: string) => {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
+      captureFormState(reason);
+      logVersionEvent('reload_triggered', { reason });
       window.location.reload();
     };
+
+    logVersionEvent('watcher_started');
 
     const getCurrentSignature = (): string => {
       const scripts = Array.from(document.querySelectorAll('script[src]')) as HTMLScriptElement[];
@@ -48,16 +54,17 @@ export function useVersionWatcher() {
     if (!initialSignature) return; // SSR/prerender ou ambiente atípico
 
     const promptUpdate = () => {
+      logVersionEvent('new_version_detected');
       toast.success('Nova versão disponível!', {
         description: 'Atualizando para garantir que tudo esteja sincronizado...',
         duration: 5000,
         icon: '🚀',
         action: {
           label: 'Atualizar agora',
-          onClick: triggerReload,
+          onClick: () => triggerReload('user_action'),
         },
       });
-      setTimeout(triggerReload, 4000);
+      setTimeout(() => triggerReload('auto_after_detection'), 4000);
     };
 
     const checkVersion = async () => {
@@ -72,11 +79,11 @@ export function useVersionWatcher() {
         const remoteSignature = matches.map((m) => m[1]).sort().join('|');
         if (!remoteSignature) {
           failuresRef.current += 1;
+          logVersionEvent('check_fail', { reason: 'no_assets_in_html' });
           return;
         }
         failuresRef.current = 0;
 
-        // Compara apenas os nomes de arquivo (hash) — ignora origin
         const stripOrigin = (sig: string) =>
           sig
             .split('|')
@@ -84,12 +91,20 @@ export function useVersionWatcher() {
             .sort()
             .join('|');
 
-        if (stripOrigin(remoteSignature) !== stripOrigin(initialSignature)) {
+        const remote = stripOrigin(remoteSignature);
+        const local = stripOrigin(initialSignature);
+        if (remote !== local) {
           console.log('[VersionWatcher] Nova versão detectada — recarregando app');
           promptUpdate();
+        } else {
+          logVersionEvent('check_ok');
         }
       } catch (err) {
         failuresRef.current += 1;
+        logVersionEvent('check_fail', {
+          message: err instanceof Error ? err.message : String(err),
+          consecutive: failuresRef.current,
+        });
         if (failuresRef.current < 5) {
           console.warn('[VersionWatcher] Falha ao checar versão:', err);
         }

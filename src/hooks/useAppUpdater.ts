@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { logVersionEvent } from '@/lib/appVersionLog';
+import { captureFormState } from '@/lib/preReloadState';
 
 /**
  * useAppUpdater
@@ -27,13 +29,16 @@ export function useAppUpdater() {
     let registration: ServiceWorkerRegistration | null = null;
     let updateInterval: number | null = null;
 
-    const triggerReload = () => {
+    const triggerReload = (reason: string = 'sw_update') => {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
+      captureFormState(reason);
+      logVersionEvent('reload_triggered', { reason, source: 'sw' });
       window.location.reload();
     };
 
     const promptUpdate = (waiting: ServiceWorker | null) => {
+      logVersionEvent('sw_update_found');
       toast.success('Nova versão disponível!', {
         description: 'Atualizando o aplicativo automaticamente...',
         duration: 5000,
@@ -110,7 +115,10 @@ export function useAppUpdater() {
     }
 
     // Quando o controlador muda (SW novo assumiu), recarrega para garantir bundle novo
-    const onControllerChange = () => triggerReload();
+    const onControllerChange = () => {
+      logVersionEvent('sw_controller_change');
+      triggerReload('sw_controller_change');
+    };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', checkForUpdate);

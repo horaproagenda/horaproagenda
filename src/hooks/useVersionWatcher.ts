@@ -79,11 +79,11 @@ export function useVersionWatcher() {
         const remoteSignature = matches.map((m) => m[1]).sort().join('|');
         if (!remoteSignature) {
           failuresRef.current += 1;
+          logVersionEvent('check_fail', { reason: 'no_assets_in_html' });
           return;
         }
         failuresRef.current = 0;
 
-        // Compara apenas os nomes de arquivo (hash) — ignora origin
         const stripOrigin = (sig: string) =>
           sig
             .split('|')
@@ -91,12 +91,20 @@ export function useVersionWatcher() {
             .sort()
             .join('|');
 
-        if (stripOrigin(remoteSignature) !== stripOrigin(initialSignature)) {
+        const remote = stripOrigin(remoteSignature);
+        const local = stripOrigin(initialSignature);
+        if (remote !== local) {
           console.log('[VersionWatcher] Nova versão detectada — recarregando app');
           promptUpdate();
+        } else {
+          logVersionEvent('check_ok');
         }
       } catch (err) {
         failuresRef.current += 1;
+        logVersionEvent('check_fail', {
+          message: err instanceof Error ? err.message : String(err),
+          consecutive: failuresRef.current,
+        });
         if (failuresRef.current < 5) {
           console.warn('[VersionWatcher] Falha ao checar versão:', err);
         }

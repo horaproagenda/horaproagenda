@@ -5,6 +5,7 @@ import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDi
 import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 import { useLocation } from 'react-router-dom';
+import { hydrateDismissalsFromDb } from '@/lib/notificationDismissal';
 
 interface AppLayoutProps {
   children: ReactNode;

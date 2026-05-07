@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { APP_VERSION } from '@/lib/version';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },

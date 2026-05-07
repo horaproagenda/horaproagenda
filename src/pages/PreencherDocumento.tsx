@@ -199,13 +199,7 @@ export default function PreencherDocumento() {
         return;
       }
 
-      const { data: templateData, error: templateError } = await supabase
-        .from('document_templates')
-        .select('id, title, content, variables')
-        .eq('id', linkData.template_id)
-        .maybeSingle();
-
-      if (templateError) throw templateError;
+      const templateData = linkData.template;
       if (!templateData) {
         setError('O modelo deste documento não foi encontrado.');
         return;
@@ -275,6 +269,7 @@ export default function PreencherDocumento() {
         filled_at: linkData.filled_at,
         filled_content: linkData.filled_content,
         filled_variables: linkData.filled_variables || {},
+        requires_cpf: !!linkData.requires_cpf,
       });
       setTemplate({
         id: templateData.id,

@@ -115,7 +115,10 @@ export function useAppUpdater() {
     }
 
     // Quando o controlador muda (SW novo assumiu), recarrega para garantir bundle novo
-    const onControllerChange = () => triggerReload();
+    const onControllerChange = () => {
+      logVersionEvent('sw_controller_change');
+      triggerReload('sw_controller_change');
+    };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', checkForUpdate);

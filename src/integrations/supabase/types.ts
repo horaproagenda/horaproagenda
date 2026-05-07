@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_version_events: {
+        Row: {
+          created_at: string
+          current_version: string | null
+          detected_version: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          trigger_source: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_version?: string | null
+          detected_version?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          trigger_source?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_version?: string | null
+          detected_version?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          trigger_source?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       appointment_additional_items: {
         Row: {
           appointment_id: string

@@ -153,7 +153,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-2 py-2 overflow-y-auto">
+          <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 space-y-1 px-2 py-2 overflow-y-auto overscroll-contain">
             {navigation.map((item) => (
               isCollapsed ? (
                 <Tooltip key={item.name}>

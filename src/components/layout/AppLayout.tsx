@@ -25,6 +25,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   // Enable reminder and cash register close notifications
   useReminderNotifications();
 
+  // Pull saved notification dismissals from the database on app start
+  useEffect(() => {
+    void hydrateDismissalsFromDb();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);

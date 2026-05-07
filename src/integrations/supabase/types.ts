@@ -3639,6 +3639,7 @@ export type Database = {
             }
             Returns: undefined
           }
+      realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }
       record_migration: {
         Args: {
           p_applied_by?: string

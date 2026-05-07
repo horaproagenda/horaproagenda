@@ -144,33 +144,14 @@ export default function PreencherDocumento() {
   const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
   const handleCpfSubmit = () => {
-    const expected = onlyDigits(client?.cpf ?? '');
     const provided = onlyDigits(cpfInput);
-
-    if (!expected) {
-      // No CPF on file — cannot authenticate, but allow access (legacy links)
-      setAuthenticated(true);
-      return;
-    }
-
     if (provided.length !== 11) {
       setCpfError('Digite os 11 dígitos do seu CPF.');
       return;
     }
-
-    if (provided === expected) {
-      setCpfError(null);
-      setAuthenticated(true);
-      return;
-    }
-
-    const next = cpfAttempts + 1;
-    setCpfAttempts(next);
-    if (next >= 5) {
-      setCpfError('Muitas tentativas incorretas. Entre em contato com o profissional.');
-    } else {
-      setCpfError(`CPF não confere com o cadastro. Tentativa ${next} de 5.`);
-    }
+    // Server-side validation happens on submit (submit_document_fill_by_token)
+    setCpfError(null);
+    setAuthenticated(true);
   };
 
   useEffect(() => {

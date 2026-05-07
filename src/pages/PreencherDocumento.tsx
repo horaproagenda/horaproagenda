@@ -50,6 +50,8 @@ interface DocumentLinkPayload {
   filled_at: string | null;
   filled_content: string | null;
   filled_variables: Record<string, unknown> | null;
+  template?: { id: string; title: string; content: string; variables: string[] | null } | null;
+  requires_cpf?: boolean;
 }
 
 interface DocumentLink {
@@ -62,6 +64,7 @@ interface DocumentLink {
   filled_at: string | null;
   filled_content: string | null;
   filled_variables: Record<string, unknown>;
+  requires_cpf: boolean;
 }
 
 interface Template {

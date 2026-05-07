@@ -29,13 +29,16 @@ export function useAppUpdater() {
     let registration: ServiceWorkerRegistration | null = null;
     let updateInterval: number | null = null;
 
-    const triggerReload = () => {
+    const triggerReload = (reason: string = 'sw_update') => {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
+      captureFormState(reason);
+      logVersionEvent('reload_triggered', { reason, source: 'sw' });
       window.location.reload();
     };
 
     const promptUpdate = (waiting: ServiceWorker | null) => {
+      logVersionEvent('sw_update_found');
       toast.success('Nova versão disponível!', {
         description: 'Atualizando o aplicativo automaticamente...',
         duration: 5000,

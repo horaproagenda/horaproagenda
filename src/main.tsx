@@ -26,6 +26,10 @@ createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
+// After React mounts, restore any form state captured before a reload.
+scheduleFormRestore();
+logVersionEvent('watcher_started', { boot: true });
+
 // Register PWA service worker after React is mounted
 if ('serviceWorker' in navigator) {
   import('virtual:pwa-register').then(({ registerSW }) => {

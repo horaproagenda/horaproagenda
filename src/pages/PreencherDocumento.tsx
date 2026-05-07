@@ -540,7 +540,7 @@ export default function PreencherDocumento() {
   if (!template) return null;
 
   // CPF authentication gate — only when a client is linked AND has CPF on file
-  if (client?.cpf && !authenticated) {
+  if (documentLink?.requires_cpf && !authenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">

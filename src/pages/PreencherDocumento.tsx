@@ -326,9 +326,16 @@ export default function PreencherDocumento() {
         p_token: token,
         p_filled_content: filledContent,
         p_filled_variables: payload,
-      });
+        p_cpf: onlyDigits(cpfInput),
+      } as any);
 
-      if (submitError) throw submitError;
+      if (submitError) {
+        if ((submitError.message || '').includes('CPF_MISMATCH')) {
+          toast.error('CPF informado não confere com o cadastro.');
+          return;
+        }
+        throw submitError;
+      }
 
       setFilledContentForPdf(filledContent);
       setSubmitted(true);

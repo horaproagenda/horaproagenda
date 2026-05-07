@@ -87,12 +87,27 @@ export function useAppUpdater() {
         });
       });
 
-      // Polling agressivo a cada 20s — garante que toda nova versão
+      // Polling agressivo a cada 15s — garante que toda nova versão
       // publicada seja detectada rapidamente em qualquer dispositivo.
-      updateInterval = window.setInterval(checkForUpdate, 20_000);
+      updateInterval = window.setInterval(checkForUpdate, 15_000);
       // Checagem inicial
       checkForUpdate();
     });
+
+    // Failsafe: limpa caches HTTP antigos do navegador no boot,
+    // evitando que assets obsoletos do PWA "vazem" para uma nova sessão.
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys
+          .filter((k) => k.startsWith('html-cache') || k.startsWith('workbox-precache'))
+          .forEach((k) => {
+            // mantém o mais recente; remove duplicados antigos
+            if (k.includes('-old') || k.endsWith('-v1')) {
+              caches.delete(k).catch(() => {});
+            }
+          });
+      }).catch(() => {});
+    }
 
     // Quando o controlador muda (SW novo assumiu), recarrega para garantir bundle novo
     const onControllerChange = () => triggerReload();

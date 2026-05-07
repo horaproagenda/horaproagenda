@@ -5,6 +5,7 @@ import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDi
 import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 import { useLocation } from 'react-router-dom';
+import { hydrateDismissalsFromDb } from '@/lib/notificationDismissal';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -23,6 +24,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
 
   // Enable reminder and cash register close notifications
   useReminderNotifications();
+
+  // Pull saved notification dismissals from the database on app start
+  useEffect(() => {
+    void hydrateDismissalsFromDb();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isSidebarCollapsed));

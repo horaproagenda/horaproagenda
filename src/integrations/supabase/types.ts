@@ -1237,6 +1237,30 @@ export type Database = {
           },
         ]
       }
+      dismissed_notifications: {
+        Row: {
+          dismissed_at: string
+          id: string
+          notification_id: string
+          signature: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          id?: string
+          notification_id: string
+          signature: string
+          user_id?: string
+        }
+        Update: {
+          dismissed_at?: string
+          id?: string
+          notification_id?: string
+          signature?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       document_fill_links: {
         Row: {
           client_id: string | null

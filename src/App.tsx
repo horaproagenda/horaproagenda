@@ -11,6 +11,7 @@ import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
+import { useVersionWatcher } from "@/hooks/useVersionWatcher";
 import Index from "./pages/Index";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
@@ -64,6 +65,7 @@ const App = () => {
   const [queryClient] = useState(createQueryClient);
   useWheelScrollFix();
   useAppUpdater();
+  useVersionWatcher();
 
   return (
     <QueryClientProvider client={queryClient}>

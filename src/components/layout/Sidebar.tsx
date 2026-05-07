@@ -258,7 +258,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </div>
 
           {/* Footer */}
-          {!isCollapsed && (
+          {!isCollapsed ? (
             <div className="border-t border-sidebar-border p-4">
               <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-4">
                 <p className="text-xs font-medium text-foreground">
@@ -268,6 +268,13 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   {profile?.email || 'Sistema de Agendamento'}
                 </p>
               </div>
+              <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
+                Lume Agenda · {APP_VERSION}
+              </p>
+            </div>
+          ) : (
+            <div className="border-t border-sidebar-border py-2">
+              <p className="text-center text-[10px] text-muted-foreground/70">{APP_VERSION}</p>
             </div>
           )}
         </div>

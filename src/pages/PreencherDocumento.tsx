@@ -50,6 +50,8 @@ interface DocumentLinkPayload {
   filled_at: string | null;
   filled_content: string | null;
   filled_variables: Record<string, unknown> | null;
+  template?: { id: string; title: string; content: string; variables: string[] | null } | null;
+  requires_cpf?: boolean;
 }
 
 interface DocumentLink {
@@ -62,6 +64,7 @@ interface DocumentLink {
   filled_at: string | null;
   filled_content: string | null;
   filled_variables: Record<string, unknown>;
+  requires_cpf: boolean;
 }
 
 interface Template {
@@ -141,33 +144,14 @@ export default function PreencherDocumento() {
   const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
   const handleCpfSubmit = () => {
-    const expected = onlyDigits(client?.cpf ?? '');
     const provided = onlyDigits(cpfInput);
-
-    if (!expected) {
-      // No CPF on file — cannot authenticate, but allow access (legacy links)
-      setAuthenticated(true);
-      return;
-    }
-
     if (provided.length !== 11) {
       setCpfError('Digite os 11 dígitos do seu CPF.');
       return;
     }
-
-    if (provided === expected) {
-      setCpfError(null);
-      setAuthenticated(true);
-      return;
-    }
-
-    const next = cpfAttempts + 1;
-    setCpfAttempts(next);
-    if (next >= 5) {
-      setCpfError('Muitas tentativas incorretas. Entre em contato com o profissional.');
-    } else {
-      setCpfError(`CPF não confere com o cadastro. Tentativa ${next} de 5.`);
-    }
+    // Server-side validation happens on submit (submit_document_fill_by_token)
+    setCpfError(null);
+    setAuthenticated(true);
   };
 
   useEffect(() => {
@@ -196,13 +180,7 @@ export default function PreencherDocumento() {
         return;
       }
 
-      const { data: templateData, error: templateError } = await supabase
-        .from('document_templates')
-        .select('id, title, content, variables')
-        .eq('id', linkData.template_id)
-        .maybeSingle();
-
-      if (templateError) throw templateError;
+      const templateData = linkData.template;
       if (!templateData) {
         setError('O modelo deste documento não foi encontrado.');
         return;
@@ -272,6 +250,7 @@ export default function PreencherDocumento() {
         filled_at: linkData.filled_at,
         filled_content: linkData.filled_content,
         filled_variables: linkData.filled_variables || {},
+        requires_cpf: !!linkData.requires_cpf,
       });
       setTemplate({
         id: templateData.id,
@@ -328,9 +307,16 @@ export default function PreencherDocumento() {
         p_token: token,
         p_filled_content: filledContent,
         p_filled_variables: payload,
-      });
+        p_cpf: onlyDigits(cpfInput),
+      } as any);
 
-      if (submitError) throw submitError;
+      if (submitError) {
+        if ((submitError.message || '').includes('CPF_MISMATCH')) {
+          toast.error('CPF informado não confere com o cadastro.');
+          return;
+        }
+        throw submitError;
+      }
 
       setFilledContentForPdf(filledContent);
       setSubmitted(true);
@@ -554,7 +540,7 @@ export default function PreencherDocumento() {
   if (!template) return null;
 
   // CPF authentication gate — only when a client is linked AND has CPF on file
-  if (client?.cpf && !authenticated) {
+  if (documentLink?.requires_cpf && !authenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">

@@ -46,6 +46,43 @@ async function sendViaEvolution(baseUrl: string, key: string, instance: string, 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  // Auth: allow either (a) cron with shared secret OR (b) authenticated admin/receptionist user
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const providedCron = req.headers.get('x-cron-secret');
+  const authHeader = req.headers.get('Authorization');
+  let authorized = false;
+
+  if (cronSecret && providedCron && providedCron === cronSecret) {
+    authorized = true;
+  } else if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claimsData } = await userClient.auth.getClaims(token);
+      const userId = claimsData?.claims?.sub;
+      if (userId) {
+        const { data: roles } = await userClient
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId);
+        const roleNames = (roles || []).map((r: any) => r.role);
+        if (roleNames.includes('admin') || roleNames.includes('receptionist')) {
+          authorized = true;
+        }
+      }
+    } catch (_) { /* fall through */ }
+  }
+
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, follow_up: 0, birthday: 0 } };
 

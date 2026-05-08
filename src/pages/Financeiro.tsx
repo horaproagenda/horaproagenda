@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { useSearchParams } from 'react-router-dom';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';

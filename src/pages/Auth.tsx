@@ -801,6 +801,45 @@ export default function Auth() {
                 </div>
               )}
 
+              {/* Step 2.5: Phone SMS Code */}
+              {authStep === 'phoneCode' && (
+                <div className="space-y-6">
+                  <div className="text-center space-y-2">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Mail className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold">Verifique seu celular</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enviamos um SMS com 6 dígitos para <span className="font-medium">{normalizedPhoneE164 || signupPhone}</span>
+                    </p>
+                  </div>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={phoneCode} onChange={setPhoneCode}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <Button type="button" className="w-full" onClick={handleVerifyPhoneCode} disabled={loading || phoneCode.length !== 6}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Verificar código SMS
+                  </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setAuthStep('code')}>
+                      <ArrowLeft className="h-4 w-4" />Voltar
+                    </button>
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendPhoneCode} disabled={resendingEmail}>
+                      {resendingEmail ? 'Reenviando...' : 'Reenviar SMS'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Step 3: Select Plan */}
               {authStep === 'plan' && (
                 <div className="space-y-4">

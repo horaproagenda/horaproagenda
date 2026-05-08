@@ -53,7 +53,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, phone, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
+    const { email, password, fullName, phone, cpf, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
     const normalizedEmail = email?.trim().toLowerCase();
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
@@ -64,35 +64,71 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "A senha deve ter pelo menos 6 caracteres." }, 400);
     }
 
+    // CPF mandatory + valid
+    const cpfDigits = (cpf || "").replace(/\D/g, "");
+    if (!cpfDigits || !isValidCPF(cpfDigits)) {
+      return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
+    }
+
+    // Phone mandatory + normalized
+    const phoneE164 = normalizePhone(phone || "");
+    if (!phoneE164) {
+      return jsonResponse({ success: false, error: "Número de celular inválido." }, 400);
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Email code must be verified within last 10 min
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: usedCode, error: codeError } = await supabaseAdmin
       .from("verification_codes")
       .select("id")
       .eq("email", normalizedEmail)
       .eq("type", "signup")
       .not("used_at", "is", null)
-      .gte("used_at", fiveMinutesAgo)
+      .gte("used_at", tenMinutesAgo)
       .limit(1)
       .maybeSingle();
 
     if (codeError) {
       console.error("complete-signup verification lookup error:", codeError);
-      return jsonResponse({ success: false, error: "Erro ao validar o código verificado." }, 500);
+      return jsonResponse({ success: false, error: "Erro ao validar o código de e-mail." }, 500);
+    }
+    if (!usedCode) {
+      return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
     }
 
-    if (!usedCode) {
-      return jsonResponse({ success: false, error: "Código de verificação não encontrado ou expirado. Solicite um novo código." }, 400);
+    // Phone code must be verified within last 10 min
+    const { data: usedPhoneCode } = await supabaseAdmin
+      .from("phone_verification_codes")
+      .select("id")
+      .eq("phone", phoneE164)
+      .not("used_at", "is", null)
+      .gte("used_at", tenMinutesAgo)
+      .limit(1)
+      .maybeSingle();
+    if (!usedPhoneCode) {
+      return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+    }
+
+    // Block duplicate CPF across registrations
+    const { data: cpfDup } = await supabaseAdmin
+      .from("trial_registrations")
+      .select("id")
+      .eq("cpf", cpfDigits)
+      .maybeSingle();
+    if (cpfDup) {
+      return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
     }
 
     const userMetadata = {
       full_name: fullName.trim(),
-      phone: phone || null,
+      phone: phoneE164,
+      cpf: cpfDigits,
       company_name: companyName || null,
       cnpj: cnpj || null,
       selected_plan: selectedPlan || null,

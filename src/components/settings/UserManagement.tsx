@@ -22,10 +22,12 @@ const roleLabels: Record<AppRole, { label: string; description: string; variant:
 };
 
 export default function UserManagement() {
-  const { users, isLoading, assignRole, removeRole } = useUserRoles();
+  const { users, isLoading, assignRole, removeRole, refetch } = useUserRoles();
+  const { user: currentUser } = useAuth();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleAssignRole = () => {
     if (selectedUser && selectedRole) {
@@ -38,6 +40,24 @@ export default function UserManagement() {
 
   const handleRemoveRole = (userId: string, role: AppRole) => {
     removeRole.mutate({ userId, role });
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { user_id: userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: 'Usuário removido com sucesso' });
+      refetch();
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Erro ao remover usuário';
+      toast({ title: 'Erro', description: m, variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (

@@ -3,6 +3,13 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, AppRole } from '@/types';
 
+type SignupMetadata = {
+  phone?: string;
+  companyName?: string;
+  cnpj?: string;
+  selectedPlan?: string;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -10,12 +17,7 @@ interface AuthContextType {
   roles: AppRole[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string, metadata?: {
-    phone?: string;
-    companyName?: string;
-    cnpj?: string;
-    selectedPlan?: string;
-  }) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, metadata?: SignupMetadata) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
 }

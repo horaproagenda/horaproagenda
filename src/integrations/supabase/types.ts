@@ -3673,6 +3673,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
+      get_professional_temp_password: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       get_sensitive_business_settings: {
         Args: never
         Returns: {

@@ -20,11 +20,16 @@ export function ProfessionalCredentialView({ professionalId }: Props) {
     try {
       const { data: row, error } = await supabase
         .from('professional_credentials')
-        .select('temp_password, must_change_password, set_at, password_changed_at')
+        .select('user_id, must_change_password, set_at, password_changed_at')
         .eq('professional_id', professionalId)
         .maybeSingle();
       if (error) throw error;
-      setData(row as any);
+      let temp_password: string | null = null;
+      if (row?.user_id) {
+        const { data: pwd } = await supabase.rpc('get_professional_temp_password', { _user_id: row.user_id });
+        temp_password = (pwd as any) ?? null;
+      }
+      setData(row ? { ...(row as any), temp_password } : null);
     } catch (e: any) {
       toast.error('Erro ao carregar credenciais: ' + (e.message || e));
     } finally {

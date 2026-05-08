@@ -187,7 +187,7 @@ serve(async (req) => {
       id: userId,
       full_name: fullName.trim(),
       email: normalizedEmail,
-      phone: phone || null,
+      phone: phoneE164,
     });
     if (profileError) console.error("complete-signup profile upsert error:", profileError);
 
@@ -199,22 +199,24 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Erro ao configurar permissões da conta." }, 500);
     }
 
+    const nowIso = new Date().toISOString();
     await supabaseAdmin.from("trial_registrations").upsert({
       email: normalizedEmail,
-      phone: phone || null,
+      phone: phoneE164,
+      cpf: cpfDigits,
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,
       user_id: userId,
       subscription_status: "trial",
-      trial_started_at: new Date().toISOString(),
+      trial_started_at: nowIso,
       trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      email_verified_at: nowIso,
+      phone_verified_at: nowIso,
     }, { onConflict: "email" });
 
-    await supabaseAdmin
-      .from("verification_codes")
-      .delete()
-      .eq("email", normalizedEmail);
+    await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
+    await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
 
     return jsonResponse({ success: true, user_id: userId });
   } catch (error: unknown) {

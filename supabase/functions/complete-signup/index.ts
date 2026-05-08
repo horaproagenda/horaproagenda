@@ -85,13 +85,17 @@ serve(async (req) => {
     if (createError) {
       const message = createError.message?.toLowerCase() || "";
       if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-        const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        if (listError) {
-          console.error("complete-signup list users error:", listError);
-          return jsonResponse({ success: false, error: "Erro ao localizar usuário existente." }, 500);
+        let existingUser = null;
+        for (let page = 1; page <= 20 && !existingUser; page += 1) {
+          const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+          if (listError) {
+            console.error("complete-signup list users error:", listError);
+            return jsonResponse({ success: false, error: "Erro ao localizar usuário existente." }, 500);
+          }
+          existingUser = users.users.find((user) => user.email?.toLowerCase() === normalizedEmail) ?? null;
+          if (users.users.length < 1000) break;
         }
 
-        const existingUser = users.users.find((user) => user.email?.toLowerCase() === normalizedEmail);
         if (!existingUser) {
           return jsonResponse({ success: false, error: "Este e-mail já está cadastrado. Use sua senha original para entrar." }, 409);
         }

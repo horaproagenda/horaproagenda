@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useBusinessSettings, BRAZIL_TIMEZONES } from '@/hooks/useBusinessSettings';
 import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
 import { toast } from 'sonner';
-import UserManagement from '@/components/settings/UserManagement';
+
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';

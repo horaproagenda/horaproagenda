@@ -321,7 +321,7 @@ export function useAppointments() {
     },
   });
 
-  const updateAppointment = useMutation({
+  const updateAppointment = useMutation<any, Error, { id: string; updates: AppointmentUpdate; expectedVersion?: number }, unknown>({
     mutationFn: async ({ id, updates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
 

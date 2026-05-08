@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useListPosition } from '@/hooks/useListPosition';
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';

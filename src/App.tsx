@@ -27,6 +27,7 @@ import Lembretes from "./pages/Lembretes";
 import Documentos from "./pages/Documentos";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
+import AdminPanel from "./pages/AdminPanel";
 import Ajuda from "./pages/Ajuda";
 import Suporte from "./pages/Suporte";
 import Auth from "./pages/Auth";

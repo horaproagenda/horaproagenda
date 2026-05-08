@@ -86,10 +86,10 @@ define(['./workbox-af74f314'], (function (workbox) { 'use strict';
     request
   }) => request.mode === "navigate", new workbox.NetworkFirst({
     "cacheName": "html-cache",
-    "networkTimeoutSeconds": 3,
+    "networkTimeoutSeconds": 6,
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 10,
-      maxAgeSeconds: 300
+      maxEntries: 5,
+      maxAgeSeconds: 60
     })]
   }), 'GET');
   workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({

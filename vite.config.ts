@@ -78,8 +78,8 @@ export default defineConfig(({ mode }) => ({
             handler: "NetworkFirst",
             options: {
               cacheName: "html-cache",
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 5 },
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 },
             },
           },
           {

@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
       ? template.subject(templateData)
       : template.subject
 
-  const purpose = templateName === 'verification-code' ? 'auth' : 'transactional'
+  const purpose = 'transactional'
 
   // 3. Send directly through the managed email API. This avoids the optional
   // database queue tables, which are not present in this external Supabase setup.

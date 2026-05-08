@@ -297,6 +297,14 @@ export default function Auth() {
       toast({ title: 'Erro', description: 'Primeiro verifique seu email', variant: 'destructive' });
       return;
     }
+    if (!phoneVerified) {
+      toast({ title: 'Erro', description: 'Primeiro verifique seu celular por SMS', variant: 'destructive' });
+      return;
+    }
+    if (!isValidCPF(signupCpf)) {
+      toast({ title: 'CPF inválido', variant: 'destructive' });
+      return;
+    }
 
     if (!signupPassword) {
       toast({ title: 'Erro', description: 'Digite uma senha', variant: 'destructive' });
@@ -316,7 +324,8 @@ export default function Auth() {
     setLoading(true);
 
     const { error } = await signUp(signupEmail, signupPassword, signupName, {
-      phone: signupPhone,
+      phone: normalizedPhoneE164 || signupPhone,
+      cpf: signupCpf,
       companyName: signupCompany,
       cnpj: signupCnpj,
       selectedPlan,

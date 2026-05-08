@@ -5,6 +5,7 @@ import type { Profile, AppRole } from '@/types';
 
 type SignupMetadata = {
   phone?: string;
+  cpf?: string;
   companyName?: string;
   cnpj?: string;
   selectedPlan?: string;

@@ -31,6 +31,8 @@ import {
   Legend
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';

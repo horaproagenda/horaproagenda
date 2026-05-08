@@ -2296,12 +2296,14 @@ export function AppointmentDetailDialog({
 
         return (
           <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-            <AlertDialogContent className="max-w-lg">
-              <AlertDialogHeader>
+            <AlertDialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0">
+              <AlertDialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
                 <AlertDialogTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-warning" />
                   Excluir pacote e devolver dinheiro
                 </AlertDialogTitle>
+              </AlertDialogHeader>
+              <div className="overflow-y-auto px-6 py-4 flex-1 min-h-0">
                 <AlertDialogDescription asChild>
                   <div className="space-y-3 text-sm">
                     <p>
@@ -2387,8 +2389,9 @@ export function AppointmentDetailDialog({
                     </div>
                   </div>
                 </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
+              </div>
+
+              <AlertDialogFooter className="px-6 py-4 border-t shrink-0 bg-background">
                 <AlertDialogCancel onClick={() => setShowRefundDialog(false)}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

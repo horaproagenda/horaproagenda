@@ -95,8 +95,10 @@ export function useAppUpdater() {
       // Polling agressivo a cada 15s — garante que toda nova versão
       // publicada seja detectada rapidamente em qualquer dispositivo.
       updateInterval = window.setInterval(checkForUpdate, 15_000);
-      // Checagem inicial
+      // Checagem imediata no boot (PWA pode estar aberta há dias) +
+      // re-checagem rápida em 2s para pegar SW que demorou a registrar.
       checkForUpdate();
+      window.setTimeout(checkForUpdate, 2_000);
     });
 
     // Failsafe: limpa caches HTTP antigos do navegador no boot,

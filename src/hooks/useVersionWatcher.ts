@@ -137,8 +137,9 @@ export function useVersionWatcher() {
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisibility);
 
-    // Checagem inicial após 5s (dá tempo do app montar)
-    const initialCheck = window.setTimeout(checkVersion, 5_000);
+    // Checagem imediata na inicialização (especialmente importante para PWA
+    // aberta após muito tempo: detecta novo SW/build antes do usuário interagir).
+    const initialCheck = window.setTimeout(checkVersion, 800);
 
     return () => {
       window.clearInterval(interval);

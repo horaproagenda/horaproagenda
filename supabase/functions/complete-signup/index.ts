@@ -11,9 +11,34 @@ interface CompleteSignupRequest {
   password: string;
   fullName: string;
   phone?: string;
+  cpf?: string;
   companyName?: string;
   cnpj?: string;
   selectedPlan?: string;
+}
+
+// CPF validator (matches src/lib/cpfValidator.ts)
+function isValidCPF(input: string): boolean {
+  const cpf = (input || "").replace(/\D/g, "");
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+  let r = (sum * 10) % 11; if (r >= 10) r = 0;
+  if (r !== parseInt(cpf[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+  r = (sum * 10) % 11; if (r >= 10) r = 0;
+  return r === parseInt(cpf[10]);
+}
+
+function normalizePhone(input: string): string | null {
+  const d = (input || "").replace(/\D/g, "");
+  if (!d) return null;
+  if ((input || "").trim().startsWith("+") && d.length >= 11) return "+" + d;
+  if (d.length === 10 || d.length === 11) return "+55" + d;
+  if (d.length === 12 || d.length === 13) return "+" + d;
+  return null;
 }
 
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>
@@ -28,7 +53,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, phone, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
+    const { email, password, fullName, phone, cpf, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
     const normalizedEmail = email?.trim().toLowerCase();
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
@@ -39,35 +64,71 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "A senha deve ter pelo menos 6 caracteres." }, 400);
     }
 
+    // CPF mandatory + valid
+    const cpfDigits = (cpf || "").replace(/\D/g, "");
+    if (!cpfDigits || !isValidCPF(cpfDigits)) {
+      return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
+    }
+
+    // Phone mandatory + normalized
+    const phoneE164 = normalizePhone(phone || "");
+    if (!phoneE164) {
+      return jsonResponse({ success: false, error: "Número de celular inválido." }, 400);
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Email code must be verified within last 10 min
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: usedCode, error: codeError } = await supabaseAdmin
       .from("verification_codes")
       .select("id")
       .eq("email", normalizedEmail)
       .eq("type", "signup")
       .not("used_at", "is", null)
-      .gte("used_at", fiveMinutesAgo)
+      .gte("used_at", tenMinutesAgo)
       .limit(1)
       .maybeSingle();
 
     if (codeError) {
       console.error("complete-signup verification lookup error:", codeError);
-      return jsonResponse({ success: false, error: "Erro ao validar o código verificado." }, 500);
+      return jsonResponse({ success: false, error: "Erro ao validar o código de e-mail." }, 500);
+    }
+    if (!usedCode) {
+      return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
     }
 
-    if (!usedCode) {
-      return jsonResponse({ success: false, error: "Código de verificação não encontrado ou expirado. Solicite um novo código." }, 400);
+    // Phone code must be verified within last 10 min
+    const { data: usedPhoneCode } = await supabaseAdmin
+      .from("phone_verification_codes")
+      .select("id")
+      .eq("phone", phoneE164)
+      .not("used_at", "is", null)
+      .gte("used_at", tenMinutesAgo)
+      .limit(1)
+      .maybeSingle();
+    if (!usedPhoneCode) {
+      return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+    }
+
+    // Block duplicate CPF across registrations
+    const { data: cpfDup } = await supabaseAdmin
+      .from("trial_registrations")
+      .select("id")
+      .eq("cpf", cpfDigits)
+      .maybeSingle();
+    if (cpfDup) {
+      return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
     }
 
     const userMetadata = {
       full_name: fullName.trim(),
-      phone: phone || null,
+      phone: phoneE164,
+      cpf: cpfDigits,
       company_name: companyName || null,
       cnpj: cnpj || null,
       selected_plan: selectedPlan || null,
@@ -126,7 +187,7 @@ serve(async (req) => {
       id: userId,
       full_name: fullName.trim(),
       email: normalizedEmail,
-      phone: phone || null,
+      phone: phoneE164,
     });
     if (profileError) console.error("complete-signup profile upsert error:", profileError);
 
@@ -138,22 +199,24 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Erro ao configurar permissões da conta." }, 500);
     }
 
+    const nowIso = new Date().toISOString();
     await supabaseAdmin.from("trial_registrations").upsert({
       email: normalizedEmail,
-      phone: phone || null,
+      phone: phoneE164,
+      cpf: cpfDigits,
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,
       user_id: userId,
       subscription_status: "trial",
-      trial_started_at: new Date().toISOString(),
+      trial_started_at: nowIso,
       trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      email_verified_at: nowIso,
+      phone_verified_at: nowIso,
     }, { onConflict: "email" });
 
-    await supabaseAdmin
-      .from("verification_codes")
-      .delete()
-      .eq("email", normalizedEmail);
+    await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
+    await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
 
     return jsonResponse({ success: true, user_id: userId });
   } catch (error: unknown) {

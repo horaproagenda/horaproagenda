@@ -12,8 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 
-type AuthStep = 'email' | 'code' | 'plan' | 'password';
+type AuthStep = 'email' | 'code' | 'phone' | 'phoneCode' | 'plan' | 'password';
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
 
 export default function Auth() {
@@ -41,10 +42,14 @@ export default function Auth() {
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
   const [signupCompany, setSignupCompany] = useState('');
   const [signupCnpj, setSignupCnpj] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [normalizedPhoneE164, setNormalizedPhoneE164] = useState('');
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -85,13 +90,21 @@ export default function Auth() {
   }, [user, navigate]);
 
   const handleSendVerificationCode = async () => {
+    if (!signupName.trim()) {
+      toast({ title: 'Erro', description: 'Digite seu nome', variant: 'destructive' });
+      return;
+    }
     if (!signupEmail) {
       toast({ title: 'Erro', description: 'Digite seu email', variant: 'destructive' });
       return;
     }
-
-    if (!signupName) {
-      toast({ title: 'Erro', description: 'Digite seu nome', variant: 'destructive' });
+    if (!isValidCPF(signupCpf)) {
+      toast({ title: 'CPF inválido', description: 'Verifique o CPF digitado.', variant: 'destructive' });
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      toast({ title: 'Celular inválido', description: 'Use DDD + número.', variant: 'destructive' });
       return;
     }
 
@@ -140,11 +153,18 @@ export default function Auth() {
       }
 
       setCodeVerified(true);
-      setAuthStep('plan');
-      toast({ 
-        title: 'Email verificado!', 
-        description: 'Agora escolha seu plano.' 
+      // Send phone code automatically
+      const { data: smsData, error: smsErr } = await supabase.functions.invoke('send-phone-verification', {
+        body: { phone: signupPhone },
       });
+      if (smsErr || smsData?.error) {
+        toast({ title: 'Erro ao enviar SMS', description: smsData?.error || 'Tente novamente', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      setNormalizedPhoneE164(smsData?.phone || '');
+      setAuthStep('phoneCode');
+      toast({ title: 'Email verificado!', description: 'Enviamos um SMS com o código para seu celular.' });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar código';
       toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });
@@ -171,6 +191,51 @@ export default function Auth() {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao reenviar código';
       toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
+  const handleVerifyPhoneCode = async () => {
+    if (phoneCode.length !== 6) {
+      toast({ title: 'Erro', description: 'Digite o código de 6 dígitos', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone-code', {
+        body: { phone: signupPhone, code: phoneCode },
+      });
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ title: 'Erro', description: data?.error || 'Código inválido', variant: 'destructive' });
+        return;
+      }
+      setPhoneVerified(true);
+      setNormalizedPhoneE164(data?.phone || normalizedPhoneE164);
+      setAuthStep('plan');
+      toast({ title: 'Celular verificado!', description: 'Agora escolha seu plano.' });
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Erro ao verificar código';
+      toast({ title: 'Erro', description: m, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendPhoneCode = async () => {
+    setResendingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-phone-verification', {
+        body: { phone: signupPhone },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setPhoneCode('');
+      toast({ title: 'SMS reenviado!', description: 'Verifique seu celular.' });
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Erro ao reenviar';
+      toast({ title: 'Erro', description: m, variant: 'destructive' });
     } finally {
       setResendingEmail(false);
     }
@@ -232,6 +297,14 @@ export default function Auth() {
       toast({ title: 'Erro', description: 'Primeiro verifique seu email', variant: 'destructive' });
       return;
     }
+    if (!phoneVerified) {
+      toast({ title: 'Erro', description: 'Primeiro verifique seu celular por SMS', variant: 'destructive' });
+      return;
+    }
+    if (!isValidCPF(signupCpf)) {
+      toast({ title: 'CPF inválido', variant: 'destructive' });
+      return;
+    }
 
     if (!signupPassword) {
       toast({ title: 'Erro', description: 'Digite uma senha', variant: 'destructive' });
@@ -251,7 +324,8 @@ export default function Auth() {
     setLoading(true);
 
     const { error } = await signUp(signupEmail, signupPassword, signupName, {
-      phone: signupPhone,
+      phone: normalizedPhoneE164 || signupPhone,
+      cpf: signupCpf,
       companyName: signupCompany,
       cnpj: signupCnpj,
       selectedPlan,
@@ -359,6 +433,9 @@ export default function Auth() {
     setAuthStep('email');
     setVerificationCode('');
     setCodeVerified(false);
+    setPhoneCode('');
+    setPhoneVerified(false);
+    setNormalizedPhoneE164('');
     setSelectedPlan('');
     setExistingUserAlert(null);
   };
@@ -607,7 +684,21 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Celular *</Label>
+                    <Label htmlFor="signup-cpf">CPF *</Label>
+                    <Input
+                      id="signup-cpf"
+                      type="text"
+                      placeholder="000.000.000-00"
+                      value={signupCpf}
+                      onChange={(e) => setSignupCpf(e.target.value)}
+                      onBlur={(e) => {
+                        const v = e.target.value;
+                        if (isValidCPF(v)) setSignupCpf(formatCPF(v));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Celular * (com DDD)</Label>
                     <Input
                       id="signup-phone"
                       type="tel"
@@ -615,6 +706,7 @@ export default function Auth() {
                       value={signupPhone}
                       onChange={(e) => setSignupPhone(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">Enviaremos um código por SMS para confirmar.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-company">Nome da empresa</Label>
@@ -704,6 +796,45 @@ export default function Auth() {
                       disabled={resendingEmail}
                     >
                       {resendingEmail ? 'Reenviando...' : 'Reenviar código'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2.5: Phone SMS Code */}
+              {authStep === 'phoneCode' && (
+                <div className="space-y-6">
+                  <div className="text-center space-y-2">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Mail className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold">Verifique seu celular</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enviamos um SMS com 6 dígitos para <span className="font-medium">{normalizedPhoneE164 || signupPhone}</span>
+                    </p>
+                  </div>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={phoneCode} onChange={setPhoneCode}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <Button type="button" className="w-full" onClick={handleVerifyPhoneCode} disabled={loading || phoneCode.length !== 6}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Verificar código SMS
+                  </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setAuthStep('code')}>
+                      <ArrowLeft className="h-4 w-4" />Voltar
+                    </button>
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendPhoneCode} disabled={resendingEmail}>
+                      {resendingEmail ? 'Reenviando...' : 'Reenviar SMS'}
                     </button>
                   </div>
                 </div>

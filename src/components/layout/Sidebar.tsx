@@ -269,7 +269,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 </p>
               </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
-                Lume Agenda · {APP_VERSION}
+                Lume Agenda · {APP_VERSION_LABEL}
               </p>
             </div>
           ) : (

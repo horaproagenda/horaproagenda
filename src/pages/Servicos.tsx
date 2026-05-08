@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal, Repeat } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';

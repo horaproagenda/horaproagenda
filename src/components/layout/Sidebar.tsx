@@ -41,10 +41,11 @@ const navigation = [
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },
+  { name: 'Painel Admin', href: '/admin', icon: ShieldCheck, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },
   { name: 'Suporte', href: '/suporte', icon: MessageSquare },
-];
+] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean }>;
 
 interface SidebarProps {
   onNewAppointment: () => void;

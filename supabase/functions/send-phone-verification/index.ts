@@ -25,6 +25,32 @@ function normalizePhone(input: string): string | null {
   return null;
 }
 
+async function readJsonSafely(response: Response): Promise<Record<string, unknown>> {
+  try {
+    return await response.json();
+  } catch (_) {
+    return { message: await response.text().catch(() => "Erro desconhecido no provedor de SMS") };
+  }
+}
+
+function getTwilioErrorMessage(data: Record<string, unknown>): string {
+  const code = Number(data.code);
+
+  if (code === 21608) {
+    return "Este número ainda não está verificado no Twilio Trial. Verifique o número no Twilio ou atualize a conta para produção.";
+  }
+
+  if (code === 21606 || code === 21212) {
+    return "Número remetente Twilio inválido. Confira o TWILIO_FROM_NUMBER.";
+  }
+
+  if (code === 21211) {
+    return "Número de celular inválido. Use DDD + número.";
+  }
+
+  return "Falha ao enviar SMS. Confira o número.";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -101,12 +127,13 @@ serve(async (req) => {
       body,
     });
 
-    const data = await resp.json();
+    const data = await readJsonSafely(resp);
     if (!resp.ok) {
       console.error("Twilio error:", resp.status, data);
+      await supabase.from("phone_verification_codes").delete().eq("phone", e164);
       return new Response(
-        JSON.stringify({ error: "Falha ao enviar SMS. Confira o número." }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: getTwilioErrorMessage(data) }),
+        { status: resp.status === 400 ? 400 : 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, metadata = {}) => {
+  const signUp = async (email: string, password: string, fullName: string, metadata: SignupMetadata = {}) => {
     const { data, error } = await supabase.functions.invoke('complete-signup', {
       body: { email, password, fullName, ...metadata },
     });

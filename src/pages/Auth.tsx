@@ -80,7 +80,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/agenda', { replace: true });
     }
   }, [user, navigate]);
 
@@ -295,7 +295,12 @@ export default function Auth() {
       console.error('Error registering trial:', error);
     }
 
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, {
+      phone: signupPhone,
+      companyName: signupCompany,
+      cnpj: signupCnpj,
+      selectedPlan,
+    });
     setLoading(false);
 
     if (error) {
@@ -303,8 +308,9 @@ export default function Auth() {
     } else {
       toast({ 
         title: 'Bem-vindo(a)!', 
-        description: 'Você será redirecionado para a agenda.' 
+        description: 'Abrindo sua agenda agora.' 
       });
+      navigate('/agenda', { replace: true });
     }
   };
 

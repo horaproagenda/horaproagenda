@@ -11,7 +11,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       "Authorization": `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "Lume Agenda <onboarding@resend.dev>",
+      from: "Agendalume <no-reply@notify.agendalume.app>",
       to: [to],
       subject,
       html,

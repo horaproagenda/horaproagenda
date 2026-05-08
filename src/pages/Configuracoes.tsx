@@ -93,8 +93,7 @@ const Configuracoes = () => {
     <AppLayout title="Configurações" subtitle="Personalize seu sistema">
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
-          {/* User Management */}
-          <UserManagement />
+          {/* Gestão de usuários movida para o Painel do Administrador (/admin) */}
 
           {/* WhatsApp Connection Status */}
           <WhatsappSettings />

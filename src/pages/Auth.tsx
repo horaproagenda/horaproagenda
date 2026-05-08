@@ -684,7 +684,21 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Celular *</Label>
+                    <Label htmlFor="signup-cpf">CPF *</Label>
+                    <Input
+                      id="signup-cpf"
+                      type="text"
+                      placeholder="000.000.000-00"
+                      value={signupCpf}
+                      onChange={(e) => setSignupCpf(e.target.value)}
+                      onBlur={(e) => {
+                        const v = e.target.value;
+                        if (isValidCPF(v)) setSignupCpf(formatCPF(v));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Celular * (com DDD)</Label>
                     <Input
                       id="signup-phone"
                       type="tel"
@@ -692,6 +706,7 @@ export default function Auth() {
                       value={signupPhone}
                       onChange={(e) => setSignupPhone(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">Enviaremos um código por SMS para confirmar.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-company">Nome da empresa</Label>

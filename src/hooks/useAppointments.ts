@@ -477,7 +477,7 @@ export function useAppointments() {
 
       return { ...data, sessionReleased: false };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
@@ -490,7 +490,15 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      
+
+      void logAccess({
+        module: 'agenda',
+        action: 'edit',
+        targetType: 'appointment',
+        targetId: variables?.id ?? null,
+        fieldsChanged: Object.keys(variables?.updates ?? {}),
+      });
+
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {

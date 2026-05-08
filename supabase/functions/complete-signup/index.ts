@@ -134,10 +134,17 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Erro ao configurar permissões da conta." }, 500);
     }
 
-    await supabaseAdmin
-      .from("trial_registrations")
-      .update({ user_id: userId, subscription_status: "trial" })
-      .eq("email", normalizedEmail);
+    await supabaseAdmin.from("trial_registrations").upsert({
+      email: normalizedEmail,
+      phone: phone || null,
+      full_name: fullName.trim(),
+      company_name: companyName || null,
+      cnpj: cnpj || null,
+      user_id: userId,
+      subscription_status: "trial",
+      trial_started_at: new Date().toISOString(),
+      trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    }, { onConflict: "email" });
 
     await supabaseAdmin
       .from("verification_codes")

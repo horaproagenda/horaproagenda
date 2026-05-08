@@ -196,6 +196,51 @@ export default function Auth() {
     }
   };
 
+  const handleVerifyPhoneCode = async () => {
+    if (phoneCode.length !== 6) {
+      toast({ title: 'Erro', description: 'Digite o código de 6 dígitos', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone-code', {
+        body: { phone: signupPhone, code: phoneCode },
+      });
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ title: 'Erro', description: data?.error || 'Código inválido', variant: 'destructive' });
+        return;
+      }
+      setPhoneVerified(true);
+      setNormalizedPhoneE164(data?.phone || normalizedPhoneE164);
+      setAuthStep('plan');
+      toast({ title: 'Celular verificado!', description: 'Agora escolha seu plano.' });
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Erro ao verificar código';
+      toast({ title: 'Erro', description: m, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendPhoneCode = async () => {
+    setResendingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-phone-verification', {
+        body: { phone: signupPhone },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setPhoneCode('');
+      toast({ title: 'SMS reenviado!', description: 'Verifique seu celular.' });
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Erro ao reenviar';
+      toast({ title: 'Erro', description: m, variant: 'destructive' });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) {

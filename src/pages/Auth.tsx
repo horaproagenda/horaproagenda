@@ -433,6 +433,9 @@ export default function Auth() {
     setAuthStep('email');
     setVerificationCode('');
     setCodeVerified(false);
+    setPhoneCode('');
+    setPhoneVerified(false);
+    setNormalizedPhoneE164('');
     setSelectedPlan('');
     setExistingUserAlert(null);
   };

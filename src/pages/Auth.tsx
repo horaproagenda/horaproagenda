@@ -119,15 +119,6 @@ export default function Auth() {
     setLoading(true);
     setExistingUserAlert(null);
 
-    // Check trial eligibility
-    const eligibility = await checkTrialEligibility(signupEmail, signupPhone, signupCnpj);
-    
-    if (!eligibility.eligible) {
-      setLoading(false);
-      setExistingUserAlert(eligibility.message || 'Este e-mail já possui cadastro.');
-      return;
-    }
-
     try {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: signupEmail, type: 'signup' }

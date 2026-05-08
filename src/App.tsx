@@ -35,6 +35,7 @@ import Assinatura from "./pages/Assinatura";
 import AssinaturaSucesso from "./pages/AssinaturaSucesso";
 import AssinaturaCancelado from "./pages/AssinaturaCancelado";
 import PreencherDocumento from "./pages/PreencherDocumento";
+import Unsubscribe from "./pages/Unsubscribe";
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({
@@ -81,6 +82,7 @@ const App = () => {
                 {/* Public route for client document filling */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
+                <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />

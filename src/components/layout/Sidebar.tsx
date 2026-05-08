@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
-import { APP_VERSION } from '@/lib/version';
+import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -269,7 +269,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 </p>
               </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
-                Lume Agenda · {APP_VERSION}
+                Lume Agenda · {APP_VERSION_LABEL}
               </p>
             </div>
           ) : (

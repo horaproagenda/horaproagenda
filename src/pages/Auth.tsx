@@ -153,11 +153,18 @@ export default function Auth() {
       }
 
       setCodeVerified(true);
-      setAuthStep('plan');
-      toast({ 
-        title: 'Email verificado!', 
-        description: 'Agora escolha seu plano.' 
+      // Send phone code automatically
+      const { data: smsData, error: smsErr } = await supabase.functions.invoke('send-phone-verification', {
+        body: { phone: signupPhone },
       });
+      if (smsErr || smsData?.error) {
+        toast({ title: 'Erro ao enviar SMS', description: smsData?.error || 'Tente novamente', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      setNormalizedPhoneE164(smsData?.phone || '');
+      setAuthStep('phoneCode');
+      toast({ title: 'Email verificado!', description: 'Enviamos um SMS com o código para seu celular.' });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar código';
       toast({ title: 'Erro', description: errorMessage, variant: 'destructive' });

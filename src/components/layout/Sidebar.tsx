@@ -56,7 +56,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, hasRole } = useAuth();
+  const visibleNavigation = navigation.filter(item => !item.adminOnly || hasRole('admin'));
   const location = useLocation();
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';

@@ -65,7 +65,6 @@ export function useAppointmentLocks(appointmentId?: string | null) {
       const lockPayload = {
         appointment_id: appointmentId,
         user_id: user.id,
-        user_email: user.email,
         holder_name: profile?.full_name || user.email || 'Usuário',
         session_id: sessionIdRef.current,
         expires_at: expiresAt,

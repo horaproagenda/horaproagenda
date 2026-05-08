@@ -168,12 +168,19 @@ export function useAppointments() {
 
       return { previousAppointments };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refetch to get the real data with relationships
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      void logAccess({
+        module: 'agenda',
+        action: 'create',
+        targetType: 'appointment',
+        targetId: data?.id ?? null,
+        fieldsChanged: ['client_id', 'service_id', 'professional_id', 'room_id', 'start_time', 'end_time', 'status', 'notes'],
+      });
       toast.success('Agendamento criado com sucesso!');
     },
     onError: (error, _, context) => {

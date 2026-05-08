@@ -601,7 +601,14 @@ export function useAppointments() {
         amountDeleted: appointment?.amount_paid || 0
       };
     },
-    onSuccess: (result) => {
+    onSuccess: (result, deletedId) => {
+      void logAccess({
+        module: 'agenda',
+        action: 'delete',
+        targetType: 'appointment',
+        targetId: deletedId ?? null,
+        metadata: { hadPayment: result?.hadPayment, hadPackageSession: result?.hadPackageSession },
+      });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });

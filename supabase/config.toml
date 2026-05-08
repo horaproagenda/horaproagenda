@@ -1,28 +1,23 @@
 project_id = "nsgcllrbswodjoadybsj"
 
-[functions.whatsapp-check-connection]
-verify_jwt = false
-
-[functions.whatsapp-send]
-verify_jwt = false
-
-[functions.notify-overdue-bills]
-verify_jwt = false
-
-[functions.notify-stock-alerts]
-verify_jwt = false
-
-[functions.create-appointment]
-verify_jwt = false
-
-[functions.create-client]
-verify_jwt = false
-
-[functions.process-payment]
-verify_jwt = false
-
-[functions.send-appointment-reminders]
-verify_jwt = false
-
-[functions.admin-create-professional]
-verify_jwt = false
+[functions]
+  [functions.admin-create-professional]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.create-appointment]
+    verify_jwt = false
+  [functions.create-client]
+    verify_jwt = false
+  [functions.notify-overdue-bills]
+    verify_jwt = false
+  [functions.notify-stock-alerts]
+    verify_jwt = false
+  [functions.process-payment]
+    verify_jwt = false
+  [functions.send-appointment-reminders]
+    verify_jwt = false
+  [functions.whatsapp-check-connection]
+    verify_jwt = false
+  [functions.whatsapp-send]
+    verify_jwt = false

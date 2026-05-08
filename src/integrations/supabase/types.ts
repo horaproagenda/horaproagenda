@@ -2162,6 +2162,36 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_verification_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          used_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+          used_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       policies_backup: {
         Row: {
           dumped_at: string | null
@@ -3367,12 +3397,15 @@ export type Database = {
         Row: {
           cnpj: string | null
           company_name: string | null
+          cpf: string | null
           created_at: string
           email: string
+          email_verified_at: string | null
           full_name: string
           has_paid: boolean | null
           id: string
           phone: string | null
+          phone_verified_at: string | null
           subscription_status: string | null
           trial_days: number | null
           trial_ended_at: string | null
@@ -3383,12 +3416,15 @@ export type Database = {
         Insert: {
           cnpj?: string | null
           company_name?: string | null
+          cpf?: string | null
           created_at?: string
           email: string
+          email_verified_at?: string | null
           full_name: string
           has_paid?: boolean | null
           id?: string
           phone?: string | null
+          phone_verified_at?: string | null
           subscription_status?: string | null
           trial_days?: number | null
           trial_ended_at?: string | null
@@ -3399,12 +3435,15 @@ export type Database = {
         Update: {
           cnpj?: string | null
           company_name?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string
+          email_verified_at?: string | null
           full_name?: string
           has_paid?: boolean | null
           id?: string
           phone?: string | null
+          phone_verified_at?: string | null
           subscription_status?: string | null
           trial_days?: number | null
           trial_ended_at?: string | null

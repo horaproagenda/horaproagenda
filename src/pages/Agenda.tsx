@@ -82,6 +82,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useLogAccessOnMount, logAccess } from '@/hooks/useLogAccess';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';

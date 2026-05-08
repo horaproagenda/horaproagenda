@@ -12,8 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 
-type AuthStep = 'email' | 'code' | 'plan' | 'password';
+type AuthStep = 'email' | 'code' | 'phone' | 'phoneCode' | 'plan' | 'password';
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
 
 export default function Auth() {
@@ -41,10 +42,14 @@ export default function Auth() {
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
   const [signupCompany, setSignupCompany] = useState('');
   const [signupCnpj, setSignupCnpj] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [normalizedPhoneE164, setNormalizedPhoneE164] = useState('');
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');

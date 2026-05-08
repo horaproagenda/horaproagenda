@@ -3,6 +3,13 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, AppRole } from '@/types';
 
+type SignupMetadata = {
+  phone?: string;
+  companyName?: string;
+  cnpj?: string;
+  selectedPlan?: string;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -10,7 +17,7 @@ interface AuthContextType {
   roles: AppRole[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, metadata?: SignupMetadata) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
 }
@@ -91,41 +98,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    // Since we use our own email verification code system,
-    // we don't need Supabase's email confirmation
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, email_verified: true }
-      }
+  const signUp = async (email: string, password: string, fullName: string, metadata: SignupMetadata = {}) => {
+    const { data, error } = await supabase.functions.invoke('complete-signup', {
+      body: { email, password, fullName, ...metadata },
     });
-    
+
     if (error) {
       return { error: error as Error };
     }
 
-    // Check if user already exists (user_repeated_signup scenario)
-    // In this case, data.user exists but data.user.identities is empty
-    const isExistingUser = data.user && data.user.identities && data.user.identities.length === 0;
-    
-    if (isExistingUser) {
-      // User already exists - try to sign in with provided password
-      // If it fails, they need to use their original password
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        return { error: new Error('Este e-mail já está cadastrado. Use sua senha original para entrar.') };
-      }
-    } else if (data.user) {
-      // New user - auto sign-in
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        console.error('Auto sign-in failed:', signInError);
-      }
+    if (!data?.success) {
+      return { error: new Error(data?.error || 'Erro ao cadastrar') };
     }
-    
-    return { error: null };
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: signInError as Error | null };
   };
 
   const signOut = async () => {

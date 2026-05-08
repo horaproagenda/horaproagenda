@@ -80,30 +80,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/agenda', { replace: true });
     }
   }, [user, navigate]);
-
-  // Check if user already used trial
-  const checkTrialEligibility = async (email: string, phone?: string, cnpj?: string) => {
-    try {
-      const { data, error } = await supabase.rpc('check_trial_eligibility', {
-        p_email: email.toLowerCase(),
-        p_phone: phone || null,
-        p_cnpj: cnpj || null
-      });
-
-      if (error) {
-        console.error('Error checking trial eligibility:', error);
-        return { eligible: true };
-      }
-
-      return data as { eligible: boolean; reason?: string; message?: string; email?: string };
-    } catch (error) {
-      console.error('Error checking trial eligibility:', error);
-      return { eligible: true };
-    }
-  };
 
   const handleSendVerificationCode = async () => {
     if (!signupEmail) {
@@ -118,15 +97,6 @@ export default function Auth() {
 
     setLoading(true);
     setExistingUserAlert(null);
-
-    // Check trial eligibility
-    const eligibility = await checkTrialEligibility(signupEmail, signupPhone, signupCnpj);
-    
-    if (!eligibility.eligible) {
-      setLoading(false);
-      setExistingUserAlert(eligibility.message || 'Este e-mail já possui cadastro.');
-      return;
-    }
 
     try {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
@@ -279,23 +249,13 @@ export default function Auth() {
     }
 
     setLoading(true);
-    
-    // Register trial usage
-    try {
-      await supabase.from('trial_registrations').insert({
-        email: signupEmail.toLowerCase(),
-        phone: signupPhone || null,
-        full_name: signupName,
-        company_name: signupCompany || null,
-        cnpj: signupCnpj || null,
-        trial_started_at: new Date().toISOString(),
-        trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      });
-    } catch (error) {
-      console.error('Error registering trial:', error);
-    }
 
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, {
+      phone: signupPhone,
+      companyName: signupCompany,
+      cnpj: signupCnpj,
+      selectedPlan,
+    });
     setLoading(false);
 
     if (error) {
@@ -303,8 +263,9 @@ export default function Auth() {
     } else {
       toast({ 
         title: 'Bem-vindo(a)!', 
-        description: 'Você será redirecionado para a agenda.' 
+        description: 'Abrindo sua agenda agora.' 
       });
+      navigate('/agenda', { replace: true });
     }
   };
 

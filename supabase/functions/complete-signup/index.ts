@@ -11,9 +11,34 @@ interface CompleteSignupRequest {
   password: string;
   fullName: string;
   phone?: string;
+  cpf?: string;
   companyName?: string;
   cnpj?: string;
   selectedPlan?: string;
+}
+
+// CPF validator (matches src/lib/cpfValidator.ts)
+function isValidCPF(input: string): boolean {
+  const cpf = (input || "").replace(/\D/g, "");
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+  let r = (sum * 10) % 11; if (r >= 10) r = 0;
+  if (r !== parseInt(cpf[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+  r = (sum * 10) % 11; if (r >= 10) r = 0;
+  return r === parseInt(cpf[10]);
+}
+
+function normalizePhone(input: string): string | null {
+  const d = (input || "").replace(/\D/g, "");
+  if (!d) return null;
+  if ((input || "").trim().startsWith("+") && d.length >= 11) return "+" + d;
+  if (d.length === 10 || d.length === 11) return "+55" + d;
+  if (d.length === 12 || d.length === 13) return "+" + d;
+  return null;
 }
 
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>

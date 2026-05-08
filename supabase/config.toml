@@ -9,6 +9,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.create-client]
     verify_jwt = false
+  [functions.complete-signup]
+    verify_jwt = false
   [functions.notify-overdue-bills]
     verify_jwt = false
   [functions.notify-stock-alerts]

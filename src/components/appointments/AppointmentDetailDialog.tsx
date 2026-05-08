@@ -2391,7 +2391,7 @@ export function AppointmentDetailDialog({
                 </AlertDialogDescription>
               </div>
 
-              <AlertDialogFooter>
+              <AlertDialogFooter className="px-6 py-4 border-t shrink-0 bg-background">
                 <AlertDialogCancel onClick={() => setShowRefundDialog(false)}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

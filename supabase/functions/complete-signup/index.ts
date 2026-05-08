@@ -80,16 +80,40 @@ serve(async (req) => {
       user_metadata: userMetadata,
     });
 
+    let userId = created.user?.id ?? null;
+
     if (createError) {
       const message = createError.message?.toLowerCase() || "";
       if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-        return jsonResponse({ success: false, error: "Este e-mail já está cadastrado. Use sua senha original para entrar." }, 409);
+        const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        if (listError) {
+          console.error("complete-signup list users error:", listError);
+          return jsonResponse({ success: false, error: "Erro ao localizar usuário existente." }, 500);
+        }
+
+        const existingUser = users.users.find((user) => user.email?.toLowerCase() === normalizedEmail);
+        if (!existingUser) {
+          return jsonResponse({ success: false, error: "Este e-mail já está cadastrado. Use sua senha original para entrar." }, 409);
+        }
+
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+          password,
+          email_confirm: true,
+          user_metadata: userMetadata,
+        });
+
+        if (updateError) {
+          console.error("complete-signup update existing user error:", updateError);
+          return jsonResponse({ success: false, error: "Erro ao ativar usuário existente." }, 500);
+        }
+
+        userId = existingUser.id;
+      } else {
+        console.error("complete-signup create user error:", createError);
+        return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
       }
-      console.error("complete-signup create user error:", createError);
-      return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
     }
 
-    const userId = created.user?.id;
     if (!userId) {
       return jsonResponse({ success: false, error: "Erro ao criar usuário." }, 500);
     }

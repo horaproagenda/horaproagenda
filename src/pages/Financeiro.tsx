@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 
 export default function Financeiro() {
+  useLogAccessOnMount({ module: 'financeiro', action: 'view', fieldsViewed: ['type', 'amount', 'description', 'due_date', 'status', 'client', 'professional', 'category'] });
   const [searchParams, setSearchParams] = useSearchParams();
   const { totalReceivables, totalPayables } = useFinancialEntries();
   const { banks } = useBanks();

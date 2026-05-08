@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
+import { logAccess } from '@/hooks/useLogAccess';
 
 // Use environment variable for URL - ensures consistency between preview and production
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -168,12 +169,19 @@ export function useAppointments() {
 
       return { previousAppointments };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refetch to get the real data with relationships
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      void logAccess({
+        module: 'agenda',
+        action: 'create',
+        targetType: 'appointment',
+        targetId: data?.id ?? null,
+        fieldsChanged: ['client_id', 'service_id', 'professional_id', 'room_id', 'start_time', 'end_time', 'status', 'notes'],
+      });
       toast.success('Agendamento criado com sucesso!');
     },
     onError: (error, _, context) => {
@@ -469,7 +477,7 @@ export function useAppointments() {
 
       return { ...data, sessionReleased: false };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
@@ -482,7 +490,15 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      
+
+      void logAccess({
+        module: 'agenda',
+        action: 'edit',
+        targetType: 'appointment',
+        targetId: variables?.id ?? null,
+        fieldsChanged: Object.keys(variables?.updates ?? {}),
+      });
+
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
@@ -585,7 +601,14 @@ export function useAppointments() {
         amountDeleted: appointment?.amount_paid || 0
       };
     },
-    onSuccess: (result) => {
+    onSuccess: (result, deletedId) => {
+      void logAccess({
+        module: 'agenda',
+        action: 'delete',
+        targetType: 'appointment',
+        targetId: deletedId ?? null,
+        metadata: { hadPayment: result?.hadPayment, hadPackageSession: result?.hadPackageSession },
+      });
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });

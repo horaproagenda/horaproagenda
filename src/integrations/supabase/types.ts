@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          action: string
+          created_at: string
+          fields_changed: string[] | null
+          fields_viewed: string[] | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          module: string
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          fields_changed?: string[] | null
+          fields_viewed?: string[] | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          module: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          fields_changed?: string[] | null
+          fields_viewed?: string[] | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          module?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
       app_version_events: {
         Row: {
           created_at: string
@@ -3635,6 +3686,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_access: {
+        Args: {
+          p_action: string
+          p_fields_changed?: string[]
+          p_fields_viewed?: string[]
+          p_metadata?: Json
+          p_module: string
+          p_target_id?: string
+          p_target_type?: string
+        }
+        Returns: string
       }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }

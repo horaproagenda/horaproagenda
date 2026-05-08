@@ -20,6 +20,8 @@ import { exportToCSV } from '@/lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AccessLogsTable } from '@/components/auditoria/AccessLogsTable';
 
 const tableNameMap: Record<string, string> = {
   clients: 'Clientes',
@@ -132,6 +134,15 @@ export default function Auditoria() {
   return (
     <AppLayout title="Auditoria" subtitle="Logs de segurança e alterações">
       <div className="space-y-4 page-enter">
+        <Tabs defaultValue="changes" className="w-full">
+          <TabsList className="h-8">
+            <TabsTrigger value="changes" className="text-xs">Alterações</TabsTrigger>
+            <TabsTrigger value="access" className="text-xs">Acessos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="access" className="mt-4">
+            <AccessLogsTable />
+          </TabsContent>
+          <TabsContent value="changes" className="mt-4 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -325,6 +336,8 @@ export default function Auditoria() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

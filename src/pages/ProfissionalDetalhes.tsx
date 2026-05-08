@@ -31,6 +31,8 @@ import {
   Legend
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -101,11 +103,26 @@ const PERIOD_OPTIONS = [
 export default function ProfissionalDetalhes() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
   const [historyPeriod, setHistoryPeriod] = useState('90');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(subDays(new Date(), 30));
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(new Date());
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+
+  // Audit log: when a non-admin (e.g. receptionist) opens a professional's
+  // sensitive details (CPF, CNPJ, address, commission), record exactly which
+  // fields were exposed.
+  useLogAccessOnMount({
+    enabled: !!id && !hasRole('admin'),
+    key: id,
+    module: 'professional_sensitive',
+    action: 'view',
+    targetType: 'professional',
+    targetId: id,
+    fieldsViewed: ['full_name', 'cpf', 'cnpj', 'email', 'phone', 'address', 'is_commission_based', 'commission_percentage', 'commission_fixed_value'],
+    metadata: { route: `/profissional/${id}` },
+  });
 
   // Fetch professional data
   const { data: professional, isLoading: loadingProfessional } = useQuery({

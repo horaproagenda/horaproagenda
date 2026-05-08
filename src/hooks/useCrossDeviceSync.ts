@@ -28,8 +28,9 @@ export function useCrossDeviceSync() {
     let lastInvalidate = 0;
     const invalidateAll = (reason: string) => {
       const now = Date.now();
-      // Throttle: no máximo 1 refetch global a cada 1.5s
-      if (now - lastInvalidate < 1500) return;
+      // Throttle: no máximo 1 refetch global a cada 10s para evitar loops
+      // de re-render que travam telas pesadas (ex.: perfil do cliente).
+      if (now - lastInvalidate < 10_000) return;
       lastInvalidate = now;
       console.log(`[CrossDeviceSync] Sincronizando dados (${reason})`);
       void queryClient.invalidateQueries({

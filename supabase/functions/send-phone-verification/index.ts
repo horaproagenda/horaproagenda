@@ -132,8 +132,8 @@ serve(async (req) => {
       console.error("Twilio error:", resp.status, data);
       await supabase.from("phone_verification_codes").delete().eq("phone", e164);
       return new Response(
-        JSON.stringify({ error: getTwilioErrorMessage(data) }),
-        { status: resp.status === 400 ? 400 : 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ success: false, error: getTwilioErrorMessage(data), providerStatus: resp.status, providerCode: data.code ?? null }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

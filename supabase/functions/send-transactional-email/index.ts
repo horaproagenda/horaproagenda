@@ -21,6 +21,14 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
+function generateToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 // Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
 // gateway validates the caller's JWT (anon or service_role) before the request
 // reaches this code. No in-function auth check is needed.
@@ -127,6 +135,8 @@ Deno.serve(async (req) => {
       ? template.subject(templateData)
       : template.subject
 
+  const purpose = templateName === 'verification-code' ? 'auth' : 'transactional'
+
   // 3. Send directly through the managed email API. This avoids the optional
   // database queue tables, which are not present in this external Supabase setup.
   try {
@@ -139,9 +149,10 @@ Deno.serve(async (req) => {
         subject: resolvedSubject,
         html,
         text: plainText,
-        purpose: 'transactional',
+        purpose,
         label: templateName,
         idempotency_key: idempotencyKey,
+        ...(purpose === 'transactional' ? { unsubscribe_token: generateToken() } : {}),
       },
       { apiKey }
     )

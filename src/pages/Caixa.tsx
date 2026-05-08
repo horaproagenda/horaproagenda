@@ -7,8 +7,10 @@ import { CashRegisterHistory } from '@/components/caixa/CashRegisterHistory';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 
 export default function Caixa() {
+  useLogAccessOnMount({ module: 'caixa', action: 'view', fieldsViewed: ['sale', 'amount', 'payment_method', 'client', 'opening_balance', 'closing_balance', 'history'] });
   const { closedRegisters, isLoading } = useCashRegisters();
   const [activeTab, setActiveTab] = useLocalStorage('caixa-tab', 'vendas');
 

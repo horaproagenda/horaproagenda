@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal, Repeat } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
@@ -164,6 +165,7 @@ const PackageCardsSection: React.FC<PackageCardsSectionProps> = ({ items, onSele
 };
 
 const Servicos: React.FC = () => {
+  useLogAccessOnMount({ module: 'servicos', action: 'view', fieldsViewed: ['name', 'category', 'duration', 'price', 'professionals', 'is_active'] });
   const [activeTab, setActiveTab] = useLocalStorage<string>('servicos-tab', 'services');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<PackageTemplate | null>(null);

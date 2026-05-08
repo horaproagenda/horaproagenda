@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { useSearchParams } from 'react-router-dom';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -38,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 
 export default function Financeiro() {
+  useLogAccessOnMount({ module: 'financeiro', action: 'view', fieldsViewed: ['type', 'amount', 'description', 'due_date', 'status', 'client', 'professional', 'category'] });
   const [searchParams, setSearchParams] = useSearchParams();
   const { totalReceivables, totalPayables } = useFinancialEntries();
   const { banks } = useBanks();

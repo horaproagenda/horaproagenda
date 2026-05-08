@@ -13,6 +13,7 @@ import {
   Package,
   Landmark,
   Shield,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
@@ -40,10 +41,11 @@ const navigation = [
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },
+  { name: 'Painel Admin', href: '/admin', icon: ShieldCheck, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },
   { name: 'Suporte', href: '/suporte', icon: MessageSquare },
-];
+] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean }>;
 
 interface SidebarProps {
   onNewAppointment: () => void;
@@ -54,7 +56,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, hasRole } = useAuth();
+  const visibleNavigation = navigation.filter(item => !item.adminOnly || hasRole('admin'));
   const location = useLocation();
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';
@@ -162,7 +165,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
 
           {/* Navigation */}
           <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 space-y-1 px-2 py-2 overflow-y-auto overscroll-contain">
-            {navigation.map((item) => (
+            {visibleNavigation.map((item) => (
               isCollapsed ? (
                 <Tooltip key={item.name}>
                   <TooltipTrigger asChild>

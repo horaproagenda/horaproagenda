@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useListPosition } from '@/hooks/useListPosition';
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
@@ -45,6 +46,7 @@ type SortDirection = 'asc' | 'desc';
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const Clientes = () => {
+  useLogAccessOnMount({ module: 'clientes', action: 'view', fieldsViewed: ['name', 'phone', 'email', 'cpf', 'birthdate', 'address', 'tags', 'last_appointment'] });
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('clientes:viewMode', 'grid');
   const [selectedFilters, setSelectedFilters] = useLocalStorage<Record<string, string[]>>('clientes:filters', {

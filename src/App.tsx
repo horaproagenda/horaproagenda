@@ -35,6 +35,7 @@ import Assinatura from "./pages/Assinatura";
 import AssinaturaSucesso from "./pages/AssinaturaSucesso";
 import AssinaturaCancelado from "./pages/AssinaturaCancelado";
 import PreencherDocumento from "./pages/PreencherDocumento";
+import Unsubscribe from "./pages/Unsubscribe";
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({

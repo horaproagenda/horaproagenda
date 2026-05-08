@@ -90,13 +90,21 @@ export default function Auth() {
   }, [user, navigate]);
 
   const handleSendVerificationCode = async () => {
+    if (!signupName.trim()) {
+      toast({ title: 'Erro', description: 'Digite seu nome', variant: 'destructive' });
+      return;
+    }
     if (!signupEmail) {
       toast({ title: 'Erro', description: 'Digite seu email', variant: 'destructive' });
       return;
     }
-
-    if (!signupName) {
-      toast({ title: 'Erro', description: 'Digite seu nome', variant: 'destructive' });
+    if (!isValidCPF(signupCpf)) {
+      toast({ title: 'CPF inválido', description: 'Verifique o CPF digitado.', variant: 'destructive' });
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      toast({ title: 'Celular inválido', description: 'Use DDD + número.', variant: 'destructive' });
       return;
     }
 

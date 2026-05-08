@@ -13,6 +13,7 @@ import {
   Package,
   Landmark,
   Shield,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   HelpCircle,

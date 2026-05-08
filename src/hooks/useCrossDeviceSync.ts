@@ -53,11 +53,14 @@ export function useCrossDeviceSync() {
     // 2. Heartbeat agressivo (a cada 2s) — refetch ativo das queries visíveis.
     // Mantém a UI sempre atualizada mesmo se o WebSocket Realtime falhar
     // ou se a aba estiver em segundo plano por pouco tempo.
+    // 2. Heartbeat de fundo (a cada 30s) — refetch ativo das queries visíveis.
+    // Mantém a UI sincronizada como fallback caso o WebSocket Realtime falhe,
+    // sem travar a interface com refetches em loop.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 2_000);
+    }, 30_000);
 
     // 3. Sincronização entre abas via BroadcastChannel
     let bc: BroadcastChannel | null = null;

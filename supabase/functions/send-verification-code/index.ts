@@ -72,21 +72,33 @@ serve(async (req) => {
       throw new Error("Erro ao gerar código de verificação");
     }
 
-    // Send via Lovable transactional email infrastructure
-    const { error: sendError } = await supabaseClient.functions.invoke(
-      'send-transactional-email',
-      {
-        body: {
-          templateName: 'verification-code',
-          recipientEmail: email,
-          idempotencyKey: `verification-${email.toLowerCase()}-${Date.now()}`,
-          templateData: { code, type },
-        },
-      }
-    );
+    // Send via Lovable transactional email infrastructure.
+    // Use the anon/publishable key (a real JWT) because the target function has
+    // verify_jwt=true and rejects the new sb_secret_* service-role key format.
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const ANON_KEY =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      "";
 
-    if (sendError) {
-      console.error("Error sending email:", sendError);
+    const sendResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ANON_KEY}`,
+        apikey: ANON_KEY,
+      },
+      body: JSON.stringify({
+        templateName: 'verification-code',
+        recipientEmail: email,
+        idempotencyKey: `verification-${email.toLowerCase()}-${Date.now()}`,
+        templateData: { code, type },
+      }),
+    });
+
+    if (!sendResp.ok) {
+      const errText = await sendResp.text().catch(() => "");
+      console.error("Error sending email:", sendResp.status, errText);
       throw new Error("Erro ao enviar e-mail");
     }
 

@@ -21,6 +21,34 @@ serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+
+    if (!SUPABASE_URL) {
+      console.error("Missing SUPABASE_URL");
+      return new Response(
+        JSON.stringify({ error: "Configuração do servidor: SUPABASE_URL ausente." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (!ANON_KEY) {
+      console.error("Missing SUPABASE_ANON_KEY / SUPABASE_PUBLISHABLE_KEY");
+      return new Response(
+        JSON.stringify({ error: "Configuração do servidor: SUPABASE_ANON_KEY ausente." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (!SERVICE_ROLE_KEY) {
+      console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ error: "Configuração do servidor: SUPABASE_SERVICE_ROLE_KEY ausente." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const { email, type }: VerificationRequest = await req.json();
 
     if (!email) {
@@ -30,11 +58,9 @@ serve(async (req) => {
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+    const supabaseClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
 
     // Cooldown 60s
     const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();

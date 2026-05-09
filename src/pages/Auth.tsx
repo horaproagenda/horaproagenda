@@ -51,6 +51,7 @@ export default function Auth() {
   const [phoneCode, setPhoneCode] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [normalizedPhoneE164, setNormalizedPhoneE164] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -106,6 +107,10 @@ export default function Auth() {
     const phoneDigits = signupPhone.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 13) {
       toast({ title: 'Celular inválido', description: 'Use DDD + número.', variant: 'destructive' });
+      return;
+    }
+    if (!acceptTerms) {
+      toast({ title: 'Aceite necessário', description: 'Você precisa concordar com os Termos de Serviço e a Política de Privacidade para continuar.', variant: 'destructive' });
       return;
     }
 

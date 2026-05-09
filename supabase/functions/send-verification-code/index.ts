@@ -101,12 +101,6 @@ serve(async (req) => {
     // Send via Lovable transactional email infrastructure.
     // Use the anon/publishable key (a real JWT) because the target function has
     // verify_jwt=true and rejects the new sb_secret_* service-role key format.
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-    const ANON_KEY =
-      Deno.env.get("SUPABASE_ANON_KEY") ??
-      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
-      "";
-
     const sendResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
       method: "POST",
       headers: {
@@ -125,7 +119,14 @@ serve(async (req) => {
     if (!sendResp.ok) {
       const errText = await sendResp.text().catch(() => "");
       console.error("Error sending email:", sendResp.status, errText);
-      throw new Error("Erro ao enviar e-mail");
+      return new Response(
+        JSON.stringify({
+          error: "Erro ao enviar e-mail",
+          providerStatus: sendResp.status,
+          providerBody: errText.slice(0, 500),
+        }),
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     return new Response(

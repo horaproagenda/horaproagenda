@@ -37,3 +37,6 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+
+  [functions.twilio-status-webhook]
+    verify_jwt = false

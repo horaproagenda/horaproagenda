@@ -734,6 +734,24 @@ export default function Auth() {
                       onChange={(e) => setSignupCnpj(e.target.value)}
                     />
                   </div>
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      id="accept-terms"
+                      checked={acceptTerms}
+                      onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="accept-terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                      Concordo com os{" "}
+                      <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">
+                        Termos de Serviço
+                      </Link>{" "}
+                      e a{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">
+                        Política de Privacidade
+                      </Link>
+                    </Label>
+                  </div>
                   <Button 
                     type="button" 
                     className="w-full" 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type AuthStep = 'email' | 'code' | 'phone' | 'phoneCode' | 'plan' | 'password';
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
@@ -50,6 +51,7 @@ export default function Auth() {
   const [phoneCode, setPhoneCode] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [normalizedPhoneE164, setNormalizedPhoneE164] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -105,6 +107,10 @@ export default function Auth() {
     const phoneDigits = signupPhone.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 13) {
       toast({ title: 'Celular inválido', description: 'Use DDD + número.', variant: 'destructive' });
+      return;
+    }
+    if (!acceptTerms) {
+      toast({ title: 'Aceite necessário', description: 'Você precisa concordar com os Termos de Serviço e a Política de Privacidade para continuar.', variant: 'destructive' });
       return;
     }
 
@@ -728,6 +734,24 @@ export default function Auth() {
                       onChange={(e) => setSignupCnpj(e.target.value)}
                     />
                   </div>
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      id="accept-terms"
+                      checked={acceptTerms}
+                      onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="accept-terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                      Concordo com os{" "}
+                      <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">
+                        Termos de Serviço
+                      </Link>{" "}
+                      e a{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">
+                        Política de Privacidade
+                      </Link>
+                    </Label>
+                  </div>
                   <Button 
                     type="button" 
                     className="w-full" 
@@ -959,6 +983,19 @@ export default function Auth() {
               )}
             </TabsContent>
           </Tabs>
+
+          <div className="mt-4 pt-4 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground">
+              Ao utilizar o Lume Agenda, você concorda com nossos{" "}
+              <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">
+                Termos de Serviço
+              </Link>{" "}
+              e{" "}
+              <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">
+                Política de Privacidade
+              </Link>.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

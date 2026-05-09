@@ -99,8 +99,11 @@ serve(async (req) => {
     }
 
     // Send via Lovable transactional email infrastructure.
-    // Use the anon/publishable key (a real JWT) because the target function has
-    // verify_jwt=true and rejects the new sb_secret_* service-role key format.
+    // The target function has verify_jwt=true and the gateway only accepts a
+    // legacy JWT anon key. The env vars on this edge runtime now expose the
+    // new sb_publishable_* / sb_secret_* keys which fail JWT validation.
+    // The publishable JWT below is public (same one shipped in the frontend).
+    const PUBLISHABLE_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZ2NsbHJic3dvZGpvYWR5YnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTQ5NjcsImV4cCI6MjA4MDUzMDk2N30.i7myc9A0jsBRAf4ehukJoMgl-79_GJrklch3D5_prXE";
     const sendResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
       method: "POST",
       headers: {

@@ -3453,6 +3453,48 @@ export type Database = {
         }
         Relationships: []
       }
+      twilio_message_events: {
+        Row: {
+          account_sid: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          from_number: string | null
+          id: string
+          message_sid: string
+          message_status: string | null
+          raw_payload: Json
+          received_at: string
+          to_number: string | null
+        }
+        Insert: {
+          account_sid?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          from_number?: string | null
+          id?: string
+          message_sid: string
+          message_status?: string | null
+          raw_payload?: Json
+          received_at?: string
+          to_number?: string | null
+        }
+        Update: {
+          account_sid?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          from_number?: string | null
+          id?: string
+          message_sid?: string
+          message_status?: string | null
+          raw_payload?: Json
+          received_at?: string
+          to_number?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

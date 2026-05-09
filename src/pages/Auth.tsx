@@ -983,6 +983,19 @@ export default function Auth() {
               )}
             </TabsContent>
           </Tabs>
+
+          <div className="mt-4 pt-4 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground">
+              Ao utilizar o Lume Agenda, você concorda com nossos{" "}
+              <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">
+                Termos de Serviço
+              </Link>{" "}
+              e{" "}
+              <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">
+                Política de Privacidade
+              </Link>.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

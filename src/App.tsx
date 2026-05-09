@@ -37,6 +37,8 @@ import AssinaturaSucesso from "./pages/AssinaturaSucesso";
 import AssinaturaCancelado from "./pages/AssinaturaCancelado";
 import PreencherDocumento from "./pages/PreencherDocumento";
 import Unsubscribe from "./pages/Unsubscribe";
+import TermosDeServico from "./pages/TermosDeServico";
+import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({
@@ -80,10 +82,12 @@ const App = () => {
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                {/* Public route for client document filling */}
+                {/* Public routes */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
+                <Route path="/termos-de-servico" element={<TermosDeServico />} />
+                <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />

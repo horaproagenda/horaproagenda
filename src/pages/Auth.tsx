@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type AuthStep = 'email' | 'code' | 'phone' | 'phoneCode' | 'plan' | 'password';
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';

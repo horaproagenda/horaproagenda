@@ -108,8 +108,8 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ANON_KEY}`,
-        apikey: ANON_KEY,
+        Authorization: `Bearer ${PUBLISHABLE_JWT}`,
+        apikey: PUBLISHABLE_JWT,
       },
       body: JSON.stringify({
         templateName: 'verification-code',

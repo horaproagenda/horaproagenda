@@ -189,31 +189,39 @@ export function ProductDetailDialog({
     return consumptionReport.find(r => r.product_id === product.id);
   }, [product, consumptionReport]);
 
-  // Calculate usage statistics
+  // Calculate usage statistics within the product's usage window
   const usageStats = useMemo(() => {
-    if (!product) return { totalAppointments: 0, avgPerAppointment: 0 };
-    
+    if (!product) return { totalAppointments: 0, avgPerAppointment: 0, byService: [] as Array<{ service_id: string; service_name: string; appointments: number; qtyPerUse: number; totalQty: number }> };
+
+    const startedUsing = product.started_using_at ? parseISO(product.started_using_at + 'T00:00:00') : null;
+    const finishedUsing = product.finished_at ? parseISO(product.finished_at + 'T23:59:59') : new Date();
+
+    const inWindow = (apt: any) => {
+      if (apt.status !== 'completed') return false;
+      if (!startedUsing) return true;
+      const t = new Date(apt.start_time);
+      return t >= startedUsing && t <= finishedUsing;
+    };
+
+    const totalQuantityUsed = Math.max(0, (product.quantity_purchased || 0) - (product.current_stock || 0));
     let totalAppointments = 0;
-    
-    productServiceLinks.forEach(sp => {
-      const completedAppointments = appointments.filter(
-        apt => apt.service_id === sp.service_id && apt.status === 'completed'
-      );
-      totalAppointments += completedAppointments.length;
+
+    const byService = productServiceLinks.map((sp: any) => {
+      const apts = appointments.filter(apt => apt.service_id === sp.service_id && inWindow(apt));
+      totalAppointments += apts.length;
+      const qtyPerUse = Number(sp.quantity_per_use ?? 0);
+      return {
+        service_id: sp.service_id,
+        service_name: sp.service?.name || activeServices.find(s => s.id === sp.service_id)?.name || 'Serviço',
+        appointments: apts.length,
+        qtyPerUse,
+        totalQty: apts.length * qtyPerUse,
+      };
     });
 
-    // Calculate average usage per day if we have dates
-    const startedUsing = product.started_using_at ? parseISO(product.started_using_at) : null;
-    const finishedUsing = product.finished_at ? parseISO(product.finished_at) : new Date();
-    
-    let avgPerAppointment = 0;
-    if (startedUsing && totalAppointments > 0) {
-      const totalQuantityUsed = product.quantity_purchased - product.current_stock;
-      avgPerAppointment = totalQuantityUsed / totalAppointments;
-    }
-
-    return { totalAppointments, avgPerAppointment };
-  }, [product, productServiceLinks, appointments]);
+    const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
+    return { totalAppointments, avgPerAppointment, byService };
+  }, [product, productServiceLinks, appointments, activeServices]);
 
   // Available services to link (not already linked)
   const availableServicesToLink = useMemo(() => {

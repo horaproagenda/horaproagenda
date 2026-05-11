@@ -415,7 +415,10 @@ serve(async (req) => {
       }
     }
 
-    // 11. Check for equipment conflicts (NEW)
+    // 11. Check for equipment conflicts (skipped in legacy mode)
+    if (body.legacy) {
+      // Skip equipment validation block entirely
+    } else {
     // Get equipment from the room if specified
     let newAppointmentEquipment: string[] = [];
     

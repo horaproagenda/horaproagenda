@@ -160,6 +160,7 @@ export function ProductDetailDialog({
     purchase_date: '',
     supplier: '',
     started_using_at: '',
+    finished_at: '',
     notes: '',
   });
 
@@ -188,31 +189,39 @@ export function ProductDetailDialog({
     return consumptionReport.find(r => r.product_id === product.id);
   }, [product, consumptionReport]);
 
-  // Calculate usage statistics
+  // Calculate usage statistics within the product's usage window
   const usageStats = useMemo(() => {
-    if (!product) return { totalAppointments: 0, avgPerAppointment: 0 };
-    
+    if (!product) return { totalAppointments: 0, avgPerAppointment: 0, byService: [] as Array<{ service_id: string; service_name: string; appointments: number; qtyPerUse: number; totalQty: number }> };
+
+    const startedUsing = product.started_using_at ? parseISO(product.started_using_at + 'T00:00:00') : null;
+    const finishedUsing = product.finished_at ? parseISO(product.finished_at + 'T23:59:59') : new Date();
+
+    const inWindow = (apt: any) => {
+      if (apt.status !== 'completed') return false;
+      if (!startedUsing) return true;
+      const t = new Date(apt.start_time);
+      return t >= startedUsing && t <= finishedUsing;
+    };
+
+    const totalQuantityUsed = Math.max(0, (product.quantity_purchased || 0) - (product.current_stock || 0));
     let totalAppointments = 0;
-    
-    productServiceLinks.forEach(sp => {
-      const completedAppointments = appointments.filter(
-        apt => apt.service_id === sp.service_id && apt.status === 'completed'
-      );
-      totalAppointments += completedAppointments.length;
+
+    const byService = productServiceLinks.map((sp: any) => {
+      const apts = appointments.filter(apt => apt.service_id === sp.service_id && inWindow(apt));
+      totalAppointments += apts.length;
+      const qtyPerUse = Number(sp.quantity_per_use ?? 0);
+      return {
+        service_id: sp.service_id,
+        service_name: sp.service?.name || activeServices.find(s => s.id === sp.service_id)?.name || 'Serviço',
+        appointments: apts.length,
+        qtyPerUse,
+        totalQty: apts.length * qtyPerUse,
+      };
     });
 
-    // Calculate average usage per day if we have dates
-    const startedUsing = product.started_using_at ? parseISO(product.started_using_at) : null;
-    const finishedUsing = product.finished_at ? parseISO(product.finished_at) : new Date();
-    
-    let avgPerAppointment = 0;
-    if (startedUsing && totalAppointments > 0) {
-      const totalQuantityUsed = product.quantity_purchased - product.current_stock;
-      avgPerAppointment = totalQuantityUsed / totalAppointments;
-    }
-
-    return { totalAppointments, avgPerAppointment };
-  }, [product, productServiceLinks, appointments]);
+    const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
+    return { totalAppointments, avgPerAppointment, byService };
+  }, [product, productServiceLinks, appointments, activeServices]);
 
   // Available services to link (not already linked)
   const availableServicesToLink = useMemo(() => {
@@ -739,8 +748,34 @@ export function ProductDetailDialog({
                               ? format(parseISO(product.finished_at), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Em uso'}
                           </span>
-                        )}
+                    )}
+                  </div>
+
+                  {/* Per-service usage breakdown within the usage window */}
+                  {usageStats.byService.length > 0 && (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <h5 className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+                        Consumo por serviço {product.started_using_at ? '(no período de uso)' : ''}
+                      </h5>
+                      <div className="space-y-1.5">
+                        {usageStats.byService.map(s => (
+                          <div key={s.service_id} className="flex items-center justify-between text-xs tabular-nums">
+                            <span className="truncate flex-1">{s.service_name}</span>
+                            <span className="text-muted-foreground ml-2">
+                              {s.appointments} atend. × {s.qtyPerUse} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} ={' '}
+                              <span className="font-medium text-foreground">{s.totalQty.toFixed(2)}</span>
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between text-xs tabular-nums pt-1.5 border-t mt-1.5">
+                          <span className="font-medium">Total</span>
+                          <span className="font-medium">
+                            {usageStats.totalAppointments} atend. — média {usageStats.avgPerAppointment.toFixed(3)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/uso
+                          </span>
+                        </div>
                       </div>
+                    </div>
+                  )}
                     </div>
                     {product.started_using_at && (
                       <p className="text-xs text-muted-foreground mt-2">
@@ -897,11 +932,19 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <SafeDateInput
-                                value={purchaseEditForm.started_using_at || ''}
-                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
-                                className="h-8 text-xs w-28"
-                              />
+                              <div className="flex flex-col gap-1">
+                                <SafeDateInput
+                                  value={purchaseEditForm.started_using_at || ''}
+                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
+                                  className="h-8 text-xs w-28"
+                                />
+                                <SafeDateInput
+                                  value={purchaseEditForm.finished_at || ''}
+                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, finished_at: v ?? '' })}
+                                  className="h-8 text-xs w-28"
+                                  placeholder="Término"
+                                />
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-1 justify-end">
@@ -919,6 +962,7 @@ export function ProductDetailDialog({
                                         purchase_date: purchaseEditForm.purchase_date,
                                         supplier: purchaseEditForm.supplier || null,
                                         started_using_at: purchaseEditForm.started_using_at || null,
+                                        finished_at: purchaseEditForm.finished_at || null,
                                       });
                                     }
                                     setEditingPurchaseId(null);
@@ -994,6 +1038,7 @@ export function ProductDetailDialog({
                                         purchase_date: purchase.purchase_date,
                                         supplier: purchase.supplier || '',
                                         started_using_at: purchase.started_using_at || '',
+                                        finished_at: purchase.finished_at || '',
                                         notes: purchase.notes || '',
                                       });
                                     }}

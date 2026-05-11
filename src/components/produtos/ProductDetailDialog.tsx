@@ -1398,10 +1398,9 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <Label className="text-xs">Data</Label>
-                        <Input
-                          type="date"
+                        <SafeDateInput
                           value={consumptionDate}
-                          onChange={(e) => setConsumptionDate(e.target.value)}
+                          onCommit={(v) => setConsumptionDate(v ?? '')}
                           className="h-8 text-sm"
                         />
                       </div>

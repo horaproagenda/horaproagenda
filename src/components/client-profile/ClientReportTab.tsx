@@ -531,7 +531,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     <TableHead className="text-[11px] py-2 h-auto min-w-[140px]">Equipamento</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Aplicação</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap min-w-[160px]">Reagendar pacote</TableHead>
+                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap min-w-[160px] text-center">Reagendar pacote</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto text-right min-w-[90px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>

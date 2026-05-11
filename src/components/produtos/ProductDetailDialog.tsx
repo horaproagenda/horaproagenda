@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -256,7 +256,7 @@ export function ProductDetailDialog({
   };
 
   // Sync containerUnit when product loads/changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (product) {
       setContainerUnit(product.unit);
     }

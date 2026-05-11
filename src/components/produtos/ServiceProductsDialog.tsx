@@ -162,9 +162,10 @@ export function ServiceProductsDialog() {
 
   // Calculate usage per appointment from date-based tracking
   const calculatedUsagePerAppointment = useMemo(() => {
-    if (knowsQuantity === 'yes' || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    return containerAmount / estimatedAppointments;
-  }, [knowsQuantity, containerAmount, estimatedAppointments]);
+    if (knowsQuantity === 'yes' || !selectedProductData || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+    return normalizedContainer / estimatedAppointments;
+  }, [knowsQuantity, selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
 
   // Calculate total appointments possible with total stock
   const totalAppointmentsPossible = useMemo(() => {
@@ -226,10 +227,11 @@ export function ServiceProductsDialog() {
     if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
 
     if (knowsQuantity === 'yes') {
+      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
         product_id: selectedProduct,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
       });

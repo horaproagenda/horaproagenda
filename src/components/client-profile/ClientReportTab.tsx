@@ -531,7 +531,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     <TableHead className="text-[11px] py-2 h-auto min-w-[140px]">Equipamento</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Aplicação</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap min-w-[160px]">Reagendar pacote</TableHead>
+                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap min-w-[160px] text-center">Reagendar pacote</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto text-right min-w-[90px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -575,12 +575,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         <TableCell className="py-2">
                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 text-center">
                           {canReajust ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 text-[10px] px-2 whitespace-nowrap"
+                              className="h-7 text-[10px] px-2 whitespace-nowrap mx-auto"
                               onClick={() => propagateSeriesDates.mutate({
                                 appointment_id: appointment.id,
                                 new_start_time: new Date(appointment.start_time),

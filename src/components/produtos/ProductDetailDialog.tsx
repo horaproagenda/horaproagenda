@@ -1004,6 +1004,7 @@ export function ProductDetailDialog({
                                         purchase_date: purchase.purchase_date,
                                         supplier: purchase.supplier || '',
                                         started_using_at: purchase.started_using_at || '',
+                                        finished_at: purchase.finished_at || '',
                                         notes: purchase.notes || '',
                                       });
                                     }}

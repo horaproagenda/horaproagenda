@@ -310,7 +310,7 @@ export function useClientProfile(clientId: string) {
       return data as unknown as Client | null;
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch for latest data
+    staleTime: 30_000,
   });
 
   // Fetch client appointments with full details
@@ -423,8 +423,8 @@ export function useClientProfile(clientId: string) {
       return data as TreatmentPhoto[];
     },
     enabled: !!clientId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch quotes

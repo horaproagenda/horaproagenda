@@ -28,9 +28,9 @@ export function useCrossDeviceSync() {
     let lastInvalidate = 0;
     const invalidateAll = (reason: string) => {
       const now = Date.now();
-      // Throttle: no máximo 1 refetch global a cada 10s para evitar loops
-      // de re-render que travam telas pesadas (ex.: perfil do cliente).
-      if (now - lastInvalidate < 10_000) return;
+      // Throttle: no máximo 1 refetch global a cada 60s para evitar piscar/loop
+      // de carregamento em telas pesadas (ex.: perfil do cliente).
+      if (now - lastInvalidate < 60_000) return;
       lastInvalidate = now;
       console.log(`[CrossDeviceSync] Sincronizando dados (${reason})`);
       void queryClient.invalidateQueries({
@@ -39,7 +39,7 @@ export function useCrossDeviceSync() {
       });
     };
 
-    // 1. Foco/visibilidade -> revalida tudo
+    // 1. Foco/visibilidade -> revalida tudo (com throttle)
     const handleFocus = () => invalidateAll('focus');
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') invalidateAll('visible');
@@ -50,17 +50,13 @@ export function useCrossDeviceSync() {
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 2. Heartbeat agressivo (a cada 2s) — refetch ativo das queries visíveis.
-    // Mantém a UI sempre atualizada mesmo se o WebSocket Realtime falhar
-    // ou se a aba estiver em segundo plano por pouco tempo.
-    // 2. Heartbeat de fundo (a cada 30s) — refetch ativo das queries visíveis.
-    // Mantém a UI sincronizada como fallback caso o WebSocket Realtime falhe,
-    // sem travar a interface com refetches em loop.
+    // 2. Heartbeat de fundo (a cada 2 minutos) — fallback caso o Realtime falhe.
+    // Mais espaçado para não piscar a UI; o Realtime cobre as mudanças instantâneas.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 30_000);
+    }, 120_000);
 
     // 3. Sincronização entre abas via BroadcastChannel
     let bc: BroadcastChannel | null = null;

@@ -748,8 +748,34 @@ export function ProductDetailDialog({
                               ? format(parseISO(product.finished_at), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Em uso'}
                           </span>
-                        )}
+                    )}
+                  </div>
+
+                  {/* Per-service usage breakdown within the usage window */}
+                  {usageStats.byService.length > 0 && (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <h5 className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+                        Consumo por serviço {product.started_using_at ? '(no período de uso)' : ''}
+                      </h5>
+                      <div className="space-y-1.5">
+                        {usageStats.byService.map(s => (
+                          <div key={s.service_id} className="flex items-center justify-between text-xs tabular-nums">
+                            <span className="truncate flex-1">{s.service_name}</span>
+                            <span className="text-muted-foreground ml-2">
+                              {s.appointments} atend. × {s.qtyPerUse} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} ={' '}
+                              <span className="font-medium text-foreground">{s.totalQty.toFixed(2)}</span>
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between text-xs tabular-nums pt-1.5 border-t mt-1.5">
+                          <span className="font-medium">Total</span>
+                          <span className="font-medium">
+                            {usageStats.totalAppointments} atend. — média {usageStats.avgPerAppointment.toFixed(3)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/uso
+                          </span>
+                        </div>
                       </div>
+                    </div>
+                  )}
                     </div>
                     {product.started_using_at && (
                       <p className="text-xs text-muted-foreground mt-2">

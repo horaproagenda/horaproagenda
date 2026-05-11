@@ -255,20 +255,27 @@ export function ProductDetailDialog({
     }
   };
 
+  // Sync containerUnit when product loads/changes
+  React.useEffect(() => {
+    if (product) {
+      setContainerUnit(product.unit);
+    }
+  }, [product?.id, product?.unit]);
+
   const handleAddServiceLink = async () => {
     if (!product || !selectedServiceId) return;
-    
-    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
-    
+
+    const useEstimated = knowsQuantity === 'no';
+
     if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
       await onCreateServiceLink({
         service_id: selectedServiceId,
         product_id: product.id,
         quantity_per_use: calculatedQuantityPerUse,
         estimated_appointments: estimatedAppointments,
         container_amount: containerAmount,
-        container_unit: product.unit,
+        container_unit: containerUnit,
         tracking_method: 'estimated',
         notes: null,
       });
@@ -281,27 +288,28 @@ export function ProductDetailDialog({
         notes: null,
       });
     }
-    
+
     setSelectedServiceId('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
+    setKnowsQuantity('yes');
   };
 
   const handleAddTemplateLink = async () => {
     if (!product || !selectedTemplateId) return;
-    
-    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
-    
+
+    const useEstimated = knowsQuantity === 'no';
+
     if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplateId,
         product_id: product.id,
         quantity_per_use: calculatedQuantityPerUse,
         estimated_appointments: estimatedAppointments,
         container_amount: containerAmount,
-        container_unit: product.unit,
+        container_unit: containerUnit,
         tracking_method: 'estimated',
         notes: null,
       });
@@ -314,11 +322,12 @@ export function ProductDetailDialog({
         notes: null,
       });
     }
-    
+
     setSelectedTemplateId('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
+    setKnowsQuantity('yes');
   };
 
   const supplierInfo = useMemo(() => {

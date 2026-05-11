@@ -579,11 +579,11 @@ export default function Produtos() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={stockForm.purchase_date} onChange={(e) => setStockForm({ ...stockForm, purchase_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={stockForm.purchase_date} onCommit={(v) => setStockForm({ ...stockForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Data de Validade</Label>
-                        <Input type="date" value={stockForm.expiry_date} onChange={(e) => setStockForm({ ...stockForm, expiry_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={stockForm.expiry_date} onCommit={(v) => setStockForm({ ...stockForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
@@ -627,9 +627,20 @@ export default function Produtos() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {purchaseForm.product_id && (() => {
+                      const selectedProd = products.find(p => p.id === purchaseForm.product_id);
+                      return selectedProd ? (
+                        <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted/30 p-2 text-[10px]">
+                          <span><strong>Categoria:</strong> {selectedProd.category || '-'}</span>
+                          <span><strong>Tipo:</strong> {getTypeLabel(selectedProd.product_type)}</span>
+                          <span><strong>Unidade:</strong> {getUnitLabel(selectedProd.unit)}</span>
+                          <span><strong>Alerta mín.:</strong> {selectedProd.min_stock_alert ?? 0} {getUnitLabel(selectedProd.unit)}</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <Label className="text-xs">Quantidade *</Label>
+                        <Label className="text-xs">Quantidade *{purchaseForm.product_id ? ` (${getUnitLabel(products.find(p => p.id === purchaseForm.product_id)?.unit || 'un')})` : ''}</Label>
                         <Input type="number" value={purchaseForm.quantity || ''} onChange={(e) => updatePurchaseQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
                       </div>
                       <div>

@@ -16,6 +16,12 @@ interface AppointmentRequest {
   notes?: string;
   package_appointment_id?: string;
   status?: string;
+  /**
+   * Legacy mode: when true, skips business-hours, conflict, absence and
+   * equipment validations. Used for retroactive registration of appointments
+   * that happened BEFORE the user adopted this system.
+   */
+  legacy?: boolean;
 }
 
 interface ValidationError {

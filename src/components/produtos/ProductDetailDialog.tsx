@@ -898,11 +898,19 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <SafeDateInput
-                                value={purchaseEditForm.started_using_at || ''}
-                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
-                                className="h-8 text-xs w-28"
-                              />
+                              <div className="flex flex-col gap-1">
+                                <SafeDateInput
+                                  value={purchaseEditForm.started_using_at || ''}
+                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
+                                  className="h-8 text-xs w-28"
+                                />
+                                <SafeDateInput
+                                  value={purchaseEditForm.finished_at || ''}
+                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, finished_at: v ?? '' })}
+                                  className="h-8 text-xs w-28"
+                                  placeholder="Término"
+                                />
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-1 justify-end">
@@ -920,6 +928,7 @@ export function ProductDetailDialog({
                                         purchase_date: purchaseEditForm.purchase_date,
                                         supplier: purchaseEditForm.supplier || null,
                                         started_using_at: purchaseEditForm.started_using_at || null,
+                                        finished_at: purchaseEditForm.finished_at || null,
                                       });
                                     }
                                     setEditingPurchaseId(null);

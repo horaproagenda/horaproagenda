@@ -141,6 +141,8 @@ export function ProductDetailDialog({
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
+  const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
+  const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   const [isSaving, setIsSaving] = useState(false);
   
   // Stock editing state

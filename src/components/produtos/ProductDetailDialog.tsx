@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
@@ -140,6 +141,8 @@ export function ProductDetailDialog({
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
+  const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
+  const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   const [isSaving, setIsSaving] = useState(false);
   
   // Stock editing state
@@ -237,6 +240,10 @@ export function ProductDetailDialog({
       is_active: product.is_active,
       is_for_sale: product.is_for_sale,
       sale_price: product.sale_price,
+      started_using_at: product.started_using_at,
+      finished_at: product.finished_at,
+      expiry_date: product.expiry_date,
+      current_stock: product.current_stock,
     });
     setIsEditing(true);
   };
@@ -252,20 +259,27 @@ export function ProductDetailDialog({
     }
   };
 
+  // Sync containerUnit when product loads/changes
+  useEffect(() => {
+    if (product) {
+      setContainerUnit(product.unit);
+    }
+  }, [product?.id, product?.unit]);
+
   const handleAddServiceLink = async () => {
     if (!product || !selectedServiceId) return;
-    
-    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
-    
+
+    const useEstimated = knowsQuantity === 'no';
+
     if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
       await onCreateServiceLink({
         service_id: selectedServiceId,
         product_id: product.id,
         quantity_per_use: calculatedQuantityPerUse,
         estimated_appointments: estimatedAppointments,
         container_amount: containerAmount,
-        container_unit: product.unit,
+        container_unit: containerUnit,
         tracking_method: 'estimated',
         notes: null,
       });
@@ -278,27 +292,28 @@ export function ProductDetailDialog({
         notes: null,
       });
     }
-    
+
     setSelectedServiceId('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
+    setKnowsQuantity('yes');
   };
 
   const handleAddTemplateLink = async () => {
     if (!product || !selectedTemplateId) return;
-    
-    const useEstimated = isEstimatedTracking(product.product_type, product.unit);
-    
+
+    const useEstimated = knowsQuantity === 'no';
+
     if (useEstimated) {
-      const calculatedQuantityPerUse = containerAmount / estimatedAppointments;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplateId,
         product_id: product.id,
         quantity_per_use: calculatedQuantityPerUse,
         estimated_appointments: estimatedAppointments,
         container_amount: containerAmount,
-        container_unit: product.unit,
+        container_unit: containerUnit,
         tracking_method: 'estimated',
         notes: null,
       });
@@ -311,11 +326,12 @@ export function ProductDetailDialog({
         notes: null,
       });
     }
-    
+
     setSelectedTemplateId('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
+    setKnowsQuantity('yes');
   };
 
   const supplierInfo = useMemo(() => {
@@ -420,6 +436,43 @@ export function ProductDetailDialog({
                         type="number"
                         value={editForm.min_stock_alert || ''}
                         onChange={(e) => setEditForm({ ...editForm, min_stock_alert: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Quantidade Atual em Estoque</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={editForm.current_stock ?? 0}
+                        onChange={(e) => setEditForm({ ...editForm, current_stock: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Ex: 20 (na unidade selecionada acima — L, mL, g, etc.)
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Validade</Label>
+                      <SafeDateInput
+                        value={editForm.expiry_date as any}
+                        onCommit={(v) => setEditForm({ ...editForm, expiry_date: v })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Início do Uso</Label>
+                      <SafeDateInput
+                        value={editForm.started_using_at as any}
+                        onCommit={(v) => setEditForm({ ...editForm, started_using_at: v })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Término do Uso</Label>
+                      <SafeDateInput
+                        value={editForm.finished_at as any}
+                        onCommit={(v) => setEditForm({ ...editForm, finished_at: v })}
                       />
                     </div>
                   </div>
@@ -654,13 +707,10 @@ export function ProductDetailDialog({
                           Início do Uso
                         </Label>
                         {canEdit ? (
-                          <Input
-                            type="date"
+                          <SafeDateInput
                             value={product.started_using_at || ''}
-                            onChange={(e) => onUpdateProduct({ id: product.id, started_using_at: e.target.value || null })}
+                            onCommit={(v) => onUpdateProduct({ id: product.id, started_using_at: v })}
                             className="h-9"
-                            min="2000-01-01"
-                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">
@@ -675,13 +725,10 @@ export function ProductDetailDialog({
                           Término do Uso
                         </Label>
                         {canEdit ? (
-                          <Input
-                            type="date"
+                          <SafeDateInput
                             value={product.finished_at || ''}
-                            onChange={(e) => onUpdateProduct({ id: product.id, finished_at: e.target.value || null })}
+                            onCommit={(v) => onUpdateProduct({ id: product.id, finished_at: v })}
                             className="h-9"
-                            min="2000-01-01"
-                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">
@@ -786,13 +833,10 @@ export function ProductDetailDialog({
                         return (
                           <TableRow key={purchase.id} className="bg-muted/30">
                             <TableCell>
-                              <Input
-                                type="date"
+                              <SafeDateInput
                                 value={purchaseEditForm.purchase_date}
-                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: e.target.value })}
+                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: v ?? '' })}
                                 className="h-8 text-xs w-28"
-                                min="2000-01-01"
-                                max="2099-12-31"
                               />
                             </TableCell>
                             <TableCell>
@@ -850,13 +894,10 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="date"
+                              <SafeDateInput
                                 value={purchaseEditForm.started_using_at || ''}
-                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: e.target.value })}
+                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
                                 className="h-8 text-xs w-28"
-                                min="2000-01-01"
-                                max="2099-12-31"
                               />
                             </TableCell>
                             <TableCell className="text-right">
@@ -985,13 +1026,11 @@ export function ProductDetailDialog({
                   <div className="flex items-center gap-2 mb-2">
                     <Link2 className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Vincular a Serviço</span>
-                    {isEstimatedTracking(product.product_type, product.unit) && (
-                      <Badge variant="outline" className="text-xs">
-                        Modo Estimado
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {knowsQuantity === 'no' ? 'Modo Estimado' : 'Modo Exato'}
+                    </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-3">
                     <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
                       <SelectTrigger>
@@ -1005,8 +1044,21 @@ export function ProductDetailDialog({
                         ))}
                       </SelectContent>
                     </Select>
-                    
-                    {isEstimatedTracking(product.product_type, product.unit) ? (
+
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">
+                        Você sabe a quantidade usada por atendimento?
+                      </Label>
+                      <Select value={knowsQuantity} onValueChange={(v: 'yes' | 'no') => setKnowsQuantity(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
+                          <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {knowsQuantity === 'no' ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">
@@ -1016,17 +1068,22 @@ export function ProductDetailDialog({
                             <Input
                               type="number"
                               value={containerAmount}
-                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
-                              min="0.01"
+                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                              min="0"
                               step="0.01"
                               className="flex-1"
                             />
-                            <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                              {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                            </span>
+                            <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PRODUCT_UNITS.map(u => (
+                                  <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-1">
-                            Ex: 1L de um galão de 5L
+                            Ex: 1 L de um galão de 5 L
                           </p>
                         </div>
                         <div>
@@ -1038,7 +1095,7 @@ export function ProductDetailDialog({
                             value={estimatedAppointments}
                             onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
                             min="1"
-                            placeholder="Ex: 30 atendimentos"
+                            placeholder="Ex: 30"
                           />
                           <p className="text-[10px] text-muted-foreground mt-1">
                             Média estimada de atendimentos
@@ -1048,7 +1105,7 @@ export function ProductDetailDialog({
                     ) : (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Quantidade usada por atendimento (0 = não sei a quantidade)
+                          Quantidade usada por atendimento
                         </Label>
                         <div className="flex gap-2">
                           <Input
@@ -1062,9 +1119,6 @@ export function ProductDetailDialog({
                             {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                           </span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Se não souber a quantidade, deixe 0. O app contará os atendimentos quando o produto acabar.
-                        </p>
                       </div>
                     )}
                   </div>
@@ -1163,13 +1217,11 @@ export function ProductDetailDialog({
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Vincular a Template de Pacote</span>
-                    {isEstimatedTracking(product.product_type, product.unit) && (
-                      <Badge variant="outline" className="text-xs">
-                        Modo Estimado
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {knowsQuantity === 'no' ? 'Modo Estimado' : 'Modo Exato'}
+                    </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-3">
                     {availableTemplatesToLink.length > 0 ? (
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
@@ -1186,15 +1238,28 @@ export function ProductDetailDialog({
                       </Select>
                     ) : (
                       <div className="text-sm text-muted-foreground p-2 text-center">
-                        {templates.length === 0 
+                        {templates.length === 0
                           ? 'Nenhum template de pacote cadastrado. Cadastre um template de pacote primeiro.'
                           : 'Todos os templates já estão vinculados a este produto.'}
                       </div>
                     )}
-                    
+
                     {availableTemplatesToLink.length > 0 && (
                       <>
-                        {isEstimatedTracking(product.product_type, product.unit) ? (
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Você sabe a quantidade usada por sessão?
+                          </Label>
+                          <Select value={knowsQuantity} onValueChange={(v: 'yes' | 'no') => setKnowsQuantity(v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
+                              <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {knowsQuantity === 'no' ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="text-xs text-muted-foreground mb-1 block">
@@ -1204,14 +1269,19 @@ export function ProductDetailDialog({
                                 <Input
                                   type="number"
                                   value={containerAmount}
-                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
-                                  min="0.01"
+                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                                  min="0"
                                   step="0.01"
                                   className="flex-1"
                                 />
-                                <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                                  {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                                </span>
+                                <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {PRODUCT_UNITS.map(u => (
+                                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                             <div>
@@ -1230,7 +1300,7 @@ export function ProductDetailDialog({
                         ) : (
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground mb-1 block">
-                              Quantidade usada por sessão (0 = não sei)
+                              Quantidade usada por sessão
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -1244,9 +1314,6 @@ export function ProductDetailDialog({
                                 {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                               </span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              Se não souber, deixe 0. O app contará os atendimentos.
-                            </p>
                           </div>
                         )}
                       </>
@@ -1357,10 +1424,9 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <Label className="text-xs">Data</Label>
-                        <Input
-                          type="date"
+                        <SafeDateInput
                           value={consumptionDate}
-                          onChange={(e) => setConsumptionDate(e.target.value)}
+                          onCommit={(v) => setConsumptionDate(v ?? '')}
                           className="h-8 text-sm"
                         />
                       </div>

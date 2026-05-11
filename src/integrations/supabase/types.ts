@@ -3813,6 +3813,10 @@ export type Database = {
             Returns: undefined
           }
       realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }
+      recalculate_package_minimum_intervals: {
+        Args: { _package_appointment_id: string }
+        Returns: number
+      }
       record_migration: {
         Args: {
           p_applied_by?: string

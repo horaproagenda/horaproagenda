@@ -130,7 +130,7 @@ export function ServiceProductsDialog() {
       setSelectedUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
       setContainerUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
     }
-  }, [selectedProductData?.id]);
+  }, [selectedProductData?.id, selectedProductData?.product_type, selectedProductData?.unit]);
 
   // Calculate how many appointments were completed with each product
   const productUsageStats = useMemo(() => {
@@ -412,7 +412,7 @@ export function ServiceProductsDialog() {
             ) : (
               <ScrollArea className="h-32 rounded-md border bg-background p-2">
                 <div className="space-y-1">
-                  {services.filter(s => s.is_active).map(service => {
+                    {services.filter(s => s.is_active).map(service => {
                     const checked = selectedServices.includes(service.id);
                     return (
                       <label key={service.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
@@ -426,6 +426,11 @@ export function ServiceProductsDialog() {
                   })}
                 </div>
               </ScrollArea>
+            )}
+            {!isForTemplate && selectedServices.length > 0 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {selectedServices.length} serviço(s) selecionado(s) receberão o mesmo consumo.
+              </p>
             )}
           </div>
 
@@ -643,7 +648,7 @@ export function ServiceProductsDialog() {
                       <div>
                         <span className="text-muted-foreground">Consumo por atendimento:</span>
                         <p className="font-semibold">
-                          {(containerAmount / estimatedAppointments).toFixed(2)} {PRODUCT_UNITS[containerUnit] || containerUnit}
+                          {(calculatedUsagePerAppointment ?? 0).toFixed(2)} {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
                         </p>
                       </div>
                       <div>

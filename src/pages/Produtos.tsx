@@ -87,6 +87,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
 import { ProductDetailDialog } from '@/components/produtos/ProductDetailDialog';
 import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
+import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
@@ -138,12 +139,39 @@ const defaultFilters: ProductFilters = {
   lowStock: false,
 };
 
+const createEmptyProductForm = () => ({
+  name: '',
+  brand: '',
+  category: '',
+  product_type: 'solid' as ProductType,
+  unit: 'un' as ProductUnit,
+  min_stock_alert: 0,
+  supplier: '',
+  supplier_id: '',
+  is_for_sale: false,
+  sale_price: 0,
+});
+
+const createEmptyPurchaseForm = () => ({
+  product_id: '',
+  quantity: 0,
+  unit_price: 0,
+  total_price: 0,
+  supplier: '',
+  supplier_id: '',
+  purchase_date: format(new Date(), 'yyyy-MM-dd'),
+  expiry_date: '',
+  start_using_today: false,
+  is_for_sale: false,
+  skip_cash_transaction: false,
+});
+
 export default function Produtos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
-  const { serviceProducts, createServiceProduct: createSPMutation } = useServiceProducts();
+  const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -176,16 +204,7 @@ export default function Produtos() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // ── Novo Produto form ───────────────────────────────────
-  const [productForm, setProductForm] = useState({
-    name: '',
-    brand: '',
-    category: '',
-    product_type: 'solid' as ProductType,
-    supplier: '',
-    supplier_id: '',
-    is_for_sale: false,
-    sale_price: 0,
-  });
+  const [productForm, setProductForm] = useState(createEmptyProductForm);
 
   // ── Adicionar no Estoque form ───────────────────────────
   const [stockForm, setStockForm] = useState({
@@ -199,18 +218,7 @@ export default function Produtos() {
   });
 
   // ── Nova Compra form ────────────────────────────────────
-  const [purchaseForm, setPurchaseForm] = useState({
-    product_id: '',
-    quantity: 0,
-    unit_price: 0,
-    total_price: 0,
-    supplier: '',
-    supplier_id: '',
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
-    expiry_date: '',
-    is_for_sale: false,
-    skip_cash_transaction: false,
-  });
+  const [purchaseForm, setPurchaseForm] = useState(createEmptyPurchaseForm);
 
   // Open product from URL param
   useEffect(() => {
@@ -225,6 +233,14 @@ export default function Produtos() {
       }
     }
   }, [searchParams, products, setSearchParams]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const updatedProduct = products.find(p => p.id === selectedProduct.id);
+    if (updatedProduct && updatedProduct !== selectedProduct) {
+      setSelectedProduct(updatedProduct);
+    }
+  }, [products, selectedProduct]);
 
   // ── Filtering ───────────────────────────────────────────
   const filteredProducts = useMemo(() => {
@@ -265,14 +281,13 @@ export default function Produtos() {
   const handleProductSubmit = async () => {
     if (!productForm.name.trim()) return;
     try {
-      const unit = getDefaultUnit(productForm.product_type);
       await createProduct.mutateAsync({
         name: productForm.name,
         description: null,
         brand: productForm.brand || null,
         category: productForm.category || null,
         product_type: productForm.product_type,
-        unit,
+        unit: productForm.unit,
         quantity_purchased: 0,
         unit_price: 0,
         total_price: 0,
@@ -282,14 +297,14 @@ export default function Produtos() {
         started_using_at: null,
         finished_at: null,
         current_stock: 0,
-        min_stock_alert: null,
+        min_stock_alert: productForm.min_stock_alert > 0 ? productForm.min_stock_alert : null,
         notes: null,
         is_active: true,
         is_for_sale: productForm.is_for_sale,
         sale_price: normalizeBrazilianCurrency(productForm.sale_price),
       });
       setProductDialogOpen(false);
-      setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 });
+      setProductForm(createEmptyProductForm());
     } catch {
       // toast already shown by mutation
     }
@@ -301,7 +316,9 @@ export default function Produtos() {
       const product = products.find(p => p.id === stockForm.product_id);
       if (!product) return;
 
-      // Create purchase record
+      const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
+      const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
+
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
         quantity: stockForm.quantity,
@@ -319,6 +336,10 @@ export default function Produtos() {
       await updateProduct.mutateAsync({
         id: product.id,
         current_stock: product.current_stock + stockForm.quantity,
+        quantity_purchased: newQuantityPurchased,
+        total_price: newTotalPrice,
+        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
+        purchase_date: stockForm.purchase_date,
         expiry_date: stockForm.expiry_date || product.expiry_date,
       });
 
@@ -334,15 +355,20 @@ export default function Produtos() {
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const startedUsingAt = purchaseForm.start_using_today ? today : null;
+      const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
+      const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
+      const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
         unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
-        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
+        total_price: normalizedTotalPrice,
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
-        started_using_at: null,
+        started_using_at: startedUsingAt,
         finished_at: null,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
@@ -352,12 +378,18 @@ export default function Produtos() {
       await updateProduct.mutateAsync({
         id: product.id,
         current_stock: product.current_stock + purchaseForm.quantity,
+        quantity_purchased: newQuantityPurchased,
+        total_price: newTotalPrice,
+        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
+        supplier: purchaseForm.supplier || product.supplier,
+        purchase_date: purchaseForm.purchase_date,
+        started_using_at: startedUsingAt || product.started_using_at,
         is_for_sale: purchaseForm.is_for_sale,
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
       });
 
       setPurchaseDialogOpen(false);
-      setPurchaseForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, supplier: '', supplier_id: '', purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', is_for_sale: false, skip_cash_transaction: false });
+      setPurchaseForm(createEmptyPurchaseForm());
     } catch {
       // toast shown by mutation
     }
@@ -396,10 +428,12 @@ export default function Produtos() {
 
   const handlePurchaseProductSelect = (productId: string) => {
     const product = products.find(p => p.id === productId);
+    const supplier = activeSuppliers.find(s => s.name === product?.supplier);
     setPurchaseForm(prev => ({
       ...prev,
       product_id: productId,
       supplier: product?.supplier || '',
+      supplier_id: supplier?.id || '',
       is_for_sale: product?.is_for_sale || false,
     }));
   };
@@ -547,11 +581,11 @@ export default function Produtos() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={stockForm.purchase_date} onChange={(e) => setStockForm({ ...stockForm, purchase_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={stockForm.purchase_date} onCommit={(v) => setStockForm({ ...stockForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                       <div>
                         <Label className="text-xs">Data de Validade</Label>
-                        <Input type="date" value={stockForm.expiry_date} onChange={(e) => setStockForm({ ...stockForm, expiry_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={stockForm.expiry_date} onCommit={(v) => setStockForm({ ...stockForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
@@ -572,7 +606,7 @@ export default function Produtos() {
               </Dialog>
 
               {/* ── Nova Compra ── */}
-              <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, supplier: '', supplier_id: '', purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', is_for_sale: false, skip_cash_transaction: false }); }}>
+              <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm(createEmptyPurchaseForm()); }}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                     <ShoppingCart className="h-3.5 w-3.5" />
@@ -595,9 +629,20 @@ export default function Produtos() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {purchaseForm.product_id && (() => {
+                      const selectedProd = products.find(p => p.id === purchaseForm.product_id);
+                      return selectedProd ? (
+                        <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted/30 p-2 text-[10px]">
+                          <span><strong>Categoria:</strong> {selectedProd.category || '-'}</span>
+                          <span><strong>Tipo:</strong> {getTypeLabel(selectedProd.product_type)}</span>
+                          <span><strong>Unidade:</strong> {getUnitLabel(selectedProd.unit)}</span>
+                          <span><strong>Alerta mín.:</strong> {selectedProd.min_stock_alert ?? 0} {getUnitLabel(selectedProd.unit)}</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <Label className="text-xs">Quantidade *</Label>
+                        <Label className="text-xs">Quantidade *{purchaseForm.product_id ? ` (${getUnitLabel(products.find(p => p.id === purchaseForm.product_id)?.unit || 'un')})` : ''}</Label>
                         <Input type="number" value={purchaseForm.quantity || ''} onChange={(e) => updatePurchaseQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
                       </div>
                       <div>
@@ -628,12 +673,23 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={purchaseForm.purchase_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={purchaseForm.purchase_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs">Data de Validade</Label>
-                      <Input type="date" value={purchaseForm.expiry_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, expiry_date: e.target.value })} className="h-7 text-xs" />
+                      <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border p-2">
+                      <div>
+                        <Label className="text-xs">Iniciar o uso do produto hoje</Label>
+                        <p className="text-[10px] text-muted-foreground">Data: {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Não</span>
+                        <Switch checked={purchaseForm.start_using_today} onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, start_using_today: v })} />
+                        <span className="text-xs text-muted-foreground">Sim</span>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
@@ -663,7 +719,7 @@ export default function Produtos() {
               </Dialog>
 
               {/* ── Novo Produto ── */}
-              <Dialog open={productDialogOpen} onOpenChange={(open) => { setProductDialogOpen(open); if (!open) setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 }); }}>
+              <Dialog open={productDialogOpen} onOpenChange={(open) => { setProductDialogOpen(open); if (!open) setProductForm(createEmptyProductForm()); }}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-8 gap-1 text-xs btn-vibrant">
                     <Plus className="h-3.5 w-3.5" />
@@ -693,7 +749,7 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Tipo *</Label>
-                        <Select value={productForm.product_type} onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}>
+                        <Select value={productForm.product_type} onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v, unit: getDefaultUnit(v) })}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {PRODUCT_TYPES.map(type => (
@@ -703,6 +759,21 @@ export default function Produtos() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Unidade *</Label>
+                        <Select value={productForm.unit} onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PRODUCT_UNITS.map(unit => <SelectItem key={unit.value} value={unit.value} className="text-sm">{unit.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Alerta estoque mínimo</Label>
+                        <Input type="number" value={productForm.min_stock_alert || ''} onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })} min="0" step="0.01" placeholder="Ex: 1" className="h-7 text-xs" />
                       </div>
                     </div>
                     <div>
@@ -914,8 +985,8 @@ export default function Produtos() {
           onCreateServiceLink={async (data) => {
             await createSPMutation.mutateAsync(data);
           }}
-          onUpdateServiceLink={async () => {}}
-          onDeleteServiceLink={async () => {}}
+          onUpdateServiceLink={async (data) => { await updateSPMutation.mutateAsync(data); }}
+          onDeleteServiceLink={async (id) => { await deleteSPMutation.mutateAsync(id); }}
         />
       </div>
     </AppLayout>

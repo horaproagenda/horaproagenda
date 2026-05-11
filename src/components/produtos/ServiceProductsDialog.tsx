@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
@@ -65,6 +65,7 @@ const PRODUCT_UNITS: Record<string, string> = {
   'l': 'L',
   'g': 'g',
   'kg': 'kg',
+  'other': 'Outros',
 };
 
 // Units available per product type for linking
@@ -90,7 +91,7 @@ export function ServiceProductsDialog() {
   const canDelete = hasRole('admin');
 
   const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
-  const [selectedService, setSelectedService] = useState<string>('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
@@ -122,13 +123,13 @@ export function ServiceProductsDialog() {
   }, [products, selectedProduct]);
 
   // When product changes, auto-set unit
-  useMemo(() => {
+  useEffect(() => {
     if (selectedProductData) {
       const units = getAvailableUnits(selectedProductData.product_type, selectedProductData.unit);
       setSelectedUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
       setContainerUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
     }
-  }, [selectedProductData?.id]);
+  }, [selectedProductData?.id, selectedProductData?.product_type, selectedProductData?.unit]);
 
   // Calculate how many appointments were completed with each product
   const productUsageStats = useMemo(() => {
@@ -160,9 +161,10 @@ export function ServiceProductsDialog() {
 
   // Calculate usage per appointment from date-based tracking
   const calculatedUsagePerAppointment = useMemo(() => {
-    if (knowsQuantity === 'yes' || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    return containerAmount / estimatedAppointments;
-  }, [knowsQuantity, containerAmount, estimatedAppointments]);
+    if (knowsQuantity === 'yes' || !selectedProductData || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
+    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+    return normalizedContainer / estimatedAppointments;
+  }, [knowsQuantity, selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
 
   // Calculate total appointments possible with total stock
   const totalAppointmentsPossible = useMemo(() => {
@@ -182,22 +184,29 @@ export function ServiceProductsDialog() {
   }, [usageStartDate, usageEndDate]);
 
   const handleAddToService = async () => {
-    if (!selectedService || !selectedProduct || !selectedProductData) return;
+    if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
+
+    const servicesToLink = selectedServices.filter(serviceId =>
+      !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
+    );
+    if (servicesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
+      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
+      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+        service_id: serviceId,
         product_id: selectedProduct,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
-      });
+      })));
     } else {
-      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
-        ? containerAmount / estimatedAppointments 
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
+        ? normalizedContainer / estimatedAppointments 
         : 0;
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
+      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+        service_id: serviceId,
         product_id: selectedProduct,
         quantity_per_use: calcQty,
         estimated_appointments: estimatedAppointments || null,
@@ -207,7 +216,7 @@ export function ServiceProductsDialog() {
         notes: usageStartDate && usageEndDate 
           ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
           : null,
-      });
+      })));
     }
 
     resetForm();
@@ -217,16 +226,18 @@ export function ServiceProductsDialog() {
     if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
 
     if (knowsQuantity === 'yes') {
+      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
         product_id: selectedProduct,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
       });
     } else {
-      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
-        ? containerAmount / estimatedAppointments 
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
+        ? normalizedContainer / estimatedAppointments 
         : 0;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
@@ -247,6 +258,7 @@ export function ServiceProductsDialog() {
 
   const resetForm = () => {
     setSelectedProduct('');
+    setSelectedServices([]);
     setQuantityPerUse(1);
     setEstimatedAppointments(0);
     setContainerAmount(0);
@@ -260,7 +272,9 @@ export function ServiceProductsDialog() {
     const isEstimated = sp.tracking_method === 'estimated';
     
     if (isEstimated) {
-      const calculatedQuantityPerUse = (sp.container_amount || 1) / editEstimatedAppointments;
+      const product = products.find(p => p.id === sp.product_id);
+      const normalizedContainer = product ? (convertQuantity(sp.container_amount || 1, sp.container_unit, product.unit) ?? (sp.container_amount || 1)) : (sp.container_amount || 1);
+      const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateServiceProduct.mutateAsync({
         id,
         quantity_per_use: calculatedQuantityPerUse,
@@ -279,7 +293,9 @@ export function ServiceProductsDialog() {
     const isEstimated = tp.tracking_method === 'estimated';
     
     if (isEstimated) {
-      const calculatedQuantityPerUse = (tp.container_amount || 1) / editEstimatedAppointments;
+      const product = products.find(p => p.id === tp.product_id);
+      const normalizedContainer = product ? (convertQuantity(tp.container_amount || 1, tp.container_unit, product.unit) ?? (tp.container_amount || 1)) : (tp.container_amount || 1);
+      const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateTemplateProduct.mutateAsync({
         id,
         quantity_per_use: calculatedQuantityPerUse,
@@ -326,17 +342,16 @@ export function ServiceProductsDialog() {
     toast.success(`Produto marcado como finalizado. ${totalAppointments} atendimentos registrados.`);
   };
 
-  // Get products that are already linked to the selected service
-  const linkedServiceProductIds = serviceProducts
-    .filter(sp => sp.service_id === selectedService)
-    .map(sp => sp.product_id);
-
   // Get products that are already linked to the selected template
   const linkedTemplateProductIds = templateProducts
     .filter(tp => tp.template_id === selectedTemplate)
     .map(tp => tp.product_id);
 
-  const availableProductsForService = activeProducts.filter(p => !linkedServiceProductIds.includes(p.id));
+  const availableProductsForService = selectedServices.length === 0
+    ? activeProducts
+    : activeProducts.filter(p => selectedServices.some(serviceId =>
+        !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === p.id)
+      ));
   const availableProductsForTemplate = activeProducts.filter(p => !linkedTemplateProductIds.includes(p.id));
 
   // Calculate estimated appointments remaining for each linked product
@@ -346,7 +361,8 @@ export function ServiceProductsDialog() {
     const isEstimated = sp.tracking_method === 'estimated';
     
     if (isEstimated && sp.estimated_appointments && sp.container_amount) {
-      const containersRemaining = product.current_stock / sp.container_amount;
+      const normalizedContainer = convertQuantity(sp.container_amount, sp.container_unit, product.unit) ?? sp.container_amount;
+      const containersRemaining = product.current_stock / normalizedContainer;
       return Math.floor(containersRemaining * sp.estimated_appointments);
     }
     
@@ -359,7 +375,7 @@ export function ServiceProductsDialog() {
 
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
-    const isDisabled = isForTemplate ? !selectedTemplate : !selectedService;
+    const isDisabled = isForTemplate ? !selectedTemplate : selectedServices.length === 0;
     const availableUnits = selectedProductData 
       ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
       : [];
@@ -388,18 +404,27 @@ export function ServiceProductsDialog() {
                 </SelectContent>
               </Select>
             ) : (
-              <Select value={selectedService} onValueChange={setSelectedService}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.filter(s => s.is_active).map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                      {service.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ScrollArea className="h-32 rounded-md border bg-background p-2">
+                <div className="space-y-1">
+                    {services.filter(s => s.is_active).map(service => {
+                    const checked = selectedServices.includes(service.id);
+                    return (
+                      <label key={service.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => setSelectedServices(prev => v ? [...prev, service.id] : prev.filter(id => id !== service.id))}
+                        />
+                        <span className="truncate">{service.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+            {!isForTemplate && selectedServices.length > 0 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {selectedServices.length} serviço(s) selecionado(s) receberão o mesmo consumo.
+              </p>
             )}
           </div>
 
@@ -617,7 +642,7 @@ export function ServiceProductsDialog() {
                       <div>
                         <span className="text-muted-foreground">Consumo por atendimento:</span>
                         <p className="font-semibold">
-                          {(containerAmount / estimatedAppointments).toFixed(2)} {PRODUCT_UNITS[containerUnit] || containerUnit}
+                          {(calculatedUsagePerAppointment ?? 0).toFixed(2)} {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
                         </p>
                       </div>
                       <div>

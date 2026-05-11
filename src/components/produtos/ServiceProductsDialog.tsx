@@ -66,6 +66,7 @@ const PRODUCT_UNITS: Record<string, string> = {
   'l': 'L',
   'g': 'g',
   'kg': 'kg',
+  'other': 'Outros',
 };
 
 // Units available per product type for linking
@@ -191,10 +192,11 @@ export function ServiceProductsDialog() {
     if (servicesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
+      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
       await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
         service_id: serviceId,
         product_id: selectedProduct,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
       })));
@@ -370,7 +372,7 @@ export function ServiceProductsDialog() {
 
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
-    const isDisabled = isForTemplate ? !selectedTemplate : !selectedService;
+    const isDisabled = isForTemplate ? !selectedTemplate : selectedServices.length === 0;
     const availableUnits = selectedProductData 
       ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
       : [];
@@ -399,18 +401,22 @@ export function ServiceProductsDialog() {
                 </SelectContent>
               </Select>
             ) : (
-              <Select value={selectedService} onValueChange={setSelectedService}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.filter(s => s.is_active).map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                      {service.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ScrollArea className="h-32 rounded-md border bg-background p-2">
+                <div className="space-y-1">
+                  {services.filter(s => s.is_active).map(service => {
+                    const checked = selectedServices.includes(service.id);
+                    return (
+                      <label key={service.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => setSelectedServices(prev => v ? [...prev, service.id] : prev.filter(id => id !== service.id))}
+                        />
+                        <span className="truncate">{service.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             )}
           </div>
 

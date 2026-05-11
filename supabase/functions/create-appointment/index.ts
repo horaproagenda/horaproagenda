@@ -398,8 +398,8 @@ serve(async (req) => {
       }
     }
 
-    // 10. Check for professional absences
-    if (body.professional_id) {
+    // 10. Check for professional absences (skipped in legacy mode)
+    if (body.professional_id && !body.legacy) {
       const { data: absences } = await supabase
         .from('professional_absences')
         .select('id, start_time, end_time, reason')

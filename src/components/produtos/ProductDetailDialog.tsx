@@ -707,13 +707,10 @@ export function ProductDetailDialog({
                           Início do Uso
                         </Label>
                         {canEdit ? (
-                          <Input
-                            type="date"
+                          <SafeDateInput
                             value={product.started_using_at || ''}
-                            onChange={(e) => onUpdateProduct({ id: product.id, started_using_at: e.target.value || null })}
+                            onCommit={(v) => onUpdateProduct({ id: product.id, started_using_at: v })}
                             className="h-9"
-                            min="2000-01-01"
-                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">
@@ -728,13 +725,10 @@ export function ProductDetailDialog({
                           Término do Uso
                         </Label>
                         {canEdit ? (
-                          <Input
-                            type="date"
+                          <SafeDateInput
                             value={product.finished_at || ''}
-                            onChange={(e) => onUpdateProduct({ id: product.id, finished_at: e.target.value || null })}
+                            onCommit={(v) => onUpdateProduct({ id: product.id, finished_at: v })}
                             className="h-9"
-                            min="2000-01-01"
-                            max="2099-12-31"
                           />
                         ) : (
                           <span className="text-sm">

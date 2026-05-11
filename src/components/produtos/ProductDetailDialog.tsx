@@ -50,6 +50,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';

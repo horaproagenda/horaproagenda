@@ -160,6 +160,7 @@ export function ProductDetailDialog({
     purchase_date: '',
     supplier: '',
     started_using_at: '',
+    finished_at: '',
     notes: '',
   });
 

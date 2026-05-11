@@ -176,6 +176,7 @@ export function useProducts() {
 
 export function useProductPurchases(productId?: string) {
   const queryClient = useQueryClient();
+  useProductsRealtime();
 
   const { data: purchases = [], isLoading, refetch } = useQuery({
     queryKey: ['product_purchases', productId],

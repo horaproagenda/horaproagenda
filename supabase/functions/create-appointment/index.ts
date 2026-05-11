@@ -255,7 +255,7 @@ serve(async (req) => {
 
     console.log('Business settings:', JSON.stringify(businessSettings));
 
-    if (businessSettings) {
+    if (businessSettings && !body.legacy) {
       // Get timezone offset from settings
       const timezoneOffset = getTimezoneOffset(businessSettings.timezone);
       console.log(`Using timezone: ${businessSettings.timezone || 'America/Sao_Paulo'} (offset: ${timezoneOffset}h)`);

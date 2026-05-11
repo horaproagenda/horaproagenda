@@ -381,8 +381,8 @@ serve(async (req) => {
       }
     }
 
-    // 9. Check for room conflicts
-    if (body.room_id) {
+    // 9. Check for room conflicts (skipped in legacy mode)
+    if (body.room_id && !body.legacy) {
       const { data: roomConflicts } = await supabase
         .from('appointments')
         .select('id, start_time, end_time')

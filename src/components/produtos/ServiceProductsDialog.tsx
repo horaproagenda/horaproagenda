@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
@@ -342,11 +341,6 @@ export function ServiceProductsDialog() {
 
     toast.success(`Produto marcado como finalizado. ${totalAppointments} atendimentos registrados.`);
   };
-
-  // Get products that are already linked to the selected service
-  const linkedServiceProductIds = serviceProducts
-    .filter(sp => selectedServices.includes(sp.service_id))
-    .map(sp => sp.product_id);
 
   // Get products that are already linked to the selected template
   const linkedTemplateProductIds = templateProducts

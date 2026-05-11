@@ -401,7 +401,7 @@ export function ServiceProductsDialog() {
 
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
-    const isDisabled = isForTemplate ? !selectedTemplate : selectedServices.length === 0;
+    const isDisabled = isForTemplate ? selectedTemplates.length === 0 : selectedServices.length === 0;
     const availableUnits = selectedProductData 
       ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
       : [];
@@ -411,24 +411,31 @@ export function ServiceProductsDialog() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-muted-foreground">
-              {isForTemplate ? 'Modelo de Pacote' : 'Serviço'}
+              {isForTemplate ? 'Modelos de Pacote (selecione um ou mais)' : 'Serviço'}
             </Label>
             {isForTemplate ? (
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um modelo de pacote" />
-                </SelectTrigger>
-                <SelectContent>
-                  {packageTemplates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>
-                      <div className="flex items-center gap-2">
-                        <Layers className="h-3 w-3" />
-                        {template.name} ({template.total_sessions} sessões)
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ScrollArea className="h-32 rounded-md border bg-background p-2">
+                <div className="space-y-1">
+                  {packageTemplates.map(template => {
+                    const checked = selectedTemplates.includes(template.id);
+                    const isSequential = (template as any).package_type === 'sequential';
+                    return (
+                      <label key={template.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => setSelectedTemplates(prev => v ? [...prev, template.id] : prev.filter(id => id !== template.id))}
+                        />
+                        <Layers className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{template.name}</span>
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 ml-auto">
+                          {isSequential ? 'Sequencial' : 'Comum'}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{template.total_sessions}s</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             ) : (
               <ScrollArea className="h-32 rounded-md border bg-background p-2">
                 <div className="space-y-1">
@@ -450,6 +457,11 @@ export function ServiceProductsDialog() {
             {!isForTemplate && selectedServices.length > 0 && (
               <p className="mt-1 text-[10px] text-muted-foreground">
                 {selectedServices.length} serviço(s) selecionado(s) receberão o mesmo consumo.
+              </p>
+            )}
+            {isForTemplate && selectedTemplates.length > 0 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {selectedTemplates.length} pacote(s) selecionado(s) receberão o mesmo consumo.
               </p>
             )}
           </div>

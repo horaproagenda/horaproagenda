@@ -4,7 +4,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
+import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
 import { ClientStatsSection } from '@/components/client-profile/ClientStatsSection';
 import { ClientAppointmentsTab } from '@/components/client-profile/ClientAppointmentsTab';
@@ -27,6 +28,7 @@ export default function ClienteDetalhes() {
   const [activeTab, setActiveTab] = useState('report');
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, refetchAll, stats } = useClientProfile(id || '');
 
@@ -86,16 +88,16 @@ export default function ClienteDetalhes() {
             </Button>
             <h1 className="text-lg font-semibold">Perfil do Cliente</h1>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 text-xs"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setLegacyOpen(true)}>
+              <History className="h-3.5 w-3.5 mr-1.5" />
+              Histórico antigo
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Compact Client Header */}
@@ -175,6 +177,13 @@ export default function ClienteDetalhes() {
         appointment={editingAppointment}
         open={!!editingAppointment}
         onOpenChange={(open) => !open && setEditingAppointment(null)}
+      />
+
+      <LegacyHistoryDialog
+        open={legacyOpen}
+        onOpenChange={setLegacyOpen}
+        clientId={client.id}
+        clientName={client.name}
       />
     </AppLayout>
   );

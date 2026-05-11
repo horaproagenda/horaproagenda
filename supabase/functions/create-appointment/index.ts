@@ -16,6 +16,12 @@ interface AppointmentRequest {
   notes?: string;
   package_appointment_id?: string;
   status?: string;
+  /**
+   * Legacy mode: when true, skips business-hours, conflict, absence and
+   * equipment validations. Used for retroactive registration of appointments
+   * that happened BEFORE the user adopted this system.
+   */
+  legacy?: boolean;
 }
 
 interface ValidationError {
@@ -249,7 +255,7 @@ serve(async (req) => {
 
     console.log('Business settings:', JSON.stringify(businessSettings));
 
-    if (businessSettings) {
+    if (businessSettings && !body.legacy) {
       // Get timezone offset from settings
       const timezoneOffset = getTimezoneOffset(businessSettings.timezone);
       console.log(`Using timezone: ${businessSettings.timezone || 'America/Sao_Paulo'} (offset: ${timezoneOffset}h)`);
@@ -358,8 +364,8 @@ serve(async (req) => {
       );
     }
 
-    // 8. Check for professional time conflicts
-    if (body.professional_id) {
+    // 8. Check for professional time conflicts (skipped in legacy mode)
+    if (body.professional_id && !body.legacy) {
       const { data: conflicts } = await supabase
         .from('appointments')
         .select('id, start_time, end_time')
@@ -375,8 +381,8 @@ serve(async (req) => {
       }
     }
 
-    // 9. Check for room conflicts
-    if (body.room_id) {
+    // 9. Check for room conflicts (skipped in legacy mode)
+    if (body.room_id && !body.legacy) {
       const { data: roomConflicts } = await supabase
         .from('appointments')
         .select('id, start_time, end_time')
@@ -392,8 +398,8 @@ serve(async (req) => {
       }
     }
 
-    // 10. Check for professional absences
-    if (body.professional_id) {
+    // 10. Check for professional absences (skipped in legacy mode)
+    if (body.professional_id && !body.legacy) {
       const { data: absences } = await supabase
         .from('professional_absences')
         .select('id, start_time, end_time, reason')
@@ -409,7 +415,10 @@ serve(async (req) => {
       }
     }
 
-    // 11. Check for equipment conflicts (NEW)
+    // 11. Check for equipment conflicts (skipped in legacy mode)
+    if (body.legacy) {
+      // Skip equipment validation block entirely
+    } else {
     // Get equipment from the room if specified
     let newAppointmentEquipment: string[] = [];
     
@@ -467,6 +476,7 @@ serve(async (req) => {
         }
       }
     }
+    } // end !legacy equipment block
 
     if (errors.length > 0) {
       return new Response(

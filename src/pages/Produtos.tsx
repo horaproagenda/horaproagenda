@@ -87,6 +87,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ManageSuppliersDialog } from '@/components/produtos/ManageSuppliersDialog';
 import { ProductDetailDialog } from '@/components/produtos/ProductDetailDialog';
 import { ServiceProductsDialog } from '@/components/produtos/ServiceProductsDialog';
+import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
@@ -138,6 +139,33 @@ const defaultFilters: ProductFilters = {
   lowStock: false,
 };
 
+const createEmptyProductForm = () => ({
+  name: '',
+  brand: '',
+  category: '',
+  product_type: 'solid' as ProductType,
+  unit: 'un' as ProductUnit,
+  min_stock_alert: 0,
+  supplier: '',
+  supplier_id: '',
+  is_for_sale: false,
+  sale_price: 0,
+});
+
+const createEmptyPurchaseForm = () => ({
+  product_id: '',
+  quantity: 0,
+  unit_price: 0,
+  total_price: 0,
+  supplier: '',
+  supplier_id: '',
+  purchase_date: format(new Date(), 'yyyy-MM-dd'),
+  expiry_date: '',
+  start_using_today: false,
+  is_for_sale: false,
+  skip_cash_transaction: false,
+});
+
 export default function Produtos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
@@ -176,16 +204,7 @@ export default function Produtos() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // ── Novo Produto form ───────────────────────────────────
-  const [productForm, setProductForm] = useState({
-    name: '',
-    brand: '',
-    category: '',
-    product_type: 'solid' as ProductType,
-    supplier: '',
-    supplier_id: '',
-    is_for_sale: false,
-    sale_price: 0,
-  });
+  const [productForm, setProductForm] = useState(createEmptyProductForm);
 
   // ── Adicionar no Estoque form ───────────────────────────
   const [stockForm, setStockForm] = useState({
@@ -199,18 +218,7 @@ export default function Produtos() {
   });
 
   // ── Nova Compra form ────────────────────────────────────
-  const [purchaseForm, setPurchaseForm] = useState({
-    product_id: '',
-    quantity: 0,
-    unit_price: 0,
-    total_price: 0,
-    supplier: '',
-    supplier_id: '',
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
-    expiry_date: '',
-    is_for_sale: false,
-    skip_cash_transaction: false,
-  });
+  const [purchaseForm, setPurchaseForm] = useState(createEmptyPurchaseForm);
 
   // Open product from URL param
   useEffect(() => {
@@ -225,6 +233,14 @@ export default function Produtos() {
       }
     }
   }, [searchParams, products, setSearchParams]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const updatedProduct = products.find(p => p.id === selectedProduct.id);
+    if (updatedProduct && updatedProduct !== selectedProduct) {
+      setSelectedProduct(updatedProduct);
+    }
+  }, [products, selectedProduct]);
 
   // ── Filtering ───────────────────────────────────────────
   const filteredProducts = useMemo(() => {
@@ -265,14 +281,13 @@ export default function Produtos() {
   const handleProductSubmit = async () => {
     if (!productForm.name.trim()) return;
     try {
-      const unit = getDefaultUnit(productForm.product_type);
       await createProduct.mutateAsync({
         name: productForm.name,
         description: null,
         brand: productForm.brand || null,
         category: productForm.category || null,
         product_type: productForm.product_type,
-        unit,
+        unit: productForm.unit,
         quantity_purchased: 0,
         unit_price: 0,
         total_price: 0,
@@ -282,14 +297,14 @@ export default function Produtos() {
         started_using_at: null,
         finished_at: null,
         current_stock: 0,
-        min_stock_alert: null,
+        min_stock_alert: productForm.min_stock_alert > 0 ? productForm.min_stock_alert : null,
         notes: null,
         is_active: true,
         is_for_sale: productForm.is_for_sale,
         sale_price: normalizeBrazilianCurrency(productForm.sale_price),
       });
       setProductDialogOpen(false);
-      setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 });
+      setProductForm(createEmptyProductForm());
     } catch {
       // toast already shown by mutation
     }
@@ -301,7 +316,9 @@ export default function Produtos() {
       const product = products.find(p => p.id === stockForm.product_id);
       if (!product) return;
 
-      // Create purchase record
+      const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
+      const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
+
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
         quantity: stockForm.quantity,
@@ -319,6 +336,10 @@ export default function Produtos() {
       await updateProduct.mutateAsync({
         id: product.id,
         current_stock: product.current_stock + stockForm.quantity,
+        quantity_purchased: newQuantityPurchased,
+        total_price: newTotalPrice,
+        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
+        purchase_date: stockForm.purchase_date,
         expiry_date: stockForm.expiry_date || product.expiry_date,
       });
 
@@ -334,15 +355,20 @@ export default function Produtos() {
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const startedUsingAt = purchaseForm.start_using_today ? today : null;
+      const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
+      const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
+      const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
         unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
-        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
+        total_price: normalizedTotalPrice,
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
-        started_using_at: null,
+        started_using_at: startedUsingAt,
         finished_at: null,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
@@ -352,12 +378,18 @@ export default function Produtos() {
       await updateProduct.mutateAsync({
         id: product.id,
         current_stock: product.current_stock + purchaseForm.quantity,
+        quantity_purchased: newQuantityPurchased,
+        total_price: newTotalPrice,
+        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
+        supplier: purchaseForm.supplier || product.supplier,
+        purchase_date: purchaseForm.purchase_date,
+        started_using_at: startedUsingAt || product.started_using_at,
         is_for_sale: purchaseForm.is_for_sale,
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
       });
 
       setPurchaseDialogOpen(false);
-      setPurchaseForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, supplier: '', supplier_id: '', purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', is_for_sale: false, skip_cash_transaction: false });
+      setPurchaseForm(createEmptyPurchaseForm());
     } catch {
       // toast shown by mutation
     }

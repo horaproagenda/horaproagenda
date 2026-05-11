@@ -201,8 +201,9 @@ export function ServiceProductsDialog() {
         notes: null,
       })));
     } else {
-      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
-        ? containerAmount / estimatedAppointments 
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
+        ? normalizedContainer / estimatedAppointments 
         : 0;
       await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
         service_id: serviceId,
@@ -233,8 +234,9 @@ export function ServiceProductsDialog() {
         notes: null,
       });
     } else {
-      const calcQty = containerAmount > 0 && estimatedAppointments > 0 
-        ? containerAmount / estimatedAppointments 
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
+      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
+        ? normalizedContainer / estimatedAppointments 
         : 0;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplate,
@@ -269,7 +271,9 @@ export function ServiceProductsDialog() {
     const isEstimated = sp.tracking_method === 'estimated';
     
     if (isEstimated) {
-      const calculatedQuantityPerUse = (sp.container_amount || 1) / editEstimatedAppointments;
+      const product = products.find(p => p.id === sp.product_id);
+      const normalizedContainer = product ? (convertQuantity(sp.container_amount || 1, sp.container_unit, product.unit) ?? (sp.container_amount || 1)) : (sp.container_amount || 1);
+      const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateServiceProduct.mutateAsync({
         id,
         quantity_per_use: calculatedQuantityPerUse,
@@ -288,7 +292,9 @@ export function ServiceProductsDialog() {
     const isEstimated = tp.tracking_method === 'estimated';
     
     if (isEstimated) {
-      const calculatedQuantityPerUse = (tp.container_amount || 1) / editEstimatedAppointments;
+      const product = products.find(p => p.id === tp.product_id);
+      const normalizedContainer = product ? (convertQuantity(tp.container_amount || 1, tp.container_unit, product.unit) ?? (tp.container_amount || 1)) : (tp.container_amount || 1);
+      const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateTemplateProduct.mutateAsync({
         id,
         quantity_per_use: calculatedQuantityPerUse,
@@ -359,7 +365,8 @@ export function ServiceProductsDialog() {
     const isEstimated = sp.tracking_method === 'estimated';
     
     if (isEstimated && sp.estimated_appointments && sp.container_amount) {
-      const containersRemaining = product.current_stock / sp.container_amount;
+      const normalizedContainer = convertQuantity(sp.container_amount, sp.container_unit, product.unit) ?? sp.container_amount;
+      const containersRemaining = product.current_stock / normalizedContainer;
       return Math.floor(containersRemaining * sp.estimated_appointments);
     }
     

@@ -92,7 +92,7 @@ export function ServiceProductsDialog() {
 
   const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
   // "Do you know the quantity?" toggle

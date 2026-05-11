@@ -77,6 +77,7 @@ export interface ProductPurchase {
 
 export function useProducts() {
   const queryClient = useQueryClient();
+  useProductsRealtime();
 
   const { data: products = [], isLoading, refetch } = useQuery({
     queryKey: ['products'],

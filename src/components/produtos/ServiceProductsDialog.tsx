@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -90,7 +91,7 @@ export function ServiceProductsDialog() {
   const canDelete = hasRole('admin');
 
   const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
-  const [selectedService, setSelectedService] = useState<string>('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
@@ -122,7 +123,7 @@ export function ServiceProductsDialog() {
   }, [products, selectedProduct]);
 
   // When product changes, auto-set unit
-  useMemo(() => {
+  useEffect(() => {
     if (selectedProductData) {
       const units = getAvailableUnits(selectedProductData.product_type, selectedProductData.unit);
       setSelectedUnit(units.includes(selectedProductData.unit) ? selectedProductData.unit : units[0]);
@@ -182,22 +183,27 @@ export function ServiceProductsDialog() {
   }, [usageStartDate, usageEndDate]);
 
   const handleAddToService = async () => {
-    if (!selectedService || !selectedProduct || !selectedProductData) return;
+    if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
+
+    const servicesToLink = selectedServices.filter(serviceId =>
+      !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
+    );
+    if (servicesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
+      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+        service_id: serviceId,
         product_id: selectedProduct,
         quantity_per_use: quantityPerUse,
         tracking_method: 'exact',
         notes: null,
-      });
+      })));
     } else {
       const calcQty = containerAmount > 0 && estimatedAppointments > 0 
         ? containerAmount / estimatedAppointments 
         : 0;
-      await createServiceProduct.mutateAsync({
-        service_id: selectedService,
+      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+        service_id: serviceId,
         product_id: selectedProduct,
         quantity_per_use: calcQty,
         estimated_appointments: estimatedAppointments || null,
@@ -207,7 +213,7 @@ export function ServiceProductsDialog() {
         notes: usageStartDate && usageEndDate 
           ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
           : null,
-      });
+      })));
     }
 
     resetForm();
@@ -247,6 +253,7 @@ export function ServiceProductsDialog() {
 
   const resetForm = () => {
     setSelectedProduct('');
+    setSelectedServices([]);
     setQuantityPerUse(1);
     setEstimatedAppointments(0);
     setContainerAmount(0);
@@ -328,7 +335,7 @@ export function ServiceProductsDialog() {
 
   // Get products that are already linked to the selected service
   const linkedServiceProductIds = serviceProducts
-    .filter(sp => sp.service_id === selectedService)
+    .filter(sp => selectedServices.includes(sp.service_id))
     .map(sp => sp.product_id);
 
   // Get products that are already linked to the selected template
@@ -336,7 +343,11 @@ export function ServiceProductsDialog() {
     .filter(tp => tp.template_id === selectedTemplate)
     .map(tp => tp.product_id);
 
-  const availableProductsForService = activeProducts.filter(p => !linkedServiceProductIds.includes(p.id));
+  const availableProductsForService = selectedServices.length === 0
+    ? activeProducts
+    : activeProducts.filter(p => selectedServices.some(serviceId =>
+        !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === p.id)
+      ));
   const availableProductsForTemplate = activeProducts.filter(p => !linkedTemplateProductIds.includes(p.id));
 
   // Calculate estimated appointments remaining for each linked product

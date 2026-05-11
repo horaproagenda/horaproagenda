@@ -604,7 +604,7 @@ export default function Produtos() {
               </Dialog>
 
               {/* ── Nova Compra ── */}
-              <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, supplier: '', supplier_id: '', purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', is_for_sale: false, skip_cash_transaction: false }); }}>
+              <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm(createEmptyPurchaseForm()); }}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
                     <ShoppingCart className="h-3.5 w-3.5" />
@@ -660,12 +660,23 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Data da Compra</Label>
-                        <Input type="date" value={purchaseForm.purchase_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })} className="h-7 text-xs" />
+                        <SafeDateInput value={purchaseForm.purchase_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs">Data de Validade</Label>
-                      <Input type="date" value={purchaseForm.expiry_date} onChange={(e) => setPurchaseForm({ ...purchaseForm, expiry_date: e.target.value })} className="h-7 text-xs" />
+                      <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border p-2">
+                      <div>
+                        <Label className="text-xs">Iniciar o uso do produto hoje</Label>
+                        <p className="text-[10px] text-muted-foreground">Data: {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Não</span>
+                        <Switch checked={purchaseForm.start_using_today} onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, start_using_today: v })} />
+                        <span className="text-xs text-muted-foreground">Sim</span>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
@@ -695,7 +706,7 @@ export default function Produtos() {
               </Dialog>
 
               {/* ── Novo Produto ── */}
-              <Dialog open={productDialogOpen} onOpenChange={(open) => { setProductDialogOpen(open); if (!open) setProductForm({ name: '', brand: '', category: '', product_type: 'solid', supplier: '', supplier_id: '', is_for_sale: false, sale_price: 0 }); }}>
+              <Dialog open={productDialogOpen} onOpenChange={(open) => { setProductDialogOpen(open); if (!open) setProductForm(createEmptyProductForm()); }}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-8 gap-1 text-xs btn-vibrant">
                     <Plus className="h-3.5 w-3.5" />
@@ -725,7 +736,7 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label className="text-xs">Tipo *</Label>
-                        <Select value={productForm.product_type} onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v })}>
+                        <Select value={productForm.product_type} onValueChange={(v: ProductType) => setProductForm({ ...productForm, product_type: v, unit: getDefaultUnit(v) })}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {PRODUCT_TYPES.map(type => (
@@ -735,6 +746,21 @@ export default function Produtos() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Unidade *</Label>
+                        <Select value={productForm.unit} onValueChange={(v: ProductUnit) => setProductForm({ ...productForm, unit: v })}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PRODUCT_UNITS.map(unit => <SelectItem key={unit.value} value={unit.value} className="text-sm">{unit.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Alerta estoque mínimo</Label>
+                        <Input type="number" value={productForm.min_stock_alert || ''} onChange={(e) => setProductForm({ ...productForm, min_stock_alert: parseFloat(e.target.value) || 0 })} min="0" step="0.01" placeholder="Ex: 1" className="h-7 text-xs" />
                       </div>
                     </div>
                     <div>

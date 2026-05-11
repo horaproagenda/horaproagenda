@@ -440,6 +440,43 @@ export function ProductDetailDialog({
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Quantidade Atual em Estoque</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={editForm.current_stock ?? 0}
+                        onChange={(e) => setEditForm({ ...editForm, current_stock: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Ex: 20 (na unidade selecionada acima — L, mL, g, etc.)
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Validade</Label>
+                      <SafeDateInput
+                        value={editForm.expiry_date as any}
+                        onCommit={(v) => setEditForm({ ...editForm, expiry_date: v })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Início do Uso</Label>
+                      <SafeDateInput
+                        value={editForm.started_using_at as any}
+                        onCommit={(v) => setEditForm({ ...editForm, started_using_at: v })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Término do Uso</Label>
+                      <SafeDateInput
+                        value={editForm.finished_at as any}
+                        onCommit={(v) => setEditForm({ ...editForm, finished_at: v })}
+                      />
+                    </div>
+                  </div>
+
                   <Separator />
 
                   <div className="space-y-3">

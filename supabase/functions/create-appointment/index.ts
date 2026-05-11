@@ -364,8 +364,8 @@ serve(async (req) => {
       );
     }
 
-    // 8. Check for professional time conflicts
-    if (body.professional_id) {
+    // 8. Check for professional time conflicts (skipped in legacy mode)
+    if (body.professional_id && !body.legacy) {
       const { data: conflicts } = await supabase
         .from('appointments')
         .select('id, start_time, end_time')

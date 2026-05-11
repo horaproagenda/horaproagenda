@@ -171,7 +171,7 @@ export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
-  const { serviceProducts, createServiceProduct: createSPMutation } = useServiceProducts();
+  const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
@@ -428,10 +428,12 @@ export default function Produtos() {
 
   const handlePurchaseProductSelect = (productId: string) => {
     const product = products.find(p => p.id === productId);
+    const supplier = activeSuppliers.find(s => s.name === product?.supplier);
     setPurchaseForm(prev => ({
       ...prev,
       product_id: productId,
       supplier: product?.supplier || '',
+      supplier_id: supplier?.id || '',
       is_for_sale: product?.is_for_sale || false,
     }));
   };
@@ -983,8 +985,8 @@ export default function Produtos() {
           onCreateServiceLink={async (data) => {
             await createSPMutation.mutateAsync(data);
           }}
-          onUpdateServiceLink={async () => {}}
-          onDeleteServiceLink={async () => {}}
+          onUpdateServiceLink={async (data) => { await updateSPMutation.mutateAsync(data); }}
+          onDeleteServiceLink={async (id) => { await deleteSPMutation.mutateAsync(id); }}
         />
       </div>
     </AppLayout>

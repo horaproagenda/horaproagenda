@@ -92,7 +92,7 @@ export function ServiceProductsDialog() {
 
   const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   
   // "Do you know the quantity?" toggle
@@ -186,9 +186,18 @@ export function ServiceProductsDialog() {
   const handleAddToService = async () => {
     if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
 
-    const servicesToLink = selectedServices.filter(serviceId =>
-      !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
+    const alreadyLinked = selectedServices.filter(serviceId =>
+      serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
     );
+    const servicesToLink = selectedServices.filter(s => !alreadyLinked.includes(s));
+
+    if (alreadyLinked.length > 0) {
+      const names = alreadyLinked
+        .map(id => services.find(s => s.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      toast.warning(`Este produto já está vinculado a: ${names}. Vínculo duplicado bloqueado.`);
+    }
     if (servicesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
@@ -219,28 +228,43 @@ export function ServiceProductsDialog() {
       })));
     }
 
+    toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
     resetForm();
   };
 
   const handleAddToTemplate = async () => {
-    if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
+    if (selectedTemplates.length === 0 || !selectedProduct || !selectedProductData) return;
+
+    const alreadyLinked = selectedTemplates.filter(templateId =>
+      templateProducts.some(tp => tp.template_id === templateId && tp.product_id === selectedProduct)
+    );
+    const templatesToLink = selectedTemplates.filter(t => !alreadyLinked.includes(t));
+
+    if (alreadyLinked.length > 0) {
+      const names = alreadyLinked
+        .map(id => packageTemplates.find(t => t.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      toast.warning(`Este produto já está vinculado a: ${names}. Vínculo duplicado bloqueado.`);
+    }
+    if (templatesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
       const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
+      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+        template_id: templateId,
         product_id: selectedProduct,
         quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
-      });
+      })));
     } else {
       const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
       const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
         ? normalizedContainer / estimatedAppointments 
         : 0;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
+      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+        template_id: templateId,
         product_id: selectedProduct,
         quantity_per_use: calcQty,
         estimated_appointments: estimatedAppointments || null,
@@ -250,15 +274,17 @@ export function ServiceProductsDialog() {
         notes: usageStartDate && usageEndDate 
           ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
           : null,
-      });
+      })));
     }
 
+    toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
     resetForm();
   };
 
   const resetForm = () => {
     setSelectedProduct('');
     setSelectedServices([]);
+    setSelectedTemplates([]);
     setQuantityPerUse(1);
     setEstimatedAppointments(0);
     setContainerAmount(0);
@@ -342,17 +368,17 @@ export function ServiceProductsDialog() {
     toast.success(`Produto marcado como finalizado. ${totalAppointments} atendimentos registrados.`);
   };
 
-  // Get products that are already linked to the selected template
-  const linkedTemplateProductIds = templateProducts
-    .filter(tp => tp.template_id === selectedTemplate)
-    .map(tp => tp.product_id);
-
+  // Get products that are already linked to ALL selected templates (so we hide products that can't be added to any of them)
   const availableProductsForService = selectedServices.length === 0
     ? activeProducts
     : activeProducts.filter(p => selectedServices.some(serviceId =>
         !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === p.id)
       ));
-  const availableProductsForTemplate = activeProducts.filter(p => !linkedTemplateProductIds.includes(p.id));
+  const availableProductsForTemplate = selectedTemplates.length === 0
+    ? activeProducts
+    : activeProducts.filter(p => selectedTemplates.some(templateId =>
+        !templateProducts.some(tp => tp.template_id === templateId && tp.product_id === p.id)
+      ));
 
   // Calculate estimated appointments remaining for each linked product
   const getEstimatedAppointments = (sp: any, product: any) => {
@@ -375,7 +401,7 @@ export function ServiceProductsDialog() {
 
   const renderProductForm = (isForTemplate: boolean) => {
     const availableProducts = isForTemplate ? availableProductsForTemplate : availableProductsForService;
-    const isDisabled = isForTemplate ? !selectedTemplate : selectedServices.length === 0;
+    const isDisabled = isForTemplate ? selectedTemplates.length === 0 : selectedServices.length === 0;
     const availableUnits = selectedProductData 
       ? getAvailableUnits(selectedProductData.product_type, selectedProductData.unit)
       : [];
@@ -385,24 +411,31 @@ export function ServiceProductsDialog() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-muted-foreground">
-              {isForTemplate ? 'Modelo de Pacote' : 'Serviço'}
+              {isForTemplate ? 'Modelos de Pacote (selecione um ou mais)' : 'Serviço'}
             </Label>
             {isForTemplate ? (
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um modelo de pacote" />
-                </SelectTrigger>
-                <SelectContent>
-                  {packageTemplates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>
-                      <div className="flex items-center gap-2">
-                        <Layers className="h-3 w-3" />
-                        {template.name} ({template.total_sessions} sessões)
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ScrollArea className="h-32 rounded-md border bg-background p-2">
+                <div className="space-y-1">
+                  {packageTemplates.map(template => {
+                    const checked = selectedTemplates.includes(template.id);
+                    const isSequential = (template as any).package_type === 'sequential';
+                    return (
+                      <label key={template.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => setSelectedTemplates(prev => v ? [...prev, template.id] : prev.filter(id => id !== template.id))}
+                        />
+                        <Layers className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{template.name}</span>
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 ml-auto">
+                          {isSequential ? 'Sequencial' : 'Comum'}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{template.total_sessions}s</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             ) : (
               <ScrollArea className="h-32 rounded-md border bg-background p-2">
                 <div className="space-y-1">
@@ -424,6 +457,11 @@ export function ServiceProductsDialog() {
             {!isForTemplate && selectedServices.length > 0 && (
               <p className="mt-1 text-[10px] text-muted-foreground">
                 {selectedServices.length} serviço(s) selecionado(s) receberão o mesmo consumo.
+              </p>
+            )}
+            {isForTemplate && selectedTemplates.length > 0 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {selectedTemplates.length} pacote(s) selecionado(s) receberão o mesmo consumo.
               </p>
             )}
           </div>

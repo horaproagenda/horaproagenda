@@ -368,17 +368,17 @@ export function ServiceProductsDialog() {
     toast.success(`Produto marcado como finalizado. ${totalAppointments} atendimentos registrados.`);
   };
 
-  // Get products that are already linked to the selected template
-  const linkedTemplateProductIds = templateProducts
-    .filter(tp => tp.template_id === selectedTemplate)
-    .map(tp => tp.product_id);
-
+  // Get products that are already linked to ALL selected templates (so we hide products that can't be added to any of them)
   const availableProductsForService = selectedServices.length === 0
     ? activeProducts
     : activeProducts.filter(p => selectedServices.some(serviceId =>
         !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === p.id)
       ));
-  const availableProductsForTemplate = activeProducts.filter(p => !linkedTemplateProductIds.includes(p.id));
+  const availableProductsForTemplate = selectedTemplates.length === 0
+    ? activeProducts
+    : activeProducts.filter(p => selectedTemplates.some(templateId =>
+        !templateProducts.some(tp => tp.template_id === templateId && tp.product_id === p.id)
+      ));
 
   // Calculate estimated appointments remaining for each linked product
   const getEstimatedAppointments = (sp: any, product: any) => {

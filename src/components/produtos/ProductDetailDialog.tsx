@@ -240,6 +240,10 @@ export function ProductDetailDialog({
       is_active: product.is_active,
       is_for_sale: product.is_for_sale,
       sale_price: product.sale_price,
+      started_using_at: product.started_using_at,
+      finished_at: product.finished_at,
+      expiry_date: product.expiry_date,
+      current_stock: product.current_stock,
     });
     setIsEditing(true);
   };

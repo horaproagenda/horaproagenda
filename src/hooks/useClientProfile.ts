@@ -345,6 +345,33 @@ export function useClientProfile(clientId: string) {
     refetchOnWindowFocus: false,
   });
 
+  // Fetch client sales from single_sales table (synced with caixa)
+  const { data: clientSales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['client-sales', clientId],
+    queryFn: async () => {
+      console.log('Fetching sales for client:', clientId);
+      const { data, error } = await supabase
+        .from('single_sales')
+        .select(`
+          *,
+          service:services(name, price),
+          package:service_packages(name, total_price),
+          payment_method:payment_methods(id, name),
+          bank:banks(name),
+          boleto_installments(*)
+        `)
+        .eq('client_id', clientId)
+        .order('sale_date', { ascending: false });
+
+      if (error) throw error;
+      console.log('Sales fetched:', data?.length);
+      return data || [];
+    },
+    enabled: !!clientId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({
     queryKey: ['payment_methods_for_client'],

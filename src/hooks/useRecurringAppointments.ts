@@ -498,7 +498,7 @@ Até breve! ✨`;
         // Get following appointments (excluding the current one which will be updated separately)
         appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
       } else if (params.propagate_type === 'package' && params.package_id) {
-        // Get all appointments linked to this package
+        // Get all sessions of the package, in order
         const { data: packageAppointments, error: fetchError } = await supabase
           .from('package_appointments')
           .select(`
@@ -507,28 +507,76 @@ Até breve! ✨`;
             package:service_packages(interval_days)
           `)
           .eq('package_id', params.package_id)
+          .order('sequence_order', { ascending: true })
           .order('session_number', { ascending: true });
 
         if (fetchError) throw fetchError;
 
-        // Find the current session
-        const currentPackageApt = packageAppointments?.find(
-          pa => pa.appointment?.id === params.appointment_id
+        const sessions = (packageAppointments || []).slice().sort(
+          (a: any, b: any) => (a.sequence_order ?? a.session_number ?? 0) - (b.sequence_order ?? b.session_number ?? 0)
         );
 
-        if (!currentPackageApt || !packageAppointments) {
+        const currentIdx = sessions.findIndex(
+          (pa: any) => pa.appointment?.id === params.appointment_id || pa.appointment_id === params.appointment_id
+        );
+
+        if (currentIdx === -1) {
           throw new Error('Sessão do pacote não encontrada');
         }
 
-        // Use package interval_days if available
-        if (currentPackageApt.package?.interval_days) {
-          intervalDays = currentPackageApt.package.interval_days;
+        const defaultInterval = sessions[currentIdx]?.package?.interval_days
+          || params.interval_days
+          || 7;
+
+        // Build a list of {session, intervalToNext} starting from the current
+        const followingPairs: Array<{ pa: any; intervalDaysFromPrevious: number }> = [];
+        for (let i = currentIdx + 1; i < sessions.length; i += 1) {
+          const previous = sessions[i - 1];
+          const intervalDaysFromPrevious = Number(previous?.interval_after_days) > 0
+            ? Number(previous.interval_after_days)
+            : defaultInterval;
+          followingPairs.push({ pa: sessions[i], intervalDaysFromPrevious });
         }
 
-        // Get following sessions that have scheduled appointments
-        appointmentsToUpdate = packageAppointments
-          .filter(pa => pa.session_number > currentPackageApt.session_number && pa.appointment)
-          .map(pa => pa.appointment);
+        // Update each following session preserving its own interval and time
+        let baseDate = params.new_start_time;
+        const updatedAppointments: any[] = [];
+
+        for (const { pa, intervalDaysFromPrevious } of followingPairs) {
+          const nextDate = addDays(baseDate, intervalDaysFromPrevious);
+          // Preserve the originally requested time
+          nextDate.setHours(params.new_start_time.getHours(), params.new_start_time.getMinutes(), 0, 0);
+
+          // Update the package_appointment scheduled_date even if no appointment is linked yet
+          await supabase
+            .from('package_appointments')
+            .update({ scheduled_date: nextDate.toISOString() })
+            .eq('id', pa.id);
+
+          if (pa.appointment && pa.appointment.id && !['completed', 'missed', 'cancelled'].includes(pa.appointment.status)) {
+            const originalStart = new Date(pa.appointment.start_time);
+            const originalEnd = new Date(pa.appointment.end_time);
+            const duration = originalEnd.getTime() - originalStart.getTime();
+            const newEnd = new Date(nextDate.getTime() + duration);
+
+            const { data: updated } = await supabase
+              .from('appointments')
+              .update({
+                start_time: nextDate.toISOString(),
+                end_time: newEnd.toISOString(),
+                updated_by: user.id,
+              })
+              .eq('id', pa.appointment.id)
+              .select()
+              .single();
+
+            if (updated) updatedAppointments.push(updated);
+          }
+
+          baseDate = nextDate;
+        }
+
+        return { updated: updatedAppointments.length, appointments: updatedAppointments };
       }
 
       if (appointmentsToUpdate.length === 0) {

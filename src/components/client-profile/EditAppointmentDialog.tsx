@@ -57,7 +57,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       setRoomId(appointment.room_id || 'none');
       const room = rooms.find(r => r.id === appointment.room_id);
       setSelectedEquipment(room?.equipment || []);
-      setPropagateDates(false);
+      setPropagateDates(!!appointment.package_appointment);
     }
   }, [appointment, rooms]);
 

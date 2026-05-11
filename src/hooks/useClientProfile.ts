@@ -310,7 +310,7 @@ export function useClientProfile(clientId: string) {
       return data as unknown as Client | null;
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch for latest data
+    staleTime: 30_000,
   });
 
   // Fetch client appointments with full details
@@ -341,9 +341,8 @@ export function useClientProfile(clientId: string) {
       return data as Appointment[];
     },
     enabled: !!clientId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Refetch every 30 seconds as fallback
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch client sales from single_sales table (synced with caixa)
@@ -369,11 +368,10 @@ export function useClientProfile(clientId: string) {
       return data || [];
     },
     enabled: !!clientId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Refetch every 30 seconds as fallback
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
-  
+
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({
     queryKey: ['payment_methods_for_client'],
@@ -425,8 +423,8 @@ export function useClientProfile(clientId: string) {
       return data as TreatmentPhoto[];
     },
     enabled: !!clientId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch quotes

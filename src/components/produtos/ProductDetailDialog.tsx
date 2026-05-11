@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
+import { convertQuantity } from '@/lib/productStock';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
@@ -272,7 +273,8 @@ export function ProductDetailDialog({
     const useEstimated = knowsQuantity === 'no';
 
     if (useEstimated) {
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
       await onCreateServiceLink({
         service_id: selectedServiceId,
         product_id: product.id,
@@ -306,7 +308,8 @@ export function ProductDetailDialog({
     const useEstimated = knowsQuantity === 'no';
 
     if (useEstimated) {
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? containerAmount / estimatedAppointments : 0;
+      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplateId,
         product_id: product.id,

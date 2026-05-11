@@ -186,9 +186,18 @@ export function ServiceProductsDialog() {
   const handleAddToService = async () => {
     if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
 
-    const servicesToLink = selectedServices.filter(serviceId =>
-      !serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
+    const alreadyLinked = selectedServices.filter(serviceId =>
+      serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
     );
+    const servicesToLink = selectedServices.filter(s => !alreadyLinked.includes(s));
+
+    if (alreadyLinked.length > 0) {
+      const names = alreadyLinked
+        .map(id => services.find(s => s.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      toast.warning(`Este produto já está vinculado a: ${names}. Vínculo duplicado bloqueado.`);
+    }
     if (servicesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
@@ -219,28 +228,43 @@ export function ServiceProductsDialog() {
       })));
     }
 
+    toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
     resetForm();
   };
 
   const handleAddToTemplate = async () => {
-    if (!selectedTemplate || !selectedProduct || !selectedProductData) return;
+    if (selectedTemplates.length === 0 || !selectedProduct || !selectedProductData) return;
+
+    const alreadyLinked = selectedTemplates.filter(templateId =>
+      templateProducts.some(tp => tp.template_id === templateId && tp.product_id === selectedProduct)
+    );
+    const templatesToLink = selectedTemplates.filter(t => !alreadyLinked.includes(t));
+
+    if (alreadyLinked.length > 0) {
+      const names = alreadyLinked
+        .map(id => packageTemplates.find(t => t.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      toast.warning(`Este produto já está vinculado a: ${names}. Vínculo duplicado bloqueado.`);
+    }
+    if (templatesToLink.length === 0) return;
 
     if (knowsQuantity === 'yes') {
       const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
+      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+        template_id: templateId,
         product_id: selectedProduct,
         quantity_per_use: normalizedQuantity,
         tracking_method: 'exact',
         notes: null,
-      });
+      })));
     } else {
       const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
       const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
         ? normalizedContainer / estimatedAppointments 
         : 0;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplate,
+      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+        template_id: templateId,
         product_id: selectedProduct,
         quantity_per_use: calcQty,
         estimated_appointments: estimatedAppointments || null,
@@ -250,15 +274,17 @@ export function ServiceProductsDialog() {
         notes: usageStartDate && usageEndDate 
           ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
           : null,
-      });
+      })));
     }
 
+    toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
     resetForm();
   };
 
   const resetForm = () => {
     setSelectedProduct('');
     setSelectedServices([]);
+    setSelectedTemplates([]);
     setQuantityPerUse(1);
     setEstimatedAppointments(0);
     setContainerAmount(0);

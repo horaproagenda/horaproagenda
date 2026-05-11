@@ -1,6 +1,29 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+function useProductsRealtime() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const ch = supabase
+      .channel('products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_product_consumption' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
+}
 
 export type ProductType = 'solid' | 'liquid' | 'cream' | 'powder' | 'gel' | 'other';
 export type ProductUnit = 'un' | 'ml' | 'l' | 'g' | 'kg' | 'other';

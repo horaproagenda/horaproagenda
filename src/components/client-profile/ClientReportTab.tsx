@@ -575,12 +575,12 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         <TableCell className="py-2">
                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 text-center">
                           {canReajust ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 text-[10px] px-2 whitespace-nowrap"
+                              className="h-7 text-[10px] px-2 whitespace-nowrap mx-auto"
                               onClick={() => propagateSeriesDates.mutate({
                                 appointment_id: appointment.id,
                                 new_start_time: new Date(appointment.start_time),

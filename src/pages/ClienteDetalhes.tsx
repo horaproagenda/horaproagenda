@@ -28,6 +28,7 @@ export default function ClienteDetalhes() {
   const [activeTab, setActiveTab] = useState('report');
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, refetchAll, stats } = useClientProfile(id || '');
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, Filter, X, Eye, Edit3, Plus, Trash2, FileDown, RefreshCw, Search } from 'lucide-react';
+import { ShieldCheck, Filter, X, Eye, Edit3, Plus, Trash2, FileDown, RefreshCw, Search, Users } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,11 +13,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import UserManagement from '@/components/settings/UserManagement';
+import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
+import { useProfessionals } from '@/hooks/useProfessionals';
 import { exportToCSV } from '@/lib/exportUtils';
+import {
+  moduleLabels,
+  labelField,
+  describeTarget,
+  summarizeLog,
+} from '@/lib/accessLogLabels';
 
 interface AccessLog {
   id: string;
@@ -33,16 +42,6 @@ interface AccessLog {
   metadata: Record<string, unknown> | null;
   created_at: string;
 }
-
-const moduleLabels: Record<string, string> = {
-  agenda: 'Agenda',
-  professional_sensitive: 'Profissional (sensível)',
-  servicos: 'Serviços',
-  financeiro: 'Financeiro',
-  caixa: 'Caixa',
-  clientes: 'Clientes',
-  produtos: 'Produtos',
-};
 
 const actionMap: Record<string, { label: string; icon: React.ReactNode; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   view: { label: 'Visualização', icon: <Eye className="h-3 w-3" />, variant: 'outline' },
@@ -62,6 +61,35 @@ const roleLabels: Record<string, string> = {
 export default function AdminPanel() {
   const { hasRole, loading } = useAuth();
   const queryClient = useQueryClient();
+  const { professionals } = useProfessionals();
+
+  // Mapas user_id -> nome e email -> nome (fallback)
+  const professionalByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    professionals.forEach(p => {
+      const uid = (p as unknown as { user_id?: string | null }).user_id;
+      if (uid) map.set(uid, p.name);
+    });
+    return map;
+  }, [professionals]);
+
+  const professionalByEmail = useMemo(() => {
+    const map = new Map<string, string>();
+    professionals.forEach(p => {
+      if (p.email) map.set(p.email.toLowerCase(), p.name);
+    });
+    return map;
+  }, [professionals]);
+
+  const resolveUserName = (log: AccessLog): string => {
+    if (log.user_id && professionalByUserId.has(log.user_id)) {
+      return professionalByUserId.get(log.user_id)!;
+    }
+    if (log.user_email && professionalByEmail.has(log.user_email.toLowerCase())) {
+      return professionalByEmail.get(log.user_email.toLowerCase())!;
+    }
+    return log.user_email || '—';
+  };
 
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
@@ -73,6 +101,7 @@ export default function AdminPanel() {
     endDate: '',
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [detailLog, setDetailLog] = useState<AccessLog | null>(null);
 
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ['admin_access_logs', filters],
@@ -97,7 +126,6 @@ export default function AdminPanel() {
     staleTime: 0,
   });
 
-  // Realtime sync
   useEffect(() => {
     if (!hasRole('admin')) return;
     const channel = supabase
@@ -117,6 +145,7 @@ export default function AdminPanel() {
     return logs.filter(log => {
       if (term) {
         const haystack = [
+          resolveUserName(log),
           log.user_email, log.user_role, log.module, log.action,
           log.target_type, log.target_id,
           ...(log.fields_viewed ?? []),
@@ -131,7 +160,8 @@ export default function AdminPanel() {
       }
       return true;
     });
-  }, [logs, search, filters.field]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs, search, filters.field, professionalByUserId, professionalByEmail]);
 
   const activeFiltersCount =
     (filters.user ? 1 : 0) +
@@ -146,16 +176,17 @@ export default function AdminPanel() {
   const handleExport = () => {
     exportToCSV({
       filename: 'logs_de_acesso',
-      headers: ['Data/Hora', 'Usuário', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Campos exibidos', 'Campos alterados'],
+      headers: ['Data/Hora', 'Profissional', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Resumo', 'Campos exibidos', 'Campos alterados'],
       rows: filteredLogs.map(log => [
         format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
-        log.user_email || '-',
+        resolveUserName(log),
         log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '-',
         moduleLabels[log.module] ?? log.module,
         actionMap[log.action]?.label ?? log.action,
-        [log.target_type, log.target_id].filter(Boolean).join(' #'),
-        (log.fields_viewed ?? []).join(', '),
-        (log.fields_changed ?? []).join(', '),
+        describeTarget(log),
+        summarizeLog(log),
+        (log.fields_viewed ?? []).map(labelField).join(', '),
+        (log.fields_changed ?? []).map(labelField).join(', '),
       ]),
       successMessage: 'Logs exportados!',
     });
@@ -176,6 +207,7 @@ export default function AdminPanel() {
           <TabsList className="h-8">
             <TabsTrigger value="access" className="text-xs">Logs de Acesso</TabsTrigger>
             <TabsTrigger value="users" className="text-xs">Usuários e Permissões</TabsTrigger>
+            <TabsTrigger value="professionals" className="text-xs">Profissionais</TabsTrigger>
           </TabsList>
 
           <TabsContent value="access" className="mt-4 space-y-3">
@@ -185,7 +217,7 @@ export default function AdminPanel() {
                 <Input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar usuário, módulo, alvo, campo..."
+                  placeholder="Buscar profissional, módulo, alvo, campo..."
                   className="h-8 pl-7 text-xs"
                 />
               </div>
@@ -306,7 +338,7 @@ export default function AdminPanel() {
                   Registros ({filteredLogs.length})
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Sincronizado em tempo real. Mostra quem acessou, quais campos foram exibidos e o que foi alterado nas páginas de Agenda, Profissionais, Serviços, Financeiro, Caixa e Clientes.
+                  Sincronizado em tempo real. Mostra quem acessou, sobre qual registro (alvo) e — em "Visualizar ação" — o resumo do que foi exibido ou alterado.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -320,13 +352,12 @@ export default function AdminPanel() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-[11px]">Data/Hora</TableHead>
-                          <TableHead className="text-[11px]">Usuário</TableHead>
+                          <TableHead className="text-[11px]">Profissional</TableHead>
                           <TableHead className="text-[11px]">Papel</TableHead>
                           <TableHead className="text-[11px]">Módulo</TableHead>
                           <TableHead className="text-[11px]">Ação</TableHead>
                           <TableHead className="text-[11px]">Alvo</TableHead>
-                          <TableHead className="text-[11px]">Campos exibidos</TableHead>
-                          <TableHead className="text-[11px]">Campos alterados</TableHead>
+                          <TableHead className="text-[11px]">Detalhes</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -337,20 +368,24 @@ export default function AdminPanel() {
                               <TableCell className="text-xs whitespace-nowrap py-2 tabular-nums">
                                 {format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: ptBR })}
                               </TableCell>
-                              <TableCell className="text-xs py-2 truncate max-w-[180px]">{log.user_email || '—'}</TableCell>
+                              <TableCell className="text-xs py-2 truncate max-w-[200px]">{resolveUserName(log)}</TableCell>
                               <TableCell className="text-xs py-2">{log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '—'}</TableCell>
                               <TableCell className="text-xs py-2">{moduleLabels[log.module] ?? log.module}</TableCell>
                               <TableCell className="py-2">
                                 <Badge variant={a.variant} className="text-[10px] h-5 gap-1">{a.icon}{a.label}</Badge>
                               </TableCell>
-                              <TableCell className="text-[11px] py-2 truncate max-w-[200px]">
-                                {log.target_type ? `${log.target_type}${log.target_id ? ` #${log.target_id.slice(0, 8)}` : ''}` : '—'}
+                              <TableCell className="text-[11px] py-2 truncate max-w-[220px]">
+                                {describeTarget(log)}
                               </TableCell>
-                              <TableCell className="text-[11px] py-2 max-w-[280px]">
-                                {log.fields_viewed && log.fields_viewed.length > 0 ? log.fields_viewed.join(', ') : '—'}
-                              </TableCell>
-                              <TableCell className="text-[11px] py-2 max-w-[280px]">
-                                {log.fields_changed && log.fields_changed.length > 0 ? log.fields_changed.join(', ') : '—'}
+                              <TableCell className="py-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => setDetailLog(log)}
+                                >
+                                  <Eye className="h-3 w-3" /> Visualizar ação
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
@@ -366,7 +401,105 @@ export default function AdminPanel() {
           <TabsContent value="users" className="mt-4">
             <UserManagement />
           </TabsContent>
+
+          <TabsContent value="professionals" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-5 w-5" /> Profissionais
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Cadastro, edição e gestão de profissionais. Apenas administradores têm acesso.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-muted/50 mb-4">
+                  <div>
+                    <p className="text-3xl font-bold tracking-tight">{professionals.length}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total cadastrados</p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {professionals.filter(p => p.is_active).length} ativos
+                  </Badge>
+                </div>
+                <ManageProfessionalsDialog>
+                  <button className="w-full py-2.5 px-4 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-all duration-300 text-sm font-medium tracking-wide">
+                    Gerenciar Profissionais
+                  </button>
+                </ManageProfessionalsDialog>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Diálogo "Visualizar ação" */}
+        <Dialog open={!!detailLog} onOpenChange={(o) => !o && setDetailLog(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-base">Detalhes da ação</DialogTitle>
+              <DialogDescription className="text-xs">
+                Resumo legível do que foi visualizado ou alterado neste registro.
+              </DialogDescription>
+            </DialogHeader>
+            {detailLog && (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="col-span-1 text-muted-foreground">Quando</div>
+                  <div className="col-span-2 tabular-nums">
+                    {format(new Date(detailLog.created_at), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}
+                  </div>
+                  <div className="col-span-1 text-muted-foreground">Profissional</div>
+                  <div className="col-span-2">{resolveUserName(detailLog)}</div>
+                  <div className="col-span-1 text-muted-foreground">Papel</div>
+                  <div className="col-span-2">
+                    {detailLog.user_role ? (roleLabels[detailLog.user_role] ?? detailLog.user_role) : '—'}
+                  </div>
+                  <div className="col-span-1 text-muted-foreground">Módulo</div>
+                  <div className="col-span-2">{moduleLabels[detailLog.module] ?? detailLog.module}</div>
+                  <div className="col-span-1 text-muted-foreground">Ação</div>
+                  <div className="col-span-2">
+                    <Badge variant={actionMap[detailLog.action]?.variant ?? 'outline'} className="text-[10px] h-5">
+                      {actionMap[detailLog.action]?.label ?? detailLog.action}
+                    </Badge>
+                  </div>
+                  <div className="col-span-1 text-muted-foreground">Alvo</div>
+                  <div className="col-span-2">{describeTarget(detailLog)}</div>
+                </div>
+
+                <div className="border-t pt-3">
+                  <p className="text-xs text-muted-foreground mb-1">Resumo</p>
+                  <p className="text-sm leading-relaxed">{summarizeLog(detailLog)}</p>
+                </div>
+
+                {detailLog.fields_viewed && detailLog.fields_viewed.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Campos exibidos</p>
+                    <div className="flex flex-wrap gap-1">
+                      {detailLog.fields_viewed.map((f) => (
+                        <Badge key={`v-${f}`} variant="outline" className="text-[10px] h-5">
+                          {labelField(f)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {detailLog.fields_changed && detailLog.fields_changed.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Campos alterados</p>
+                    <div className="flex flex-wrap gap-1">
+                      {detailLog.fields_changed.map((f) => (
+                        <Badge key={`c-${f}`} variant="secondary" className="text-[10px] h-5">
+                          {labelField(f)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

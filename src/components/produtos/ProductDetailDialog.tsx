@@ -833,13 +833,10 @@ export function ProductDetailDialog({
                         return (
                           <TableRow key={purchase.id} className="bg-muted/30">
                             <TableCell>
-                              <Input
-                                type="date"
+                              <SafeDateInput
                                 value={purchaseEditForm.purchase_date}
-                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: e.target.value })}
+                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: v ?? '' })}
                                 className="h-8 text-xs w-28"
-                                min="2000-01-01"
-                                max="2099-12-31"
                               />
                             </TableCell>
                             <TableCell>
@@ -897,13 +894,10 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="date"
+                              <SafeDateInput
                                 value={purchaseEditForm.started_using_at || ''}
-                                onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: e.target.value })}
+                                onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
                                 className="h-8 text-xs w-28"
-                                min="2000-01-01"
-                                max="2099-12-31"
                               />
                             </TableCell>
                             <TableCell className="text-right">

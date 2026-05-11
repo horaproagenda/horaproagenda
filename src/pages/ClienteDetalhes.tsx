@@ -88,25 +88,16 @@ export default function ClienteDetalhes() {
             </Button>
             <h1 className="text-lg font-semibold">Perfil do Cliente</h1>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 text-xs"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setLegacyOpen(true)}
-          >
-            <History className="h-3.5 w-3.5 mr-1.5" />
-            Histórico antigo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setLegacyOpen(true)}>
+              <History className="h-3.5 w-3.5 mr-1.5" />
+              Histórico antigo
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Compact Client Header */}

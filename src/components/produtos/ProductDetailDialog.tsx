@@ -1217,13 +1217,11 @@ export function ProductDetailDialog({
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Vincular a Template de Pacote</span>
-                    {isEstimatedTracking(product.product_type, product.unit) && (
-                      <Badge variant="outline" className="text-xs">
-                        Modo Estimado
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {knowsQuantity === 'no' ? 'Modo Estimado' : 'Modo Exato'}
+                    </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-3">
                     {availableTemplatesToLink.length > 0 ? (
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
@@ -1240,15 +1238,28 @@ export function ProductDetailDialog({
                       </Select>
                     ) : (
                       <div className="text-sm text-muted-foreground p-2 text-center">
-                        {templates.length === 0 
+                        {templates.length === 0
                           ? 'Nenhum template de pacote cadastrado. Cadastre um template de pacote primeiro.'
                           : 'Todos os templates já estão vinculados a este produto.'}
                       </div>
                     )}
-                    
+
                     {availableTemplatesToLink.length > 0 && (
                       <>
-                        {isEstimatedTracking(product.product_type, product.unit) ? (
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            Você sabe a quantidade usada por sessão?
+                          </Label>
+                          <Select value={knowsQuantity} onValueChange={(v: 'yes' | 'no') => setKnowsQuantity(v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
+                              <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {knowsQuantity === 'no' ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="text-xs text-muted-foreground mb-1 block">
@@ -1258,14 +1269,19 @@ export function ProductDetailDialog({
                                 <Input
                                   type="number"
                                   value={containerAmount}
-                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 1)}
-                                  min="0.01"
+                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                                  min="0"
                                   step="0.01"
                                   className="flex-1"
                                 />
-                                <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                                  {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                                </span>
+                                <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {PRODUCT_UNITS.map(u => (
+                                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                             <div>
@@ -1284,7 +1300,7 @@ export function ProductDetailDialog({
                         ) : (
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground mb-1 block">
-                              Quantidade usada por sessão (0 = não sei)
+                              Quantidade usada por sessão
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -1298,9 +1314,6 @@ export function ProductDetailDialog({
                                 {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                               </span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              Se não souber, deixe 0. O app contará os atendimentos.
-                            </p>
                           </div>
                         )}
                       </>

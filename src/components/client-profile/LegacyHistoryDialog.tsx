@@ -510,7 +510,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <Label htmlFor="legacy-fin" className="cursor-pointer">Lançar pagamentos no financeiro com data retroativa</Label>
           </div>
 
-          <ScrollArea className="flex-1 mt-3 pr-2">
+          <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-2">
             <TabsContent value="single" className="space-y-3 mt-0">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <div>
@@ -596,7 +596,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 </div>
               )}
             </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
 
         <DialogFooter className="gap-2">

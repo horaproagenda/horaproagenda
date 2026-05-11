@@ -67,7 +67,8 @@ export default function AdminPanel() {
   const professionalByUserId = useMemo(() => {
     const map = new Map<string, string>();
     professionals.forEach(p => {
-      if (p.user_id) map.set(p.user_id, p.name);
+      const uid = (p as unknown as { user_id?: string | null }).user_id;
+      if (uid) map.set(uid, p.name);
     });
     return map;
   }, [professionals]);

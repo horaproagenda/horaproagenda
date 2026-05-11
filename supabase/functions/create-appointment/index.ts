@@ -478,7 +478,7 @@ serve(async (req) => {
     }
     } // end !legacy equipment block
 
-
+    if (errors.length > 0) {
       return new Response(
         JSON.stringify({ success: false, errors }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

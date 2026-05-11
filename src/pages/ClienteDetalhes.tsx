@@ -178,6 +178,13 @@ export default function ClienteDetalhes() {
         open={!!editingAppointment}
         onOpenChange={(open) => !open && setEditingAppointment(null)}
       />
+
+      <LegacyHistoryDialog
+        open={legacyOpen}
+        onOpenChange={setLegacyOpen}
+        clientId={client.id}
+        clientName={client.name}
+      />
     </AppLayout>
   );
 }

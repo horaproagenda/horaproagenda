@@ -49,20 +49,19 @@ Deno.serve(async (req) => {
     const params: Record<string, string> = {};
     for (const [k, v] of formParams.entries()) params[k] = v;
 
-    // Optional signature validation (only if TWILIO_AUTH_TOKEN secret is set)
-    if (TWILIO_AUTH_TOKEN) {
-      const signature = req.headers.get("x-twilio-signature") ?? "";
-      // Twilio signs the public URL it called — reconstruct from headers
-      const proto = req.headers.get("x-forwarded-proto") ?? "https";
-      const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
-      const url = `${proto}://${host}${new URL(req.url).pathname}`;
-      const valid = verifyTwilioSignature(TWILIO_AUTH_TOKEN, signature, url, params);
-      if (!valid) {
-        console.error("Invalid Twilio signature", { url, signature });
-        return new Response("Invalid signature", { status: 403, headers: corsHeaders });
-      }
-    } else {
-      console.warn("TWILIO_AUTH_TOKEN not set — skipping signature validation");
+    // MANDATORY signature validation — refuse to process if token not set
+    if (!TWILIO_AUTH_TOKEN) {
+      console.error("TWILIO_AUTH_TOKEN not set — refusing to accept webhook");
+      return new Response("Webhook not configured", { status: 500, headers: corsHeaders });
+    }
+    const signature = req.headers.get("x-twilio-signature") ?? "";
+    const proto = req.headers.get("x-forwarded-proto") ?? "https";
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+    const url = `${proto}://${host}${new URL(req.url).pathname}`;
+    const valid = verifyTwilioSignature(TWILIO_AUTH_TOKEN, signature, url, params);
+    if (!valid) {
+      console.error("Invalid Twilio signature", { url, signature });
+      return new Response("Invalid signature", { status: 403, headers: corsHeaders });
     }
 
     const messageSid = params["MessageSid"] ?? params["SmsSid"] ?? "";

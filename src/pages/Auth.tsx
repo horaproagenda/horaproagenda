@@ -607,7 +607,8 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
+    <main className="flex min-h-screen items-center justify-center gradient-hero p-4">
+      <AuthSeo />
       <Card className={`w-full shadow-lg animate-scale-in ${authStep === 'plan' ? 'max-w-lg' : 'max-w-md'}`}>
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">

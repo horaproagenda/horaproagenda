@@ -1,11 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mail } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { revalidateVersionAfterAuth } from '@/lib/bootVersionGuard';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,6 +15,17 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth();
   const [resending, setResending] = useState(false);
+  const location = useLocation();
+  const checkedRef = useRef(false);
+
+  // Revalida versão antes de renderizar qualquer rota protegida.
+  // Garante que mesmo navegação direta (deep link) por bundle antigo
+  // seja interceptada antes da agenda aparecer.
+  useEffect(() => {
+    if (!user || checkedRef.current) return;
+    checkedRef.current = true;
+    void revalidateVersionAfterAuth(`protected-route:${location.pathname}`);
+  }, [user, location.pathname]);
 
   if (loading) {
     return (

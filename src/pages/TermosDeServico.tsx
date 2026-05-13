@@ -172,7 +172,7 @@ export default function TermosDeServico() {
             </section>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

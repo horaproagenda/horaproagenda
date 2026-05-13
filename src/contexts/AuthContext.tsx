@@ -49,6 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setRoles([]);
         }
+
+        // Após login/logout/refresh, revalida versão do bundle.
+        // Garante que nunca operemos com build antigo após troca de sessão.
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          setTimeout(() => {
+            void revalidateVersionAfterAuth(`auth:${event}`);
+          }, 0);
+        }
       }
     );
 

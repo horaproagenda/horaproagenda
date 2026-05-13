@@ -26,6 +26,25 @@ declare const __APP_BUILD_TIME__: string;
 const PURGE_FLAG = 'boot_version_purge_done_v1';
 const BUILD_KEY = 'app_current_build_id_v1';
 
+/** Reseta o flag de purge para permitir nova verificação após login/logout. */
+export function resetBootVersionGuardFlag(): void {
+  try {
+    sessionStorage.removeItem(PURGE_FLAG);
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Re-executa a verificação de versão (ex.: após login/logout).
+ * Se detectar bundle obsoleto, limpa caches/SW e força reload imediato.
+ */
+export async function revalidateVersionAfterAuth(reason: string): Promise<void> {
+  resetBootVersionGuardFlag();
+  console.info(`[BootVersionGuard] Revalidando versão após ${reason}…`);
+  await bootVersionGuard();
+}
+
 const stripAssets = (urls: string[]): string =>
   urls
     .map((u) => {

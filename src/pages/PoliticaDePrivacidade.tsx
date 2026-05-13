@@ -188,7 +188,7 @@ export default function PoliticaDePrivacidade() {
             </section>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

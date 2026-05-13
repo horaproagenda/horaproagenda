@@ -14,6 +14,18 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Helmet } from 'react-helmet-async';
+
+const AuthSeo = () => (
+  <Helmet>
+    <title>Entrar — Lume Agenda</title>
+    <meta name="description" content="Acesse sua conta Lume Agenda ou cadastre-se para gerenciar agendamentos, clientes e financeiro da sua clínica de estética." />
+    <link rel="canonical" href="https://agendalume.app/auth" />
+    <meta property="og:title" content="Entrar — Lume Agenda" />
+    <meta property="og:description" content="Acesse a Lume Agenda e gerencie sua clínica de estética em um só lugar." />
+    <meta property="og:url" content="https://agendalume.app/auth" />
+  </Helmet>
+);
 
 type AuthStep = 'email' | 'code' | 'phone' | 'phoneCode' | 'plan' | 'password';
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
@@ -595,7 +607,8 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero p-4">
+    <main className="flex min-h-screen items-center justify-center gradient-hero p-4">
+      <AuthSeo />
       <Card className={`w-full shadow-lg animate-scale-in ${authStep === 'plan' ? 'max-w-lg' : 'max-w-md'}`}>
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -998,6 +1011,6 @@ export default function Auth() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

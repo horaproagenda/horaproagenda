@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Scale } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Helmet } from "react-helmet-async";
 
 export default function TermosDeServico() {
   const siteUrl = "https://agendalume.app";
@@ -8,7 +9,15 @@ export default function TermosDeServico() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Termos de Serviço — Lume Agenda</title>
+        <meta name="description" content="Termos de Serviço da Lume Agenda: condições de uso da plataforma de gestão para clínicas de estética." />
+        <link rel="canonical" href="https://agendalume.app/termos-de-servico" />
+        <meta property="og:title" content="Termos de Serviço — Lume Agenda" />
+        <meta property="og:description" content="Condições de uso da plataforma Lume Agenda." />
+        <meta property="og:url" content="https://agendalume.app/termos-de-servico" />
+      </Helmet>
+      <main className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-6">
           <Link
             to="/auth"
@@ -163,7 +172,7 @@ export default function TermosDeServico() {
             </section>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

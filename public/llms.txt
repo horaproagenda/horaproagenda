@@ -1,0 +1,11 @@
+# Lume Agenda
+
+> Agenda digital completa para clínicas de estética: agendamentos em tempo real, clientes, pacotes, financeiro, comissões e integração com WhatsApp.
+
+Lume Agenda é um SaaS brasileiro voltado a clínicas e profissionais de estética, com foco em sincronização instantânea entre dispositivos, controle financeiro detalhado e automações de comunicação.
+
+## Pages
+
+- [Início / Login](/auth): Acesso ao sistema (e-mail e senha) e cadastro de novas contas.
+- [Termos de Serviço](/termos-de-servico): Termos de uso da plataforma.
+- [Política de Privacidade](/politica-de-privacidade): Como tratamos dados pessoais (LGPD).

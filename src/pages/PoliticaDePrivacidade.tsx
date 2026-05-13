@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Helmet } from "react-helmet-async";
 
 export default function PoliticaDePrivacidade() {
   const siteUrl = "https://agendalume.app";
@@ -8,7 +9,15 @@ export default function PoliticaDePrivacidade() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Política de Privacidade — Lume Agenda</title>
+        <meta name="description" content="Como a Lume Agenda coleta, usa e protege dados pessoais de profissionais e clientes (LGPD)." />
+        <link rel="canonical" href="https://agendalume.app/politica-de-privacidade" />
+        <meta property="og:title" content="Política de Privacidade — Lume Agenda" />
+        <meta property="og:description" content="Tratamento de dados pessoais na Lume Agenda em conformidade com a LGPD." />
+        <meta property="og:url" content="https://agendalume.app/politica-de-privacidade" />
+      </Helmet>
+      <main className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-6">
           <Link
             to="/auth"
@@ -179,7 +188,7 @@ export default function PoliticaDePrivacidade() {
             </section>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

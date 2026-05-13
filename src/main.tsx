@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import { HelmetProvider } from "react-helmet-async";
 import "./index.css";
 import { bootstrapAppearance } from "./hooks/useAppearanceSettings";
 import { restoreUrlIfNeeded, scheduleFormRestore } from "./lib/preReloadState";
@@ -28,7 +29,9 @@ if (initialLoader) {
 // Render React app
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
   </React.StrictMode>
 );
 

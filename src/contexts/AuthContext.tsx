@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, AppRole } from '@/types';
+import { revalidateVersionAfterAuth } from '@/lib/bootVersionGuard';
 
 type SignupMetadata = {
   phone?: string;
@@ -47,6 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+        }
+
+        // Após login/logout/refresh, revalida versão do bundle.
+        // Garante que nunca operemos com build antigo após troca de sessão.
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          setTimeout(() => {
+            void revalidateVersionAfterAuth(`auth:${event}`);
+          }, 0);
         }
       }
     );

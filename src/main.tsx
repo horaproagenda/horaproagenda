@@ -5,6 +5,12 @@ import "./index.css";
 import { bootstrapAppearance } from "./hooks/useAppearanceSettings";
 import { restoreUrlIfNeeded, scheduleFormRestore } from "./lib/preReloadState";
 import { logVersionEvent } from "./lib/appVersionLog";
+import { bootVersionGuard } from "./lib/bootVersionGuard";
+
+// Guarda de versão de boot: detecta bundle obsoleto (cache de CDN, SW antigo,
+// novo navegador/login com cache local antigo) e força purge + reload ANTES
+// do React montar. Roda em paralelo (fire-and-forget) para não bloquear o boot.
+void bootVersionGuard();
 
 // Restore URL (route) saved before a version-update reload, so the app
 // boots on the same screen the user was viewing — must run BEFORE Router mounts.

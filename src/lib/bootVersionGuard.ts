@@ -60,6 +60,15 @@ async function purgeEverythingAndReload(reason: string) {
     console.warn('[BootVersionGuard] Purge já executado nesta sessão — abortando para evitar loop.');
     return;
   }
+  // Não interrompe o usuário se ele estiver preenchendo um formulário em diálogo
+  try {
+    const { isUserBusyInDialog } = await import('@/lib/userBusyGuard');
+    if (isUserBusyInDialog()) {
+      console.warn(`[BootVersionGuard] Reload adiado — usuário ocupado em diálogo (${reason}). Tentando em 30s.`);
+      setTimeout(() => purgeEverythingAndReload(reason), 30_000);
+      return;
+    }
+  } catch { /* noop */ }
   sessionStorage.setItem(PURGE_FLAG, '1');
 
   console.warn(`[BootVersionGuard] Versão obsoleta detectada (${reason}). Limpando caches…`);

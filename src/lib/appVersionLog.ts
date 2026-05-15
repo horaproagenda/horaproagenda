@@ -25,6 +25,7 @@ export type VersionEventType =
   | 'check_fail'
   | 'new_version_detected'
   | 'reload_triggered'
+  | 'reload_postponed_user_busy'
   | 'state_preserved'
   | 'state_restored'
   | 'sw_update_found'

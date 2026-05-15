@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { logVersionEvent } from '@/lib/appVersionLog';
 import { captureFormState } from '@/lib/preReloadState';
+import { isUserBusyInDialog } from '@/lib/userBusyGuard';
 
 /**
  * useVersionWatcher
@@ -33,6 +34,13 @@ export function useVersionWatcher() {
 
     const triggerReload = (reason: string) => {
       if (reloadingRef.current) return;
+      // Não recarrega se o usuário estiver com diálogo/formulário aberto
+      if (isUserBusyInDialog()) {
+        logVersionEvent('reload_postponed_user_busy', { reason });
+        // Tenta de novo em 30s
+        window.setTimeout(() => triggerReload(reason), 30_000);
+        return;
+      }
       reloadingRef.current = true;
       captureFormState(reason);
       logVersionEvent('reload_triggered', { reason });

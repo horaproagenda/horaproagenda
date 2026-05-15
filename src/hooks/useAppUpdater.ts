@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { logVersionEvent } from '@/lib/appVersionLog';
 import { captureFormState } from '@/lib/preReloadState';
+import { isUserBusyInDialog } from '@/lib/userBusyGuard';
 
 /**
  * useAppUpdater

@@ -143,15 +143,74 @@ export default function PreencherDocumento() {
 
   const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
-  const handleCpfSubmit = () => {
+  const handleCpfSubmit = async () => {
     const provided = onlyDigits(cpfInput);
     if (provided.length !== 11) {
       setCpfError('Digite os 11 dígitos do seu CPF.');
       return;
     }
-    // Server-side validation happens on submit (submit_document_fill_by_token)
-    setCpfError(null);
-    setAuthenticated(true);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('authenticate_document_fill_link', {
+        p_token: token,
+        p_cpf: provided,
+      } as any);
+      if (rpcError) throw rpcError;
+      const payload = data as { ok?: boolean; error?: string; client?: any; professional?: any } | null;
+      if (!payload?.ok) {
+        setCpfAttempts((n) => n + 1);
+        setCpfError(payload?.error === 'CPF_MISMATCH'
+          ? 'CPF informado não confere com o cadastro.'
+          : 'Não foi possível validar o acesso. Tente novamente.');
+        return;
+      }
+
+      // Hydrate full prefill data after successful CPF auth
+      const c = payload.client || {};
+      const p = payload.professional || {};
+      const hydratedClient: ClientData = {
+        id: c.id ?? null,
+        name: c.name ?? null,
+        birthdate: c.birthdate ?? null,
+        cpf: c.cpf ?? null,
+        phone: c.phone ?? null,
+      };
+      setClient(hydratedClient);
+      if (p?.id || p?.name) setProfessional({ id: p.id ?? null, name: p.name ?? null });
+
+      setFormData((prev) => {
+        const next = { ...prev };
+        if (c.name) {
+          next.cliente = c.name;
+          next.nome_cliente = c.name;
+          next.nome = c.name;
+        }
+        if (c.cpf) next.cpf = c.cpf;
+        if (c.phone) next.telefone = c.phone;
+        if (c.email) next.email = c.email;
+        if (c.birthdate) {
+          const fb = formatBirthdate(c.birthdate);
+          next.data_nascimento = fb;
+          next.nascimento = fb;
+          const age = calculateAge(c.birthdate);
+          if (age !== null) {
+            next.idade = String(age);
+            next.idade_cliente = String(age);
+          }
+        }
+        if (p?.name) {
+          next.profissional = p.name;
+          next.professional = p.name;
+          next.nome_profissional = p.name;
+        }
+        return next;
+      });
+
+      setCpfError(null);
+      setAuthenticated(true);
+    } catch (err) {
+      console.error('CPF auth error:', err);
+      setCpfError('Erro ao validar CPF. Tente novamente.');
+    }
   };
 
   useEffect(() => {

@@ -3717,6 +3717,10 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      authenticate_document_fill_link: {
+        Args: { p_cpf: string; p_token: string }
+        Returns: Json
+      }
       can_access_appointment: {
         Args: { _appointment_id: string }
         Returns: boolean
@@ -3736,6 +3740,10 @@ export type Database = {
       }
       can_access_service_package: {
         Args: { _package_id: string }
+        Returns: boolean
+      }
+      can_upload_client_storage_object: {
+        Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
       }
       check_trial_eligibility: {

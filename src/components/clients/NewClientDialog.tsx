@@ -468,7 +468,19 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                     <FormItem>
                       <FormLabel className="text-xs">Data de Nascimento</FormLabel>
                       <FormControl>
-                        <Input type="date" className="h-8 text-sm" {...field} />
+                        <Input
+                          type="date"
+                          className="h-8 text-sm"
+                          {...field}
+                          onPaste={(e) => {
+                            const text = e.clipboardData.getData('text');
+                            const iso = parseLooseDateToISO(text);
+                            if (iso) {
+                              e.preventDefault();
+                              field.onChange(iso);
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>

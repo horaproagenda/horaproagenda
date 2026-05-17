@@ -325,24 +325,26 @@ export function FillDocumentDialog({
           {/* Left Panel - Client & Variables */}
           <ScrollArea className="w-[300px] border-r">
             <div className="p-4 space-y-4">
-              <div>
-                <Label className="text-sm font-medium flex items-center gap-1.5">
-                  <User className="h-4 w-4" />
-                  Cliente *
-                </Label>
-                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger className="h-9 mt-1.5">
-                    <SelectValue placeholder="Selecione o cliente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!preSelectedClientId && (
+                <div>
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <User className="h-4 w-4" />
+                    Cliente *
+                  </Label>
+                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                    <SelectTrigger className="h-9 mt-1.5">
+                      <SelectValue placeholder="Selecione o cliente..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {selectedClient && (
                 <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1">

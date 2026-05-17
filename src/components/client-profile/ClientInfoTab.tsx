@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { parseLooseDateToISO } from '@/lib/dateInputPaste';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';

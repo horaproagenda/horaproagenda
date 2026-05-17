@@ -178,7 +178,7 @@ export default function Produtos() {
   const canDelete = hasRole('admin');
 
   const [filters, setFilters] = useLocalStorage<ProductFilters>('produtos-filters', defaultFilters);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useLocalStorage<string>('produtos:searchTerm', '');
 
   // Resume position
   const { savedState: resumeState, savePosition: savePos, restore: restorePos, dismiss: dismissPos } = useListPosition({ key: 'produtos' });

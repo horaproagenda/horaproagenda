@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { parseLooseDateToISO } from '@/lib/dateInputPaste';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
@@ -195,7 +196,20 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Nascimento</Label>
               {editing ? (
-                <Input type="date" value={formData.birthdate} onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })} className="h-8 text-xs" />
+                <Input
+                  type="date"
+                  value={formData.birthdate}
+                  onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    const iso = parseLooseDateToISO(text);
+                    if (iso) {
+                      e.preventDefault();
+                      setFormData({ ...formData, birthdate: iso });
+                    }
+                  }}
+                  className="h-8 text-xs"
+                />
               ) : (
                 <p className="text-sm">{client.birthdate ? format(new Date(client.birthdate + 'T12:00:00'), "dd/MM/yyyy") : '-'}</p>
               )}

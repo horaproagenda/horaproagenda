@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UserPlus, Loader2 } from 'lucide-react';
+import { parseLooseDateToISO } from '@/lib/dateInputPaste';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -468,7 +469,19 @@ export function NewClientDialog({ onClientCreated, children }: NewClientDialogPr
                     <FormItem>
                       <FormLabel className="text-xs">Data de Nascimento</FormLabel>
                       <FormControl>
-                        <Input type="date" className="h-8 text-sm" {...field} />
+                        <Input
+                          type="date"
+                          className="h-8 text-sm"
+                          {...field}
+                          onPaste={(e) => {
+                            const text = e.clipboardData.getData('text');
+                            const iso = parseLooseDateToISO(text);
+                            if (iso) {
+                              e.preventDefault();
+                              field.onChange(iso);
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>

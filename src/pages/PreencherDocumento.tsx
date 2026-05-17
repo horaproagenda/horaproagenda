@@ -613,7 +613,7 @@ export default function PreencherDocumento() {
             </p>
           </CardHeader>
           <CardContent className="py-6 space-y-4">
-            {client.name && (
+            {client?.name && (
               <div className="rounded-md bg-muted/30 border p-2.5 text-center text-sm">
                 <span className="text-muted-foreground">Documento para: </span>
                 <span className="font-medium">{client.name}</span>

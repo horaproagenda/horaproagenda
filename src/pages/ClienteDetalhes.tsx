@@ -52,7 +52,12 @@ export default function ClienteDetalhes() {
       return;
     }
 
-    navigate('/clientes');
+    // Volta para a tela anterior se houver histórico, senão vai para /clientes
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/clientes');
+    }
   };
 
   if (isLoading) {

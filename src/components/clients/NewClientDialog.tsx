@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UserPlus, Loader2 } from 'lucide-react';
+import { parseLooseDateToISO } from '@/lib/dateInputPaste';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

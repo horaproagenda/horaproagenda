@@ -274,7 +274,7 @@ export function WhatsappTemplatesSettings() {
                         {template.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                       <Badge variant="outline">{getTypeLabel(template.type)}</Badge>
-                      {template.type === 'reminder' && template.hours_before && (
+                      {(template.type === 'reminder' || template.type === 'confirmation') && template.hours_before && (
                         <Badge variant="outline" className="text-xs">{template.hours_before}h antes</Badge>
                       )}
                       {template.type === 'follow_up' && template.send_offset_hours != null && (

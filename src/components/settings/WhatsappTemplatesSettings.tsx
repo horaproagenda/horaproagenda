@@ -71,7 +71,7 @@ export function WhatsappTemplatesSettings() {
       name: formData.name,
       type: formData.type,
       message: formData.message,
-      hours_before: formData.type === 'reminder' ? formData.hours_before : null,
+      hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: ['follow_up', 'birthday'].includes(formData.type) ? formData.send_offset_hours : null,
       professional_id: formData.professional_id || null,
       is_active: formData.is_active,
@@ -180,7 +180,7 @@ export function WhatsappTemplatesSettings() {
               </p>
             </div>
 
-            {formData.type === 'reminder' && (
+            {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="space-y-2">
                 <Label>Horas antes do agendamento</Label>
                 <Input
@@ -190,6 +190,11 @@ export function WhatsappTemplatesSettings() {
                   min={1}
                   max={168}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {formData.type === 'confirmation'
+                    ? 'Quantas horas antes do agendamento enviar a confirmação automática.'
+                    : 'Quantas horas antes do agendamento enviar o lembrete automático.'}
+                </p>
               </div>
             )}
 
@@ -269,7 +274,7 @@ export function WhatsappTemplatesSettings() {
                         {template.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                       <Badge variant="outline">{getTypeLabel(template.type)}</Badge>
-                      {template.type === 'reminder' && template.hours_before && (
+                      {(template.type === 'reminder' || template.type === 'confirmation') && template.hours_before && (
                         <Badge variant="outline" className="text-xs">{template.hours_before}h antes</Badge>
                       )}
                       {template.type === 'follow_up' && template.send_offset_hours != null && (

@@ -71,7 +71,7 @@ export function WhatsappTemplatesSettings() {
       name: formData.name,
       type: formData.type,
       message: formData.message,
-      hours_before: formData.type === 'reminder' ? formData.hours_before : null,
+      hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: ['follow_up', 'birthday'].includes(formData.type) ? formData.send_offset_hours : null,
       professional_id: formData.professional_id || null,
       is_active: formData.is_active,

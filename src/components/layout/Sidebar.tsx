@@ -38,6 +38,7 @@ const navigation = [
   { name: 'Financeiro', href: '/financeiro', icon: Landmark },
   { name: 'Produtos', href: '/produtos', icon: Package },
   { name: 'Lembretes', href: '/lembretes', icon: Bell },
+  { name: 'Mensagens WhatsApp', href: '/mensagens-whatsapp', icon: MessageSquare },
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },

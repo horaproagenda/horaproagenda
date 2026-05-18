@@ -84,7 +84,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, follow_up: 0, birthday: 0 } };
+  const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
     const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();

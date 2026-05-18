@@ -62,19 +62,21 @@ export function renderTemplate(
   message: string,
   vars: { cliente?: string; data?: string; horario?: string; servico?: string; profissional?: string }
 ): string {
-  return message
-    .replaceAll('{{cliente}}', vars.cliente ?? '')
-    .replaceAll('{{data}}', vars.data ?? '')
-    .replaceAll('{{horario}}', vars.horario ?? '')
-    .replaceAll('{{servico}}', vars.servico ?? '')
-    .replaceAll('{{profissional}}', vars.profissional ?? '')
-    // Also support {x} legacy syntax
-    .replaceAll('{nome}', vars.cliente ?? '')
-    .replaceAll('{cliente}', vars.cliente ?? '')
-    .replaceAll('{data}', vars.data ?? '')
-    .replaceAll('{horario}', vars.horario ?? '')
-    .replaceAll('{servico}', vars.servico ?? '')
-    .replaceAll('{profissional}', vars.profissional ?? '');
+  const replaceAll = (input: string, search: string, value: string) =>
+    input.split(search).join(value);
+  let out = message;
+  out = replaceAll(out, '{{cliente}}', vars.cliente ?? '');
+  out = replaceAll(out, '{{data}}', vars.data ?? '');
+  out = replaceAll(out, '{{horario}}', vars.horario ?? '');
+  out = replaceAll(out, '{{servico}}', vars.servico ?? '');
+  out = replaceAll(out, '{{profissional}}', vars.profissional ?? '');
+  out = replaceAll(out, '{nome}', vars.cliente ?? '');
+  out = replaceAll(out, '{cliente}', vars.cliente ?? '');
+  out = replaceAll(out, '{data}', vars.data ?? '');
+  out = replaceAll(out, '{horario}', vars.horario ?? '');
+  out = replaceAll(out, '{servico}', vars.servico ?? '');
+  out = replaceAll(out, '{profissional}', vars.profissional ?? '');
+  return out;
 }
 
 export function openWhatsappShare(phone: string | null | undefined, message: string) {

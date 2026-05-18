@@ -180,7 +180,7 @@ export function WhatsappTemplatesSettings() {
               </p>
             </div>
 
-            {formData.type === 'reminder' && (
+            {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="space-y-2">
                 <Label>Horas antes do agendamento</Label>
                 <Input
@@ -190,6 +190,11 @@ export function WhatsappTemplatesSettings() {
                   min={1}
                   max={168}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {formData.type === 'confirmation'
+                    ? 'Quantas horas antes do agendamento enviar a confirmação automática.'
+                    : 'Quantas horas antes do agendamento enviar o lembrete automático.'}
+                </p>
               </div>
             )}
 

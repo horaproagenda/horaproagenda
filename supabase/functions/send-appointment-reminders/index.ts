@@ -178,6 +178,59 @@ serve(async (req) => {
       }
     }
 
+    // ============ CONFIRMATION (before appointment, separate from reminder) ============
+    const confirmTpls = tplByType('confirmation');
+    if (confirmTpls.length > 0) {
+      const allHours = confirmTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
+      if (allHours.length > 0) {
+        const minH = Math.min(...allHours);
+        const maxH = Math.max(...allHours);
+        const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
+        const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
+
+        const { data: appts } = await supabase
+          .from('appointments')
+          .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .gte('start_time', fromIso)
+          .lte('start_time', toIso)
+          .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
+
+        for (const apt of appts || []) {
+          const phone = (apt as any).client?.phone;
+          if (!phone) { summary.skipped++; continue; }
+          const start = new Date(apt.start_time as string);
+          const hoursDiff = (start.getTime() - now) / 3600_000;
+          const tpl = pickTpl('confirmation', (apt as any).professional_id ?? null);
+          if (!tpl) continue;
+          const h = Number(tpl.hours_before);
+          if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+
+          const { data: existing } = await supabase
+            .from('appointment_reminder_log')
+            .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').maybeSingle();
+          if (existing) continue;
+
+          const message = renderTemplate(tpl.message, {
+            cliente: (apt as any).client?.name || 'cliente',
+            data: fmtDate(start), horario: fmtTime(start),
+            servico: (apt as any).service?.name || 'atendimento',
+            profissional: (apt as any).professional?.name || '',
+          });
+          try {
+            const inst = await instanceFor((apt as any).professional_id ?? null);
+            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            await supabase.from('appointment_reminder_log').insert({
+              appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
+            });
+            summary.sent++; summary.byType.confirmation++;
+          } catch (e) {
+            summary.errors.push(`confirmation:${apt.id}@${h}h: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+    }
+
+
     // ============ FOLLOW-UP (after appointment) ============
     const followTpls = tplByType('follow_up');
     if (followTpls.length > 0) {

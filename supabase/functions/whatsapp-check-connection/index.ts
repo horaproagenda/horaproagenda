@@ -1,79 +1,51 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
-
-function jr(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
-}
-
-function getValidatedEvolutionUrl(rawUrl: string | undefined) {
-  if (!rawUrl) return { error: 'Evolution API URL not configured' } as const;
-  try {
-    const parsed = new URL(rawUrl.trim());
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return { error: 'Evolution API URL must start with http:// or https://' } as const;
-    }
-    return { url: parsed.origin } as const;
-  } catch {
-    return { error: 'Evolution API URL inválida.' } as const;
-  }
-}
-
-async function resolveInstance(supabaseAdmin: any, professional_id?: string): Promise<string> {
-  const fallback = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
-  if (!professional_id) return fallback;
-  const { data } = await supabaseAdmin
-    .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
-  const v = (data?.whatsapp_from_number || '').trim();
-  return v.length > 0 ? v : fallback;
-}
-
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return jr({ error: 'Unauthorized' }, 401);
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const TWILIO_API_KEY = Deno.env.get('TWILIO_API_KEY');
 
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
+    if (!LOVABLE_API_KEY || !TWILIO_API_KEY) {
+      return new Response(JSON.stringify({
+        configured: false, connected: false,
+        error: 'Conector Twilio não conectado. Conecte em Configurações → Conectores.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const r = await fetch('https://connector-gateway.lovable.dev/api/v1/verify_credentials', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'X-Connection-Api-Key': TWILIO_API_KEY,
+      },
     });
-    const supaAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return jr({ error: 'Unauthorized - Invalid token' }, 401);
-
-    let body: any = {};
-    try { body = await req.json(); } catch { body = {}; }
-    const professional_id: string | undefined = body?.professional_id;
-
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const validatedUrl = getValidatedEvolutionUrl(Deno.env.get('EVOLUTION_API_URL'));
-    if ('error' in validatedUrl || !evolutionApiKey) {
-      return jr({ success: false, configured: false, connected: false, error: validatedUrl.error ?? 'Evolution API key not configured' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return new Response(JSON.stringify({
+        configured: true, connected: false,
+        outcome: 'failed', error: data?.message || `HTTP ${r.status}`,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const instance = await resolveInstance(supaAdmin, professional_id);
-    const url = new URL(`/instance/connectionState/${encodeURIComponent(instance)}`, validatedUrl.url);
-    const response = await fetch(url.toString(), { method: 'GET', headers: { apikey: evolutionApiKey } });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return jr({ success: false, configured: true, connected: false, instance, error: errorText });
-    }
-
-    const result = await response.json();
-    const isConnected = result.instance?.state === 'open';
-    return jr({ success: true, configured: true, connected: isConnected, state: result.instance?.state, instance });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('WhatsApp connection check error:', error);
-    return jr({ success: false, configured: true, connected: false, error: errorMessage }, 500);
+    const ok = data?.outcome === 'verified' || data?.outcome === 'skipped';
+    return new Response(JSON.stringify({
+      configured: true,
+      connected: ok,
+      outcome: data?.outcome,
+      latency_ms: data?.latency_ms,
+      error: data?.error,
+      message: ok ? 'Twilio conectado e válido' : (data?.error || 'Credenciais inválidas'),
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return new Response(JSON.stringify({ configured: false, connected: false, error: msg }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

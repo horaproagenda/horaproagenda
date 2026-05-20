@@ -6,25 +6,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface WhatsAppMessage {
-  phone: string;
-  message: string;
-  professional_id?: string;
-  client_id?: string;
-  instanceName?: string;
+const TWILIO_GATEWAY = 'https://connector-gateway.lovable.dev/twilio';
+
+function normalizeE164(p: string): string {
+  let digits = (p || '').replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = digits.substring(1);
+  if (!digits.startsWith('55') && digits.length <= 11) digits = '55' + digits;
+  return '+' + digits;
 }
 
-function normalizePhone(p: string): string {
-  let cleanPhone = (p || '').replace(/\D/g, '');
-  if (cleanPhone.startsWith('0')) cleanPhone = '55' + cleanPhone.substring(1);
-  if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
-  return cleanPhone;
+async function sendWhatsappViaTwilio(opts: { from: string; to: string; body: string }) {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const TWILIO_API_KEY = Deno.env.get('TWILIO_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY não configurado');
+  if (!TWILIO_API_KEY) throw new Error('TWILIO_API_KEY não configurado (conector Twilio)');
+
+  const fromWa = opts.from.startsWith('whatsapp:') ? opts.from : `whatsapp:${normalizeE164(opts.from)}`;
+  const toWa = opts.to.startsWith('whatsapp:') ? opts.to : `whatsapp:${normalizeE164(opts.to)}`;
+
+  const r = await fetch(`${TWILIO_GATEWAY}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': TWILIO_API_KEY,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ From: fromWa, To: toWa, Body: opts.body }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Twilio ${r.status}: ${JSON.stringify(data)}`);
+  return data;
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -60,72 +75,60 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const body = await req.json() as WhatsAppMessage;
-    const { phone, message, client_id } = body;
-    let { professional_id } = body;
+    const body = await req.json();
+    const { phone, message, client_id, test } = body as { phone: string; message: string; client_id?: string; test?: boolean };
+    let { professional_id } = body as { professional_id?: string };
 
-    if (!phone || !message) throw new Error('Phone and message are required');
-    if (phone.length > 20 || message.length > 4096) throw new Error('Invalid input length');
+    if (!phone || !message) throw new Error('phone e message são obrigatórios');
+    if (phone.length > 20 || message.length > 4096) throw new Error('Comprimento inválido');
 
-    const cleanPhone = normalizePhone(phone);
-
-    // Resolve current professional (if user is a professional)
-    let currentProfId: string | null = null;
+    // Restrict professionals to their own clients
     if (isProfessional && !isAdmin && !isReceptionist) {
       const { data: prof } = await supabaseService
         .from('professionals').select('id').eq('user_id', userId).maybeSingle();
-      currentProfId = prof?.id ?? null;
+      const currentProfId = prof?.id ?? null;
       if (!currentProfId) {
         return new Response(JSON.stringify({ success: false, error: 'Profissional não vinculado.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      // Force professional_id to be the caller
       professional_id = currentProfId;
 
-      // Validate: phone/client must belong to a client assigned to this professional
-      let q = supabaseService.from('clients').select('id, phone, assigned_professional_id').eq('assigned_professional_id', currentProfId).limit(50);
-      if (client_id) q = q.eq('id', client_id);
-      const { data: clientsRows } = await q;
-      const phoneMatches = (clientsRows ?? []).some((c: any) => normalizePhone(c.phone || '') === cleanPhone);
-      if (!phoneMatches) {
-        return new Response(JSON.stringify({ success: false, error: 'Você só pode enviar mensagens para clientes vinculados a você.' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!test) {
+        const cleanIncoming = normalizeE164(phone).replace(/\D/g, '');
+        let q = supabaseService.from('clients').select('id, phone').eq('assigned_professional_id', currentProfId).limit(100);
+        if (client_id) q = q.eq('id', client_id);
+        const { data: clientsRows } = await q;
+        const ok = (clientsRows ?? []).some((c: any) => normalizeE164(c.phone || '').replace(/\D/g, '') === cleanIncoming);
+        if (!ok) {
+          return new Response(JSON.stringify({ success: false, error: 'Você só pode enviar para clientes vinculados a você.' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
       }
     }
 
-    // Determine sender instance/number
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const defaultInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
-    if (!evolutionApiUrl || !evolutionApiKey) throw new Error('Evolution API not configured');
-
-    let instance = body.instanceName || defaultInstance;
+    // Resolve "From" WhatsApp number
+    let from: string | null = null;
     if (professional_id) {
       const { data: prof } = await supabaseService
         .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
-      if (prof?.whatsapp_from_number && String(prof.whatsapp_from_number).trim().length > 0) {
-        instance = String(prof.whatsapp_from_number).trim();
-      }
+      const v = (prof?.whatsapp_from_number || '').trim();
+      if (v) from = v;
     }
-
-    const response = await fetch(`${evolutionApiUrl}/message/sendText/${encodeURIComponent(instance)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
-      body: JSON.stringify({ number: cleanPhone, text: message }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Evolution API error: ${errorText}`);
+    if (!from) {
+      const { data: bs } = await supabaseService
+        .from('business_settings').select('twilio_from_number').limit(1).maybeSingle();
+      const v = (bs?.twilio_from_number || '').trim();
+      if (v) from = v;
     }
+    if (!from) throw new Error('Número remetente do WhatsApp não configurado. Defina em Configurações → WhatsApp.');
 
-    const result = await response.json();
-    return new Response(JSON.stringify({ success: true, data: result, instance }),
+    const result = await sendWhatsappViaTwilio({ from, to: phone, body: message });
+    return new Response(JSON.stringify({ success: true, data: result, from }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('WhatsApp send error:', error);
+    console.error('whatsapp-send error:', error);
     return new Response(JSON.stringify({ success: false, error: errorMessage }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }

@@ -1,139 +1,81 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, RefreshCw, QrCode, Smartphone, Copy, Check, ShieldCheck, KeyRound } from 'lucide-react';
-import { useWhatsapp } from '@/hooks/useWhatsapp';
-import { useProfessionals } from '@/hooks/useProfessionals';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { toast } from 'sonner';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, Send, ShieldCheck, ExternalLink } from 'lucide-react';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function WhatsappSettings() {
-  const { 
-    isLoading, 
-    connectionStatus, 
-    checkConnection, 
-    qrCode, 
-    pairingCode, 
-    isLoadingQR, 
-    getQRCode,
-    clearQRCode 
-  } = useWhatsapp();
   const { professionals } = useProfessionals();
-  
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [selectedProfId, setSelectedProfId] = useState<string>('clinic');
-  const [testKey, setTestKey] = useState('');
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<null | {
-    ok: boolean; stage?: string; status?: number; message?: string; error?: string;
-    formatHints?: string[]; instances_count?: number; instance_name?: string;
-    instance_exists?: boolean; evolution_response?: string;
-  }>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const qrExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { settings, updateSettings } = useBusinessSettings();
 
-  const profId = selectedProfId === 'clinic' ? undefined : selectedProfId;
+  const [fromNumber, setFromNumber] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<null | { ok: boolean; message?: string }>(null);
+
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('Teste do AgendaLume ✅ — se você recebeu, a integração WhatsApp está funcionando.');
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    checkConnection(profId);
-  }, [checkConnection, profId]);
+    if (settings?.twilio_from_number != null) setFromNumber(settings.twilio_from_number || '');
+  }, [settings?.twilio_from_number]);
 
-  useEffect(() => {
-    if (showQRCode && qrCode && !connectionStatus?.connected) {
-      pollingRef.current = setInterval(async () => {
-        const status = await checkConnection(profId);
-        if (status?.connected) {
-          setShowQRCode(false);
-          clearQRCode();
-          toast.success('WhatsApp conectado com sucesso!');
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          if (qrExpiryRef.current) clearTimeout(qrExpiryRef.current);
-        }
-      }, 3000);
-
-      qrExpiryRef.current = setTimeout(() => {
-        clearQRCode();
-        toast.info('QR Code expirou. Clique para gerar um novo.');
-      }, 60000);
-
-      return () => {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        if (qrExpiryRef.current) clearTimeout(qrExpiryRef.current);
-      };
-    }
-  }, [showQRCode, qrCode, connectionStatus?.connected, checkConnection, clearQRCode, profId]);
-
-  useEffect(() => {
-    if (connectionStatus?.connected && showQRCode) {
-      setShowQRCode(false);
-      clearQRCode();
-    }
-  }, [connectionStatus?.connected, showQRCode, clearQRCode]);
-
-  const handleConnectWhatsApp = async () => {
-    setShowQRCode(true);
-    await getQRCode(profId);
-  };
-
-  const handleRefreshQRCode = async () => {
-    await getQRCode(profId);
-  };
-
-  const handleCopyPairingCode = () => {
-    if (pairingCode) {
-      navigator.clipboard.writeText(pairingCode);
-      setCopied(true);
-      toast.success('Código copiado!');
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const runConnectionTest = async (customKey?: string) => {
-    setIsTesting(true);
-    setTestResult(null);
+  const handleSaveFrom = async () => {
+    setIsSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-test-connection', {
-        body: customKey ? { api_key: customKey } : {},
+      await updateSettings.mutateAsync({ twilio_from_number: fromNumber.trim() || null } as any);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    setIsVerifying(true);
+    setVerifyResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-check-connection', {
+        body: { provider: 'twilio' },
       });
-      if (error) {
-        setTestResult({ ok: false, stage: 'invoke', error: error.message });
-        toast.error('Falha ao testar: ' + error.message);
-        return;
-      }
-      setTestResult(data);
-      if (data?.ok) toast.success(data.message || 'Conexão validada!');
-      else toast.error(data?.error || 'Falha na validação');
+      if (error) throw error;
+      const ok = data?.connected === true || data?.outcome === 'verified' || data?.outcome === 'skipped';
+      setVerifyResult({ ok, message: data?.message || data?.error || (ok ? 'Conexão Twilio validada' : 'Falha na validação') });
+      ok ? toast.success('Twilio conectado') : toast.error(data?.error || 'Falha ao validar Twilio');
     } catch (e: any) {
-      setTestResult({ ok: false, stage: 'invoke', error: e.message });
+      setVerifyResult({ ok: false, message: e.message });
       toast.error('Erro: ' + e.message);
     } finally {
-      setIsTesting(false);
+      setIsVerifying(false);
     }
   };
 
-  const validateKeyFormat = (key: string): string[] => {
-    const k = key.trim();
-    const issues: string[] = [];
-    if (k.length > 0 && k.length < 16) issues.push('Chave curta demais (esperado ≥ 16 caracteres).');
-    if (/\s/.test(k)) issues.push('Remova espaços da chave.');
-    if (/^Bearer/i.test(k)) issues.push('Não inclua o prefixo "Bearer".');
-    if (/^['"].*['"]$/.test(k)) issues.push('Não inclua aspas em volta da chave.');
-    return issues;
+  const handleSendTest = async () => {
+    if (!testPhone.trim()) { toast.error('Informe um número para teste'); return; }
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-send', {
+        body: { phone: testPhone.trim(), message: testMessage, test: true },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha no envio');
+      toast.success('Mensagem de teste enviada!');
+    } catch (e: any) {
+      toast.error('Erro ao enviar: ' + e.message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const getStatusBadge = () => {
-    if (isLoading) return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Verificando...</Badge>;
-    if (!connectionStatus?.configured) return <Badge variant="outline">Não configurado</Badge>;
-    if (connectionStatus?.connected) return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Conectado</Badge>;
-    return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Desconectado</Badge>;
-  };
+  const hasFrom = (settings?.twilio_from_number || '').trim().length > 0;
 
   return (
     <Card>
@@ -144,232 +86,120 @@ export function WhatsappSettings() {
               <MessageSquare className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <CardTitle>WhatsApp</CardTitle>
+              <CardTitle>WhatsApp (via Twilio)</CardTitle>
               <CardDescription>
-                Conecte o WhatsApp da clínica ou de cada profissional via QR Code
+                Envio automático de lembretes, confirmações, pós-atendimento e aniversários pelo seu número WhatsApp Business.
               </CardDescription>
             </div>
           </div>
-          {getStatusBadge()}
+          {hasFrom
+            ? <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Configurado</Badge>
+            : <Badge variant="outline">Falta configurar remetente</Badge>}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+
+      <CardContent className="space-y-5">
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Como funciona</AlertTitle>
+          <AlertDescription className="text-xs space-y-1">
+            <p>1. Sua conta Twilio já está conectada ao app (conector oficial Lovable).</p>
+            <p>2. Aprove um número WhatsApp Business no console da Twilio e cole abaixo no formato <code>+5511999999999</code>.</p>
+            <p>3. Cada profissional pode ter seu próprio número (editar no cadastro do profissional). Sem isso, usa o número padrão da clínica.</p>
+            <p>4. O sistema dispara as mensagens automaticamente respeitando o horário configurado nos templates, sem repetir.</p>
+            <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline text-primary">
+              Abrir console Twilio WhatsApp <ExternalLink className="h-3 w-3" />
+            </a>
+          </AlertDescription>
+        </Alert>
+
         <div className="space-y-2">
-          <Label className="text-xs">Conexão</Label>
-          <Select value={selectedProfId} onValueChange={(v) => { setSelectedProfId(v); setShowQRCode(false); clearQRCode(); }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="clinic">Clínica (número padrão)</SelectItem>
-              {professionals.map(p => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}{(p as any).whatsapp_from_number ? ` — ${(p as any).whatsapp_from_number}` : ' (sem número cadastrado)'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="twilio-from">Número remetente padrão (WhatsApp Business)</Label>
+          <div className="flex gap-2">
+            <Input
+              id="twilio-from"
+              placeholder="+5511999999999"
+              value={fromNumber}
+              onChange={(e) => setFromNumber(e.target.value)}
+              autoComplete="off"
+            />
+            <Button onClick={handleSaveFrom} disabled={isSaving || fromNumber === (settings?.twilio_from_number || '')}>
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Salvar
+            </Button>
+          </div>
           <p className="text-[11px] text-muted-foreground">
-            Cada profissional usa o número definido em seu cadastro como instância. Mensagens automáticas de cada profissional são enviadas pelo seu próprio WhatsApp conectado aqui.
+            Formato internacional, com <code>+</code> e DDI (Brasil = 55). Esse será o remetente quando o profissional não tiver número próprio.
           </p>
         </div>
 
-        {connectionStatus?.configured && !connectionStatus?.connected && !showQRCode && (
-          <>
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>WhatsApp desconectado</AlertTitle>
-              <AlertDescription>
-                Esta instância não está conectada. Conecte para enviar mensagens automáticas.
-                {connectionStatus.instance && (
-                  <p className="text-xs mt-1 opacity-80">Instância: {connectionStatus.instance}</p>
-                )}
-              </AlertDescription>
-            </Alert>
-
-            <div className="flex flex-col items-center gap-4 py-4">
-              <Button
-                size="lg"
-                className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                onClick={handleConnectWhatsApp}
-                disabled={isLoadingQR}
-              >
-                {isLoadingQR ? <Loader2 className="h-5 w-5 animate-spin" /> : <QrCode className="h-5 w-5" />}
-                Conectar WhatsApp
-              </Button>
-            </div>
-          </>
-        )}
-
-        {connectionStatus?.configured && showQRCode && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Smartphone className="h-5 w-5" /> Conectar WhatsApp
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => { setShowQRCode(false); clearQRCode(); }}>Cancelar</Button>
-            </div>
-
-            <div className="flex flex-col items-center gap-4 p-6 border rounded-lg bg-muted/30">
-              {isLoadingQR ? (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <Loader2 className="h-12 w-12 animate-spin text-green-500" />
-                  <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
-                </div>
-              ) : qrCode ? (
-                <>
-                  <div className="bg-white p-4 rounded-lg shadow-lg">
-                    <img
-                      src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-                      alt="WhatsApp QR Code"
-                      className="w-64 h-64"
-                    />
-                  </div>
-
-                  <div className="text-center space-y-2">
-                    <p className="font-medium">Escaneie o QR Code com o WhatsApp do {selectedProfId === 'clinic' ? 'número da clínica' : 'profissional'}</p>
-                    <ol className="text-sm text-muted-foreground space-y-1 text-left">
-                      <li>1. Abra o WhatsApp no celular</li>
-                      <li>2. Configurações → Dispositivos Conectados</li>
-                      <li>3. Conectar um dispositivo</li>
-                      <li>4. Aponte para este QR Code</li>
-                    </ol>
-                  </div>
-
-                  {pairingCode && (
-                    <div className="w-full p-3 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1 text-center">Ou use o código de pareamento:</p>
-                      <div className="flex items-center justify-center gap-2">
-                        <code className="text-lg font-mono font-bold tracking-wider">{pairingCode}</code>
-                        <Button variant="ghost" size="sm" onClick={handleCopyPairingCode}>
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <Button variant="outline" size="sm" onClick={handleRefreshQRCode} disabled={isLoadingQR}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingQR ? 'animate-spin' : ''}`} />
-                    Atualizar QR Code
-                  </Button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <AlertCircle className="h-12 w-12 text-destructive" />
-                  <p className="text-sm text-muted-foreground">Erro ao gerar QR Code</p>
-                  <Button variant="outline" size="sm" onClick={handleRefreshQRCode} disabled={isLoadingQR}>Tentar novamente</Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {connectionStatus?.configured && connectionStatus?.connected && (
-          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-            <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">WhatsApp conectado e funcionando</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">Instância: {connectionStatus.instance}</p>
-          </div>
-        )}
-
         <Separator />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="font-medium">Verificar Conexão</h4>
-            <p className="text-sm text-muted-foreground">Atualizar o status desta instância</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-sm">Verificar conexão Twilio</h4>
+              <p className="text-xs text-muted-foreground">Confirma se as credenciais Twilio estão ativas.</p>
+            </div>
+            <Button variant="outline" onClick={handleVerify} disabled={isVerifying}>
+              {isVerifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+              Verificar
+            </Button>
           </div>
-          <Button variant="outline" onClick={() => checkConnection(profId)} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Verificar
-          </Button>
+          {verifyResult && (
+            <Alert variant={verifyResult.ok ? 'default' : 'destructive'}>
+              {verifyResult.ok ? <CheckCircle className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
+              <AlertTitle>{verifyResult.ok ? 'Conexão OK' : 'Falha'}</AlertTitle>
+              <AlertDescription className="text-xs">{verifyResult.message}</AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <Separator />
 
-        <div className="space-y-3">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <h4 className="font-medium flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-green-600" />
-                Testar conexão com Evolution API
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                Valida a <strong>AUTHENTICATION_API_KEY</strong> global salva no secret e confirma se o QR Code poderá ser gerado.
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => runConnectionTest()} disabled={isTesting}>
-              {isTesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-              Testar conexão
+        <div className="space-y-2">
+          <h4 className="font-medium text-sm">Enviar mensagem de teste</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+            <Input
+              placeholder="+5511988887777"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              autoComplete="off"
+            />
+            <Button onClick={handleSendTest} disabled={isSending || !hasFrom}>
+              {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Enviar teste
             </Button>
           </div>
-
-          <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
-            <Label className="text-xs flex items-center gap-1">
-              <KeyRound className="h-3 w-3" /> Validar uma chave antes de salvar
-            </Label>
-            <p className="text-[11px] text-muted-foreground">
-              Cole aqui a chave que você pretende salvar como <code>EVOLUTION_API_KEY</code>. Ela será testada diretamente no Evolution API e <strong>não será gravada</strong> no banco.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="Cole a AUTHENTICATION_API_KEY do .env do Evolution"
-                value={testKey}
-                onChange={(e) => setTestKey(e.target.value)}
-                autoComplete="off"
-              />
-              <Button
-                variant="secondary"
-                onClick={() => runConnectionTest(testKey.trim())}
-                disabled={isTesting || !testKey.trim() || validateKeyFormat(testKey).length > 0}
-              >
-                {isTesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Validar
-              </Button>
-            </div>
-            {testKey && validateKeyFormat(testKey).length > 0 && (
-              <ul className="text-[11px] text-destructive list-disc pl-4">
-                {validateKeyFormat(testKey).map((m, i) => <li key={i}>{m}</li>)}
-              </ul>
-            )}
-          </div>
-
-          {testResult && (
-            <Alert variant={testResult.ok ? 'default' : 'destructive'}>
-              {testResult.ok
-                ? <CheckCircle className="h-4 w-4 text-green-600" />
-                : <AlertCircle className="h-4 w-4" />}
-              <AlertTitle>
-                {testResult.ok ? 'Conexão validada' : `Falha (${testResult.stage || 'erro'}${testResult.status ? ` · HTTP ${testResult.status}` : ''})`}
-              </AlertTitle>
-              <AlertDescription className="space-y-1 text-xs">
-                <p>{testResult.message || testResult.error}</p>
-                {testResult.ok && (
-                  <p className="opacity-80">
-                    Instâncias visíveis: <strong>{testResult.instances_count ?? 0}</strong>
-                    {testResult.instance_name && <> · Instância padrão <code>{testResult.instance_name}</code> {testResult.instance_exists ? '✓ existe' : '(será criada na 1ª conexão)'}</>}
-                  </p>
-                )}
-                {testResult.formatHints && testResult.formatHints.length > 0 && (
-                  <ul className="list-disc pl-4 opacity-80">
-                    {testResult.formatHints.map((h, i) => <li key={i}>{h}</li>)}
-                  </ul>
-                )}
-                {testResult.evolution_response && (
-                  <details className="opacity-70">
-                    <summary className="cursor-pointer">Resposta bruta do Evolution</summary>
-                    <pre className="text-[10px] whitespace-pre-wrap break-all">{testResult.evolution_response}</pre>
-                  </details>
-                )}
-                {testResult.stage === 'global_auth' && (
-                  <p className="font-medium">
-                    💡 Acesse o <code>.env</code> do seu servidor Evolution e copie o valor exato de <code>AUTHENTICATION_API_KEY</code>. Depois atualize o secret <code>EVOLUTION_API_KEY</code>.
-                  </p>
-                )}
-              </AlertDescription>
-            </Alert>
+          <Input value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
+          {!hasFrom && (
+            <p className="text-[11px] text-destructive">Configure o número remetente antes de testar.</p>
           )}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <h4 className="font-medium text-sm">Números por profissional</h4>
+          <p className="text-xs text-muted-foreground">
+            Edite o número WhatsApp de cada profissional no cadastro dele (Cadastros → Profissionais → Editar).
+          </p>
+          <div className="rounded-lg border divide-y">
+            {professionals.length === 0 && (
+              <div className="p-3 text-xs text-muted-foreground">Nenhum profissional cadastrado.</div>
+            )}
+            {professionals.map((p) => {
+              const num = ((p as any).whatsapp_from_number || '').trim();
+              return (
+                <div key={p.id} className="flex items-center justify-between p-3">
+                  <div className="text-sm font-medium">{p.name}</div>
+                  {num
+                    ? <Badge variant="secondary" className="font-mono text-[11px]">{num}</Badge>
+                    : <Badge variant="outline" className="text-[11px]">usa número padrão</Badge>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>

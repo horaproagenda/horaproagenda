@@ -24,7 +24,7 @@ import Financeiro from "./pages/Financeiro";
 import Produtos from "./pages/Produtos";
 import Relatorios from "./pages/Relatorios";
 import Lembretes from "./pages/Lembretes";
-import MensagensWhatsApp from "./pages/MensagensWhatsApp";
+
 import Documentos from "./pages/Documentos";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";

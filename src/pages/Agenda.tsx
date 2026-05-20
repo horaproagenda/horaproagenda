@@ -115,7 +115,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
-import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
+
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';

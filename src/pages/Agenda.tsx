@@ -115,7 +115,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
-import { useAppointmentReminders } from '@/hooks/useAppointmentReminders';
+
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
 import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
@@ -251,8 +251,8 @@ const Agenda = () => {
   // Auto-complete appointments when setting is enabled
   useAutoCompleteAppointments();
   
-  // Enable WhatsApp reminders when automation is enabled
-  useAppointmentReminders();
+  // WhatsApp reminders are dispatched automatically by the server-side cron
+  // (see edge function send-appointment-reminders, running every 5 minutes).
 
   // Get unique client IDs from appointments and fetch their credits
   const clientIds = useMemo(() => {

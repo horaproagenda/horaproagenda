@@ -6,20 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function cleanPhoneBR(raw: string): string {
-  let p = (raw || '').replace(/\D/g, '');
-  if (p.startsWith('0')) p = p.substring(1);
-  if (!p.startsWith('55')) p = '55' + p;
-  return p;
-}
+const TWILIO_GATEWAY = 'https://connector-gateway.lovable.dev/twilio';
 
+function normalizeE164(p: string): string {
+  let digits = (p || '').replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = digits.substring(1);
+  if (!digits.startsWith('55') && digits.length <= 11) digits = '55' + digits;
+  return '+' + digits;
+}
 function fmtDate(d: Date) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 }
 function fmtTime(d: Date) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
-
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
   return tpl
     .replace(/\{\{\s*cliente\s*\}\}/g, vars.cliente || '')
@@ -33,20 +33,26 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
     .replace(/\{horario\}/g, vars.horario || '');
 }
 
-async function sendViaEvolution(baseUrl: string, key: string, instance: string, phone: string, message: string) {
-  const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
+async function sendWA(lovableKey: string, twilioKey: string, from: string, to: string, message: string) {
+  const fromWa = from.startsWith('whatsapp:') ? from : `whatsapp:${normalizeE164(from)}`;
+  const toWa = `whatsapp:${normalizeE164(to)}`;
+  const r = await fetch(`${TWILIO_GATEWAY}/Messages.json`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: key },
-    body: JSON.stringify({ number: cleanPhoneBR(phone), text: message }),
+    headers: {
+      'Authorization': `Bearer ${lovableKey}`,
+      'X-Connection-Api-Key': twilioKey,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ From: fromWa, To: toWa, Body: message }),
   });
-  if (!r.ok) throw new Error(`Evolution ${r.status}: ${await r.text()}`);
-  return await r.json();
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Twilio ${r.status}: ${JSON.stringify(data)}`);
+  return data;
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  // Auth: allow either (a) cron with shared secret OR (b) authenticated admin/receptionist user
   const cronSecret = Deno.env.get('CRON_SECRET');
   const providedCron = req.headers.get('x-cron-secret');
   const authHeader = req.headers.get('Authorization');
@@ -65,14 +71,9 @@ serve(async (req) => {
       const { data: claimsData } = await userClient.auth.getClaims(token);
       const userId = claimsData?.claims?.sub;
       if (userId) {
-        const { data: roles } = await userClient
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId);
+        const { data: roles } = await userClient.from('user_roles').select('role').eq('user_id', userId);
         const roleNames = (roles || []).map((r: any) => r.role);
-        if (roleNames.includes('admin') || roleNames.includes('receptionist')) {
-          authorized = true;
-        }
+        if (roleNames.includes('admin') || roleNames.includes('receptionist')) authorized = true;
       }
     } catch (_) { /* fall through */ }
   }
@@ -87,59 +88,51 @@ serve(async (req) => {
   const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
-    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
+    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders, twilio_from_number').limit(1).maybeSingle();
     if (!settings?.automation_whatsapp_reminders) {
       return new Response(JSON.stringify({ success: true, message: 'Envios desativados', summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const evoUrlRaw = (Deno.env.get('EVOLUTION_API_URL') || '').trim();
-    const evoKey = Deno.env.get('EVOLUTION_API_KEY');
-    const defaultInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
-    if (!evoUrlRaw || !evoKey) throw new Error('Evolution não configurado');
-    const evoBase = new URL(evoUrlRaw).origin;
+    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+    const twilioKey = Deno.env.get('TWILIO_API_KEY');
+    if (!lovableKey || !twilioKey) throw new Error('Twilio (conector) não configurado: LOVABLE_API_KEY/TWILIO_API_KEY ausente');
 
-    // Load active templates
-    const { data: templatesAll } = await supabase
-      .from('whatsapp_templates')
-      .select('*')
-      .eq('is_active', true);
+    const globalFrom = (settings?.twilio_from_number || '').trim();
+
+    const fromFor = async (professional_id: string | null): Promise<string | null> => {
+      if (professional_id) {
+        const { data } = await supabase.from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
+        const v = (data?.whatsapp_from_number || '').trim();
+        if (v) return v;
+      }
+      return globalFrom || null;
+    };
+
+    const { data: templatesAll } = await supabase.from('whatsapp_templates').select('*').eq('is_active', true);
     const templates = templatesAll ?? [];
-
     const tplByType = (type: string) => templates.filter((t: any) => t.type === type);
-
-    // Helper to pick the right template for a professional
     const pickTpl = (type: string, professional_id: string | null) => {
       const list = tplByType(type);
       const own = list.find((t: any) => t.professional_id === professional_id);
       return own || list.find((t: any) => t.professional_id == null) || null;
     };
 
-    const instanceFor = async (professional_id: string | null): Promise<string> => {
-      if (!professional_id) return defaultInstance;
-      const { data } = await supabase.from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
-      const v = (data?.whatsapp_from_number || '').trim();
-      return v.length > 0 ? v : defaultInstance;
-    };
-
     const now = Date.now();
 
-    // ============ REMINDERS (before appointment) ============
+    // ============ REMINDERS ============
     const reminderTpls = tplByType('reminder');
     if (reminderTpls.length > 0) {
       const allHours = reminderTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (allHours.length > 0) {
-        const minH = Math.min(...allHours);
-        const maxH = Math.max(...allHours);
+        const minH = Math.min(...allHours); const maxH = Math.max(...allHours);
         const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
-
         const { data: appts } = await supabase
           .from('appointments')
           .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
-          .gte('start_time', fromIso)
-          .lte('start_time', toIso)
+          .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
         for (const apt of appts || []) {
@@ -164,35 +157,32 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const inst = await instanceFor((apt as any).professional_id ?? null);
-            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            const from = await fromFor((apt as any).professional_id ?? null);
+            if (!from) throw new Error('Número remetente não configurado');
+            await sendWA(lovableKey, twilioKey, from, phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
             });
             summary.sent++; summary.byType.reminder++;
           } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            summary.errors.push(`reminder:${apt.id}@${h}h: ${msg}`);
+            summary.errors.push(`reminder:${apt.id}@${h}h: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
       }
     }
 
-    // ============ CONFIRMATION (before appointment, separate from reminder) ============
+    // ============ CONFIRMATION ============
     const confirmTpls = tplByType('confirmation');
     if (confirmTpls.length > 0) {
       const allHours = confirmTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (allHours.length > 0) {
-        const minH = Math.min(...allHours);
-        const maxH = Math.max(...allHours);
+        const minH = Math.min(...allHours); const maxH = Math.max(...allHours);
         const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
-
         const { data: appts } = await supabase
           .from('appointments')
           .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
-          .gte('start_time', fromIso)
-          .lte('start_time', toIso)
+          .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
         for (const apt of appts || []) {
@@ -217,8 +207,9 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const inst = await instanceFor((apt as any).professional_id ?? null);
-            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            const from = await fromFor((apt as any).professional_id ?? null);
+            if (!from) throw new Error('Número remetente não configurado');
+            await sendWA(lovableKey, twilioKey, from, phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
             });
@@ -230,23 +221,18 @@ serve(async (req) => {
       }
     }
 
-
-    // ============ FOLLOW-UP (after appointment) ============
+    // ============ FOLLOW-UP ============
     const followTpls = tplByType('follow_up');
     if (followTpls.length > 0) {
       const offsets = followTpls.map((t: any) => Number(t.send_offset_hours)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (offsets.length > 0) {
-        const minO = Math.min(...offsets);
-        const maxO = Math.max(...offsets);
+        const minO = Math.min(...offsets); const maxO = Math.max(...offsets);
         const fromIso = new Date(now - (maxO + 1) * 3600_000).toISOString();
         const toIso = new Date(now - (minO - 1) * 3600_000).toISOString();
-
         const { data: appts } = await supabase
           .from('appointments')
           .select('id, end_time, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
-          .gte('end_time', fromIso)
-          .lte('end_time', toIso)
-          .eq('status', 'completed');
+          .gte('end_time', fromIso).lte('end_time', toIso).eq('status', 'completed');
 
         for (const apt of appts || []) {
           const phone = (apt as any).client?.phone;
@@ -270,8 +256,9 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const inst = await instanceFor((apt as any).professional_id ?? null);
-            await sendViaEvolution(evoBase, evoKey, inst, phone, message);
+            const from = await fromFor((apt as any).professional_id ?? null);
+            if (!from) throw new Error('Número remetente não configurado');
+            await sendWA(lovableKey, twilioKey, from, phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: -off, provider: 'whatsapp_followup', channel: 'whatsapp', status: 'sent',
             });
@@ -291,33 +278,28 @@ serve(async (req) => {
       const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
       const dd = String(today.getUTCDate()).padStart(2, '0');
 
-      // Pull all clients with birthday today
       const { data: clients } = await supabase
-        .from('clients')
-        .select('id, name, phone, birthdate, assigned_professional_id')
-        .not('birthdate', 'is', null);
+        .from('clients').select('id, name, phone, birthdate, assigned_professional_id').not('birthdate', 'is', null);
 
       for (const c of clients || []) {
         if (!c.phone || !c.birthdate) continue;
         const bd = String(c.birthdate);
         if (bd.substring(5, 7) !== mm || bd.substring(8, 10) !== dd) continue;
-
         const tpl = pickTpl('birthday', (c as any).assigned_professional_id ?? null);
         if (!tpl) continue;
         const sendHour = Number(tpl.send_offset_hours ?? 9);
         if (nowHourLocal !== sendHour) continue;
 
-        // Dedup: use appointment_reminder_log with appointment_id null is not allowed; use a key trick
         const dedupKey = `bday-${c.id}-${today.getUTCFullYear()}`;
         const { data: existing } = await supabase
-          .from('appointment_reminder_log')
-          .select('id').eq('provider', 'whatsapp_birthday').eq('error', dedupKey).maybeSingle();
+          .from('appointment_reminder_log').select('id').eq('provider', 'whatsapp_birthday').eq('error', dedupKey).maybeSingle();
         if (existing) continue;
 
         const message = renderTemplate(tpl.message, { cliente: c.name || 'cliente', data: '', horario: '', servico: '', profissional: '' });
         try {
-          const inst = await instanceFor((c as any).assigned_professional_id ?? null);
-          await sendViaEvolution(evoBase, evoKey, inst, c.phone, message);
+          const from = await fromFor((c as any).assigned_professional_id ?? null);
+          if (!from) throw new Error('Número remetente não configurado');
+          await sendWA(lovableKey, twilioKey, from, c.phone, message);
           await supabase.from('appointment_reminder_log').insert({
             appointment_id: null, hours_before: sendHour, provider: 'whatsapp_birthday', channel: 'whatsapp', status: 'sent', error: dedupKey,
           });

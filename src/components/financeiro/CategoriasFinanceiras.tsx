@@ -96,7 +96,7 @@ export function CategoriasFinanceiras() {
 
   // Edit entry state
   const [editEntryDialogOpen, setEditEntryDialogOpen] = useState(false);
-  const [editScope, setEditScope] = useState<'current' | 'all' | null>(null);
+  const [editScope, setEditScope] = useState<'current' | 'all' | 'future' | 'following' | null>(null);
   const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
   const [editingGroup, setEditingGroup] = useState<GroupedEntry | null>(null);
   const [editEntryForm, setEditEntryForm] = useState({

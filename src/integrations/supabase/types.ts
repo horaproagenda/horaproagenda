@@ -3758,6 +3758,34 @@ export type Database = {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
       }
+      create_treatment_photo: {
+        Args: {
+          _appointment_id?: string
+          _client_id: string
+          _file_path?: string
+          _file_url?: string
+          _notes?: string
+          _stage?: Database["public"]["Enums"]["treatment_stage"]
+          _taken_at?: string
+        }
+        Returns: {
+          appointment_id: string | null
+          client_id: string
+          created_at: string
+          file_path: string
+          file_url: string | null
+          id: string
+          notes: string | null
+          stage: Database["public"]["Enums"]["treatment_stage"]
+          taken_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "treatment_photos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_document_fill_link_by_token: {
         Args: { p_token: string }
         Returns: Json

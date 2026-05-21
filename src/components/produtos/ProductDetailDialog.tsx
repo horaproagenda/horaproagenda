@@ -776,20 +776,40 @@ export function ProductDetailDialog({
                           Término do Uso
                         </Label>
                         {canEdit ? (
-                          <SafeDateInput
-                            value={product.finished_at || ''}
-                            onCommit={(v) => {
-                              // Quando a data final do uso é informada, o produto acabou
-                              // -> zera o estoque atual automaticamente.
-                              // Quando é limpa, mantém o estoque como está.
-                              if (v) {
-                                onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
-                              } else {
-                                onUpdateProduct({ id: product.id, finished_at: null as any });
-                              }
-                            }}
-                            className="h-9"
-                          />
+                           <SafeDateInput
+                             value={product.finished_at || ''}
+                             onCommit={async (v) => {
+                               if (v) {
+                                 // 1) Snapshot do ciclo atual na compra ativa
+                                 const activePurchase = productPurchases.find(
+                                   p => p.started_using_at && !p.finished_at
+                                 );
+                                 if (activePurchase && onUpdatePurchase) {
+                                   await onUpdatePurchase({ id: activePurchase.id, finished_at: v });
+                                 }
+                                 // 2) Promove a próxima compra (se existir) como novo ciclo
+                                 const next = productPurchases.find(
+                                   p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
+                                 );
+                                 const today = new Date().toISOString().slice(0, 10);
+                                 if (next && onUpdatePurchase) {
+                                   await onUpdatePurchase({ id: next.id, started_using_at: today });
+                                   await onUpdateProduct({
+                                     id: product.id,
+                                     finished_at: null as any,
+                                     started_using_at: today,
+                                     current_stock: Number(next.quantity) || 0,
+                                   });
+                                 } else {
+                                   await onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
+                                 }
+                               } else {
+                                 await onUpdateProduct({ id: product.id, finished_at: null as any });
+                               }
+                             }}
+                             className="h-9"
+                           />
+
 
                         ) : (
                           <span className="text-sm">

@@ -10,21 +10,41 @@ export function useCurrentProfessional() {
     queryKey: ['current-professional', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      
-      const { data, error } = await supabase
+
+      // 1) Vínculo direto pelo user_id
+      const { data: direct, error: directError } = await supabase
         .from('professionals')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching professional:', error);
-        return null;
+
+      if (!directError && direct?.id) {
+        return direct.id;
       }
-      
-      return data?.id || null;
+
+      // 2) Fallback resiliente: identificar profissional pelo e-mail do perfil/usuário
+      try {
+        const { data: linkedId } = await supabase.rpc('get_professional_id_by_user_or_email', {
+          _user_id: user.id,
+        });
+        if (linkedId) {
+          // Tenta vincular para próximas consultas
+          try {
+            await supabase.rpc('link_current_user_professional');
+          } catch {
+            // tudo bem: o usuário ainda consegue operar pelo fallback
+          }
+
+          return linkedId as string;
+        }
+      } catch (rpcError) {
+        console.warn('Fallback de profissional indisponível:', rpcError);
+      }
+
+      return null;
     },
     enabled: !!user?.id && isProfessional,
+    staleTime: 60_000,
   });
 
   return {

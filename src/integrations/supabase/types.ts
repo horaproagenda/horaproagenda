@@ -3742,6 +3742,10 @@ export type Database = {
         Args: { _package_id: string }
         Returns: boolean
       }
+      can_manage_package_appointment: {
+        Args: { _package_appointment_id: string }
+        Returns: boolean
+      }
       can_upload_client_storage_object: {
         Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
@@ -3757,6 +3761,10 @@ export type Database = {
       get_document_fill_link_by_token: {
         Args: { p_token: string }
         Returns: Json
+      }
+      get_professional_id_by_user_or_email: {
+        Args: { _user_id: string }
+        Returns: string
       }
       get_professional_id_for_user: {
         Args: { _user_id: string }
@@ -3780,6 +3788,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      link_current_user_professional: { Args: never; Returns: string }
       log_access: {
         Args: {
           p_action: string

@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('id', userId)
         .maybeSingle();
-      
+
       if (profileData) {
         setProfile(profileData as Profile);
       }
@@ -92,9 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
-      
+
       if (rolesData) {
         setRoles(rolesData.map(r => r.role as AppRole));
+      }
+
+      // Garante que o profissional logado fique vinculado ao seu registro mesmo se
+      // o cadastro tiver sido criado apenas com o e-mail. Funciona em qualquer
+      // dispositivo (mobile, tablet, desktop, iOS, Android).
+      try {
+        await supabase.rpc('link_current_user_professional');
+      } catch (linkError) {
+        console.warn('link_current_user_professional não disponível:', linkError);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -102,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
+
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

@@ -1,16 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Phone, Mail, Trash2, Edit, Camera, X } from 'lucide-react';
+import { Phone, Mail, Trash2, Edit, Camera, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClients } from '@/hooks/useClients';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,13 +34,25 @@ function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 }
 
+function safeParseInfo(raw: string | null | undefined): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
 export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { deleteClient } = useClients();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const canDelete = hasRole('admin');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = async () => {
@@ -47,78 +60,118 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
     navigate('/clientes');
   };
 
+  // Load avatar (signed URL) safely after mount
+  useEffect(() => {
+    let cancelled = false;
+    const parsed = safeParseInfo(client.complementary_info);
+    const path = typeof parsed.avatar_path === 'string' ? parsed.avatar_path : null;
+    if (!path) {
+      setAvatarUrl(null);
+      return;
+    }
+    supabase.storage
+      .from('client-photos')
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (!cancelled && data?.signedUrl) setAvatarUrl(data.signedUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setAvatarUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id, client.complementary_info]);
+
+  const refreshClient = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['client', client.id] });
+    queryClient.invalidateQueries({ queryKey: ['clients'] });
+  }, [queryClient, client.id]);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !onUpdate) return;
+    // Reset input value so picking the same file again still triggers onChange
+    e.target.value = '';
+    if (!file) return;
+
+    if (!user) {
+      toast.error('Sessão expirada. Faça login novamente para enviar fotos.');
+      return;
+    }
+
+    // Basic validations to avoid silent failures on mobile
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem (JPG, PNG, HEIC ou WebP).');
+      return;
+    }
+    const maxBytes = 15 * 1024 * 1024; // 15MB
+    if (file.size > maxBytes) {
+      toast.error('A foto é muito grande. Use uma imagem de até 15 MB.');
+      return;
+    }
 
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${client.id}/avatar.${ext}`;
-      
-      // Upload to storage
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const path = `${client.id}/avatar-${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('client-photos')
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
-      // Get signed URL
+      const parsed = safeParseInfo(client.complementary_info);
+      const nextInfo = { ...parsed, avatar_path: path };
+
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ complementary_info: JSON.stringify(nextInfo) })
+        .eq('id', client.id);
+
+      if (updateError) throw updateError;
+
       const { data: urlData } = await supabase.storage
         .from('client-photos')
-        .createSignedUrl(path, 31536000); // 1 year
+        .createSignedUrl(path, 3600);
+      if (urlData?.signedUrl) setAvatarUrl(urlData.signedUrl);
 
-      if (urlData?.signedUrl) {
-        await onUpdate({ notes: client.notes }); // trigger refresh
-        // Store the path in complementary_info or a field - we use a convention
-        await supabase.from('clients').update({ 
-          complementary_info: JSON.stringify({
-            ...(() => { try { return JSON.parse(client.complementary_info || '{}'); } catch { return {}; } })(),
-            avatar_path: path
-          })
-        }).eq('id', client.id);
-        toast.success('Foto atualizada!');
-        window.location.reload(); // Simple refresh to show new photo
-      }
+      refreshClient();
+      toast.success('Foto atualizada!');
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Erro ao enviar foto');
+      const message = error instanceof Error ? error.message : 'Tente novamente em alguns segundos.';
+      toast.error(`Não foi possível enviar a foto. ${message}`);
     } finally {
       setUploading(false);
     }
   };
 
   const handleRemovePhoto = async () => {
-    if (!onUpdate) return;
     try {
-      let parsed: any = {};
-      try { parsed = JSON.parse(client.complementary_info || '{}'); } catch {}
-      
-      if (parsed.avatar_path) {
-        await supabase.storage.from('client-photos').remove([parsed.avatar_path]);
+      const parsed = safeParseInfo(client.complementary_info);
+      const path = typeof parsed.avatar_path === 'string' ? parsed.avatar_path : null;
+
+      if (path) {
+        await supabase.storage.from('client-photos').remove([path]);
       }
       delete parsed.avatar_path;
-      await supabase.from('clients').update({ 
-        complementary_info: Object.keys(parsed).length > 0 ? JSON.stringify(parsed) : client.complementary_info?.includes('{') ? null : client.complementary_info
-      }).eq('id', client.id);
+      const nextValue = Object.keys(parsed).length > 0 ? JSON.stringify(parsed) : null;
+
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ complementary_info: nextValue })
+        .eq('id', client.id);
+      if (updateError) throw updateError;
+
+      setAvatarUrl(null);
+      refreshClient();
       toast.success('Foto removida!');
-      window.location.reload();
     } catch (error) {
+      console.error('Error removing photo:', error);
       toast.error('Erro ao remover foto');
     }
   };
-
-  // Try to get avatar URL from complementary_info
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  useState(() => {
-    try {
-      const parsed = JSON.parse(client.complementary_info || '{}');
-      if (parsed.avatar_path) {
-        supabase.storage.from('client-photos').createSignedUrl(parsed.avatar_path, 3600)
-          .then(({ data }) => { if (data?.signedUrl) setAvatarUrl(data.signedUrl); });
-      }
-    } catch {}
-  });
 
   return (
     <div className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card/80 backdrop-blur-sm transition-all duration-300">
@@ -130,20 +183,29 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
             {getInitials(client.name)}
           </AvatarFallback>
         </Avatar>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button 
-            variant="secondary" 
-            size="icon" 
-            className="h-6 w-6 rounded-full shadow-sm" 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
+        <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="h-6 w-6 rounded-full shadow-sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
-            <Camera className="h-3 w-3" />
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
           </Button>
         </div>
-        {avatarUrl && (
+        {avatarUrl && !uploading && (
           <Button
+            type="button"
             variant="destructive"
             size="icon"
             className="absolute -top-1 -right-1 h-4 w-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
@@ -153,12 +215,12 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
           </Button>
         )}
       </div>
-      
+
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h2 className="text-xl font-semibold text-foreground truncate">{client.name}</h2>
-          <Badge variant={client.is_active ? "default" : "secondary"} className="text-[10px] px-1.5 py-0 h-4">
+          <Badge variant={client.is_active ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 h-4">
             {client.is_active ? 'Ativo' : 'Inativo'}
           </Badge>
         </div>
@@ -174,7 +236,7 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
             </span>
           )}
           <span className="hidden sm:inline">
-            Cliente desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
+            Cliente desde {format(new Date(client.created_at), 'MMM/yy', { locale: ptBR })}
           </span>
         </div>
       </div>

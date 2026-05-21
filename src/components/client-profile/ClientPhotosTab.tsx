@@ -131,21 +131,11 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       setDeletingId(null);
     }
   };
-  const monthOptions = useMemo(() => getMonthOptions(), []);
-
   const filteredPhotos = useMemo(() => {
-    const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
-    const monthEnd = endOfMonth(monthStart);
-    
-    return photos.filter(p => {
-      try {
-        const date = parseISO(p.taken_at);
-        return isWithinInterval(date, { start: monthStart, end: monthEnd });
-      } catch {
-        return false;
-      }
-    });
-  }, [photos, selectedMonth]);
+    if (stageFilter === 'all') return photos;
+    return photos.filter(p => p.stage === stageFilter);
+  }, [photos, stageFilter]);
+
 
   const photosByStage = useMemo(() => {
     return filteredPhotos.reduce((acc, photo) => {

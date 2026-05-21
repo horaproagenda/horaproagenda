@@ -381,11 +381,23 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                     className="block mx-auto h-auto w-auto max-w-full"
                   />
                 ) : (
-                  <iframe
-                    src={previewSrc || ''}
-                    title={document.title || 'Documento'}
+                  <object
+                    data={previewSrc || ''}
+                    type="application/pdf"
                     className="h-[78vh] min-h-[520px] w-full rounded-sm border-0"
-                  />
+                    aria-label={document.title || 'Documento'}
+                  >
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Seu navegador bloqueou a visualização inline deste PDF.
+                      </p>
+                      <Button onClick={handleDownloadFile}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Baixar arquivo
+                      </Button>
+                    </div>
+                  </object>
                 )
               ) : (
                 <div className="text-center py-8">

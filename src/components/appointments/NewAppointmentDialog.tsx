@@ -921,7 +921,33 @@ Até breve! ✨`;
             // Pass the custom edited dates so they are used exactly as the user configured
             custom_dates: editableServiceDates,
             duration_minutes: duration,
+            // Aplicar desconto na série apenas se "aplicar em todos" estiver marcado
+            discount_amount: discountValue > 0 && discountApplyToAll ? discountValue : 0,
           });
+
+          // If discount applies to only the first appointment (not "all"), update it after
+          // creation. Since recurring runs in background, we defer with a small delay.
+          if (discountValue > 0 && !discountApplyToAll) {
+            setTimeout(async () => {
+              const firstStart = editableServiceDates[0].toISOString();
+              const { data: firstApt } = await supabase
+                .from('appointments')
+                .select('id')
+                .eq('client_id', selectedClient)
+                .eq('service_id', selectedService)
+                .eq('start_time', firstStart)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (firstApt?.id) {
+                await (supabase as any)
+                  .from('appointments')
+                  .update({ discount_amount: discountValue })
+                  .eq('id', firstApt.id);
+                queryClient.invalidateQueries({ queryKey: ['appointments'] });
+              }
+            }, 1500);
+          }
         } else {
           // Single appointment
           const appointmentResult = await createAppointment.mutateAsync({
@@ -935,6 +961,14 @@ Até breve! ✨`;
             payment_status: usingPaidServiceId ? 'paid' : 'pending',
           });
 
+          // Apply discount (if any) on the freshly created appointment
+          if (discountValue > 0 && appointmentResult?.id) {
+            await (supabase as any)
+              .from('appointments')
+              .update({ discount_amount: discountValue })
+              .eq('id', appointmentResult.id);
+          }
+
           // If using a paid service, mark it as used
           if (usingPaidServiceId) {
             await markServiceAsUsed.mutateAsync({
@@ -943,6 +977,7 @@ Até breve! ✨`;
             });
           }
         }
+
       }
 
       // Persist per-(professional, service) commission override so it

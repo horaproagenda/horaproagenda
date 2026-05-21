@@ -130,10 +130,7 @@ export function ProductDetailDialog({
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
 
-  // Daily consumption form state
-  const [consumptionDate, setConsumptionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [consumptionQuantity, setConsumptionQuantity] = useState(0);
-  const [consumptionNotes, setConsumptionNotes] = useState('');
+
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});

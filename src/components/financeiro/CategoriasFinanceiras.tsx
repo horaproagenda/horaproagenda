@@ -738,7 +738,7 @@ export function CategoriasFinanceiras() {
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4">
               {!editScope ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
                     Como deseja editar "<strong>{editEntryForm.description}</strong>"?
                   </p>
@@ -748,24 +748,55 @@ export function CategoriasFinanceiras() {
                     onClick={() => setEditScope('current')}
                   >
                     <Pencil className="h-4 w-4" />
-                    Editar apenas esta conta
+                    Somente o mês atual
                   </Button>
-                  {editingGroup && editingGroup.entries.length > 1 && (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-2"
-                      onClick={() => setEditScope('all')}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Editar todas ({editingGroup.entries.length} contas)
-                    </Button>
-                  )}
+                  {editingGroup && editingGroup.entries.length > 1 && (() => {
+                    const refDate = editingEntry?.due_date || '';
+                    const futureCount = editingGroup.entries.filter(e => e.due_date >= refDate).length;
+                    const followingCount = editingGroup.entries.filter(e => e.due_date > refDate).length;
+                    return (
+                      <>
+                        {followingCount > 0 && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2"
+                            onClick={() => setEditScope('following')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Apenas meses seguintes ({followingCount})
+                          </Button>
+                        )}
+                        {futureCount > 1 && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2"
+                            onClick={() => setEditScope('future')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Mês atual + meses seguintes ({futureCount})
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2"
+                          onClick={() => setEditScope('all')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Todos os meses ({editingGroup.entries.length})
+                        </Button>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    {editScope === 'current' ? 'Editando apenas esta conta' : `Editando todas as ${editingGroup?.entries.length} contas`}
+                    {editScope === 'current' && 'Editando somente o mês atual'}
+                    {editScope === 'following' && `Editando ${editingGroup?.entries.filter(e => editingEntry && e.due_date > editingEntry.due_date).length || 0} mês(es) seguinte(s)`}
+                    {editScope === 'future' && `Editando ${editingGroup?.entries.filter(e => editingEntry && e.due_date >= editingEntry.due_date).length || 0} conta(s) (mês atual + seguintes)`}
+                    {editScope === 'all' && `Editando todas as ${editingGroup?.entries.length || 0} contas`}
                   </p>
+
                   <div>
                     <Label>Nome da Conta</Label>
                     <Input

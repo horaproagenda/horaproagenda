@@ -265,6 +265,9 @@ export function NewAppointmentDialog({
       setEditingServiceDateIndex(null);
       setShowHolidayConfirm(false);
       setHolidayConfirmed(false);
+      setDiscountValue(0);
+      setDiscountApplyToAll(false);
+
     }
   }, [open, prefilledDate, prefilledTime]);
 

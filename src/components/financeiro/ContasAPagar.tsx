@@ -342,6 +342,13 @@ export function ContasAPagar() {
     }
     
     if (!isBoleto || !createBoletoReminder) {
+      // Determine chain root: if this entry is already part of a chain, use existing root;
+      // otherwise this entry IS the root of a new partial-payment chain.
+      const rootId = (entryToPay as any).root_entry_id || entryToPay.id;
+      const rootOriginalTotal = Number(
+        (entryToPay as any).original_total_amount ?? entryAmount
+      );
+
       await updateEntry.mutateAsync({
         id: entryToPay.id,
         amount: paid,
@@ -354,6 +361,10 @@ export function ContasAPagar() {
         notes: isPartial
           ? `Pagamento parcial: R$ ${paid.toFixed(2)} de R$ ${entryAmount.toFixed(2)}. Restante: R$ ${remainder.toFixed(2)}`
           : entryToPay.notes,
+        // Anchor chain on the root entry the first time a partial payment is made
+        ...((!((entryToPay as any).root_entry_id) && isPartial)
+          ? { root_entry_id: entryToPay.id, original_total_amount: entryAmount } as any
+          : {}),
       });
 
       if (isPartial) {
@@ -377,7 +388,11 @@ export function ContasAPagar() {
           installments: 1,
           paid_by: null,
           status: 'pending',
-        });
+          // Chain linkage for safe reversal
+          parent_entry_id: entryToPay.id,
+          root_entry_id: rootId,
+          original_total_amount: rootOriginalTotal,
+        } as any);
         
         toast.info(`Pagamento parcial registrado. Restante de R$ ${remainder.toFixed(2)} permanece pendente até ser quitado.`);
       }

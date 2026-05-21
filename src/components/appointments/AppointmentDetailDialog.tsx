@@ -2100,6 +2100,36 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Reverse Payment Confirmation Dialog */}
+      <AlertDialog open={confirmReverseOpen} onOpenChange={setConfirmReverseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-warning" />
+              Desfazer baixa do pagamento?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação vai zerar o valor pago, remover as entradas correspondentes do caixa e do financeiro
+              {Number((appointment as any).used_client_credit || 0) > 0 && ' e devolver o crédito ao cliente'}
+              . O agendamento voltará a ficar como <strong>pendente</strong> e você poderá dar baixa novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                reversePayment.mutate(appointment.id);
+                setConfirmReverseOpen(false);
+              }}
+              className="bg-warning text-warning-foreground hover:bg-warning/90"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Sim, desfazer baixa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="max-w-md">

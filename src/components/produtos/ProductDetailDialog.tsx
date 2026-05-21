@@ -220,6 +220,54 @@ export function ProductDetailDialog({
     return { totalAppointments, avgPerAppointment, byService };
   }, [product, productServiceLinks, appointments, activeServices]);
 
+  // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark
+  const cycleSummary = useMemo(() => {
+    if (!product) return null;
+
+    const finishedCycles = productPurchases
+      .filter(p => p.started_using_at && p.finished_at)
+      .map(p => {
+        const start = parseISO(p.started_using_at! + 'T00:00:00');
+        const end = parseISO(p.finished_at! + 'T23:59:59');
+        const days = Math.max(1, differenceInDays(end, start) + 1);
+        const apts = appointments.filter(a => {
+          if (a.status !== 'completed') return false;
+          const t = new Date(a.start_time);
+          return t >= start && t <= end && productServiceLinks.some(sp => sp.service_id === a.service_id);
+        }).length;
+        return { purchase: p, days, appointments: apts };
+      });
+
+    const lastCycle = finishedCycles[0] || null;
+
+    let currentDays = 0;
+    let currentAppointments = 0;
+    if (product.started_using_at && !product.finished_at) {
+      const start = parseISO(product.started_using_at + 'T00:00:00');
+      currentDays = Math.max(0, differenceInDays(new Date(), start));
+      currentAppointments = appointments.filter(a => {
+        if (a.status !== 'completed') return false;
+        const t = new Date(a.start_time);
+        return t >= start && productServiceLinks.some(sp => sp.service_id === a.service_id);
+      }).length;
+    }
+
+    const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
+
+    let runningOutAlert: string | null = null;
+    if (lastCycle && product.started_using_at && !product.finished_at) {
+      const pctDays = currentDays / lastCycle.days;
+      const pctApts = lastCycle.appointments > 0 ? currentAppointments / lastCycle.appointments : 0;
+      const pct = Math.max(pctDays, pctApts);
+      if (pct >= 0.8) {
+        runningOutAlert = `Atenção: já atingiu ${Math.round(pct * 100)}% do ciclo anterior (${lastCycle.days}d / ${lastCycle.appointments} atend.). Produto pode estar acabando.`;
+      }
+    }
+
+    return { finishedCycles, lastCycle, currentDays, currentAppointments, nextPurchase, runningOutAlert };
+  }, [product, productPurchases, appointments, productServiceLinks]);
+
+
   // Available services to link (not already linked)
   const availableServicesToLink = useMemo(() => {
     const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
@@ -697,13 +745,49 @@ export function ProductDetailDialog({
                     </div>
                   </div>
 
-                  {/* Usage Dates - Editable */}
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium flex items-center gap-2 mb-3">
-                      <Calendar className="h-4 w-4" />
-                      Período de Uso
-                    </h4>
+                   {/* Usage Dates - Editable */}
+                   <Separator />
+                   <div>
+                     <h4 className="font-medium flex items-center gap-2 mb-3">
+                       <Calendar className="h-4 w-4" />
+                       Período de Uso
+                     </h4>
+
+                     {cycleSummary && (
+                       <div className="mb-3 space-y-2">
+                         {cycleSummary.runningOutAlert && (
+                           <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs text-amber-900 dark:text-amber-100">
+                             ⚠️ {cycleSummary.runningOutAlert}
+                           </div>
+                         )}
+                         <div className="grid grid-cols-2 gap-2">
+                           <div className="rounded-lg border bg-muted/30 p-2.5">
+                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
+                             <div className="text-xs tabular-nums mt-1">
+                               {product.started_using_at && !product.finished_at
+                                 ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
+                                 : 'Não iniciado'}
+                             </div>
+                           </div>
+                           <div className="rounded-lg border bg-muted/30 p-2.5">
+                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo anterior</div>
+                             <div className="text-xs tabular-nums mt-1">
+                               {cycleSummary.lastCycle
+                                 ? `${cycleSummary.lastCycle.days}d · ${cycleSummary.lastCycle.appointments} atend.`
+                                 : '—'}
+                             </div>
+                           </div>
+                         </div>
+                         {cycleSummary.nextPurchase && (
+                           <div className="rounded-lg border border-dashed bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                             Próxima compra aguardando: {Number(cycleSummary.nextPurchase.quantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                             {' '}— ao informar o término, será iniciada automaticamente.
+                           </div>
+                         )}
+                       </div>
+                     )}
+
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
@@ -728,20 +812,40 @@ export function ProductDetailDialog({
                           Término do Uso
                         </Label>
                         {canEdit ? (
-                          <SafeDateInput
-                            value={product.finished_at || ''}
-                            onCommit={(v) => {
-                              // Quando a data final do uso é informada, o produto acabou
-                              // -> zera o estoque atual automaticamente.
-                              // Quando é limpa, mantém o estoque como está.
-                              if (v) {
-                                onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
-                              } else {
-                                onUpdateProduct({ id: product.id, finished_at: null as any });
-                              }
-                            }}
-                            className="h-9"
-                          />
+                           <SafeDateInput
+                             value={product.finished_at || ''}
+                             onCommit={async (v) => {
+                               if (v) {
+                                 // 1) Snapshot do ciclo atual na compra ativa
+                                 const activePurchase = productPurchases.find(
+                                   p => p.started_using_at && !p.finished_at
+                                 );
+                                 if (activePurchase && onUpdatePurchase) {
+                                   await onUpdatePurchase({ id: activePurchase.id, finished_at: v });
+                                 }
+                                 // 2) Promove a próxima compra (se existir) como novo ciclo
+                                 const next = productPurchases.find(
+                                   p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
+                                 );
+                                 const today = new Date().toISOString().slice(0, 10);
+                                 if (next && onUpdatePurchase) {
+                                   await onUpdatePurchase({ id: next.id, started_using_at: today });
+                                   await onUpdateProduct({
+                                     id: product.id,
+                                     finished_at: null as any,
+                                     started_using_at: today,
+                                     current_stock: Number(next.quantity) || 0,
+                                   });
+                                 } else {
+                                   await onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
+                                 }
+                               } else {
+                                 await onUpdateProduct({ id: product.id, finished_at: null as any });
+                               }
+                             }}
+                             className="h-9"
+                           />
+
 
                         ) : (
                           <span className="text-sm">

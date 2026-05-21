@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
+import { buildClientStoragePath, assertClientStoragePath } from '@/lib/clientUploadPath';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 interface ClientDocumentsTabProps {
@@ -122,9 +123,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       let fileUrl = null;
 
       if (file) {
-        const timestamp = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const path = `${clientId}/${timestamp}-${safeName}`;
+        const path = buildClientStoragePath(clientId, file.name, 'documents');
+        assertClientStoragePath(clientId, path);
         const result = await uploadFile(file, path);
         filePath = result.path;
         fileUrl = result.url;
@@ -143,6 +143,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       resetForm();
     } catch (error) {
       console.error('Error adding document:', error);
+      const message = error instanceof Error ? error.message : 'Tente novamente em alguns segundos.';
+      toast.error(`Não foi possível salvar o documento. ${message}`);
     } finally {
       setLoading(false);
     }

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
+import { buildClientStoragePath, assertClientStoragePath } from '@/lib/clientUploadPath';
 
 interface ClientPhotosTabProps {
   photos: TreatmentPhoto[];
@@ -264,10 +265,8 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       let uploadedCount = 0;
 
       for (const fileToUpload of filesToUpload) {
-        const timestamp = Date.now();
-        const safeName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const uniqueId = crypto.randomUUID?.() || `${timestamp}-${Math.random().toString(36).slice(2)}`;
-        const path = `${clientId}/photos/${timestamp}-${uniqueId}-${safeName}`;
+        const path = buildClientStoragePath(clientId, fileToUpload.name, 'photos');
+        assertClientStoragePath(clientId, path);
         const result = await uploadFile(fileToUpload, path);
 
         await onAddPhoto({

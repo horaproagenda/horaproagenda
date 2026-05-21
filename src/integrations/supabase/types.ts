@@ -3758,6 +3758,43 @@ export type Database = {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
       }
+      create_client_document: {
+        Args: {
+          _client_id: string
+          _content?: string
+          _description?: string
+          _file_path?: string
+          _file_url?: string
+          _filled_variables?: Json
+          _signed_at?: string
+          _signed_by?: string
+          _template_id?: string
+          _title: string
+          _type: Database["public"]["Enums"]["document_type"]
+        }
+        Returns: {
+          client_id: string
+          content: string | null
+          created_at: string
+          description: string | null
+          file_path: string | null
+          file_url: string | null
+          filled_variables: Json | null
+          id: string
+          signed_at: string | null
+          signed_by: string | null
+          template_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["document_type"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_treatment_photo: {
         Args: {
           _appointment_id?: string

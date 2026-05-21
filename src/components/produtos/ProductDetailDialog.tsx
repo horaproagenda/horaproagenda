@@ -733,9 +733,19 @@ export function ProductDetailDialog({
                         {canEdit ? (
                           <SafeDateInput
                             value={product.finished_at || ''}
-                            onCommit={(v) => onUpdateProduct({ id: product.id, finished_at: v })}
+                            onCommit={(v) => {
+                              // Quando a data final do uso é informada, o produto acabou
+                              // -> zera o estoque atual automaticamente.
+                              // Quando é limpa, mantém o estoque como está.
+                              if (v) {
+                                onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
+                              } else {
+                                onUpdateProduct({ id: product.id, finished_at: null as any });
+                              }
+                            }}
                             className="h-9"
                           />
+
                         ) : (
                           <span className="text-sm">
                             {product.finished_at 

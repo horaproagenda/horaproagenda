@@ -41,18 +41,13 @@ const stageColors: Record<TreatmentStage, string> = {
   after: 'bg-green-100 text-green-700',
 };
 
-const getMonthOptions = () => {
-  const options = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const date = subMonths(now, i);
-    options.push({
-      value: format(date, 'yyyy-MM'),
-      label: format(date, 'MMMM yyyy', { locale: ptBR }),
-    });
-  }
-  return options;
-};
+const stageFilterOptions: { value: StageFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'before', label: 'Antes' },
+  { value: 'during', label: 'Durante' },
+  { value: 'after', label: 'Após' },
+];
+
 
 export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTabProps) {
   const queryClient = useQueryClient();

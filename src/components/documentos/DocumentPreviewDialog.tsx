@@ -47,8 +47,8 @@ export function DocumentPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="sm:max-w-[760px] w-[96vw] h-[90vh] max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-lg">{template.title}</DialogTitle>
@@ -66,7 +66,7 @@ export function DocumentPreviewDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 h-[60vh] px-6 py-4">
+        <ScrollArea className="flex-1 min-h-0 px-6 py-4">
           <div className="prose prose-sm max-w-none dark:prose-invert pr-2">
             <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
               {template.content}

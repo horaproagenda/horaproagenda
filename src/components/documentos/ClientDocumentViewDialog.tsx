@@ -83,6 +83,20 @@ export function ClientDocumentViewDialog({
     let cancelled = false;
     let objectUrl: string | null = null;
 
+    const getMimeFromName = (name: string): string => {
+      const ext = name.toLowerCase().split('?')[0].split('.').pop() || '';
+      const map: Record<string, string> = {
+        pdf: 'application/pdf',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+        gif: 'image/gif',
+        svg: 'image/svg+xml',
+      };
+      return map[ext] || '';
+    };
+
     const loadFileBlob = async () => {
       setFileObjectUrl(null);
       setFilePreviewUrl(null);
@@ -94,17 +108,27 @@ export function ClientDocumentViewDialog({
 
       setIsLoadingFile(true);
       try {
-        const blob = await getStorageBlob({
+        const rawBlob = await getStorageBlob({
           bucket: 'client-documents',
           filePath: document.file_path,
           fileUrl: document.file_url,
         });
+
+        // Force the correct MIME type so Edge/Chrome don't block the inline preview
+        const fallbackMime = getMimeFromName(String(document.file_path || document.file_url || ''));
+        const effectiveType = rawBlob.type && rawBlob.type !== 'application/octet-stream'
+          ? rawBlob.type
+          : fallbackMime;
+        const blob = effectiveType && effectiveType !== rawBlob.type
+          ? new Blob([rawBlob], { type: effectiveType })
+          : rawBlob;
+
         objectUrl = URL.createObjectURL(blob);
 
         if (!cancelled) {
           setFileObjectUrl(objectUrl);
           setFilePreviewUrl(objectUrl);
-          setFileMimeType(blob.type || null);
+          setFileMimeType(effectiveType || blob.type || null);
         }
       } catch (error) {
         console.error('Error loading document file:', error);
@@ -129,8 +153,9 @@ export function ClientDocumentViewDialog({
 
   const fileName = String(document.file_path || document.file_url || document.title || '').toLowerCase();
   const previewSrc = fileObjectUrl || filePreviewUrl;
-  const canInlinePreviewFile = !!previewSrc && (/\.(pdf|png|jpe?g|webp|gif)(\?|$)/i.test(fileName) || !!fileMimeType?.match(/^(application\/pdf|image\/)/));
-  const isImageFile = !!previewSrc && (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileName) || !!fileMimeType?.startsWith('image/'));
+  const isPdfFile = !!previewSrc && (/\.pdf(\?|$)/i.test(fileName) || fileMimeType === 'application/pdf');
+  const isImageFile = !!previewSrc && (/\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(fileName) || !!fileMimeType?.startsWith('image/'));
+  const canInlinePreviewFile = isPdfFile || isImageFile;
 
   const handleDownloadPdf = () => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });

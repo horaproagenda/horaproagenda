@@ -469,20 +469,38 @@ export function useClientProfile(clientId: string) {
     },
   });
 
-  // Add document
+  // Add document (usa função segura no banco para validar e gravar mesmo em mobile)
   const addDocument = useMutation({
     mutationFn: async (doc: Omit<ClientDocument, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('client_documents')
-        .insert(doc as any)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_client_document', {
+        _client_id: doc.client_id,
+        _type: doc.type,
+        _title: doc.title,
+        _description: doc.description ?? null,
+        _file_path: doc.file_path ?? null,
+        _file_url: doc.file_url ?? null,
+        _content: doc.content ?? null,
+        _template_id: doc.template_id ?? null,
+        _filled_variables: (doc.filled_variables as any) ?? null,
+        _signed_at: doc.signed_at ?? null,
+        _signed_by: doc.signed_by ?? null,
+      });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback: tenta o insert direto (compatibilidade com instalações antigas)
+        const { data: inserted, error: insertError } = await supabase
+          .from('client_documents')
+          .insert(doc as any)
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        return inserted;
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-documents', clientId] });
+      queryClient.refetchQueries({ queryKey: ['client-documents', clientId], type: 'active' });
       toast.success('Documento adicionado com sucesso!');
     },
     onError: (error) => {

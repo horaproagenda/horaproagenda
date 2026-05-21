@@ -220,6 +220,54 @@ export function ProductDetailDialog({
     return { totalAppointments, avgPerAppointment, byService };
   }, [product, productServiceLinks, appointments, activeServices]);
 
+  // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark
+  const cycleSummary = useMemo(() => {
+    if (!product) return null;
+
+    const finishedCycles = productPurchases
+      .filter(p => p.started_using_at && p.finished_at)
+      .map(p => {
+        const start = parseISO(p.started_using_at! + 'T00:00:00');
+        const end = parseISO(p.finished_at! + 'T23:59:59');
+        const days = Math.max(1, differenceInDays(end, start) + 1);
+        const apts = appointments.filter(a => {
+          if (a.status !== 'completed') return false;
+          const t = new Date(a.start_time);
+          return t >= start && t <= end && productServiceLinks.some(sp => sp.service_id === a.service_id);
+        }).length;
+        return { purchase: p, days, appointments: apts };
+      });
+
+    const lastCycle = finishedCycles[0] || null;
+
+    let currentDays = 0;
+    let currentAppointments = 0;
+    if (product.started_using_at && !product.finished_at) {
+      const start = parseISO(product.started_using_at + 'T00:00:00');
+      currentDays = Math.max(0, differenceInDays(new Date(), start));
+      currentAppointments = appointments.filter(a => {
+        if (a.status !== 'completed') return false;
+        const t = new Date(a.start_time);
+        return t >= start && productServiceLinks.some(sp => sp.service_id === a.service_id);
+      }).length;
+    }
+
+    const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
+
+    let runningOutAlert: string | null = null;
+    if (lastCycle && product.started_using_at && !product.finished_at) {
+      const pctDays = currentDays / lastCycle.days;
+      const pctApts = lastCycle.appointments > 0 ? currentAppointments / lastCycle.appointments : 0;
+      const pct = Math.max(pctDays, pctApts);
+      if (pct >= 0.8) {
+        runningOutAlert = `Atenção: já atingiu ${Math.round(pct * 100)}% do ciclo anterior (${lastCycle.days}d / ${lastCycle.appointments} atend.). Produto pode estar acabando.`;
+      }
+    }
+
+    return { finishedCycles, lastCycle, currentDays, currentAppointments, nextPurchase, runningOutAlert };
+  }, [product, productPurchases, appointments, productServiceLinks]);
+
+
   // Available services to link (not already linked)
   const availableServicesToLink = useMemo(() => {
     const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);

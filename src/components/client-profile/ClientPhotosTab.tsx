@@ -322,11 +322,12 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="h-7 text-xs">
+            <Button type="button" size="sm" className="h-7 text-xs">
               <Plus className="h-3.5 w-3.5 mr-1" />
               Adicionar
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-base">Adicionar Foto</DialogTitle>

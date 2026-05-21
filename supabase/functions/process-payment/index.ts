@@ -240,7 +240,9 @@ serve(async (req) => {
     const baseRequiredAmount = isPackageAppointment 
       ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
-    const totalRequiredAmount = baseRequiredAmount + additionalItemsTotal;
+    // CRITICAL: discount must be subtracted from the required total so paid+discount=full triggers 'paid' status
+    const discountFromBody = Math.max(0, Number(body.discount_amount || 0));
+    const totalRequiredAmount = Math.max(0, baseRequiredAmount + additionalItemsTotal - discountFromBody);
 
     if (body.used_client_credit && body.used_client_credit > 0) {
       const currentBalance = Number(appointment.client?.credit_balance || 0);

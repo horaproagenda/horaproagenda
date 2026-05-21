@@ -93,16 +93,16 @@ serve(async (req) => {
       }
       professional_id = currentProfId;
 
-      if (!test) {
-        const cleanIncoming = normalizeE164(phone).replace(/\D/g, '');
-        let q = supabaseService.from('clients').select('id, phone').eq('assigned_professional_id', currentProfId).limit(100);
-        if (client_id) q = q.eq('id', client_id);
-        const { data: clientsRows } = await q;
-        const ok = (clientsRows ?? []).some((c: any) => normalizeE164(c.phone || '').replace(/\D/g, '') === cleanIncoming);
-        if (!ok) {
-          return new Response(JSON.stringify({ success: false, error: 'Você só pode enviar para clientes vinculados a você.' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
+      // 'test' flag is only honored for admin/receptionist; professionals must always
+      // be restricted to their assigned clients.
+      const cleanIncoming = normalizeE164(phone).replace(/\D/g, '');
+      let q = supabaseService.from('clients').select('id, phone').eq('assigned_professional_id', currentProfId).limit(100);
+      if (client_id) q = q.eq('id', client_id);
+      const { data: clientsRows } = await q;
+      const ok = (clientsRows ?? []).some((c: any) => normalizeE164(c.phone || '').replace(/\D/g, '') === cleanIncoming);
+      if (!ok) {
+        return new Response(JSON.stringify({ success: false, error: 'Você só pode enviar para clientes vinculados a você.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 

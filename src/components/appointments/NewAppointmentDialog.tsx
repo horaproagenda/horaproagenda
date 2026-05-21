@@ -1349,6 +1349,40 @@ Até breve! ✨`;
                     Valor: R$ {Number(selectedServiceData.price).toFixed(2)}
                     {selectedServiceData.return_days && ` • Retorno: ${selectedServiceData.return_days} dias`}
                   </p>
+
+                  {/* Discount on scheduling — only when not using a prepaid service */}
+                  {!usingPaidServiceId && (
+                    <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-2">
+                      <Label className="text-xs font-medium">Desconto neste agendamento (R$)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="h-8 text-xs"
+                        value={discountValue || ''}
+                        onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="0,00"
+                      />
+                      {discountValue > 0 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Valor com desconto: R$ {Math.max(0, Number(selectedServiceData.price) - discountValue).toFixed(2)}
+                        </p>
+                      )}
+                      {discountValue > 0 && repeatServiceEnabled && editableServiceDates.length > 1 && (
+                        <div className="flex items-center justify-between pt-1 border-t">
+                          <Label className="text-[11px] text-muted-foreground">
+                            Aplicar desconto em todos os {editableServiceDates.length} agendamentos
+                          </Label>
+                          <Switch
+                            checked={discountApplyToAll}
+                            onCheckedChange={setDiscountApplyToAll}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+
                   
                   {/* Recurring service options - only if not using a paid service */}
                   {selectedClient && !usingPaidServiceId && (

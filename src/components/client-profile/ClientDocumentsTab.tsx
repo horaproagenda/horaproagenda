@@ -188,6 +188,11 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleSendByLink = (doc: ClientDocument) => {
+    // Não permitir gerar link para documentos enviados por upload manual.
+    if (doc.file_path || doc.file_url) {
+      toast.error('Não é possível gerar link de assinatura para documentos enviados por upload manual.');
+      return;
+    }
     // Find the template for this document
     const templateId = doc.template_id;
     if (templateId) {
@@ -207,6 +212,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       toast.error('Este documento não está vinculado a um modelo. Crie um modelo primeiro.');
     }
   };
+
 
   const buildCombinedDocumentsPdf = async (docs: ClientDocument[]) => {
     const pdf = await PDFDocument.create();
@@ -511,16 +517,19 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                       </div>
 
                       <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {/* Send by Link button */}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 shrink-0"
-                          onClick={() => handleSendByLink(doc)}
-                          title="Enviar por Link"
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* Send by Link button — apenas para documentos baseados em modelo (não para uploads manuais) */}
+                        {!doc.file_path && !doc.file_url && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => handleSendByLink(doc)}
+                            title="Enviar por Link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+
                         <Button 
                           variant="ghost" 
                           size="icon" 

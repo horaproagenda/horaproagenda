@@ -124,8 +124,8 @@ export function ProductDetailDialog({
   const { templates } = usePackageTemplates();
   const { serviceProducts } = useServiceProducts();
   const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
-  const { consumptionReport } = useProductConsumption();
-  const { consumptions: dailyConsumptions, createConsumption, deleteConsumption, stats: consumptionStats } = useProductDailyConsumption(product?.id);
+  const { consumptionReport, consumptionRecords } = useProductConsumption();
+
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');

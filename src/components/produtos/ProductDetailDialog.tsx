@@ -1459,3 +1459,138 @@ export function ProductDetailDialog({
     </Dialog>
   );
 }
+
+function ProductAutomaticConsumption({
+  product,
+  consumptionRecords,
+  productConsumption,
+}: {
+  product: Product;
+  consumptionRecords: any[];
+  productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
+}) {
+  const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label || product.unit;
+
+  const productRecords = useMemo(
+    () => (consumptionRecords || []).filter((r: any) => r.product_id === product.id),
+    [consumptionRecords, product.id]
+  );
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const semesterStart = subMonths(now, 6);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const acc = { today: 0, week: 0, month: 0, semester: 0, year: 0 };
+    for (const r of productRecords) {
+      const ts = r.appointment?.start_time;
+      if (!ts) continue;
+      const d = parseISO(ts);
+      const qty = Number(r.quantity_used) || 0;
+      const dStr = format(d, 'yyyy-MM-dd');
+      if (dStr === todayStr) acc.today += qty;
+      if (d >= weekStart && d <= weekEnd) acc.week += qty;
+      if (d >= monthStart && d <= monthEnd) acc.month += qty;
+      if (d >= semesterStart) acc.semester += qty;
+      if (d >= yearStart) acc.year += qty;
+    }
+    return acc;
+  }, [productRecords]);
+
+  const history = useMemo(() => {
+    return [...productRecords]
+      .filter((r: any) => r.appointment?.start_time)
+      .sort((a: any, b: any) => new Date(b.appointment.start_time).getTime() - new Date(a.appointment.start_time).getTime())
+      .slice(0, 50);
+  }, [productRecords]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-5 gap-2">
+        {[
+          { label: 'Hoje', value: stats.today },
+          { label: 'Semana', value: stats.week },
+          { label: 'Mês', value: stats.month },
+          { label: 'Semestre', value: stats.semester },
+          { label: 'Ano', value: stats.year },
+        ].map(s => (
+          <div key={s.label} className="p-3 rounded-lg border bg-card text-center">
+            <div className="text-xs text-muted-foreground">{s.label}</div>
+            <div className="text-lg font-bold">{s.value.toFixed(1)}</div>
+            <div className="text-[10px] text-muted-foreground">{unitLabel}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-3">
+        <p className="text-xs text-muted-foreground">
+          O consumo é calculado automaticamente a partir dos atendimentos concluídos
+          que utilizam este produto (via vínculo com serviços ou pacotes).
+        </p>
+      </div>
+
+      {productConsumption && (
+        <>
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Resumo Automático
+          </h4>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Total</div>
+              <div className="text-lg font-bold">{productConsumption.total_quantity.toFixed(2)} {unitLabel}</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Atendimentos</div>
+              <div className="text-lg font-bold">{productConsumption.appointment_count}</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Média/Atend.</div>
+              <div className="text-lg font-bold">{productConsumption.avg_per_appointment.toFixed(3)} {unitLabel}</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {history.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data</TableHead>
+              <TableHead>Serviço</TableHead>
+              <TableHead>Quantidade</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell className="text-sm">
+                  {format(parseISO(r.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {r.appointment?.service?.name || '-'}
+                </TableCell>
+                <TableCell className="text-sm font-medium tabular-nums">
+                  {Number(r.quantity_used).toFixed(2)} {unitLabel}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="text-center py-6 text-muted-foreground">
+          <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Nenhum consumo automático registrado.</p>
+          <p className="text-xs mt-1">
+            Vincule este produto a serviços/pacotes e conclua atendimentos para ver o consumo aqui.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

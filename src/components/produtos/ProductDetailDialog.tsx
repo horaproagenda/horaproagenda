@@ -816,12 +816,16 @@ export function ProductDetailDialog({
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
                                if (v) {
-                                 // 1) Snapshot do ciclo atual na compra ativa
+                                 // 1) Snapshot do ciclo atual na compra ativa (se houver)
                                  const activePurchase = productPurchases.find(
                                    p => p.started_using_at && !p.finished_at
                                  );
                                  if (activePurchase && onUpdatePurchase) {
-                                   await onUpdatePurchase({ id: activePurchase.id, finished_at: v });
+                                   await onUpdatePurchase({
+                                     id: activePurchase.id,
+                                     finished_at: v,
+                                     ...(activePurchase.started_using_at ? {} : { started_using_at: product.started_using_at || v }),
+                                   });
                                  }
                                  // 2) Promove a próxima compra (se existir) como novo ciclo
                                  const next = productPurchases.find(
@@ -837,7 +841,12 @@ export function ProductDetailDialog({
                                      current_stock: Number(next.quantity) || 0,
                                    });
                                  } else {
-                                   await onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
+                                   // SEMPRE persiste finished_at e zera o estoque (encerra ciclo)
+                                   await onUpdateProduct({
+                                     id: product.id,
+                                     finished_at: v,
+                                     current_stock: 0,
+                                   });
                                  }
                                } else {
                                  await onUpdateProduct({ id: product.id, finished_at: null as any });

@@ -24,7 +24,10 @@ interface CreateRecurringAppointmentsParams {
   // Optional: use custom dates instead of calculating from interval
   custom_dates?: Date[];
   duration_minutes?: number;
+  // Discount: aplica em todos os agendamentos da série
+  discount_amount?: number;
 }
+
 
 interface RescheduleSeriesParams {
   recurring_group_id: string;

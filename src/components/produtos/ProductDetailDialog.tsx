@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,16 +124,13 @@ export function ProductDetailDialog({
   const { templates } = usePackageTemplates();
   const { serviceProducts } = useServiceProducts();
   const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
-  const { consumptionReport } = useProductConsumption();
-  const { consumptions: dailyConsumptions, createConsumption, deleteConsumption, stats: consumptionStats } = useProductDailyConsumption(product?.id);
+  const { consumptionReport, consumptionRecords } = useProductConsumption();
+
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
 
-  // Daily consumption form state
-  const [consumptionDate, setConsumptionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [consumptionQuantity, setConsumptionQuantity] = useState(0);
-  const [consumptionNotes, setConsumptionNotes] = useState('');
+
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
@@ -369,12 +366,6 @@ export function ProductDetailDialog({
                 {product.category && <Badge variant="outline">{product.category}</Badge>}
               </DialogDescription>
             </div>
-            {canEdit && !isEditing && (
-              <Button variant="outline" size="sm" onClick={handleStartEdit}>
-                <Edit className="h-4 w-4 mr-1" />
-                Editar
-              </Button>
-            )}
           </div>
         </DialogHeader>
 
@@ -739,9 +730,19 @@ export function ProductDetailDialog({
                         {canEdit ? (
                           <SafeDateInput
                             value={product.finished_at || ''}
-                            onCommit={(v) => onUpdateProduct({ id: product.id, finished_at: v })}
+                            onCommit={(v) => {
+                              // Quando a data final do uso é informada, o produto acabou
+                              // -> zera o estoque atual automaticamente.
+                              // Quando é limpa, mantém o estoque como está.
+                              if (v) {
+                                onUpdateProduct({ id: product.id, finished_at: v, current_stock: 0 });
+                              } else {
+                                onUpdateProduct({ id: product.id, finished_at: null as any });
+                              }
+                            }}
                             className="h-9"
                           />
+
                         ) : (
                           <span className="text-sm">
                             {product.finished_at 
@@ -1445,154 +1446,151 @@ export function ProductDetailDialog({
             </TabsContent>
 
             <TabsContent value="consumption" className="mt-4">
-              <div className="space-y-4">
-                {/* Daily consumption stats */}
-                <div className="grid grid-cols-5 gap-2">
-                  {[
-                    { label: 'Hoje', value: consumptionStats.today },
-                    { label: 'Semana', value: consumptionStats.week },
-                    { label: 'Mês', value: consumptionStats.month },
-                    { label: 'Semestre', value: consumptionStats.semester },
-                    { label: 'Ano', value: consumptionStats.year },
-                  ].map(s => (
-                    <div key={s.label} className="p-3 rounded-lg border bg-card text-center">
-                      <div className="text-xs text-muted-foreground">{s.label}</div>
-                      <div className="text-lg font-bold">{s.value.toFixed(1)}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Register daily consumption */}
-                {canEdit && (
-                  <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
-                    <h4 className="text-sm font-medium">Registrar Consumo Diário</h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label className="text-xs">Data</Label>
-                        <SafeDateInput
-                          value={consumptionDate}
-                          onCommit={(v) => setConsumptionDate(v ?? '')}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Quantidade ({PRODUCT_UNITS.find(u => u.value === product.unit)?.label})</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={consumptionQuantity || ''}
-                          onChange={(e) => setConsumptionQuantity(parseFloat(e.target.value) || 0)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Obs</Label>
-                        <Input
-                          value={consumptionNotes}
-                          onChange={(e) => setConsumptionNotes(e.target.value)}
-                          placeholder="Opcional"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      disabled={consumptionQuantity <= 0 || createConsumption.isPending}
-                      onClick={async () => {
-                        await createConsumption.mutateAsync({
-                          product_id: product.id,
-                          consumption_date: consumptionDate,
-                          quantity_used: consumptionQuantity,
-                          unit: product.unit,
-                          notes: consumptionNotes || null,
-                        });
-                        setConsumptionQuantity(0);
-                        setConsumptionNotes('');
-                      }}
-                    >
-                      {createConsumption.isPending ? 'Salvando...' : 'Registrar'}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Daily consumption history */}
-                {dailyConsumptions.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Quantidade</TableHead>
-                        <TableHead>Obs</TableHead>
-                        {canEdit && <TableHead className="w-10"></TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dailyConsumptions.slice(0, 50).map(c => (
-                        <TableRow key={c.id}>
-                          <TableCell className="text-sm">
-                            {format(new Date(c.consumption_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {c.quantity_used} {PRODUCT_UNITS.find(u => u.value === c.unit)?.label || c.unit}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{c.notes || '-'}</TableCell>
-                          {canEdit && (
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                onClick={() => deleteConsumption.mutate(c.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum consumo registrado.</p>
-                    <p className="text-xs mt-1">Registre o consumo diário para acompanhar o uso do produto.</p>
-                  </div>
-                )}
-
-                {/* Automatic consumption from appointments */}
-                {productConsumption && (
-                  <>
-                    <Separator />
-                    <h4 className="text-sm font-medium flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Consumo Automático (Atendimentos)
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg border bg-card">
-                        <div className="text-xs text-muted-foreground">Total</div>
-                        <div className="text-lg font-bold">{productConsumption.total_quantity.toFixed(2)}</div>
-                      </div>
-                      <div className="p-3 rounded-lg border bg-card">
-                        <div className="text-xs text-muted-foreground">Atendimentos</div>
-                        <div className="text-lg font-bold">{productConsumption.appointment_count}</div>
-                      </div>
-                      <div className="p-3 rounded-lg border bg-card">
-                        <div className="text-xs text-muted-foreground">Média/Atend.</div>
-                        <div className="text-lg font-bold">{productConsumption.avg_per_appointment.toFixed(3)}</div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <ProductAutomaticConsumption
+                product={product}
+                consumptionRecords={consumptionRecords}
+                productConsumption={productConsumption}
+              />
             </TabsContent>
+
           </Tabs>
         </ScrollArea>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ProductAutomaticConsumption({
+  product,
+  consumptionRecords,
+  productConsumption,
+}: {
+  product: Product;
+  consumptionRecords: any[];
+  productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
+}) {
+  const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label || product.unit;
+
+  const productRecords = useMemo(
+    () => (consumptionRecords || []).filter((r: any) => r.product_id === product.id),
+    [consumptionRecords, product.id]
+  );
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const semesterStart = subMonths(now, 6);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const acc = { today: 0, week: 0, month: 0, semester: 0, year: 0 };
+    for (const r of productRecords) {
+      const ts = r.appointment?.start_time;
+      if (!ts) continue;
+      const d = parseISO(ts);
+      const qty = Number(r.quantity_used) || 0;
+      const dStr = format(d, 'yyyy-MM-dd');
+      if (dStr === todayStr) acc.today += qty;
+      if (d >= weekStart && d <= weekEnd) acc.week += qty;
+      if (d >= monthStart && d <= monthEnd) acc.month += qty;
+      if (d >= semesterStart) acc.semester += qty;
+      if (d >= yearStart) acc.year += qty;
+    }
+    return acc;
+  }, [productRecords]);
+
+  const history = useMemo(() => {
+    return [...productRecords]
+      .filter((r: any) => r.appointment?.start_time)
+      .sort((a: any, b: any) => new Date(b.appointment.start_time).getTime() - new Date(a.appointment.start_time).getTime())
+      .slice(0, 50);
+  }, [productRecords]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-5 gap-2">
+        {[
+          { label: 'Hoje', value: stats.today },
+          { label: 'Semana', value: stats.week },
+          { label: 'Mês', value: stats.month },
+          { label: 'Semestre', value: stats.semester },
+          { label: 'Ano', value: stats.year },
+        ].map(s => (
+          <div key={s.label} className="p-3 rounded-lg border bg-card text-center">
+            <div className="text-xs text-muted-foreground">{s.label}</div>
+            <div className="text-lg font-bold">{s.value.toFixed(1)}</div>
+            <div className="text-[10px] text-muted-foreground">{unitLabel}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-3">
+        <p className="text-xs text-muted-foreground">
+          O consumo é calculado automaticamente a partir dos atendimentos concluídos
+          que utilizam este produto (via vínculo com serviços ou pacotes).
+        </p>
+      </div>
+
+      {productConsumption && (
+        <>
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Resumo Automático
+          </h4>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Total</div>
+              <div className="text-lg font-bold">{productConsumption.total_quantity.toFixed(2)} {unitLabel}</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Atendimentos</div>
+              <div className="text-lg font-bold">{productConsumption.appointment_count}</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <div className="text-xs text-muted-foreground">Média/Atend.</div>
+              <div className="text-lg font-bold">{productConsumption.avg_per_appointment.toFixed(3)} {unitLabel}</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {history.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data</TableHead>
+              <TableHead>Serviço</TableHead>
+              <TableHead>Quantidade</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell className="text-sm">
+                  {format(parseISO(r.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {r.appointment?.service?.name || '-'}
+                </TableCell>
+                <TableCell className="text-sm font-medium tabular-nums">
+                  {Number(r.quantity_used).toFixed(2)} {unitLabel}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="text-center py-6 text-muted-foreground">
+          <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Nenhum consumo automático registrado.</p>
+          <p className="text-xs mt-1">
+            Vincule este produto a serviços/pacotes e conclua atendimentos para ver o consumo aqui.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

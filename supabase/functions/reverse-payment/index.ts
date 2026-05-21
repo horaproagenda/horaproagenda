@@ -56,20 +56,27 @@ serve(async (req) => {
       });
     }
 
-    // Fetch the appointment for context (client_id, package, used_client_credit)
+    // Fetch the appointment for context (client_id, used_client_credit, amount_paid)
     const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
-      .select('id, client_id, amount_paid, used_client_credit, package_appointment:package_appointments(package_id)')
+      .select('id, client_id, amount_paid, used_client_credit')
       .eq('id', body.appointment_id)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !appointment) {
-      return new Response(JSON.stringify({ success: false, error: 'Appointment not found' }), {
+      console.error('reverse-payment fetch error:', fetchError, 'id:', body.appointment_id);
+      return new Response(JSON.stringify({ success: false, error: 'Appointment not found', details: fetchError?.message }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const packageId = (appointment as any).package_appointment?.package_id || null;
+    // Look up package separately (avoids join failing the whole query)
+    const { data: pkgRow } = await supabase
+      .from('package_appointments')
+      .select('package_id')
+      .eq('appointment_id', body.appointment_id)
+      .maybeSingle();
+    const packageId = pkgRow?.package_id || null;
     const usedClientCredit = Number((appointment as any).used_client_credit || 0);
 
     // 1) Refund client credit if it was used

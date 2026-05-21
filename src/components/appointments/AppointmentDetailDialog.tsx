@@ -796,9 +796,9 @@ export function AppointmentDetailDialog({
   const packagePrice = packageData?.total_price || 0;
   const isPackagePaid = isPackageAppointment && packagePrice > 0 && Number(appointment.amount_paid || 0) >= packagePrice;
   
-  const totalPrice = isPackageAppointment 
-    ? packagePrice
-    : servicePrice;
+  // Desconto pré-configurado no agendamento: SEMPRE reduz o valor a pagar/total
+  const grossServicePrice = isPackageAppointment ? packagePrice : servicePrice;
+  const totalPrice = Math.max(0, grossServicePrice - (preconfiguredDiscount || 0));
   const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
   const paymentAdditionalItems = additionalItems
     .map((item) => {

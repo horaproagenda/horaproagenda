@@ -787,11 +787,44 @@ export function useAppointments() {
     },
   });
 
+  const reversePayment = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Não autenticado');
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/reverse-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ appointment_id: appointmentId }),
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Erro ao desfazer baixa');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      toast.success('Baixa do pagamento desfeita. Você já pode dar baixa novamente.');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao desfazer baixa: ' + error.message);
+    },
+  });
+
   return {
     appointments,
     isLoading,
     createAppointment,
     updatePayment,
+    reversePayment,
     updateAppointment,
     deleteAppointment,
     deletePackageAppointments,

@@ -1412,6 +1412,24 @@ export type Database = {
         }
         Relationships: []
       }
+      email_verification_ip_log: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           created_at: string

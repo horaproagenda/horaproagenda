@@ -62,6 +62,26 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
+    // IP-based rate limit: max 10 verification emails per IP per hour
+    const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: ipCount } = await supabaseClient
+      .from("email_verification_ip_log")
+      .select("id", { count: "exact", head: true })
+      .eq("ip", ip)
+      .gte("created_at", oneHourAgo);
+
+    if ((ipCount ?? 0) >= 10) {
+      return new Response(
+        JSON.stringify({ error: "Muitas solicitações deste dispositivo. Tente novamente mais tarde." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    await supabaseClient.from("email_verification_ip_log").insert({ ip });
+
     // Cooldown 60s
     const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
     const { data: recent } = await supabaseClient

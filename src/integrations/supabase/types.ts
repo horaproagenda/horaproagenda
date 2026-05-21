@@ -1518,14 +1518,17 @@ export type Database = {
           is_recurring: boolean
           notes: string | null
           original_amount: number | null
+          original_total_amount: number | null
           overdue_tolerance_days: number
           paid_by: string | null
           paid_date: string | null
+          parent_entry_id: string | null
           payment_method_id: string | null
           professional_id: string | null
           recurring_count: number | null
           recurring_day: number | null
           recurring_frequency: string | null
+          root_entry_id: string | null
           status: string
           type: string
           updated_at: string
@@ -1546,14 +1549,17 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           original_amount?: number | null
+          original_total_amount?: number | null
           overdue_tolerance_days?: number
           paid_by?: string | null
           paid_date?: string | null
+          parent_entry_id?: string | null
           payment_method_id?: string | null
           professional_id?: string | null
           recurring_count?: number | null
           recurring_day?: number | null
           recurring_frequency?: string | null
+          root_entry_id?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -1574,14 +1580,17 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           original_amount?: number | null
+          original_total_amount?: number | null
           overdue_tolerance_days?: number
           paid_by?: string | null
           paid_date?: string | null
+          parent_entry_id?: string | null
           payment_method_id?: string | null
           professional_id?: string | null
           recurring_count?: number | null
           recurring_day?: number | null
           recurring_frequency?: string | null
+          root_entry_id?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -1617,6 +1626,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "financial_entries_parent_entry_id_fkey"
+            columns: ["parent_entry_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entries"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "financial_entries_payment_method_id_fkey"
             columns: ["payment_method_id"]
             isOneToOne: false
@@ -1628,6 +1644,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_root_entry_id_fkey"
+            columns: ["root_entry_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -3863,6 +3886,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      get_financial_entry_root: { Args: { _entry_id: string }; Returns: string }
       get_professional_id_by_user_or_email: {
         Args: { _user_id: string }
         Returns: string
@@ -3944,6 +3968,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
       submit_document_fill_by_token:
         | {
             Args: {

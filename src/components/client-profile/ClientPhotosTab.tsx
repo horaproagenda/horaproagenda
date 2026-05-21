@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+
+type StageFilter = 'all' | TreatmentStage;
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';

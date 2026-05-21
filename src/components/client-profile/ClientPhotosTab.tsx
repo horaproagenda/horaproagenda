@@ -211,29 +211,45 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    if (selectedFiles.length > 0) {
-      // Support multiple files
-      setFiles(selectedFiles);
-      setFile(selectedFiles[0]); // Keep single file for backward compatibility
-      
-      // Generate previews for all files
-      const newPreviews: string[] = [];
-      selectedFiles.forEach((f, index) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newPreviews[index] = reader.result as string;
-          if (newPreviews.filter(Boolean).length === selectedFiles.length) {
-            setPreviews([...newPreviews]);
-          }
-        };
-        reader.readAsDataURL(f);
-      });
-      
-      // Set single preview for first file
-      const firstReader = new FileReader();
-      firstReader.onloadend = () => setPreview(firstReader.result as string);
-      firstReader.readAsDataURL(selectedFiles[0]);
-    }
+    // Allow re-selecting the same files later (important on iOS Safari)
+    e.target.value = '';
+    if (selectedFiles.length === 0) return;
+
+    const validFiles = selectedFiles.filter(f => {
+      if (!f.type.startsWith('image/')) {
+        toast.error(`"${f.name}" não é uma imagem válida e foi ignorada.`);
+        return false;
+      }
+      if (f.size > 15 * 1024 * 1024) {
+        toast.error(`"${f.name}" passa de 15 MB e foi ignorada.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    setFiles(validFiles);
+    setFile(validFiles[0]);
+
+    const newPreviews: string[] = [];
+    validFiles.forEach((f, index) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviews[index] = reader.result as string;
+        if (newPreviews.filter(Boolean).length === validFiles.length) {
+          setPreviews([...newPreviews]);
+        }
+      };
+      reader.onerror = () => {
+        toast.error(`Não foi possível ler "${f.name}".`);
+      };
+      reader.readAsDataURL(f);
+    });
+
+    const firstReader = new FileReader();
+    firstReader.onloadend = () => setPreview(firstReader.result as string);
+    firstReader.readAsDataURL(validFiles[0]);
   };
 
   const handleSubmit = async () => {
@@ -245,7 +261,8 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     setLoading(true);
     try {
       const filesToUpload = files.length > 0 ? files : (file ? [file] : []);
-      
+      let uploadedCount = 0;
+
       for (const fileToUpload of filesToUpload) {
         const timestamp = Date.now();
         const safeName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -262,9 +279,10 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
           notes: notes.trim() || null,
           taken_at: new Date().toISOString(),
         });
+        uploadedCount += 1;
       }
 
-      toast.success(`${filesToUpload.length} foto(s) adicionada(s) com sucesso!`);
+      toast.success(`${uploadedCount} foto(s) adicionada(s) com sucesso!`);
       setOpen(false);
       setNotes('');
       setFile(null);
@@ -274,11 +292,13 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       setStage('before');
     } catch (error) {
       console.error('Error adding photo:', error);
-      toast.error('Erro ao adicionar foto(s)');
+      const message = error instanceof Error ? error.message : 'Tente novamente em alguns segundos.';
+      toast.error(`Erro ao adicionar foto(s). ${message}`);
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-3 animate-fade-in">

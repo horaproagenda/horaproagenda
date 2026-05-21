@@ -745,13 +745,49 @@ export function ProductDetailDialog({
                     </div>
                   </div>
 
-                  {/* Usage Dates - Editable */}
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium flex items-center gap-2 mb-3">
-                      <Calendar className="h-4 w-4" />
-                      Período de Uso
-                    </h4>
+                   {/* Usage Dates - Editable */}
+                   <Separator />
+                   <div>
+                     <h4 className="font-medium flex items-center gap-2 mb-3">
+                       <Calendar className="h-4 w-4" />
+                       Período de Uso
+                     </h4>
+
+                     {cycleSummary && (
+                       <div className="mb-3 space-y-2">
+                         {cycleSummary.runningOutAlert && (
+                           <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs text-amber-900 dark:text-amber-100">
+                             ⚠️ {cycleSummary.runningOutAlert}
+                           </div>
+                         )}
+                         <div className="grid grid-cols-2 gap-2">
+                           <div className="rounded-lg border bg-muted/30 p-2.5">
+                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
+                             <div className="text-xs tabular-nums mt-1">
+                               {product.started_using_at && !product.finished_at
+                                 ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
+                                 : 'Não iniciado'}
+                             </div>
+                           </div>
+                           <div className="rounded-lg border bg-muted/30 p-2.5">
+                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo anterior</div>
+                             <div className="text-xs tabular-nums mt-1">
+                               {cycleSummary.lastCycle
+                                 ? `${cycleSummary.lastCycle.days}d · ${cycleSummary.lastCycle.appointments} atend.`
+                                 : '—'}
+                             </div>
+                           </div>
+                         </div>
+                         {cycleSummary.nextPurchase && (
+                           <div className="rounded-lg border border-dashed bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                             Próxima compra aguardando: {Number(cycleSummary.nextPurchase.quantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                             {' '}— ao informar o término, será iniciada automaticamente.
+                           </div>
+                         )}
+                       </div>
+                     )}
+
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">

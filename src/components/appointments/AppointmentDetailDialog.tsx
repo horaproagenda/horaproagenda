@@ -152,7 +152,8 @@ export function AppointmentDetailDialog({
 }: AppointmentDetailDialogProps) {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
+  const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
+  const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();

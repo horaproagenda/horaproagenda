@@ -292,12 +292,12 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
+          <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {monthOptions.map(option => (
+              {stageFilterOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}
                 </SelectItem>

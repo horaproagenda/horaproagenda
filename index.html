@@ -54,16 +54,39 @@
     <!-- Preconnect to Google Fonts for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Load fonts asynchronously to prevent render blocking -->
+
+    <!-- Poppins é a fonte principal: carrega bloqueante (síncrono) para
+         garantir métrica idêntica entre iOS e Android antes da agenda
+         renderizar. display=swap permite fallback tipográfico sem FOIT. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" />
+
+    <!-- Fontes secundárias (DM Sans / Playfair) podem carregar de forma assíncrona -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" media="print" onload="this.media='all'" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" />
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" />
     </noscript>
+
+    <!-- Gate de renderização: marca <html> com .fonts-ready assim que a
+         Poppins terminar de carregar. CSS oculta áreas [data-fonts-gate]
+         até esse momento, eliminando variação de métricas entre iOS/Android. -->
+    <script>
+      (function () {
+        var html = document.documentElement;
+        function ready() { html.classList.add('fonts-ready'); }
+        if (document.fonts && document.fonts.load) {
+          Promise.all([
+            document.fonts.load('400 1em Poppins'),
+            document.fonts.load('500 1em Poppins'),
+            document.fonts.load('600 1em Poppins'),
+          ]).then(ready).catch(ready);
+          // Failsafe — nunca trava a UI por mais de 1.2s
+          setTimeout(ready, 1200);
+        } else {
+          ready();
+        }
+      })();
+    </script>
     <meta property="og:title" content="Lume Agenda - Sistema de Agendamento para Clínica de Estética">
   <meta name="twitter:title" content="Lume Agenda - Sistema de Agendamento para Clínica de Estética">
   <meta property="og:description" content="Sistema completo de agendamento para clínicas de estética de alto padrão. Gerencie clientes, serviços e agendamentos com elegância.">

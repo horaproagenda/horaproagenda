@@ -117,10 +117,14 @@ export function useRecurringAppointments() {
         const result = await response.json();
 
         if (result.success && result.data) {
-          // Update the appointment with the recurring group ID
+          // Update the appointment with the recurring group ID and discount (if any)
+          const updatePayload: any = { recurring_group_id: recurringGroupId };
+          if (params.discount_amount && params.discount_amount > 0) {
+            updatePayload.discount_amount = params.discount_amount;
+          }
           const { data: updatedApt, error: updateError } = await supabase
             .from('appointments')
-            .update({ recurring_group_id: recurringGroupId })
+            .update(updatePayload)
             .eq('id', result.data.id)
             .select()
             .single();
@@ -128,6 +132,7 @@ export function useRecurringAppointments() {
           if (updateError) {
             console.error('Error updating recurring group:', updateError);
           }
+
 
           createdAppointments.push(updatedApt || result.data);
           

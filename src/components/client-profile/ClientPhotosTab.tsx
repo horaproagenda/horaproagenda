@@ -471,7 +471,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
           {filteredPhotos.length === 0 ? (
             <div className="py-6 text-center">
               <Image className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-xs text-muted-foreground">Nenhuma foto neste mês</p>
+              <p className="text-xs text-muted-foreground">Nenhuma foto encontrada</p>
             </div>
           ) : (
             <div className="space-y-4">

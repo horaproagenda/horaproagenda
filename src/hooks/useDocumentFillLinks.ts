@@ -75,8 +75,37 @@ export function useDocumentFillLinks(templateId?: string) {
       expiresInDays?: number;
       prefillSnapshot?: DocumentPrefillSnapshot;
     }
-  ): Promise<{ url: string; token: string } | null> => {
+  ): Promise<{ url: string; token: string; reused?: boolean } | null> => {
     try {
+      // Bloqueio: só permitir um link ativo (pendente e não vencido) por modelo+cliente.
+      // Se houver um link vigente, retorna o existente em vez de gerar outro.
+      if (options?.clientId) {
+        const { data: existing, error: existingError } = await supabase
+          .from('document_fill_links')
+          .select('id, token, status, expires_at, filled_at')
+          .eq('template_id', templateId)
+          .eq('client_id', options.clientId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (existingError) throw existingError;
+
+        const now = Date.now();
+        const active = (existing || []).find((l) => {
+          if (l.filled_at) return false;
+          if (!l.expires_at) return true;
+          return new Date(l.expires_at).getTime() > now;
+        });
+
+        if (active) {
+          const baseUrl = window.location.origin;
+          const friendlySlug = buildFriendlyDocumentSlug(options?.clientName, options?.documentTitle);
+          const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${active.token}`;
+          toast.info('Já existe um link ativo para este documento e cliente. Reutilizando o link atual. Para gerar outro, apague o link existente ou aguarde o vencimento.');
+          return { url, token: active.token, reused: true };
+        }
+      }
+
       const token = generateToken();
       const expiresAt = options?.expiresInDays
         ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
@@ -114,6 +143,7 @@ export function useDocumentFillLinks(templateId?: string) {
       return null;
     }
   };
+
 
   const deleteLink = async (id: string) => {
     try {

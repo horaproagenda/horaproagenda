@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Check, AlertCircle, DollarSign, Pencil, Undo2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';

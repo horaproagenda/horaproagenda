@@ -188,6 +188,11 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleSendByLink = (doc: ClientDocument) => {
+    // Não permitir gerar link para documentos enviados por upload manual.
+    if (doc.file_path || doc.file_url) {
+      toast.error('Não é possível gerar link de assinatura para documentos enviados por upload manual.');
+      return;
+    }
     // Find the template for this document
     const templateId = doc.template_id;
     if (templateId) {
@@ -207,6 +212,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
       toast.error('Este documento não está vinculado a um modelo. Crie um modelo primeiro.');
     }
   };
+
 
   const buildCombinedDocumentsPdf = async (docs: ClientDocument[]) => {
     const pdf = await PDFDocument.create();

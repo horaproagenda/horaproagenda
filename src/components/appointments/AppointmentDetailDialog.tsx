@@ -66,6 +66,7 @@ import {
   FileDown,
   Send,
   FileText,
+  RotateCcw,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
@@ -152,7 +153,8 @@ export function AppointmentDetailDialog({
 }: AppointmentDetailDialogProps) {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const { updateAppointment, deleteAppointment, deletePackageAppointments } = useAppointments();
+  const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
+  const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
@@ -1457,7 +1459,25 @@ export function AppointmentDetailDialog({
                   <p className={cn('font-semibold', remainingAmount > 0 ? 'text-warning' : 'text-success')}>
                     R$ {remainingAmount.toFixed(2)}
                   </p>
+              </div>
+
+              {/* Desfazer baixa — zera amount_paid, remove cash/financial entries e devolve crédito do cliente */}
+              {amountPaid > 0 && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmReverseOpen(true)}
+                    disabled={reversePayment.isPending}
+                    className="text-warning border-warning/40 hover:bg-warning/10 hover:text-warning"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    {reversePayment.isPending ? 'Desfazendo…' : 'Desfazer baixa'}
+                  </Button>
                 </div>
+              )}
+
               </div>
 
               {/* Package payment indicator - packages must be paid in full */}
@@ -2075,6 +2095,36 @@ export function AppointmentDetailDialog({
             <AlertDialogAction onClick={handleOpenClientProfile}>
               <ExternalLink className="h-4 w-4 mr-2" />
               Abrir perfil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reverse Payment Confirmation Dialog */}
+      <AlertDialog open={confirmReverseOpen} onOpenChange={setConfirmReverseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-warning" />
+              Desfazer baixa do pagamento?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação vai zerar o valor pago, remover as entradas correspondentes do caixa e do financeiro
+              {Number((appointment as any).used_client_credit || 0) > 0 && ' e devolver o crédito ao cliente'}
+              . O agendamento voltará a ficar como <strong>pendente</strong> e você poderá dar baixa novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                reversePayment.mutate(appointment.id);
+                setConfirmReverseOpen(false);
+              }}
+              className="bg-warning text-warning-foreground hover:bg-warning/90"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Sim, desfazer baixa
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

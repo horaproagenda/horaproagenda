@@ -490,16 +490,29 @@ export function useClientProfile(clientId: string) {
     },
   });
 
-  // Add photo
+  // Add photo (usa função segura no banco para evitar bloqueios de RLS em mobile)
   const addPhoto = useMutation({
     mutationFn: async (photo: Omit<TreatmentPhoto, 'id' | 'created_at' | 'appointment'>) => {
-      const { data, error } = await supabase
-        .from('treatment_photos')
-        .insert(photo)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_treatment_photo', {
+        _client_id: photo.client_id,
+        _appointment_id: photo.appointment_id ?? null,
+        _stage: photo.stage,
+        _file_path: photo.file_path,
+        _file_url: photo.file_url ?? null,
+        _notes: photo.notes ?? null,
+        _taken_at: photo.taken_at ?? new Date().toISOString(),
+      });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback: tenta o insert direto (compatibilidade)
+        const { data: inserted, error: insertError } = await supabase
+          .from('treatment_photos')
+          .insert(photo)
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        return inserted;
+      }
       return data;
     },
     onSuccess: () => {

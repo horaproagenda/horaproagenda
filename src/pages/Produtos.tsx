@@ -316,8 +316,12 @@ export default function Produtos() {
       const product = products.find(p => p.id === stockForm.product_id);
       if (!product) return;
 
+      const today = format(new Date(), 'yyyy-MM-dd');
       const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
+
+      // Produto encerrado (sem uso ativo / estoque zerado / finalizado): promove esta compra como novo ciclo
+      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
 
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
@@ -326,21 +330,21 @@ export default function Produtos() {
         total_price: normalizeBrazilianCurrency(stockForm.total_price),
         supplier: product.supplier || null,
         purchase_date: stockForm.purchase_date,
-        started_using_at: null,
+        started_using_at: isFinished ? today : null,
         finished_at: null,
         notes: stockForm.expiry_date ? `Validade: ${stockForm.expiry_date}` : null,
         skip_cash_transaction: stockForm.skip_cash_transaction,
       });
 
-      // Update product stock and expiry
       await updateProduct.mutateAsync({
         id: product.id,
-        current_stock: product.current_stock + stockForm.quantity,
+        current_stock: isFinished ? stockForm.quantity : product.current_stock + stockForm.quantity,
         quantity_purchased: newQuantityPurchased,
         total_price: newTotalPrice,
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
         purchase_date: stockForm.purchase_date,
         expiry_date: stockForm.expiry_date || product.expiry_date,
+        ...(isFinished ? { started_using_at: today, finished_at: null as any } : {}),
       });
 
       setStockDialogOpen(false);
@@ -356,10 +360,14 @@ export default function Produtos() {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
       const today = format(new Date(), 'yyyy-MM-dd');
-      const startedUsingAt = purchaseForm.start_using_today ? today : null;
       const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
       const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
+
+      // Auto-promove se produto encerrado OU se usuário marcou "começar a usar hoje"
+      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
+      const promoteNow = isFinished || purchaseForm.start_using_today;
+      const startedUsingAt = promoteNow ? today : null;
 
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
@@ -374,10 +382,10 @@ export default function Produtos() {
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
 
-      // Update stock
+      // Se promovendo agora, substitui o estoque pela nova quantidade (não soma)
       await updateProduct.mutateAsync({
         id: product.id,
-        current_stock: product.current_stock + purchaseForm.quantity,
+        current_stock: promoteNow ? purchaseForm.quantity : product.current_stock + purchaseForm.quantity,
         quantity_purchased: newQuantityPurchased,
         total_price: newTotalPrice,
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
@@ -386,6 +394,7 @@ export default function Produtos() {
         started_using_at: startedUsingAt || product.started_using_at,
         is_for_sale: purchaseForm.is_for_sale,
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
+        ...(promoteNow ? { finished_at: null as any } : {}),
       });
 
       setPurchaseDialogOpen(false);

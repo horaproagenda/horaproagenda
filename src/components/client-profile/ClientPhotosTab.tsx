@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+
+type StageFilter = 'all' | TreatmentStage;
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,18 +41,13 @@ const stageColors: Record<TreatmentStage, string> = {
   after: 'bg-green-100 text-green-700',
 };
 
-const getMonthOptions = () => {
-  const options = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const date = subMonths(now, i);
-    options.push({
-      value: format(date, 'yyyy-MM'),
-      label: format(date, 'MMMM yyyy', { locale: ptBR }),
-    });
-  }
-  return options;
-};
+const stageFilterOptions: { value: StageFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'before', label: 'Antes' },
+  { value: 'during', label: 'Durante' },
+  { value: 'after', label: 'Após' },
+];
+
 
 export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTabProps) {
   const queryClient = useQueryClient();
@@ -63,7 +60,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [stageFilter, setStageFilter] = useState<StageFilter>('all');
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
@@ -134,21 +131,11 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       setDeletingId(null);
     }
   };
-  const monthOptions = useMemo(() => getMonthOptions(), []);
-
   const filteredPhotos = useMemo(() => {
-    const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
-    const monthEnd = endOfMonth(monthStart);
-    
-    return photos.filter(p => {
-      try {
-        const date = parseISO(p.taken_at);
-        return isWithinInterval(date, { start: monthStart, end: monthEnd });
-      } catch {
-        return false;
-      }
-    });
-  }, [photos, selectedMonth]);
+    if (stageFilter === 'all') return photos;
+    return photos.filter(p => p.stage === stageFilter);
+  }, [photos, stageFilter]);
+
 
   const photosByStage = useMemo(() => {
     return filteredPhotos.reduce((acc, photo) => {
@@ -305,12 +292,12 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
+          <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {monthOptions.map(option => (
+              {stageFilterOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}
                 </SelectItem>
@@ -484,7 +471,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
           {filteredPhotos.length === 0 ? (
             <div className="py-6 text-center">
               <Image className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-xs text-muted-foreground">Nenhuma foto neste mês</p>
+              <p className="text-xs text-muted-foreground">Nenhuma foto encontrada</p>
             </div>
           ) : (
             <div className="space-y-4">

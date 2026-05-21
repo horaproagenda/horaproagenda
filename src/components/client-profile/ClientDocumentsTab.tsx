@@ -517,16 +517,19 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                       </div>
 
                       <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {/* Send by Link button */}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 shrink-0"
-                          onClick={() => handleSendByLink(doc)}
-                          title="Enviar por Link"
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* Send by Link button — apenas para documentos baseados em modelo (não para uploads manuais) */}
+                        {!doc.file_path && !doc.file_url && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => handleSendByLink(doc)}
+                            title="Enviar por Link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+
                         <Button 
                           variant="ghost" 
                           size="icon" 

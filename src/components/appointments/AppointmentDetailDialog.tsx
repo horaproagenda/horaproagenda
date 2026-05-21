@@ -1459,7 +1459,25 @@ export function AppointmentDetailDialog({
                   <p className={cn('font-semibold', remainingAmount > 0 ? 'text-warning' : 'text-success')}>
                     R$ {remainingAmount.toFixed(2)}
                   </p>
+              </div>
+
+              {/* Desfazer baixa — zera amount_paid, remove cash/financial entries e devolve crédito do cliente */}
+              {amountPaid > 0 && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmReverseOpen(true)}
+                    disabled={reversePayment.isPending}
+                    className="text-warning border-warning/40 hover:bg-warning/10 hover:text-warning"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    {reversePayment.isPending ? 'Desfazendo…' : 'Desfazer baixa'}
+                  </Button>
                 </div>
+              )}
+
               </div>
 
               {/* Package payment indicator - packages must be paid in full */}

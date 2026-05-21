@@ -40,7 +40,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-fonts-gate>
       <Sidebar 
         onNewAppointment={() => {
           setIsNewAppointmentOpen(true);
@@ -57,12 +57,14 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <Header 
-          title={title} 
-          subtitle={subtitle}
-          onMenuClick={() => setIsMobileSidebarOpen(true)}
-        />
-        <main className="flex-1 p-3 sm:p-4 md:p-6 pb-20 md:pb-24 overflow-auto">
+        <div className="pt-safe">
+          <Header 
+            title={title} 
+            subtitle={subtitle}
+            onMenuClick={() => setIsMobileSidebarOpen(true)}
+          />
+        </div>
+        <main className="flex-1 p-3 sm:p-4 md:p-6 pb-20 md:pb-24 pb-safe overflow-auto">
           {children}
         </main>
       </div>

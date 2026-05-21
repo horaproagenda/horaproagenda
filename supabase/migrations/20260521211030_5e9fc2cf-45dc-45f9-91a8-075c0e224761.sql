@@ -1,0 +1,2 @@
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS discount_amount numeric NOT NULL DEFAULT 0;
+COMMENT ON COLUMN public.appointments.discount_amount IS 'Desconto pré-configurado ao agendar; aplicado automaticamente na baixa de pagamento.';

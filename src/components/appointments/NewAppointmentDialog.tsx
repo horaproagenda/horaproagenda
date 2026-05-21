@@ -136,6 +136,11 @@ export function NewAppointmentDialog({
   const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
   const [holidayConfirmed, setHolidayConfirmed] = useState(false);
 
+  // Discount applied when scheduling
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [discountApplyToAll, setDiscountApplyToAll] = useState(false);
+
+
   const { clients } = useClients();
   const { services } = useServices();
   const { packages } = useServicePackages();

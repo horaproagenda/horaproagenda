@@ -70,8 +70,8 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       payment_method_types: ['card', 'boleto'],
       mode: 'payment',
-      success_url: `${req.headers.get("origin")}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/assinatura/cancelado`,
+      success_url: `${Deno.env.get("APP_URL") ?? "https://agendalume.app"}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${Deno.env.get("APP_URL") ?? "https://agendalume.app"}/assinatura/cancelado`,
       metadata: {
         user_id: user.id,
         price_id: priceId,

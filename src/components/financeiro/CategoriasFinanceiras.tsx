@@ -299,10 +299,11 @@ export function CategoriasFinanceiras() {
   const handleEditEntry = async () => {
     if (!editingEntry || !editScope) return;
 
-    if (editScope === 'current') {
-      await updateEntry.mutateAsync({
-        id: editingEntry.id,
-        description: editEntryForm.description,
+    const buildPatch = (entry: FinancialEntry) => {
+      const suffix = entry.description.match(/\s*\(\d+\/\d+\)\s*$/)?.[0] || '';
+      return {
+        id: entry.id,
+        description: editEntryForm.description + suffix,
         category_id: editEntryForm.category_id || null,
         bank_id: editEntryForm.bank_id || null,
         is_recurring: editEntryForm.is_recurring,
@@ -310,24 +311,32 @@ export function CategoriasFinanceiras() {
         amount: parseFloat(editEntryForm.amount) || 0,
         installments: parseInt(editEntryForm.installments) || 1,
         overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
-      } as any);
+      } as any;
+    };
+
+    if (editScope === 'current') {
+      await updateEntry.mutateAsync(buildPatch(editingEntry));
       toast.success('Conta atualizada com sucesso');
-    } else if (editScope === 'all' && editingGroup) {
-      for (const entry of editingGroup.entries) {
-        const suffix = entry.description.match(/\s*\(\d+\/\d+\)\s*$/)?.[0] || '';
-        await updateEntry.mutateAsync({
-          id: entry.id,
-          description: editEntryForm.description + suffix,
-          category_id: editEntryForm.category_id || null,
-          bank_id: editEntryForm.bank_id || null,
-          is_recurring: editEntryForm.is_recurring,
-          recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
-          amount: parseFloat(editEntryForm.amount) || 0,
-          installments: parseInt(editEntryForm.installments) || 1,
-          overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
-        } as any);
+    } else if (editingGroup) {
+      const refDate = editingEntry.due_date;
+      let targets = editingGroup.entries;
+      if (editScope === 'all') {
+        targets = editingGroup.entries;
+      } else if (editScope === 'future') {
+        // current month onwards (>= refDate)
+        targets = editingGroup.entries.filter(e => e.due_date >= refDate);
+      } else if (editScope === 'following') {
+        // only months after current (> refDate)
+        targets = editingGroup.entries.filter(e => e.due_date > refDate);
       }
-      toast.success(`${editingGroup.entries.length} contas atualizadas`);
+      if (targets.length === 0) {
+        toast.error('Nenhuma conta encontrada para o escopo selecionado');
+        return;
+      }
+      for (const entry of targets) {
+        await updateEntry.mutateAsync(buildPatch(entry));
+      }
+      toast.success(`${targets.length} conta(s) atualizada(s)`);
     }
 
     setEditEntryDialogOpen(false);
@@ -335,6 +344,7 @@ export function CategoriasFinanceiras() {
     setEditingGroup(null);
     setEditScope(null);
   };
+
 
   // Group entries by category
   const expensesByCategory = expenseCats.map(cat => ({

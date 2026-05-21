@@ -66,6 +66,7 @@ import {
   FileDown,
   Send,
   FileText,
+  RotateCcw,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';

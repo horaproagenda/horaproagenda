@@ -1254,10 +1254,10 @@ const Agenda = () => {
                       <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
                     )}
                     <span className={cn(
-                      'text-xs font-medium uppercase',
+                      'text-[10px] sm:text-xs font-medium uppercase whitespace-nowrap tracking-tight',
                       isSelected ? 'text-primary-foreground/80' : holiday ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                     )}>
-                      {format(day, 'EEE', { locale: ptBR })}
+                      {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                     </span>
                     <span className={cn(
                       'text-lg font-semibold',

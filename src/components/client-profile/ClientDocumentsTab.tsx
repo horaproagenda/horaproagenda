@@ -35,6 +35,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 import { buildClientStoragePath, assertClientStoragePath } from '@/lib/clientUploadPath';
+import { isDocumentFilled, isDocumentSigned } from '@/lib/documentStatus';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 interface ClientDocumentsTabProps {
@@ -469,8 +470,9 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
             <ScrollArea className="h-[300px]">
               <div className="space-y-1.5 pr-2">
                 {documents.map((doc) => {
-                  const isSigned = !!doc.signed_at;
-                  
+                  const isSigned = isDocumentSigned(doc);
+                  const isFilled = isDocumentFilled(doc);
+
                   return (
                     <div
                       key={doc.id}
@@ -487,8 +489,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                             <Badge className={`${documentTypeColors[doc.type]} text-[10px] px-1.5 py-0`} variant="secondary">
                               {documentTypeLabels[doc.type]}
                             </Badge>
-                            {(doc.content || doc.signed_at) && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            {isFilled && !isSigned && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-500 text-blue-600">
                                 Preenchido
                               </Badge>
                             )}

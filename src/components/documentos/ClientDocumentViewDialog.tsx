@@ -304,7 +304,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-[760px] w-[96vw] h-[90vh] max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <div className="flex items-start justify-between">
             <div>
@@ -334,22 +334,33 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 h-[62vh] px-6 py-4">
+        <ScrollArea className="flex-1 min-h-0 px-6 py-4" style={{ maxHeight: 'calc(85vh - 220px)' }}>
           {document.content ? (
-            <div className="mx-auto w-full max-w-[620px] min-h-[780px] rounded-sm border bg-background p-6 shadow-sm">
+            <div className="mx-auto w-full max-w-[620px] rounded-sm border bg-background p-6 shadow-sm">
               <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">
                 {document.content}
               </pre>
             </div>
           ) : document.file_path || document.file_url ? (
-            <div className="mx-auto flex min-h-[620px] w-full max-w-[620px] items-center justify-center rounded-sm border bg-background p-3 shadow-sm">
+            <div className="mx-auto w-full max-w-[720px] rounded-sm border bg-background p-3 shadow-sm">
               {isLoadingFile ? (
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="flex min-h-[280px] items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
               ) : canInlinePreviewFile ? (
                 isImageFile ? (
-                  <img src={previewSrc || ''} alt={document.title || 'Documento'} className="max-h-[580px] w-full object-contain" />
+                  <img
+                    src={previewSrc || ''}
+                    alt={document.title || 'Documento'}
+                    loading="lazy"
+                    className="block mx-auto h-auto w-auto max-w-full"
+                  />
                 ) : (
-                  <iframe src={previewSrc || ''} title={document.title || 'Documento'} className="h-[580px] w-full rounded-sm border-0" />
+                  <iframe
+                    src={previewSrc || ''}
+                    title={document.title || 'Documento'}
+                    className="h-[78vh] min-h-[520px] w-full rounded-sm border-0"
+                  />
                 )
               ) : (
                 <div className="text-center py-8">

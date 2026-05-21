@@ -415,8 +415,9 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
             <div className="space-y-3">
               <div className="relative flex min-h-[52vh] max-h-[68vh] items-center justify-center rounded-md border bg-muted/20 overflow-hidden">
                 <img
-                  src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(selectedPhoto)}
+                  src={getPhotoUrl(selectedPhoto)}
                   alt={`Foto ${stageLabels[selectedPhoto.stage]}`}
+                  loading="eager"
                   className="max-h-[68vh] w-auto max-w-full object-contain"
                 />
                 {filteredPhotos.length > 1 && (
@@ -508,8 +509,9 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                             onClick={() => setSelectedPhotoIndex(filteredPhotos.findIndex((item) => item.id === photo.id))}
                           >
                             <img
-                              src={urlsLoading ? '/placeholder.svg' : getPhotoUrl(photo)}
+                              src={getPhotoUrl(photo)}
                               alt={`Foto ${stageLabels[photo.stage]}`}
+                              loading="lazy"
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             />
                           </button>

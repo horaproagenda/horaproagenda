@@ -428,43 +428,32 @@ export function ContasAPagar() {
 
   const handleCancelPayment = async () => {
     if (!entryToCancel) return;
-    
-    const originalAmount = Number(entryToCancel.original_amount || entryToCancel.amount);
-    const wasPartial = entryToCancel.notes?.includes('Pagamento parcial');
-    
-    await updateEntry.mutateAsync({
-      id: entryToCancel.id,
-      amount: originalAmount,
-      original_amount: null,
-      status: 'pending' as const,
-      paid_date: null,
-      notes: wasPartial 
-        ? `Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}. Valor original restaurado: R$ ${originalAmount.toFixed(2)}`
-        : entryToCancel.notes 
-          ? `${entryToCancel.notes} | Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}`
-          : `Baixa cancelada em ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
+
+    const { data, error } = await supabase.rpc('reverse_payable_payment', {
+      _entry_id: entryToCancel.id,
     });
 
-    if (wasPartial) {
-      const baseDesc = entryToCancel.description.replace(/\s*\(restante.*?\)$/i, '');
-      const remainderEntries = payables.filter(e => 
-        e.id !== entryToCancel.id &&
-        e.status === 'pending' &&
-        e.description.includes(baseDesc) &&
-        e.description.includes('(restante)')
-      );
-      
-      for (const re of remainderEntries) {
-        await deleteEntry.mutateAsync(re.id);
-      }
+    if (error) {
+      toast.error(error.message || 'Não foi possível desfazer o pagamento.');
+      return;
     }
 
+    queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
     if (entryToCancel.appointment_id) {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
     }
     queryClient.invalidateQueries({ queryKey: ['reminders'] });
 
-    toast.success('Baixa cancelada e valor restaurado com sucesso.');
+    const consolidated = (data as any)?.consolidated;
+    if (consolidated) {
+      const total = Number((data as any)?.total_amount || 0);
+      toast.success(
+        `Todos os pagamentos parciais foram desfeitos. Conta consolidada com valor total de R$ ${total.toFixed(2)}.`
+      );
+    } else {
+      toast.success('Baixa cancelada e valor restaurado com sucesso.');
+    }
+
     setCancelDialogOpen(false);
     setEntryToCancel(null);
   };

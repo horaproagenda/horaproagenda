@@ -29,7 +29,12 @@ export function useCurrentProfessional() {
         });
         if (linkedId) {
           // Tenta vincular para próximas consultas
-          await supabase.rpc('link_current_user_professional').catch(() => undefined);
+          try {
+            await supabase.rpc('link_current_user_professional');
+          } catch {
+            // tudo bem: o usuário ainda consegue operar pelo fallback
+          }
+
           return linkedId as string;
         }
       } catch (rpcError) {

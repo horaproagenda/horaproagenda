@@ -386,9 +386,13 @@ export function AppointmentDetailDialog({
   const [useClientCredit, setUseClientCredit] = useState(false);
   const [clientCreditUsedAmount, setClientCreditUsedAmount] = useState('');
   
-  // Discount
-  const [discountAmount, setDiscountAmount] = useState('');
+  // Discount — pré-preencher com desconto configurado no agendamento
+  const preconfiguredDiscount = Number((appointment as any)?.discount_amount || 0);
+  const [discountAmount, setDiscountAmount] = useState(
+    preconfiguredDiscount > 0 ? preconfiguredDiscount.toFixed(2).replace('.', ',') : ''
+  );
   const [additionalItems, setAdditionalItems] = useState<PaymentAdditionalItem[]>([]);
+
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);

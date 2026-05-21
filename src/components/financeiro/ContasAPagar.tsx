@@ -55,15 +55,22 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedFilters';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 import { useQueryClient } from '@tanstack/react-query';
+import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
-  const { activePaymentMethods } = usePaymentMethods();
+  const { activePaymentMethods: allPaymentMethods } = usePaymentMethods();
+  // Exclude "Crédito ao Cliente" — não se aplica a contas a pagar da empresa
+  const activePaymentMethods = useMemo(
+    () => allPaymentMethods.filter(pm => !isClientCreditPaymentMethod(pm.name)),
+    [allPaymentMethods]
+  );
   const { activeBanks } = useBanks();
   const { createReminder } = useReminders();
   const { settings } = useBusinessSettings();
   const queryClient = useQueryClient();
+
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({

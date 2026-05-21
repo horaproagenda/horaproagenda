@@ -96,7 +96,7 @@ export function CategoriasFinanceiras() {
 
   // Edit entry state
   const [editEntryDialogOpen, setEditEntryDialogOpen] = useState(false);
-  const [editScope, setEditScope] = useState<'current' | 'all' | null>(null);
+  const [editScope, setEditScope] = useState<'current' | 'all' | 'future' | 'following' | null>(null);
   const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
   const [editingGroup, setEditingGroup] = useState<GroupedEntry | null>(null);
   const [editEntryForm, setEditEntryForm] = useState({
@@ -299,10 +299,11 @@ export function CategoriasFinanceiras() {
   const handleEditEntry = async () => {
     if (!editingEntry || !editScope) return;
 
-    if (editScope === 'current') {
-      await updateEntry.mutateAsync({
-        id: editingEntry.id,
-        description: editEntryForm.description,
+    const buildPatch = (entry: FinancialEntry) => {
+      const suffix = entry.description.match(/\s*\(\d+\/\d+\)\s*$/)?.[0] || '';
+      return {
+        id: entry.id,
+        description: editEntryForm.description + suffix,
         category_id: editEntryForm.category_id || null,
         bank_id: editEntryForm.bank_id || null,
         is_recurring: editEntryForm.is_recurring,
@@ -310,24 +311,32 @@ export function CategoriasFinanceiras() {
         amount: parseFloat(editEntryForm.amount) || 0,
         installments: parseInt(editEntryForm.installments) || 1,
         overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
-      } as any);
+      } as any;
+    };
+
+    if (editScope === 'current') {
+      await updateEntry.mutateAsync(buildPatch(editingEntry));
       toast.success('Conta atualizada com sucesso');
-    } else if (editScope === 'all' && editingGroup) {
-      for (const entry of editingGroup.entries) {
-        const suffix = entry.description.match(/\s*\(\d+\/\d+\)\s*$/)?.[0] || '';
-        await updateEntry.mutateAsync({
-          id: entry.id,
-          description: editEntryForm.description + suffix,
-          category_id: editEntryForm.category_id || null,
-          bank_id: editEntryForm.bank_id || null,
-          is_recurring: editEntryForm.is_recurring,
-          recurring_frequency: editEntryForm.is_recurring ? editEntryForm.recurring_frequency : null,
-          amount: parseFloat(editEntryForm.amount) || 0,
-          installments: parseInt(editEntryForm.installments) || 1,
-          overdue_tolerance_days: parseInt(editEntryForm.overdue_tolerance_days) || 0,
-        } as any);
+    } else if (editingGroup) {
+      const refDate = editingEntry.due_date;
+      let targets = editingGroup.entries;
+      if (editScope === 'all') {
+        targets = editingGroup.entries;
+      } else if (editScope === 'future') {
+        // current month onwards (>= refDate)
+        targets = editingGroup.entries.filter(e => e.due_date >= refDate);
+      } else if (editScope === 'following') {
+        // only months after current (> refDate)
+        targets = editingGroup.entries.filter(e => e.due_date > refDate);
       }
-      toast.success(`${editingGroup.entries.length} contas atualizadas`);
+      if (targets.length === 0) {
+        toast.error('Nenhuma conta encontrada para o escopo selecionado');
+        return;
+      }
+      for (const entry of targets) {
+        await updateEntry.mutateAsync(buildPatch(entry));
+      }
+      toast.success(`${targets.length} conta(s) atualizada(s)`);
     }
 
     setEditEntryDialogOpen(false);
@@ -335,6 +344,7 @@ export function CategoriasFinanceiras() {
     setEditingGroup(null);
     setEditScope(null);
   };
+
 
   // Group entries by category
   const expensesByCategory = expenseCats.map(cat => ({
@@ -728,7 +738,7 @@ export function CategoriasFinanceiras() {
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4">
               {!editScope ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
                     Como deseja editar "<strong>{editEntryForm.description}</strong>"?
                   </p>
@@ -738,24 +748,55 @@ export function CategoriasFinanceiras() {
                     onClick={() => setEditScope('current')}
                   >
                     <Pencil className="h-4 w-4" />
-                    Editar apenas esta conta
+                    Somente o mês atual
                   </Button>
-                  {editingGroup && editingGroup.entries.length > 1 && (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-2"
-                      onClick={() => setEditScope('all')}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Editar todas ({editingGroup.entries.length} contas)
-                    </Button>
-                  )}
+                  {editingGroup && editingGroup.entries.length > 1 && (() => {
+                    const refDate = editingEntry?.due_date || '';
+                    const futureCount = editingGroup.entries.filter(e => e.due_date >= refDate).length;
+                    const followingCount = editingGroup.entries.filter(e => e.due_date > refDate).length;
+                    return (
+                      <>
+                        {followingCount > 0 && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2"
+                            onClick={() => setEditScope('following')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Apenas meses seguintes ({followingCount})
+                          </Button>
+                        )}
+                        {futureCount > 1 && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2"
+                            onClick={() => setEditScope('future')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Mês atual + meses seguintes ({futureCount})
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2"
+                          onClick={() => setEditScope('all')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Todos os meses ({editingGroup.entries.length})
+                        </Button>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    {editScope === 'current' ? 'Editando apenas esta conta' : `Editando todas as ${editingGroup?.entries.length} contas`}
+                    {editScope === 'current' && 'Editando somente o mês atual'}
+                    {editScope === 'following' && `Editando ${editingGroup?.entries.filter(e => editingEntry && e.due_date > editingEntry.due_date).length || 0} mês(es) seguinte(s)`}
+                    {editScope === 'future' && `Editando ${editingGroup?.entries.filter(e => editingEntry && e.due_date >= editingEntry.due_date).length || 0} conta(s) (mês atual + seguintes)`}
+                    {editScope === 'all' && `Editando todas as ${editingGroup?.entries.length || 0} contas`}
                   </p>
+
                   <div>
                     <Label>Nome da Conta</Label>
                     <Input

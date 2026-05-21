@@ -369,12 +369,6 @@ export function ProductDetailDialog({
                 {product.category && <Badge variant="outline">{product.category}</Badge>}
               </DialogDescription>
             </div>
-            {canEdit && !isEditing && (
-              <Button variant="outline" size="sm" onClick={handleStartEdit}>
-                <Edit className="h-4 w-4 mr-1" />
-                Editar
-              </Button>
-            )}
           </div>
         </DialogHeader>
 

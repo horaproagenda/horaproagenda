@@ -348,12 +348,16 @@ serve(async (req) => {
     // (tips, advance payments, package adjustments, different negotiated prices, etc.)
 
     // 6. Update appointment payment
+    // CRITICAL: persist discount_amount so it survives reloads and the
+    // totalRequired calc remains coherent on follow-up updates.
+    const discountToPersist = Math.max(0, Number(body.discount_amount || 0));
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
         payment_methods: accumulatedPaymentMethods,
         amount_paid: accumulatedAmountPaid,
         payment_status: resolvedPaymentStatus,
+        discount_amount: discountToPersist,
         updated_by: userId,
       })
       .eq('id', body.appointment_id)

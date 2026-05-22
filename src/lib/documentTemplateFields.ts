@@ -109,6 +109,7 @@ export function tokenizeDocumentLine(line: string, lineIndex: number): DocumentF
 
   const tokens: DocumentFieldToken[] = [];
   let freeTextIndex = 0;
+  let checkboxIndex = 0;
 
   parts.forEach(part => {
     if (/^\{[^}]+\}$/.test(part)) {
@@ -132,6 +133,15 @@ export function tokenizeDocumentLine(line: string, lineIndex: number): DocumentF
       return;
     }
 
+    if (SINGLE_CHECKBOX_REGEX.test(part)) {
+      // Use surrounding text as label (prefer next text, fallback to previous)
+      const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
+      const label = previousText?.value.trim().replace(/[:•\-]$/, '').trim() || `Opção ${lineIndex + 1}.${checkboxIndex + 1}`;
+      tokens.push({ type: 'checkbox', fieldKey: `checkbox_${lineIndex}_${checkboxIndex}`, label });
+      checkboxIndex += 1;
+      return;
+    }
+
     tokens.push({ type: 'text', value: part });
   });
 
@@ -143,6 +153,7 @@ interface BuildContentOptions {
   formData: Record<string, string>;
   yesNoAnswers: Record<string, 'sim' | 'nao' | ''>;
   additionalInfo: Record<string, string>;
+  checkboxAnswers?: Record<string, boolean>;
 }
 
 export function buildFilledDocumentContent({
@@ -150,6 +161,7 @@ export function buildFilledDocumentContent({
   formData,
   yesNoAnswers,
   additionalInfo,
+  checkboxAnswers = {},
 }: BuildContentOptions): string {
   return content
     .split('\n')
@@ -169,6 +181,8 @@ export function buildFilledDocumentContent({
               if (answer === 'nao') return '( ) Sim (X) Não';
               return '( ) Sim ( ) Não';
             }
+            case 'checkbox':
+              return checkboxAnswers[token.fieldKey] ? '(X)' : '( )';
             case 'freeText':
             case 'blankField':
               return additionalInfo[token.fieldKey] || '';
@@ -180,3 +194,4 @@ export function buildFilledDocumentContent({
     })
     .join('\n');
 }
+

@@ -84,6 +84,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedDescription, setCopiedDescription] = useState(false);
+  const [businessSettings, setBusinessSettings] = useState<any | null>(null);
 
   const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);
   const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
@@ -100,29 +101,54 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
     }
   }, [open, preSelectedClientId]);
 
-  const buildPrefillSnapshot = (): DocumentPrefillSnapshot => ({
-    client: selectedClient
-      ? {
-          id: selectedClient.id,
-          name: selectedClient.name,
-          birthdate: selectedClient.birthdate,
-          cpf: selectedClient.cpf,
-          phone: selectedClient.phone,
-        }
-      : undefined,
-    professional: selectedProfessional
-      ? {
-          id: selectedProfessional.id,
-          name: selectedProfessional.name,
-        }
-      : undefined,
-    formData: {
-      ...(selectedClient?.name ? { cliente: selectedClient.name, nome_cliente: selectedClient.name, nome: selectedClient.name } : {}),
-      ...(selectedClient?.cpf ? { cpf: selectedClient.cpf } : {}),
-      ...(selectedClient?.phone ? { telefone: selectedClient.phone } : {}),
-      ...(selectedProfessional?.name ? { profissional: selectedProfessional.name, nome_profissional: selectedProfessional.name } : {}),
-    },
-  });
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from('business_settings')
+      .select('*')
+      .maybeSingle()
+      .then(({ data }) => setBusinessSettings(data));
+  }, [open]);
+
+  const buildPrefillSnapshot = (): DocumentPrefillSnapshot => {
+    const c: any = selectedClient;
+    const biz: any = businessSettings;
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('pt-BR');
+    return {
+      client: c
+        ? {
+            id: c.id,
+            name: c.name,
+            birthdate: c.birthdate,
+            cpf: c.cpf,
+            phone: c.phone,
+          }
+        : undefined,
+      professional: selectedProfessional
+        ? {
+            id: selectedProfessional.id,
+            name: selectedProfessional.name,
+          }
+        : undefined,
+      formData: {
+        data: todayStr,
+        data_atual: todayStr,
+        ...(c?.name ? { cliente: c.name, nome_cliente: c.name, nome: c.name } : {}),
+        ...(c?.cpf ? { cpf: c.cpf } : {}),
+        ...(c?.phone ? { telefone: c.phone } : {}),
+        ...(c?.email ? { email: c.email } : {}),
+        ...(c?.address_city ? { cidade: c.address_city } : {}),
+        ...(c ? { endereco: buildClientAddress(c), endereco_cliente: buildClientAddress(c) } : {}),
+        ...(selectedProfessional?.name ? { profissional: selectedProfessional.name, nome_profissional: selectedProfessional.name } : {}),
+        ...(biz?.clinic_name ? { nome_clinica: biz.clinic_name } : {}),
+        ...(biz?.clinic_address ? { endereco_clinica: biz.clinic_address } : {}),
+        ...(biz?.clinic_phone ? { telefone_clinica: biz.clinic_phone } : {}),
+        ...(biz?.clinic_email ? { email_clinica: biz.clinic_email } : {}),
+        ...(biz?.clinic_cnpj ? { cnpj_clinica: biz.clinic_cnpj } : {}),
+      },
+    };
+  };
 
   const handleGenerate = async () => {
     if (!template) return;

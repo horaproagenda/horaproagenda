@@ -20,6 +20,21 @@ restoreUrlIfNeeded();
 // Apply persisted appearance (primary color, dark mode, animations) before render
 bootstrapAppearance();
 
+// Limpa termos de busca persistidos a cada reload (refresh = busca zerada).
+// Filtros e abas permanecem; apenas os campos de busca são resetados.
+try {
+  const SEARCH_KEYS = [
+    'servicos:searchTerm',
+    'relatorios-search',
+    'produtos:searchTerm',
+    'clientes:searchTerm',
+    'agenda:searchTerm',
+  ];
+  SEARCH_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch {
+  // ignore privacy/quota errors
+}
+
 // Remove initial loader before React renders
 const initialLoader = document.getElementById("initial-loader");
 if (initialLoader) {

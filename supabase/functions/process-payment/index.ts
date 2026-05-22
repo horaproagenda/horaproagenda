@@ -617,7 +617,15 @@ serve(async (req) => {
     const discountAmount = Math.max(0, Number(body.discount_amount || 0));
 
     if (newCashPaymentAmount > 0) {
-      // Create financial entry
+      // Lançamento único e rastreável: registra valor integral, desconto e recebido
+      const breakdownNotes = [
+        `Valor integral: R$ ${Number(baseRequiredAmount + additionalItemsTotal).toFixed(2)}`,
+        discountAmount > 0 ? `Desconto concedido: R$ ${discountAmount.toFixed(2)}` : null,
+        `Valor recebido: R$ ${newCashPaymentAmount.toFixed(2)}`,
+        `Forma: ${primaryPaymentMethodName || 'n/a'}`,
+        `Data: ${today}`,
+      ].filter(Boolean).join(' | ');
+
       const { error: entryError } = await supabase.from('financial_entries').insert({
         type: 'receivable',
         description: `Pagamento: ${serviceName} - ${clientName}`,
@@ -628,6 +636,7 @@ serve(async (req) => {
         client_id: appointment.client?.id,
         appointment_id: body.appointment_id,
         payment_method_id: primaryPaymentMethodId,
+        notes: breakdownNotes,
         created_by: userId,
       });
 
@@ -641,7 +650,7 @@ serve(async (req) => {
           cash_register_id: body.cash_register_id,
           type: 'income',
           category: 'sale',
-          description: `${serviceName} - ${clientName}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
+          description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
           amount: newCashPaymentAmount,
           payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
@@ -655,6 +664,7 @@ serve(async (req) => {
           console.error('Error creating cash transaction:', cashError);
         }
       }
+
 
       // Create pending receivable for partial payments
       if (remainingAfterPayment > 0 && resolvedPaymentStatus === 'partial') {

@@ -608,45 +608,13 @@ serve(async (req) => {
       console.log(`Client credit used: ${body.used_client_credit} for ${clientName} - not registered in cash flow`);
     }
 
-    // 8. Create financial entries and cash transactions for actual payments
-    // First, handle discount registration if any
-    const discountAmount = body.discount_amount || 0;
-    if (discountAmount > 0 && body.cash_register_id) {
-      // Register discount as a separate entry for auditing/reporting purposes
-      const { error: discountEntryError } = await supabase.from('financial_entries').insert({
-        type: 'expense',
-        description: `Desconto: ${serviceName} - ${clientName}`,
-        amount: discountAmount,
-        due_date: today,
-        paid_date: today,
-        status: 'paid',
-        client_id: appointment.client?.id,
-        appointment_id: body.appointment_id,
-        notes: 'Desconto concedido ao cliente',
-        created_by: userId,
-      });
-
-      if (discountEntryError) {
-        console.error('Error creating discount financial entry:', discountEntryError);
-      }
-
-      // Register discount as cash transaction for cash register tracking
-      const { error: discountCashError } = await supabase.from('cash_transactions').insert({
-        cash_register_id: body.cash_register_id,
-        type: 'expense',
-        category: 'discount',
-        description: `Desconto: ${serviceName} - ${clientName}`,
-        amount: discountAmount,
-        payment_method: null,
-        reference_id: body.appointment_id,
-        reference_type: 'appointment',
-        created_by: userId,
-      });
-
-      if (discountCashError) {
-        console.error('Error creating discount cash transaction:', discountCashError);
-      }
-    }
+    // 8. Create financial entries and cash transactions for actual payments.
+    // IMPORTANT (regra de negócio):
+    //   - O DESCONTO NÃO gera lançamento de débito/crédito no caixa nem no financeiro.
+    //   - O desconto atua exclusivamente como REDUTOR do valor a receber.
+    //   - Ele é discriminado dentro do próprio registro de pagamento (notes/description),
+    //     mantendo o princípio do "lançamento único" por evento de pagamento.
+    const discountAmount = Math.max(0, Number(body.discount_amount || 0));
 
     if (newCashPaymentAmount > 0) {
       // Create financial entry

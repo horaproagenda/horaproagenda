@@ -187,6 +187,25 @@ serve(async (req) => {
       );
     }
 
+    // Bloqueio de duplicidade: não permite uma segunda baixa do mesmo evento
+    // a menos que o pagamento atual seja apenas adição de itens, crédito ao
+    // cliente (saldo/cortesia) ou uso de saldo. Para isso, exigimos que ainda
+    // exista valor a receber OU que haja itens adicionais/crédito sendo movimentado.
+    const alreadyPaid = appointment.payment_status === 'paid';
+    const hasExtras = (Array.isArray(body.additional_items) && body.additional_items.length > 0)
+      || (body.client_credit && body.client_credit > 0)
+      || (body.courtesy_credit && body.courtesy_credit > 0)
+      || (body.used_client_credit && body.used_client_credit > 0);
+    if (alreadyPaid && !hasExtras) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Este agendamento já está com a baixa registrada. Desfaça a baixa antes de lançar um novo pagamento.',
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const additionalItems = Array.isArray(body.additional_items) ? body.additional_items : [];
     for (const [index, item] of additionalItems.entries()) {
       if (!['service', 'product'].includes(item.item_type)) {
@@ -348,12 +367,16 @@ serve(async (req) => {
     // (tips, advance payments, package adjustments, different negotiated prices, etc.)
 
     // 6. Update appointment payment
+    // CRITICAL: persist discount_amount so it survives reloads and the
+    // totalRequired calc remains coherent on follow-up updates.
+    const discountToPersist = Math.max(0, Number(body.discount_amount || 0));
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
         payment_methods: accumulatedPaymentMethods,
         amount_paid: accumulatedAmountPaid,
         payment_status: resolvedPaymentStatus,
+        discount_amount: discountToPersist,
         updated_by: userId,
       })
       .eq('id', body.appointment_id)
@@ -604,48 +627,24 @@ serve(async (req) => {
       console.log(`Client credit used: ${body.used_client_credit} for ${clientName} - not registered in cash flow`);
     }
 
-    // 8. Create financial entries and cash transactions for actual payments
-    // First, handle discount registration if any
-    const discountAmount = body.discount_amount || 0;
-    if (discountAmount > 0 && body.cash_register_id) {
-      // Register discount as a separate entry for auditing/reporting purposes
-      const { error: discountEntryError } = await supabase.from('financial_entries').insert({
-        type: 'expense',
-        description: `Desconto: ${serviceName} - ${clientName}`,
-        amount: discountAmount,
-        due_date: today,
-        paid_date: today,
-        status: 'paid',
-        client_id: appointment.client?.id,
-        appointment_id: body.appointment_id,
-        notes: 'Desconto concedido ao cliente',
-        created_by: userId,
-      });
-
-      if (discountEntryError) {
-        console.error('Error creating discount financial entry:', discountEntryError);
-      }
-
-      // Register discount as cash transaction for cash register tracking
-      const { error: discountCashError } = await supabase.from('cash_transactions').insert({
-        cash_register_id: body.cash_register_id,
-        type: 'expense',
-        category: 'discount',
-        description: `Desconto: ${serviceName} - ${clientName}`,
-        amount: discountAmount,
-        payment_method: null,
-        reference_id: body.appointment_id,
-        reference_type: 'appointment',
-        created_by: userId,
-      });
-
-      if (discountCashError) {
-        console.error('Error creating discount cash transaction:', discountCashError);
-      }
-    }
+    // 8. Create financial entries and cash transactions for actual payments.
+    // IMPORTANT (regra de negócio):
+    //   - O DESCONTO NÃO gera lançamento de débito/crédito no caixa nem no financeiro.
+    //   - O desconto atua exclusivamente como REDUTOR do valor a receber.
+    //   - Ele é discriminado dentro do próprio registro de pagamento (notes/description),
+    //     mantendo o princípio do "lançamento único" por evento de pagamento.
+    const discountAmount = Math.max(0, Number(body.discount_amount || 0));
 
     if (newCashPaymentAmount > 0) {
-      // Create financial entry
+      // Lançamento único e rastreável: registra valor integral, desconto e recebido
+      const breakdownNotes = [
+        `Valor integral: R$ ${Number(baseRequiredAmount + additionalItemsTotal).toFixed(2)}`,
+        discountAmount > 0 ? `Desconto concedido: R$ ${discountAmount.toFixed(2)}` : null,
+        `Valor recebido: R$ ${newCashPaymentAmount.toFixed(2)}`,
+        `Forma: ${primaryPaymentMethodName || 'n/a'}`,
+        `Data: ${today}`,
+      ].filter(Boolean).join(' | ');
+
       const { error: entryError } = await supabase.from('financial_entries').insert({
         type: 'receivable',
         description: `Pagamento: ${serviceName} - ${clientName}`,
@@ -656,6 +655,7 @@ serve(async (req) => {
         client_id: appointment.client?.id,
         appointment_id: body.appointment_id,
         payment_method_id: primaryPaymentMethodId,
+        notes: breakdownNotes,
         created_by: userId,
       });
 
@@ -669,7 +669,7 @@ serve(async (req) => {
           cash_register_id: body.cash_register_id,
           type: 'income',
           category: 'sale',
-          description: `${serviceName} - ${clientName}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
+          description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
           amount: newCashPaymentAmount,
           payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
           reference_id: body.appointment_id,
@@ -683,6 +683,7 @@ serve(async (req) => {
           console.error('Error creating cash transaction:', cashError);
         }
       }
+
 
       // Create pending receivable for partial payments
       if (remainingAfterPayment > 0 && resolvedPaymentStatus === 'partial') {

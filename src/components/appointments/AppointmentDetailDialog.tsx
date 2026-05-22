@@ -824,13 +824,16 @@ export function AppointmentDetailDialog({
     ? Math.min(packagePrice || Number(appointment.amount_paid || 0), Number(appointment.amount_paid || 0))
     : Number(appointment.amount_paid || 0);
   
-  const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal) - amountPaid);
+  // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
+  const persistedDiscount = Number((appointment as any)?.discount_amount || 0);
+  const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
   
   // Determine effective payment status based on actual amounts
   // This ensures consistency between displayed status and values
   const calculateEffectivePaymentStatus = () => {
-    if (totalPrice === 0) return 'paid';
-    if (amountPaid >= totalPrice) return 'paid';
+    const requiredAfterDiscount = Math.max(0, totalPrice + persistedAdditionalItemsTotal - persistedDiscount);
+    if (requiredAfterDiscount === 0) return 'paid';
+    if (amountPaid >= requiredAfterDiscount) return 'paid';
     if (amountPaid > 0) return 'partial';
     return 'pending';
   };

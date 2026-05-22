@@ -80,12 +80,15 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
+  const { activeServices } = useServices();
   const { professionalId } = useCurrentProfessional();
   const { hasRole } = useAuth();
   
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const [componentIds, setComponentIds] = useState<string[]>([]);
+  const [componentPicker, setComponentPicker] = useState<string>('');
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

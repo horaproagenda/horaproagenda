@@ -187,6 +187,25 @@ serve(async (req) => {
       );
     }
 
+    // Bloqueio de duplicidade: não permite uma segunda baixa do mesmo evento
+    // a menos que o pagamento atual seja apenas adição de itens, crédito ao
+    // cliente (saldo/cortesia) ou uso de saldo. Para isso, exigimos que ainda
+    // exista valor a receber OU que haja itens adicionais/crédito sendo movimentado.
+    const alreadyPaid = appointment.payment_status === 'paid';
+    const hasExtras = (Array.isArray(body.additional_items) && body.additional_items.length > 0)
+      || (body.client_credit && body.client_credit > 0)
+      || (body.courtesy_credit && body.courtesy_credit > 0)
+      || (body.used_client_credit && body.used_client_credit > 0);
+    if (alreadyPaid && !hasExtras) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Este agendamento já está com a baixa registrada. Desfaça a baixa antes de lançar um novo pagamento.',
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const additionalItems = Array.isArray(body.additional_items) ? body.additional_items : [];
     for (const [index, item] of additionalItems.entries()) {
       if (!['service', 'product'].includes(item.item_type)) {

@@ -35,9 +35,28 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
+import { useServices } from '@/hooks/useServices';
 import { supabase } from '@/integrations/supabase/client';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
 import { SignaturePad } from './SignaturePad';
+
+const formatBRL = (n: number | string | null | undefined): string => {
+  const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
+  if (!Number.isFinite(v)) return '';
+  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const buildClientAddress = (c: any): string => {
+  if (!c) return '';
+  const parts = [
+    [c.address_street, c.address_number].filter(Boolean).join(', '),
+    c.address_complement,
+    c.address_neighborhood,
+    [c.address_city, c.address_state].filter(Boolean).join('/'),
+    c.cep,
+  ].filter(Boolean);
+  return parts.join(' - ');
+};
 
 interface FillDocumentDialogProps {
   open: boolean;
@@ -55,22 +74,31 @@ export function FillDocumentDialog({
   onDocumentSaved
 }: FillDocumentDialogProps) {
   const { clients: rawClients } = useClients();
-  
+  const { activeServices } = useServices();
+
   // Fetch clients with assigned professional for auto-fill
   const [clientsWithProfessional, setClientsWithProfessional] = useState<any[]>([]);
+  const [businessSettings, setBusinessSettings] = useState<any | null>(null);
+  const [clientPackages, setClientPackages] = useState<any[]>([]);
+
   useEffect(() => {
-    const fetchClientsWithProfessional = async () => {
-      const { data } = await supabase
-        .from('clients')
-        .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
-        .order('name');
-      if (data) setClientsWithProfessional(data);
-    };
-    if (open) fetchClientsWithProfessional();
+    if (!open) return;
+    (async () => {
+      const [{ data: cli }, { data: biz }] = await Promise.all([
+        supabase
+          .from('clients')
+          .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
+          .order('name'),
+        supabase.from('business_settings').select('*').maybeSingle(),
+      ]);
+      if (cli) setClientsWithProfessional(cli);
+      if (biz) setBusinessSettings(biz);
+    })();
   }, [open]);
-  
+
   const clients = clientsWithProfessional.length > 0 ? clientsWithProfessional : rawClients;
   const [selectedClientId, setSelectedClientId] = useState<string>(preSelectedClientId || '');
+  const [selectedOfferingId, setSelectedOfferingId] = useState<string>('');
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -89,12 +117,34 @@ export function FillDocumentDialog({
 
   const variables = template?.content ? extractVariables(template.content) : [];
 
-  // Auto-fill variables based on selected client
+  // Fetch packages for the selected client
+  useEffect(() => {
+    if (!selectedClientId) {
+      setClientPackages([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('service_packages')
+        .select('id, name, total_price, service:services(name)')
+        .eq('client_id', selectedClientId)
+        .eq('is_active', true);
+      setClientPackages(data || []);
+    })();
+  }, [selectedClientId]);
+
+  // Reset offering when client changes
+  useEffect(() => {
+    setSelectedOfferingId('');
+  }, [selectedClientId]);
+
+  // Auto-fill variables based on selected client + clinic + offering
   useEffect(() => {
     if (!template?.content) return;
 
     let content = htmlToPlainText(template.content);
-    
+    const todayStr = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
+
     if (selectedClient) {
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');
       content = content.replace(/\{nome_cliente\}/gi, selectedClient.name || '');
@@ -102,12 +152,13 @@ export function FillDocumentDialog({
       content = content.replace(/\{telefone\}/gi, selectedClient.phone || '');
       content = content.replace(/\{cpf\}/gi, selectedClient.cpf || '');
       content = content.replace(/\{nascimento\}/gi, selectedClient.birthdate ? format(new Date(selectedClient.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '');
-      
-      // Auto-fill professional from assigned_professional
+      content = content.replace(/\{cidade\}/gi, (selectedClient as any).address_city || '');
+      content = content.replace(/\{endereco_cliente\}/gi, buildClientAddress(selectedClient));
+      content = content.replace(/\{endereco\}/gi, buildClientAddress(selectedClient));
+
       const professionalName = (selectedClient as any).assigned_professional?.name || '';
       content = content.replace(/\{profissional\}/gi, professionalName);
-      
-      // Calculate age from birthdate
+
       if (selectedClient.birthdate) {
         const birth = new Date(selectedClient.birthdate + 'T12:00:00');
         const today = new Date();
@@ -116,22 +167,50 @@ export function FillDocumentDialog({
         if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
         content = content.replace(/\{idade\}/gi, String(age));
       }
-      
+
       setSignedBy(selectedClient.name);
     }
 
-    content = content.replace(/\{data\}/gi, format(new Date(), 'dd/MM/yyyy', { locale: ptBR }));
+    // Clinic data
+    if (businessSettings) {
+      content = content.replace(/\{endereco_clinica\}/gi, businessSettings.clinic_address || '');
+      content = content.replace(/\{nome_clinica\}/gi, businessSettings.clinic_name || '');
+      content = content.replace(/\{telefone_clinica\}/gi, businessSettings.clinic_phone || '');
+      content = content.replace(/\{email_clinica\}/gi, businessSettings.clinic_email || '');
+      content = content.replace(/\{cnpj_clinica\}/gi, businessSettings.clinic_cnpj || '');
+    }
+
+    // Service / Package selection
+    if (selectedOfferingId) {
+      if (selectedOfferingId.startsWith('svc:')) {
+        const svc = activeServices.find(s => s.id === selectedOfferingId.slice(4));
+        if (svc) {
+          content = content.replace(/\{servico\}/gi, svc.name);
+          content = content.replace(/\{valor\}/gi, formatBRL(svc.price as any));
+        }
+      } else if (selectedOfferingId.startsWith('pkg:')) {
+        const pkg = clientPackages.find(p => p.id === selectedOfferingId.slice(4));
+        if (pkg) {
+          const label = `Pacote: ${pkg.name || pkg.service?.name || ''}`.trim();
+          content = content.replace(/\{servico\}/gi, label);
+          content = content.replace(/\{valor\}/gi, formatBRL(pkg.total_price));
+        }
+      }
+    }
+
+    content = content.replace(/\{data\}/gi, todayStr);
+    content = content.replace(/\{data_atual\}/gi, todayStr);
     content = content.replace(/\{hora\}/gi, format(new Date(), 'HH:mm', { locale: ptBR }));
     content = content.replace(/\{data_extenso\}/gi, format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }));
 
-    // Apply custom variables
+    // Apply custom variables (last so user override wins)
     Object.entries(customVariables).forEach(([key, value]) => {
       const regex = new RegExp(`\\{${key}\\}`, 'gi');
       content = content.replace(regex, value);
     });
 
     setFilledContent(content);
-  }, [template, selectedClient, customVariables]);
+  }, [template, selectedClient, customVariables, businessSettings, selectedOfferingId, activeServices, clientPackages]);
 
   useEffect(() => {
     if (preSelectedClientId) {
@@ -305,7 +384,12 @@ export function FillDocumentDialog({
 
   const unfilledVariables = variables.filter(v => {
     const lowerV = v.toLowerCase();
-    const autoFilled = ['nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso', 'profissional', 'idade'];
+    const autoFilled = [
+      'nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'data_atual',
+      'hora', 'data_extenso', 'profissional', 'idade', 'cidade', 'endereco', 'endereco_cliente',
+      'endereco_clinica', 'nome_clinica', 'telefone_clinica', 'email_clinica', 'cnpj_clinica',
+      'servico', 'valor',
+    ];
     if (autoFilled.includes(lowerV)) return false;
     return !customVariables[v];
   });
@@ -353,8 +437,41 @@ export function FillDocumentDialog({
                   <p><strong>Telefone:</strong> {selectedClient.phone}</p>
                   {selectedClient.email && <p><strong>Email:</strong> {selectedClient.email}</p>}
                   {selectedClient.cpf && <p><strong>CPF:</strong> {selectedClient.cpf}</p>}
+                  {(selectedClient as any).address_city && (
+                    <p><strong>Cidade:</strong> {(selectedClient as any).address_city}</p>
+                  )}
                 </div>
               )}
+
+              {selectedClient && (variables.includes('servico') || variables.includes('valor')) && (
+                <div>
+                  <Label className="text-sm font-medium">Serviço / Pacote</Label>
+                  <Select value={selectedOfferingId} onValueChange={setSelectedOfferingId}>
+                    <SelectTrigger className="h-9 mt-1.5">
+                      <SelectValue placeholder="Selecione um serviço ou pacote..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientPackages.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Pacotes do cliente</div>
+                          {clientPackages.map((p: any) => (
+                            <SelectItem key={`pkg-${p.id}`} value={`pkg:${p.id}`}>
+                              Pacote: {p.name || p.service?.name} — {formatBRL(p.total_price)}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Serviços</div>
+                      {activeServices.map((s: any) => (
+                        <SelectItem key={`svc-${s.id}`} value={`svc:${s.id}`}>
+                          {s.name} — {formatBRL(s.price)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
 
               <Separator />
 

@@ -45,15 +45,21 @@ interface DocumentTemplateDialogProps {
 const commonVariables = [
   { name: 'nome', description: 'Nome do cliente' },
   { name: 'cpf', description: 'CPF do cliente' },
-  { name: 'email', description: 'Email do cliente' },
-  { name: 'telefone', description: 'Telefone do cliente' },
-  { name: 'data', description: 'Data atual' },
-  { name: 'endereco', description: 'Endereço do cliente' },
-  { name: 'nascimento', description: 'Data de nascimento' },
+  { name: 'data', description: 'Data atual (dd/mm/aaaa)' },
+  { name: 'data_atual', description: 'Data atual (dd/mm/aaaa)' },
+  { name: 'data_extenso', description: 'Data por extenso' },
+  { name: 'nascimento', description: 'Data de nascimento do cliente' },
   { name: 'idade', description: 'Idade do cliente' },
+  { name: 'cidade', description: 'Cidade do cliente' },
+  { name: 'endereco', description: 'Endereço completo do cliente' },
+  { name: 'endereco_clinica', description: 'Endereço da clínica' },
+  { name: 'nome_clinica', description: 'Nome da clínica' },
+  { name: 'telefone_clinica', description: 'Telefone da clínica' },
+  { name: 'telefone', description: 'Telefone do cliente' },
+  { name: 'email', description: 'Email do cliente' },
   { name: 'profissional', description: 'Nome do profissional' },
-  { name: 'servico', description: 'Nome do serviço' },
-  { name: 'valor', description: 'Valor do serviço' },
+  { name: 'servico', description: 'Serviço ou pacote selecionado' },
+  { name: 'valor', description: 'Valor do serviço/pacote' },
 ];
 
 const interactivePatterns = [

@@ -93,7 +93,7 @@ export function FillDocumentDialog({
   useEffect(() => {
     if (!template?.content) return;
 
-    let content = template.content;
+    let content = htmlToPlainText(template.content);
     
     if (selectedClient) {
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');

@@ -3,7 +3,8 @@ export type DocumentFieldToken =
   | { type: 'variable'; name: string; fieldKey: string; label?: string }
   | { type: 'yesno'; fieldKey: string; label: string }
   | { type: 'freeText'; fieldKey: string; label: string }
-  | { type: 'blankField'; fieldKey: string; label: string };
+  | { type: 'blankField'; fieldKey: string; label: string }
+  | { type: 'checkbox'; fieldKey: string; label: string };
 
 export interface DocumentPrefillSnapshot {
   client?: {
@@ -21,7 +22,9 @@ export interface DocumentPrefillSnapshot {
 }
 
 const YES_NO_REGEX = /\(\s*\)\s*(Sim|sim)\s*\(\s*\)\s*(Não|nao|Nao)/i;
-const TOKEN_REGEX = /(\{[^}]+\}|\[TEXTO_LIVRE\]|\(\s*\)\s*(?:Sim|sim)\s*\(\s*\)\s*(?:Não|nao|Nao))/gi;
+// Order matters: Sim/Não combo first, then a single empty parenthesis ( ).
+const TOKEN_REGEX = /(\{[^}]+\}|\[TEXTO_LIVRE\]|\(\s*\)\s*(?:Sim|sim)\s*\(\s*\)\s*(?:Não|nao|Nao)|\(\s*\))/gi;
+const SINGLE_CHECKBOX_REGEX = /^\(\s*\)$/;
 
 export function normalizeDocumentLinkPayload<T>(payload: unknown): T | null {
   if (Array.isArray(payload)) {

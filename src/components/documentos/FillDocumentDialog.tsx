@@ -74,22 +74,31 @@ export function FillDocumentDialog({
   onDocumentSaved
 }: FillDocumentDialogProps) {
   const { clients: rawClients } = useClients();
-  
+  const { activeServices } = useServices();
+
   // Fetch clients with assigned professional for auto-fill
   const [clientsWithProfessional, setClientsWithProfessional] = useState<any[]>([]);
+  const [businessSettings, setBusinessSettings] = useState<any | null>(null);
+  const [clientPackages, setClientPackages] = useState<any[]>([]);
+
   useEffect(() => {
-    const fetchClientsWithProfessional = async () => {
-      const { data } = await supabase
-        .from('clients')
-        .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
-        .order('name');
-      if (data) setClientsWithProfessional(data);
-    };
-    if (open) fetchClientsWithProfessional();
+    if (!open) return;
+    (async () => {
+      const [{ data: cli }, { data: biz }] = await Promise.all([
+        supabase
+          .from('clients')
+          .select('*, assigned_professional:professionals!clients_assigned_professional_id_fkey(id, name)')
+          .order('name'),
+        supabase.from('business_settings').select('*').maybeSingle(),
+      ]);
+      if (cli) setClientsWithProfessional(cli);
+      if (biz) setBusinessSettings(biz);
+    })();
   }, [open]);
-  
+
   const clients = clientsWithProfessional.length > 0 ? clientsWithProfessional : rawClients;
   const [selectedClientId, setSelectedClientId] = useState<string>(preSelectedClientId || '');
+  const [selectedOfferingId, setSelectedOfferingId] = useState<string>('');
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);

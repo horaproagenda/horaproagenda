@@ -341,6 +341,7 @@ export default function PreencherDocumento() {
       formData,
       yesNoAnswers,
       additionalInfo,
+      checkboxAnswers,
     });
 
     if (additionalInfo.observacoes?.trim()) {

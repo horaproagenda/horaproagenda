@@ -265,19 +265,18 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                     <FormItem>
                       <FormLabel className="text-xs">Conteúdo do Documento *</FormLabel>
                       <FormControl>
-                        <div className="rounded-lg border bg-muted/40 p-3 sm:p-4">
-                          <div className="mx-auto max-w-[680px] rounded-md border bg-white shadow-sm dark:bg-zinc-50">
-                            <Textarea
-                              {...field}
-                              ref={(element) => {
-                                field.ref(element);
-                                textareaRef.current = element;
-                              }}
-                              placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) para caixas de seleção clicáveis.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
-                              className="min-h-[420px] resize-none border-0 bg-transparent font-serif text-[15px] leading-relaxed text-zinc-900 caret-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                            />
-                          </div>
-                        </div>
+                        <RichTextEditor
+                          ref={editorRef}
+                          value={field.value || ''}
+                          onChange={(html) =>
+                            form.setValue('content', html, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) para caixas de seleção clicáveis.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

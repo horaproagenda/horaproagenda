@@ -1463,16 +1463,16 @@ export function AppointmentDetailDialog({
 
               {/* Desfazer baixa — zera amount_paid, remove cash/financial entries e devolve crédito do cliente */}
               {amountPaid > 0 && (
-                <div className="flex justify-end">
+                <div className="col-span-3 flex justify-center">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setConfirmReverseOpen(true)}
                     disabled={reversePayment.isPending}
-                    className="text-warning border-warning/40 hover:bg-warning/10 hover:text-warning"
+                    className="h-7 px-2 text-[11px] font-medium text-warning border-warning/40 hover:bg-warning/10 hover:text-warning"
                   >
-                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    <RotateCcw className="h-3 w-3 mr-1" />
                     {reversePayment.isPending ? 'Desfazendo…' : 'Desfazer baixa'}
                   </Button>
                 </div>

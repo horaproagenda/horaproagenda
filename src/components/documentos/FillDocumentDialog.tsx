@@ -35,9 +35,28 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
+import { useServices } from '@/hooks/useServices';
 import { supabase } from '@/integrations/supabase/client';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
 import { SignaturePad } from './SignaturePad';
+
+const formatBRL = (n: number | string | null | undefined): string => {
+  const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
+  if (!Number.isFinite(v)) return '';
+  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const buildClientAddress = (c: any): string => {
+  if (!c) return '';
+  const parts = [
+    [c.address_street, c.address_number].filter(Boolean).join(', '),
+    c.address_complement,
+    c.address_neighborhood,
+    [c.address_city, c.address_state].filter(Boolean).join('/'),
+    c.cep,
+  ].filter(Boolean);
+  return parts.join(' - ');
+};
 
 interface FillDocumentDialogProps {
   open: boolean;

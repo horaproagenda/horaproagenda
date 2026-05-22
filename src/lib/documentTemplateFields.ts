@@ -26,6 +26,49 @@ const YES_NO_REGEX = /\(\s*\)\s*(Sim|sim)\s*\(\s*\)\s*(Não|nao|Nao)/i;
 const TOKEN_REGEX = /(\{[^}]+\}|\[TEXTO_LIVRE\]|\(\s*\)\s*(?:Sim|sim)\s*\(\s*\)\s*(?:Não|nao|Nao)|\(\s*\))/gi;
 const SINGLE_CHECKBOX_REGEX = /^\(\s*\)$/;
 
+/**
+ * Convert a possibly-HTML document body to plain text preserving line breaks.
+ * Tokenization and PDF export operate on plain text.
+ */
+export function htmlToPlainText(input: string | null | undefined): string {
+  if (!input) return '';
+  // Detect HTML content; if it has no tags, return as-is
+  if (!/<[a-z][\s\S]*?>/i.test(input)) return input;
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+    // Naive fallback: strip tags and decode &nbsp;/&amp;/&lt;/&gt;
+    return input
+      .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  }
+  const doc = new DOMParser().parseFromString(input, 'text/html');
+  // innerText would not be reliable on detached nodes; manually walk.
+  const blockTags = new Set(['P', 'DIV', 'BR', 'LI', 'TR', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+  let out = '';
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent || '';
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const el = node as HTMLElement;
+    if (el.tagName === 'BR') {
+      out += '\n';
+      return;
+    }
+    const isBlock = blockTags.has(el.tagName);
+    if (isBlock && out && !out.endsWith('\n')) out += '\n';
+    el.childNodes.forEach(walk);
+    if (isBlock && !out.endsWith('\n')) out += '\n';
+  };
+  doc.body.childNodes.forEach(walk);
+  return out.replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
 export function normalizeDocumentLinkPayload<T>(payload: unknown): T | null {
   if (Array.isArray(payload)) {
     return (payload[0] as T | undefined) ?? null;

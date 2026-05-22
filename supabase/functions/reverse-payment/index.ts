@@ -69,83 +69,141 @@ serve(async (req) => {
       });
     }
 
-    // Fetch the appointment for context (client_id, used_client_credit, amount_paid)
-    const { data: appointment, error: fetchError } = await supabase
+    const fetchAppointment = async (appointmentId: string) => supabase
       .from('appointments')
-      .select('id, client_id, amount_paid, used_client_credit')
-      .eq('id', body.appointment_id)
+      .select('id, client_id, amount_paid, payment_status, payment_methods, discount_amount, package_appointment_id, professional_id')
+      .eq('id', appointmentId)
       .maybeSingle();
+
+    let { data: appointment, error: fetchError } = await fetchAppointment(body.appointment_id);
+    let packageId: string | null = null;
+
+    if (!appointment && !fetchError) {
+      const { data: packageSession, error: packageSessionError } = await supabase
+        .from('package_appointments')
+        .select('id, appointment_id, package_id')
+        .or(`id.eq.${body.appointment_id},appointment_id.eq.${body.appointment_id}`)
+        .maybeSingle();
+
+      if (packageSessionError) {
+        console.error('reverse-payment package lookup error:', packageSessionError, 'id:', body.appointment_id);
+      }
+
+      if (packageSession?.appointment_id) {
+        packageId = packageSession.package_id || null;
+        const refetch = await fetchAppointment(packageSession.appointment_id);
+        appointment = refetch.data;
+        fetchError = refetch.error;
+      }
+    }
 
     if (fetchError || !appointment) {
       console.error('reverse-payment fetch error:', fetchError, 'id:', body.appointment_id);
-      return new Response(JSON.stringify({ success: false, error: 'Appointment not found', details: fetchError?.message }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ success: false, error: 'Agendamento não encontrado para desfazer a baixa.', details: fetchError?.message }, 404);
     }
 
-    // Look up package separately (avoids join failing the whole query)
-    const { data: pkgRow } = await supabase
-      .from('package_appointments')
-      .select('package_id')
-      .eq('appointment_id', body.appointment_id)
-      .maybeSingle();
-    const packageId = pkgRow?.package_id || null;
-    const usedClientCredit = Number((appointment as any).used_client_credit || 0);
-
-    // 1) Refund client credit if it was used
-    if (usedClientCredit > 0 && appointment.client_id) {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('credit_balance')
-        .eq('id', appointment.client_id)
-        .single();
-      const currentBalance = Number(client?.credit_balance || 0);
-      await supabase
-        .from('clients')
-        .update({ credit_balance: currentBalance + usedClientCredit })
-        .eq('id', appointment.client_id);
+    if (!packageId && appointment.package_appointment_id) {
+      const { data: packageSession } = await supabase
+        .from('package_appointments')
+        .select('package_id')
+        .eq('id', appointment.package_appointment_id)
+        .maybeSingle();
+      packageId = packageSession?.package_id || null;
+    }
+    if (!packageId) {
+      const { data: packageSession } = await supabase
+        .from('package_appointments')
+        .select('package_id')
+        .eq('appointment_id', appointment.id)
+        .maybeSingle();
+      packageId = packageSession?.package_id || null;
     }
 
-    // 2) Delete related cash_transactions and financial_entries that referenced this appointment
-    await supabase.from('cash_transactions').delete().eq('appointment_id', body.appointment_id);
-    await supabase.from('financial_entries').delete().eq('appointment_id', body.appointment_id);
-
-    // 3) Reset the appointment(s)
-    const resetPayload = {
-      amount_paid: 0,
-      payment_status: 'pending' as const,
-      payment_methods: [] as string[],
-      used_client_credit: 0,
-      card_fee_amount: 0,
-      installments: null,
-      discount_amount: 0,
-      payment_method_name: null,
-      updated_by: userId,
-    };
-
-    let updateQuery = supabase.from('appointments').update(resetPayload);
+    let appointmentIds = [appointment.id];
     if (packageId) {
-      // reset all sibling appointments in the package
       const { data: siblings } = await supabase
         .from('package_appointments')
         .select('appointment_id')
         .eq('package_id', packageId)
         .not('appointment_id', 'is', null);
-      const ids = (siblings || []).map((s: any) => s.appointment_id).filter(Boolean);
-      if (ids.length) await supabase.from('appointments').update(resetPayload).in('id', ids);
-      // also clear package payment_methods
-      await supabase.from('service_packages').update({ payment_methods: [] }).eq('id', packageId);
-    } else {
-      await updateQuery.eq('id', body.appointment_id);
+      const siblingIds = (siblings || []).map((s: any) => s.appointment_id).filter(Boolean);
+      appointmentIds = [...new Set([appointment.id, ...siblingIds])];
     }
 
-    // 4) Audit log
+    const { data: creditHistoryRows } = await supabase
+      .from('client_credit_transactions')
+      .select('transaction_type, amount')
+      .in('appointment_id', appointmentIds);
+    const usedClientCredit = sumAmounts((creditHistoryRows || []).filter((row: any) => row.transaction_type === 'credit_used'));
+    const addedCreditFromHistory = sumAmounts((creditHistoryRows || []).filter((row: any) => row.transaction_type === 'credit_added'));
+
+    const { data: financialRows } = await supabase
+      .from('financial_entries')
+      .select('amount, description, notes')
+      .in('appointment_id', appointmentIds);
+    const addedCreditFromFinancial = sumAmounts((financialRows || []).filter((row: any) => {
+      const text = `${row.description || ''} ${row.notes || ''}`.toLowerCase();
+      return text.includes('saldo/troco') || text.includes('troco deixado como saldo');
+    }));
+    const creditToRemove = Math.max(addedCreditFromHistory, addedCreditFromFinancial);
+
+    if ((usedClientCredit > 0 || creditToRemove > 0) && appointment.client_id) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('credit_balance')
+        .eq('id', appointment.client_id)
+        .single();
+      const previousBalance = Number(client?.credit_balance || 0);
+      const newBalance = Math.max(0, previousBalance + usedClientCredit - creditToRemove);
+
+      await supabase
+        .from('clients')
+        .update({ credit_balance: newBalance })
+        .eq('id', appointment.client_id);
+
+      await supabase.from('client_credit_transactions').insert({
+        client_id: appointment.client_id,
+        appointment_id: appointment.id,
+        transaction_type: 'credit_adjustment',
+        amount: Math.abs(newBalance - previousBalance),
+        previous_balance: previousBalance,
+        new_balance: newBalance,
+        description: `Estorno da baixa: crédito usado devolvido (R$ ${usedClientCredit.toFixed(2)}) e saldo gerado removido (R$ ${creditToRemove.toFixed(2)})`,
+        created_by: userId,
+        professional_id: appointment.professional_id || null,
+      });
+    }
+
+    const referenceIds = [...new Set([...appointmentIds, body.appointment_id])];
+    await supabase.from('cash_transactions').delete().eq('reference_type', 'appointment').in('reference_id', referenceIds);
+    await supabase.from('financial_entries').delete().in('appointment_id', appointmentIds);
+
+    const resetPayload = {
+      amount_paid: 0,
+      payment_status: 'pending' as const,
+      payment_methods: [] as string[],
+      discount_amount: 0,
+      updated_by: userId,
+    };
+
+    await supabase.from('appointments').update(resetPayload).in('id', appointmentIds);
+    if (packageId) {
+      await supabase.from('service_packages').update({ payment_methods: [] }).eq('id', packageId);
+    }
+
     await supabase.from('audit_logs').insert({
       user_id: userId,
       action: 'reverse_payment',
       table_name: 'appointments',
-      record_id: body.appointment_id,
-      details: { reversed_amount: appointment.amount_paid, refunded_credit: usedClientCredit, package_id: packageId },
+      record_id: appointment.id,
+      new_data: {
+        requested_id: body.appointment_id,
+        appointment_ids: appointmentIds,
+        reversed_amount: appointment.amount_paid,
+        refunded_credit: usedClientCredit,
+        removed_client_credit: creditToRemove,
+        package_id: packageId,
+      },
     });
 
     return new Response(JSON.stringify({ success: true }), {

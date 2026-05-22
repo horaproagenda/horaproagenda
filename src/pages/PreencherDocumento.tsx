@@ -362,6 +362,7 @@ export default function PreencherDocumento() {
         ...formData,
         ...additionalInfo,
         yesNoAnswers,
+        checkboxAnswers,
       };
 
       const { error: submitError } = await supabase.rpc('submit_document_fill_by_token', {

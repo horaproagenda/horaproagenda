@@ -437,8 +437,41 @@ export function FillDocumentDialog({
                   <p><strong>Telefone:</strong> {selectedClient.phone}</p>
                   {selectedClient.email && <p><strong>Email:</strong> {selectedClient.email}</p>}
                   {selectedClient.cpf && <p><strong>CPF:</strong> {selectedClient.cpf}</p>}
+                  {(selectedClient as any).address_city && (
+                    <p><strong>Cidade:</strong> {(selectedClient as any).address_city}</p>
+                  )}
                 </div>
               )}
+
+              {selectedClient && (variables.includes('servico') || variables.includes('valor')) && (
+                <div>
+                  <Label className="text-sm font-medium">Serviço / Pacote</Label>
+                  <Select value={selectedOfferingId} onValueChange={setSelectedOfferingId}>
+                    <SelectTrigger className="h-9 mt-1.5">
+                      <SelectValue placeholder="Selecione um serviço ou pacote..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientPackages.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Pacotes do cliente</div>
+                          {clientPackages.map((p: any) => (
+                            <SelectItem key={`pkg-${p.id}`} value={`pkg:${p.id}`}>
+                              Pacote: {p.name || p.service?.name} — {formatBRL(p.total_price)}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Serviços</div>
+                      {activeServices.map((s: any) => (
+                        <SelectItem key={`svc-${s.id}`} value={`svc:${s.id}`}>
+                          {s.name} — {formatBRL(s.price)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
 
               <Separator />
 

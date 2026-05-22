@@ -384,7 +384,12 @@ export function FillDocumentDialog({
 
   const unfilledVariables = variables.filter(v => {
     const lowerV = v.toLowerCase();
-    const autoFilled = ['nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'hora', 'data_extenso', 'profissional', 'idade'];
+    const autoFilled = [
+      'nome', 'nome_cliente', 'email', 'telefone', 'cpf', 'nascimento', 'data', 'data_atual',
+      'hora', 'data_extenso', 'profissional', 'idade', 'cidade', 'endereco', 'endereco_cliente',
+      'endereco_clinica', 'nome_clinica', 'telefone_clinica', 'email_clinica', 'cnpj_clinica',
+      'servico', 'valor',
+    ];
     if (autoFilled.includes(lowerV)) return false;
     return !customVariables[v];
   });

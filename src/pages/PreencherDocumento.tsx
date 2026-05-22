@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import {
   buildFilledDocumentContent,
   extractDocumentPrefillSnapshot,
+  htmlToPlainText,
   isAutoFilledVariable,
   normalizeDocumentLinkPayload,
   tokenizeDocumentLine,
@@ -315,7 +316,7 @@ export default function PreencherDocumento() {
       setTemplate({
         id: templateData.id,
         title: templateData.title,
-        content: templateData.content,
+        content: htmlToPlainText(templateData.content),
         variables: templateData.variables || [],
       });
       setClient(clientSnapshot);

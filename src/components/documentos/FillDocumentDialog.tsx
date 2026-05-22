@@ -36,6 +36,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
+import { htmlToPlainText } from '@/lib/documentTemplateFields';
 import { SignaturePad } from './SignaturePad';
 
 interface FillDocumentDialogProps {
@@ -92,7 +93,7 @@ export function FillDocumentDialog({
   useEffect(() => {
     if (!template?.content) return;
 
-    let content = template.content;
+    let content = htmlToPlainText(template.content);
     
     if (selectedClient) {
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');

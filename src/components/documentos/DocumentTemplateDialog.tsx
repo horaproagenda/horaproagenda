@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -24,6 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Info, CheckSquare, Type } from 'lucide-react';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
+import { RichTextEditor, type RichTextEditorHandle } from './RichTextEditor';
 
 const templateSchema = z.object({
   title: z.string().trim().min(2, 'Título obrigatório').max(100),
@@ -64,7 +64,7 @@ const interactivePatterns = [
 
 export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }: DocumentTemplateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<RichTextEditorHandle | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(templateSchema),
@@ -118,14 +118,8 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
   };
 
   const insertIntoContent = (value: string, autoRegisterVariable?: string) => {
-    const currentContent = form.getValues('content') || '';
-    const textarea = textareaRef.current;
-
-    const start = textarea?.selectionStart ?? currentContent.length;
-    const end = textarea?.selectionEnd ?? currentContent.length;
-
-    const nextContent = `${currentContent.slice(0, start)}${value}${currentContent.slice(end)}`;
-    form.setValue('content', nextContent, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    editorRef.current?.focus();
+    editorRef.current?.insertText(value);
 
     if (autoRegisterVariable) {
       const currentVariables = form.getValues('variables');
@@ -135,13 +129,6 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         form.setValue('variables', varsArray.join(', '), { shouldDirty: true });
       }
     }
-
-    requestAnimationFrame(() => {
-      if (!textareaRef.current) return;
-      const cursorPosition = start + value.length;
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
-    });
   };
 
   const insertVariable = (varName: string) => insertIntoContent(`{${varName}}`, varName);
@@ -278,19 +265,18 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                     <FormItem>
                       <FormLabel className="text-xs">Conteúdo do Documento *</FormLabel>
                       <FormControl>
-                        <div className="rounded-lg border bg-muted/40 p-3 sm:p-4">
-                          <div className="mx-auto max-w-[680px] rounded-md border bg-white shadow-sm dark:bg-zinc-50">
-                            <Textarea
-                              {...field}
-                              ref={(element) => {
-                                field.ref(element);
-                                textareaRef.current = element;
-                              }}
-                              placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) para caixas de seleção clicáveis.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
-                              className="min-h-[420px] resize-none border-0 bg-transparent font-serif text-[15px] leading-relaxed text-zinc-900 caret-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                            />
-                          </div>
-                        </div>
+                        <RichTextEditor
+                          ref={editorRef}
+                          value={field.value || ''}
+                          onChange={(html) =>
+                            form.setValue('content', html, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          placeholder={`Digite o conteúdo do documento aqui.\n\nUse {nome}, {cpf}, {data} para campos automáticos.\nUse ( ) para caixas de seleção clicáveis.\nUse ( ) Sim ( ) Não para perguntas.\nUse [TEXTO_LIVRE] para caixas de escrita.`}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

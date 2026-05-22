@@ -68,9 +68,16 @@ export function DocumentPreviewDialog({
 
         <ScrollArea className="flex-1 min-h-0 px-6 py-4">
           <div className="prose prose-sm max-w-none dark:prose-invert pr-2">
-            <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
-              {template.content}
-            </pre>
+            {/<[a-z][\s\S]*?>/i.test(template.content || '') ? (
+              <div
+                className="bg-muted/30 rounded-lg p-4 border whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: template.content }}
+              />
+            ) : (
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">
+                {template.content}
+              </pre>
+            )}
           </div>
         </ScrollArea>
 

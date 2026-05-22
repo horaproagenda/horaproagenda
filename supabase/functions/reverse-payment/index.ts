@@ -10,7 +10,20 @@ interface ReverseRequest {
   appointment_id: string;
 }
 
-async function checkUserRole(supabase: ReturnType<typeof createClient>, userId: string) {
+type SupabaseClient = ReturnType<typeof createClient>;
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function sumAmounts(rows: Array<{ amount?: number | string | null }> | null | undefined) {
+  return (rows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+}
+
+async function checkUserRole(supabase: SupabaseClient, userId: string) {
   const { data: userRoles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
   const roles = userRoles?.map((r: any) => r.role) || [];
   return { hasPermission: roles.includes('admin') || roles.includes('receptionist'), roles };

@@ -145,6 +145,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       toast.success('Serviço cadastrado!');
       form.reset();
       setCommissionOverride(defaultCommissionOverride);
+      setComponentIds([]);
       setOpen(false);
       onServiceCreated?.();
     } catch (error: any) {

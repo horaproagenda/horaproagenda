@@ -81,6 +81,7 @@ export interface Service {
   room_id: string | null;
   professional_id: string | null;
   equipment: string[];
+  component_service_ids?: string[];
   created_at: string;
   updated_at: string;
   room?: Room;

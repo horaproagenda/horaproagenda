@@ -57,6 +57,7 @@ const commonVariables = [
 ];
 
 const interactivePatterns = [
+  { pattern: '( )', description: 'Caixa de seleção — vira checkbox clicável no preenchimento online', icon: <CheckSquare className="h-3.5 w-3.5" /> },
   { pattern: '( ) Sim ( ) Não', description: 'Pergunta Sim/Não - o cliente marca com X', icon: <CheckSquare className="h-3.5 w-3.5" /> },
   { pattern: '[TEXTO_LIVRE]', description: 'Caixa de texto - espaço para o cliente escrever', icon: <Type className="h-3.5 w-3.5" /> },
 ];

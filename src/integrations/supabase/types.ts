@@ -3149,6 +3149,7 @@ export type Database = {
       services: {
         Row: {
           category: string
+          component_service_ids: string[]
           created_at: string
           description: string | null
           duration: number
@@ -3165,6 +3166,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          component_service_ids?: string[]
           created_at?: string
           description?: string | null
           duration?: number
@@ -3181,6 +3183,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          component_service_ids?: string[]
           created_at?: string
           description?: string | null
           duration?: number

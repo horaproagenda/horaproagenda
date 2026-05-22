@@ -1,0 +1,2 @@
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS component_service_ids uuid[] NOT NULL DEFAULT '{}'::uuid[];
+COMMENT ON COLUMN public.services.component_service_ids IS 'Lista ordenada de IDs de serviços que compõem este serviço (tratamento combinado).';

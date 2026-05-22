@@ -44,8 +44,11 @@ import { toast } from 'sonner';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import { X, ArrowUp, ArrowDown } from 'lucide-react';
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -77,12 +80,15 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
+  const { activeServices } = useServices();
   const { professionalId } = useCurrentProfessional();
   const { hasRole } = useAuth();
   
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const [componentIds, setComponentIds] = useState<string[]>([]);
+  const [componentPicker, setComponentPicker] = useState<string>('');
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -121,7 +127,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         equipment: data.equipment || [],
         return_days: data.return_days || null,
         is_active: data.is_active,
-      }).select('id').single();
+        component_service_ids: componentIds,
+      } as any).select('id').single();
 
       if (error) throw error;
 
@@ -138,6 +145,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       toast.success('Serviço cadastrado!');
       form.reset();
       setCommissionOverride(defaultCommissionOverride);
+      setComponentIds([]);
       setOpen(false);
       onServiceCreated?.();
     } catch (error: any) {
@@ -336,6 +344,64 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 </FormItem>
               )}
             />
+
+            {/* Composição: serviços que compõem este tratamento (ordenado) */}
+            <div className="space-y-1.5 rounded-md border p-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Serviços que compõem este tratamento</Label>
+                <span className="text-[10px] text-muted-foreground">{componentIds.length} adicionado(s)</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Combine serviços distintos em um único tratamento (ex.: limpeza + hidratação).
+              </p>
+              <Select value={componentPicker} onValueChange={(v) => {
+                if (!v) return;
+                setComponentIds(prev => prev.includes(v) ? prev : [...prev, v]);
+                setComponentPicker('');
+              }}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Adicionar serviço..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeServices
+                    .filter(s => !componentIds.includes(s.id))
+                    .map(s => (
+                      <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {componentIds.length > 0 && (
+                <div className="space-y-1">
+                  {componentIds.map((id, idx) => {
+                    const svc = activeServices.find(s => s.id === id);
+                    return (
+                      <div key={id} className="flex items-center gap-1 rounded border bg-muted/40 px-2 py-1">
+                        <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                        <span className="text-xs flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                          disabled={idx === 0}
+                          onClick={() => setComponentIds(prev => {
+                            const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                          })}>
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                          disabled={idx === componentIds.length - 1}
+                          onClick={() => setComponentIds(prev => {
+                            const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                          })}>
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                          onClick={() => setComponentIds(prev => prev.filter(x => x !== id))}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Equipment */}
             {equipment.filter(e => e.is_active).length > 0 && (

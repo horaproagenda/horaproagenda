@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import {
   buildFilledDocumentContent,
   extractDocumentPrefillSnapshot,
+  htmlToPlainText,
   isAutoFilledVariable,
   normalizeDocumentLinkPayload,
   tokenizeDocumentLine,

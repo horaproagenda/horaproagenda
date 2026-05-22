@@ -135,6 +135,7 @@ export default function PreencherDocumento() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [yesNoAnswers, setYesNoAnswers] = useState<Record<string, 'sim' | 'nao' | ''>>({});
   const [additionalInfo, setAdditionalInfo] = useState<Record<string, string>>({});
+  const [checkboxAnswers, setCheckboxAnswers] = useState<Record<string, boolean>>({});
   // CPF authentication gate
   const [authenticated, setAuthenticated] = useState(false);
   const [cpfInput, setCpfInput] = useState('');
@@ -340,6 +341,7 @@ export default function PreencherDocumento() {
       formData,
       yesNoAnswers,
       additionalInfo,
+      checkboxAnswers,
     });
 
     if (additionalInfo.observacoes?.trim()) {
@@ -360,6 +362,7 @@ export default function PreencherDocumento() {
         ...formData,
         ...additionalInfo,
         yesNoAnswers,
+        checkboxAnswers,
       };
 
       const { error: submitError } = await supabase.rpc('submit_document_fill_by_token', {
@@ -512,6 +515,26 @@ export default function PreencherDocumento() {
             className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
           />
         );
+      case 'checkbox': {
+        const checked = !!checkboxAnswers[token.fieldKey];
+        return (
+          <button
+            key={`${lineIndex}-${tokenIndex}`}
+            type="button"
+            onClick={() => setCheckboxAnswers(prev => ({ ...prev, [token.fieldKey]: !prev[token.fieldKey] }))}
+            aria-pressed={checked}
+            aria-label={token.label}
+            title={token.label}
+            className={`inline-flex h-6 w-6 items-center justify-center rounded border-2 align-middle font-bold text-sm transition-colors ${
+              checked
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background border-primary/50 hover:border-primary hover:bg-primary/10'
+            }`}
+          >
+            {checked ? '✓' : ''}
+          </button>
+        );
+      }
       default:
         return null;
     }

@@ -44,8 +44,11 @@ import { toast } from 'sonner';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import { X, ArrowUp, ArrowDown } from 'lucide-react';
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),

@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -24,6 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Info, CheckSquare, Type } from 'lucide-react';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
+import { RichTextEditor, type RichTextEditorHandle } from './RichTextEditor';
 
 const templateSchema = z.object({
   title: z.string().trim().min(2, 'Título obrigatório').max(100),

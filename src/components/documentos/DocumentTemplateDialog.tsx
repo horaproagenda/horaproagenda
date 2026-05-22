@@ -64,7 +64,7 @@ const interactivePatterns = [
 
 export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }: DocumentTemplateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<RichTextEditorHandle | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(templateSchema),
@@ -118,14 +118,8 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
   };
 
   const insertIntoContent = (value: string, autoRegisterVariable?: string) => {
-    const currentContent = form.getValues('content') || '';
-    const textarea = textareaRef.current;
-
-    const start = textarea?.selectionStart ?? currentContent.length;
-    const end = textarea?.selectionEnd ?? currentContent.length;
-
-    const nextContent = `${currentContent.slice(0, start)}${value}${currentContent.slice(end)}`;
-    form.setValue('content', nextContent, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    editorRef.current?.focus();
+    editorRef.current?.insertText(value);
 
     if (autoRegisterVariable) {
       const currentVariables = form.getValues('variables');
@@ -135,13 +129,6 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         form.setValue('variables', varsArray.join(', '), { shouldDirty: true });
       }
     }
-
-    requestAnimationFrame(() => {
-      if (!textareaRef.current) return;
-      const cursorPosition = start + value.length;
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
-    });
   };
 
   const insertVariable = (varName: string) => insertIntoContent(`{${varName}}`, varName);

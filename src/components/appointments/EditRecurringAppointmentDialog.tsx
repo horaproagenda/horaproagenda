@@ -34,7 +34,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
-  const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
+  const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { activeLock, isLockedByOther, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
 
   const [date, setDate] = useState('');

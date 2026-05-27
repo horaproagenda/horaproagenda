@@ -68,6 +68,12 @@ export interface Professional {
   created_at: string;
   updated_at: string;
 }
+export interface ServiceComponent {
+  service_id: string;
+  interval_days: number;
+  price: number;
+}
+
 
 export interface Service {
   id: string;

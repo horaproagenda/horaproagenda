@@ -128,7 +128,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         equipment: data.equipment || [],
         return_days: data.return_days || null,
         is_active: data.is_active,
-        component_service_ids: componentIds,
+        component_service_ids: components.map(c => c.service_id),
+        service_components: components,
       } as any).select('id').single();
 
       if (error) throw error;

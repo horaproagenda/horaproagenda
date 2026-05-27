@@ -117,6 +117,25 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  function validateComponents(comps: CompositeComponent[]): string | null {
+    if (!comps.length) return null;
+    const seen = new Set<string>();
+    for (let i = 0; i < comps.length; i++) {
+      const c = comps[i];
+      if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
+      if (c.service_id === service.id) return `Etapa ${i + 1}: o serviço não pode incluir a si mesmo no kit.`;
+      if (seen.has(c.service_id)) return `Serviço duplicado na etapa ${i + 1}.`;
+      seen.add(c.service_id);
+      if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
+        return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
+      }
+      if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
+      if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
+    }
+    return null;
+  }
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

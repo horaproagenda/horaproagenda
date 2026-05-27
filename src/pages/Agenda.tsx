@@ -1664,8 +1664,10 @@ const Agenda = () => {
           <MobileAgendaList
             appointments={filteredByFilters}
             professionals={professionals}
+            absences={absences}
             selectedDate={selectedDate}
             onAppointmentClick={handleAppointmentClick}
+            onAbsenceClick={handleAbsenceClick}
             mobileView={mobileView}
             onDateSelect={handleMobileDateSelect}
           />

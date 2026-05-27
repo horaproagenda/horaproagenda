@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -388,10 +389,9 @@ export function ProfessionalAbsenceDialog({
                   <Calendar className="h-4 w-4" />
                   Data
                 </Label>
-                <Input
-                  type="date"
+                <DateInputWithCalendar
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={setDate}
                 />
               </div>
 
@@ -480,10 +480,9 @@ export function ProfessionalAbsenceDialog({
                           <CalendarDays className="h-4 w-4" />
                           Repetir Até
                         </Label>
-                        <Input
-                          type="date"
+                        <DateInputWithCalendar
                           value={repeatUntil}
-                          onChange={(e) => setRepeatUntil(e.target.value)}
+                          onChange={setRepeatUntil}
                           min={date}
                         />
                         <p className="text-[10px] text-muted-foreground">

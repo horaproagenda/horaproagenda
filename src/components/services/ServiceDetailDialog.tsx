@@ -740,6 +740,101 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   </div>
                 )}
 
+                {/* Kit composto: serviços com intervalo (dias) e valor por aplicação */}
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Kit de serviços (composto)</Label>
+                    <span className="text-xs text-muted-foreground">{components.length} etapa(s)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ao agendar este kit, o sistema cria um agendamento para cada serviço, com pagamento separado por etapa.
+                  </p>
+                  <Select value={componentPicker} onValueChange={(v) => {
+                    if (!v) return;
+                    const svc = activeServices.find(s => s.id === v);
+                    setComponents(prev => [...prev, {
+                      service_id: v,
+                      interval_days: prev.length === 0 ? 0 : 7,
+                      price: Number(svc?.price ?? 0),
+                    }]);
+                    setComponentPicker('');
+                  }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Adicionar serviço ao kit..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeServices.filter(s => s.id !== service.id).map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {components.length > 0 && (
+                    <div className="space-y-2">
+                      {components.map((c, idx) => {
+                        const svc = activeServices.find(s => s.id === c.service_id);
+                        return (
+                          <div key={`${c.service_id}-${idx}`} className="rounded border bg-muted/40 p-2 space-y-1.5">
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
+                              <span className="text-sm flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                disabled={idx === 0}
+                                onClick={() => setComponents(prev => {
+                                  const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                                })}>
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                disabled={idx === components.length - 1}
+                                onClick={() => setComponents(prev => {
+                                  const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                                })}>
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  {idx === 0 ? 'Início (dias)' : 'Intervalo após anterior (dias)'}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={365}
+                                  value={c.interval_days}
+                                  disabled={idx === 0}
+                                  onChange={(e) => setComponents(prev => prev.map((it, i) =>
+                                    i === idx ? { ...it, interval_days: Math.max(0, Number(e.target.value) || 0) } : it
+                                  ))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Valor desta etapa</Label>
+                                <CurrencyInput
+                                  value={c.price}
+                                  onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                                    i === idx ? { ...it, price: Number(v) || 0 } : it
+                                  ))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="text-xs text-muted-foreground text-right">
+                        Total do kit: {formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+
                 <FormField
                   control={form.control}
                   name="is_active"

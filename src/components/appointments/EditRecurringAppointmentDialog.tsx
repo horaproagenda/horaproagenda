@@ -380,7 +380,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              {isRecurringSeries && hasDateChanged ? (
+              {isSeriesLike && hasDateChanged ? (
                 <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading || isLockedByOther}>
                   Salvar
                 </Button>
@@ -401,10 +401,12 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Repeat className="h-5 w-5" />
-              Reagendar Série
+              {isPackageAppointment ? 'Reagendar Pacote' : 'Reagendar Série'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Este agendamento faz parte de uma série recorrente. Como deseja reagendar?
+              {isPackageAppointment
+                ? 'Este agendamento faz parte de um pacote. Como deseja reagendar?'
+                : 'Este agendamento faz parte de uma série recorrente. Como deseja reagendar?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           

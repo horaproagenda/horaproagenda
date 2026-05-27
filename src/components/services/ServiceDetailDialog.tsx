@@ -281,7 +281,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           equipment: data.equipment || [],
           return_days: data.return_days || null,
           is_active: data.is_active,
-        })
+          component_service_ids: components.map(c => c.service_id),
+          service_components: components as any,
+        } as any)
         .eq('id', service.id);
 
       if (error) throw error;

@@ -49,7 +49,7 @@ export function usePackageAppointments(packageId: string | null) {
         .from('package_appointments')
         .select(`
           *,
-          appointment:appointments (
+          appointment:appointments!package_appointments_appointment_id_fkey (
             *,
             client:clients (*),
             service:services (*)

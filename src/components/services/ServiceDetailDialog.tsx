@@ -149,6 +149,23 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         return_days: service.return_days,
         is_active: service.is_active,
       });
+      // Hydrate composite kit components
+      const sc = (service as any).service_components;
+      if (Array.isArray(sc) && sc.length > 0) {
+        setComponents(sc.map((c: any) => ({
+          service_id: String(c.service_id),
+          interval_days: Number(c.interval_days) || 0,
+          price: Number(c.price) || 0,
+        })));
+      } else if (Array.isArray((service as any).component_service_ids) && (service as any).component_service_ids.length > 0) {
+        setComponents(((service as any).component_service_ids as string[]).map((id, i) => ({
+          service_id: id,
+          interval_days: i === 0 ? 0 : 7,
+          price: 0,
+        })));
+      } else {
+        setComponents([]);
+      }
       setIsEditing(false);
     }
   }, [open, service]);

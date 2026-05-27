@@ -550,6 +550,35 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                 </div>
               </div>
 
+              {components.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <h4 className="font-semibold text-sm">Kit de serviços ({components.length} etapa{components.length > 1 ? 's' : ''})</h4>
+                  </div>
+                  <div className="space-y-1.5">
+                    {components.map((c, idx) => {
+                      const svc = activeServices.find(s => s.id === c.service_id);
+                      return (
+                        <div key={`view-${c.service_id}-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
+                          <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                          <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
+                          <span className="text-muted-foreground">
+                            {idx === 0 ? 'Início' : `+${c.interval_days}d`}
+                          </span>
+                          <span className="font-semibold">{formatCurrency(Number(c.price || 0))}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-xs text-muted-foreground text-right pt-1 border-t">
+                    Total do kit: <span className="font-semibold text-foreground">{formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}</span>
+                  </div>
+                </div>
+              )}
+
+
+
 
               <div className="flex justify-between gap-2">
                 <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>

@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Calendar as DatePickerCalendar } from '@/components/ui/calendar';
@@ -2286,10 +2287,9 @@ export function AppointmentDetailDialog({
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <Label className="text-xs">Data</Label>
-                            <Input
-                              type="date"
+                            <DateInputWithCalendar
                               value={rescheduleDate}
-                              onChange={(e) => setRescheduleDate(e.target.value)}
+                              onChange={setRescheduleDate}
                               min={format(new Date(), 'yyyy-MM-dd')}
                             />
                           </div>

@@ -1422,6 +1422,47 @@ Até breve! ✨`;
                     {selectedServiceData.return_days && ` • Retorno: ${selectedServiceData.return_days} dias`}
                   </p>
 
+                  {/* Composite service kit preview */}
+                  {Array.isArray((selectedServiceData as any)?.service_components) && (selectedServiceData as any).service_components.length > 0 && (() => {
+                    const comps = (selectedServiceData as any).service_components as Array<{ service_id: string; interval_days: number; price: number }>;
+                    let cumulativeDays = 0;
+                    const total = comps.reduce((s, c) => s + Number(c.price || 0), 0);
+                    return (
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                            <Repeat className="h-3.5 w-3.5" />
+                            Kit de serviços ({comps.length} etapas)
+                          </Label>
+                          <span className="text-[11px] text-muted-foreground">
+                            Total: R$ {total.toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Será criado um agendamento para cada etapa, respeitando o intervalo. Cobrança separada por etapa.
+                        </p>
+                        <div className="space-y-1">
+                          {comps.map((c, i) => {
+                            cumulativeDays += Number(c.interval_days || 0);
+                            const compSvc = services.find(s => s.id === c.service_id);
+                            return (
+                              <div key={`kit-prev-${i}`} className="flex items-center gap-2 text-xs bg-background rounded border p-1.5">
+                                <Badge variant="secondary" className="text-[10px] h-5">{i + 1}</Badge>
+                                <span className="flex-1 truncate font-medium">{compSvc?.name ?? 'Serviço removido'}</span>
+                                <span className="text-muted-foreground text-[11px]">
+                                  {i === 0 ? 'Início' : `+${c.interval_days}d (dia ${cumulativeDays})`}
+                                </span>
+                                <span className="font-semibold">R$ {Number(c.price || 0).toFixed(2)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+
+
                   {/* Discount on scheduling — only when not using a prepaid service */}
                   {!usingPaidServiceId && (
                     <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-2">

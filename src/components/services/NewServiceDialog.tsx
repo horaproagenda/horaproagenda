@@ -107,6 +107,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 import { Appointment } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';

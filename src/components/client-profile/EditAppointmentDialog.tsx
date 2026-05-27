@@ -15,6 +15,7 @@ import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
+import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 
 interface EditAppointmentDialogProps {
   appointment: Appointment | null;
@@ -165,10 +166,9 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input
-                type="date"
+              <DateInputWithCalendar
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={setDate}
               />
             </div>
 

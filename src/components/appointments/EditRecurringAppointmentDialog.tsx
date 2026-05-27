@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 import { Appointment } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -33,7 +34,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
-  const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments } = useRecurringAppointments();
+  const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { activeLock, isLockedByOther, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
 
   const [date, setDate] = useState('');
@@ -58,6 +59,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const [seriesIndex, setSeriesIndex] = useState(0);
 
   const isRecurringSeries = appointment?.recurring_group_id != null;
+  const packageId = appointment?.package_appointment?.package_id || (appointment as any)?.package_appointment?.package?.id || null;
+  const isPackageAppointment = Boolean(packageId);
+  const isSeriesLike = isRecurringSeries || isPackageAppointment;
 
   // Load series info when dialog opens
   useEffect(() => {
@@ -134,25 +138,54 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   };
 
   const handleSeriesSubmit = async () => {
-    if (!appointment?.recurring_group_id) return;
+    if (!appointment) return;
 
     setLoading(true);
     try {
       const newStartTime = new Date(`${date}T${startTime}`);
       const newEndTime = new Date(`${date}T${endTime}`);
 
-      await rescheduleAppointmentSeries.mutateAsync({
-        recurring_group_id: appointment.recurring_group_id,
-        original_appointment_id: appointment.id,
-        new_start_time: newStartTime,
-        new_end_time: newEndTime,
-        reschedule_following: rescheduleFollowing,
-        send_whatsapp: sendWhatsapp,
-        client_phone: appointment.client?.phone,
-        client_name: appointment.client?.name,
-      });
+      if (isRecurringSeries && appointment.recurring_group_id) {
+        await rescheduleAppointmentSeries.mutateAsync({
+          recurring_group_id: appointment.recurring_group_id,
+          original_appointment_id: appointment.id,
+          new_start_time: newStartTime,
+          new_end_time: newEndTime,
+          reschedule_following: rescheduleFollowing,
+          send_whatsapp: sendWhatsapp,
+          client_phone: appointment.client?.phone,
+          client_name: appointment.client?.name,
+        });
+      } else if (isPackageAppointment && packageId) {
+        // First, update the current appointment date/time
+        await updateAppointment.mutateAsync({
+          id: appointment.id,
+          updates: {
+            start_time: newStartTime.toISOString(),
+            end_time: newEndTime.toISOString(),
+            professional_id: professionalId === 'none' ? null : professionalId,
+            room_id: roomId === 'none' ? null : roomId,
+          },
+          expectedVersion: appointment.version,
+        });
+
+        // Then propagate to the following sessions of the package,
+        // preserving the original interval between sessions
+        if (rescheduleFollowing) {
+          await propagateSeriesDates.mutateAsync({
+            appointment_id: appointment.id,
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            propagate_type: 'package',
+            package_id: packageId,
+            interval_days: (appointment as any)?.package_appointment?.package?.interval_days || undefined,
+          });
+          toast.success('Datas dos próximos agendamentos do pacote ajustadas!');
+        }
+      }
 
       setShowRescheduleDialog(false);
+      await releaseLock();
       onOpenChange(false);
     } catch (error) {
       console.error('Error rescheduling series:', error);
@@ -245,11 +278,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Data</Label>
-                  <Input
-                type="date"
+              <DateInputWithCalendar
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                    disabled={isLockedByOther}
+                onChange={setDate}
+                disabled={isLockedByOther}
               />
             </div>
 
@@ -348,7 +380,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              {isRecurringSeries && hasDateChanged ? (
+              {isSeriesLike && hasDateChanged ? (
                 <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading || isLockedByOther}>
                   Salvar
                 </Button>
@@ -369,10 +401,12 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Repeat className="h-5 w-5" />
-              Reagendar Série
+              {isPackageAppointment ? 'Reagendar Pacote' : 'Reagendar Série'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Este agendamento faz parte de uma série recorrente. Como deseja reagendar?
+              {isPackageAppointment
+                ? 'Este agendamento faz parte de um pacote. Como deseja reagendar?'
+                : 'Este agendamento faz parte de uma série recorrente. Como deseja reagendar?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
@@ -399,7 +433,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                     Este e todos os seguintes
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O intervalo entre os agendamentos será mantido. {seriesCount - seriesIndex + 1} agendamento(s) serão alterados.
+                    O intervalo entre os agendamentos será mantido.{isRecurringSeries ? ` ${seriesCount - seriesIndex + 1} agendamento(s) serão alterados.` : ''}
                   </p>
                 </div>
               </div>

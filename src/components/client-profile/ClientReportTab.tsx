@@ -517,7 +517,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[460px] rounded border">
+            <ScrollArea className="h-[460px] rounded border">
               <div className="min-w-[1180px]">
               <Table>
                 <TableHeader>
@@ -632,6 +632,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
               </Table>
               </div>
               <ScrollBar orientation="horizontal" />
+              <ScrollBar orientation="vertical" />
             </ScrollArea>
           )}
         </CardContent>

@@ -433,7 +433,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                     Este e todos os seguintes
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O intervalo entre os agendamentos será mantido. {seriesCount - seriesIndex + 1} agendamento(s) serão alterados.
+                    O intervalo entre os agendamentos será mantido.{isRecurringSeries ? ` ${seriesCount - seriesIndex + 1} agendamento(s) serão alterados.` : ''}
                   </p>
                 </div>
               </div>

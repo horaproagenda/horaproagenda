@@ -511,7 +511,7 @@ Até breve! ✨`;
           .from('package_appointments')
           .select(`
             *,
-            appointment:appointments(*),
+            appointment:appointments!package_appointments_appointment_id_fkey(*),
             package:service_packages(interval_days)
           `)
           .eq('package_id', params.package_id)

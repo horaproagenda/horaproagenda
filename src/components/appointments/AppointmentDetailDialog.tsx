@@ -1263,11 +1263,22 @@ export function AppointmentDetailDialog({
                     placeholder="Selecione o serviço"
                     searchPlaceholder="Buscar serviço..."
                     emptyMessage="Nenhum serviço encontrado."
-                    options={activeServices.map((service) => ({
-                      value: service.id,
-                      label: service.name,
-                      sublabel: `${service.category} • ${formatDurationClock(service.duration)}`,
-                    }))}
+                    options={(() => {
+                      const list = activeServices.map((service) => ({
+                        value: service.id,
+                        label: service.name,
+                        sublabel: `${service.category} • ${formatDurationClock(service.duration)}`,
+                      }));
+                      const currentId = appointment.service_id;
+                      if (currentId && !list.some((o) => o.value === currentId)) {
+                        list.unshift({
+                          value: currentId,
+                          label: appointment.service?.name || 'Serviço atual',
+                          sublabel: appointment.service?.duration ? formatDurationClock(appointment.service.duration) : '',
+                        });
+                      }
+                      return list;
+                    })()}
                   />
                 </div>
 

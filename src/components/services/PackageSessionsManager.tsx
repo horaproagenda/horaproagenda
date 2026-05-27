@@ -123,7 +123,7 @@ export function PackageSessionsManager({
         .select(`
           *,
           service:services(name, duration),
-          appointment:appointments (
+          appointment:appointments!package_appointments_appointment_id_fkey (
             start_time,
             end_time,
             status

@@ -138,25 +138,54 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   };
 
   const handleSeriesSubmit = async () => {
-    if (!appointment?.recurring_group_id) return;
+    if (!appointment) return;
 
     setLoading(true);
     try {
       const newStartTime = new Date(`${date}T${startTime}`);
       const newEndTime = new Date(`${date}T${endTime}`);
 
-      await rescheduleAppointmentSeries.mutateAsync({
-        recurring_group_id: appointment.recurring_group_id,
-        original_appointment_id: appointment.id,
-        new_start_time: newStartTime,
-        new_end_time: newEndTime,
-        reschedule_following: rescheduleFollowing,
-        send_whatsapp: sendWhatsapp,
-        client_phone: appointment.client?.phone,
-        client_name: appointment.client?.name,
-      });
+      if (isRecurringSeries && appointment.recurring_group_id) {
+        await rescheduleAppointmentSeries.mutateAsync({
+          recurring_group_id: appointment.recurring_group_id,
+          original_appointment_id: appointment.id,
+          new_start_time: newStartTime,
+          new_end_time: newEndTime,
+          reschedule_following: rescheduleFollowing,
+          send_whatsapp: sendWhatsapp,
+          client_phone: appointment.client?.phone,
+          client_name: appointment.client?.name,
+        });
+      } else if (isPackageAppointment && packageId) {
+        // First, update the current appointment date/time
+        await updateAppointment.mutateAsync({
+          id: appointment.id,
+          updates: {
+            start_time: newStartTime.toISOString(),
+            end_time: newEndTime.toISOString(),
+            professional_id: professionalId === 'none' ? null : professionalId,
+            room_id: roomId === 'none' ? null : roomId,
+          },
+          expectedVersion: appointment.version,
+        });
+
+        // Then propagate to the following sessions of the package,
+        // preserving the original interval between sessions
+        if (rescheduleFollowing) {
+          await propagateSeriesDates.mutateAsync({
+            appointment_id: appointment.id,
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            propagate_type: 'package',
+            package_id: packageId,
+            interval_days: (appointment as any)?.package_appointment?.package?.interval_days || undefined,
+          });
+          toast.success('Datas dos próximos agendamentos do pacote ajustadas!');
+        }
+      }
 
       setShowRescheduleDialog(false);
+      await releaseLock();
       onOpenChange(false);
     } catch (error) {
       console.error('Error rescheduling series:', error);

@@ -111,8 +111,12 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment: allEquipment } = useEquipment();
+  const { activeServices } = useServices();
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  type CompositeComponent = { service_id: string; interval_days: number; price: number };
+  const [components, setComponents] = useState<CompositeComponent[]>([]);
+  const [componentPicker, setComponentPicker] = useState<string>('');
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),

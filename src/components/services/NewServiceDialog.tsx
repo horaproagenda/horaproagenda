@@ -367,135 +367,110 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               )}
             />
 
-            {/* Kit composto: serviços com intervalo (dias) e valor por aplicação */}
-            <div className="space-y-1.5 rounded-md border p-2">
+            {/* Kit composto: sequência de serviços (igual pacote sequencial), com valor por etapa */}
+            <div className="space-y-2 rounded-md border p-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs">Kit de serviços (composto)</Label>
-                <span className="text-[10px] text-muted-foreground">{components.length} etapa(s)</span>
+                <Label className="text-xs">Kit de serviços (sequencial)</Label>
+                <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs"
+                  onClick={() => setComponents(prev => [...prev, {
+                    service_id: '',
+                    interval_days: prev.length === 0 ? 0 : 7,
+                    price: 0,
+                  }])}>
+                  <Plus className="h-3 w-3" /> Etapa
+                </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Ao agendar este kit, o sistema cria um agendamento para cada serviço, respeitando o intervalo configurado. O pagamento de cada etapa é cobrado separadamente.
+                Defina a sequência de serviços (pode repetir o mesmo serviço). Ao agendar, o sistema cria um agendamento para cada etapa respeitando o intervalo. Cada etapa é cobrada separadamente.
               </p>
-              <Select value={componentPicker} onValueChange={(v) => {
-                if (!v) return;
-                if (components.some(c => c.service_id === v)) {
-                  toast.error('Este serviço já está no kit.');
-                  setComponentPicker('');
-                  return;
-                }
-                const svc = activeServices.find(s => s.id === v);
-                setComponents(prev => [...prev, {
-                  service_id: v,
-                  interval_days: prev.length === 0 ? 0 : 7,
-                  price: Number(svc?.price ?? 0),
-                }]);
-                setComponentPicker('');
-              }}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Adicionar serviço ao kit..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeServices.filter(s => !components.some(c => c.service_id === s.id)).map(s => (
-                    <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               {components.length > 0 && (
                 <div className="space-y-1.5">
-                  {components.map((c, idx) => {
-                    const svc = activeServices.find(s => s.id === c.service_id);
-                    return (
-                      <div
-                        key={`${c.service_id}-${idx}`}
-                        draggable
-                        onDragStart={() => setDragIndex(idx)}
-                        onDragOver={(e) => { e.preventDefault(); }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (dragIndex === null || dragIndex === idx) return;
-                          setComponents(prev => {
-                            const arr = [...prev];
-                            const [moved] = arr.splice(dragIndex, 1);
-                            arr.splice(idx, 0, moved);
-                            // first item must have interval 0
+                  {components.map((c, idx) => (
+                    <div key={idx} className="rounded border bg-muted/40 p-1.5 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                        <div className="flex-1">
+                          <Select
+                            value={c.service_id || '_none'}
+                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: it.price || Number(activeServices.find(s => s.id === v)?.price ?? 0) } : it
+                            ))}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="Selecione o serviço" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="_none" className="text-xs">Selecione</SelectItem>
+                              {activeServices.map(s => (
+                                <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                          disabled={idx === 0}
+                          onClick={() => setComponents(prev => {
+                            const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                            arr[0] = { ...arr[0], interval_days: 0 };
+                            return arr;
+                          })}>
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                          disabled={idx === components.length - 1}
+                          onClick={() => setComponents(prev => {
+                            const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+                            arr[0] = { ...arr[0], interval_days: 0 };
+                            return arr;
+                          })}>
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                          onClick={() => setComponents(prev => {
+                            const arr = prev.filter((_, i) => i !== idx);
                             if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
                             return arr;
-                          });
-                          setDragIndex(null);
-                        }}
-                        onDragEnd={() => setDragIndex(null)}
-                        className={`rounded border bg-muted/40 p-1.5 space-y-1 ${dragIndex === idx ? 'opacity-50' : ''}`}
-                      >
-                        <div className="flex items-center gap-1">
-                          <span className="cursor-grab active:cursor-grabbing text-muted-foreground" title="Arrastar para reordenar">
-                            <GripVertical className="h-3.5 w-3.5" />
-                          </span>
-                          <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
-                          <span className="text-xs flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                          })}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-muted-foreground">
+                            {idx === 0 ? 'Início (dias)' : 'Após anterior (dias)'}
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={365}
+                            value={c.interval_days}
                             disabled={idx === 0}
-                            onClick={() => setComponents(prev => {
-                              const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
-                              arr[0] = { ...arr[0], interval_days: 0 };
-                              return arr;
-                            })}>
-                            <ArrowUp className="h-3 w-3" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
-                            disabled={idx === components.length - 1}
-                            onClick={() => setComponents(prev => {
-                              const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
-                              arr[0] = { ...arr[0], interval_days: 0 };
-                              return arr;
-                            })}>
-                            <ArrowDown className="h-3 w-3" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                            onClick={() => setComponents(prev => {
-                              const arr = prev.filter((_, i) => i !== idx);
-                              if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
-                              return arr;
-                            })}>
-                            <X className="h-3 w-3" />
-                          </Button>
+                            onChange={(e) => setComponents(prev => prev.map((it, i) =>
+                              i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
+                            ))}
+                            className="h-7 text-xs"
+                          />
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-muted-foreground">
-                              {idx === 0 ? 'Início (dias)' : 'Intervalo após anterior (dias)'}
-                            </Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={365}
-                              value={c.interval_days}
-                              disabled={idx === 0}
-                              onChange={(e) => setComponents(prev => prev.map((it, i) =>
-                                i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
-                              ))}
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-muted-foreground">Valor desta etapa</Label>
-                            <CurrencyInput
-                              value={c.price}
-                              onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
-                              ))}
-                              className="h-7 text-xs"
-                            />
-                          </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-muted-foreground">Valor desta etapa</Label>
+                          <CurrencyInput
+                            value={c.price}
+                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                              i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
+                            ))}
+                            className="h-7 text-xs"
+                          />
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                   <div className="text-[10px] text-muted-foreground text-right">
                     Total do kit: R$ {components.reduce((sum, c) => sum + Number(c.price || 0), 0).toFixed(2)}
                   </div>
                 </div>
               )}
             </div>
+
 
 
             {/* Equipment */}

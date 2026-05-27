@@ -245,11 +245,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
             <div className="space-y-2">
               <Label>Data</Label>
-                  <Input
-                type="date"
+              <DateInputWithCalendar
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                    disabled={isLockedByOther}
+                onChange={setDate}
+                disabled={isLockedByOther}
               />
             </div>
 

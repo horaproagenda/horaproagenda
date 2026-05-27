@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';

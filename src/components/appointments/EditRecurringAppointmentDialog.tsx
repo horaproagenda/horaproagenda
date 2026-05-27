@@ -59,6 +59,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const [seriesIndex, setSeriesIndex] = useState(0);
 
   const isRecurringSeries = appointment?.recurring_group_id != null;
+  const packageId = appointment?.package_appointment?.package_id || (appointment as any)?.package_appointment?.package?.id || null;
+  const isPackageAppointment = Boolean(packageId);
+  const isSeriesLike = isRecurringSeries || isPackageAppointment;
 
   // Load series info when dialog opens
   useEffect(() => {

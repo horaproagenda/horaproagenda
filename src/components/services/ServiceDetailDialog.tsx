@@ -52,6 +52,7 @@ import { getCategoryColor } from '@/lib/categoryColors';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import {

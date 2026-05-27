@@ -48,7 +48,24 @@ import { useServices } from '@/hooks/useServices';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { X, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+
+function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
+  if (!comps.length) return null;
+  const seen = new Set<string>();
+  for (let i = 0; i < comps.length; i++) {
+    const c = comps[i];
+    if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
+    if (seen.has(c.service_id)) return `Serviço duplicado na etapa ${i + 1}. Cada serviço só pode aparecer uma vez no kit.`;
+    seen.add(c.service_id);
+    if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
+      return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
+    }
+    if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
+    if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
+  }
+  return null;
+}
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -90,6 +107,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -108,6 +126,11 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   });
 
   const onSubmit = async (data: ServiceFormData) => {
+    const compError = validateComponents(components);
+    if (compError) {
+      toast.error(compError);
+      return;
+    }
     setIsLoading(true);
     try {
       let assignedProfessionalId: string | null = null;
@@ -358,6 +381,11 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               </p>
               <Select value={componentPicker} onValueChange={(v) => {
                 if (!v) return;
+                if (components.some(c => c.service_id === v)) {
+                  toast.error('Este serviço já está no kit.');
+                  setComponentPicker('');
+                  return;
+                }
                 const svc = activeServices.find(s => s.id === v);
                 setComponents(prev => [...prev, {
                   service_id: v,
@@ -370,7 +398,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                   <SelectValue placeholder="Adicionar serviço ao kit..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeServices.map(s => (
+                  {activeServices.filter(s => !components.some(c => c.service_id === s.id)).map(s => (
                     <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -380,26 +408,57 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                   {components.map((c, idx) => {
                     const svc = activeServices.find(s => s.id === c.service_id);
                     return (
-                      <div key={`${c.service_id}-${idx}`} className="rounded border bg-muted/40 p-1.5 space-y-1">
+                      <div
+                        key={`${c.service_id}-${idx}`}
+                        draggable
+                        onDragStart={() => setDragIndex(idx)}
+                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragIndex === null || dragIndex === idx) return;
+                          setComponents(prev => {
+                            const arr = [...prev];
+                            const [moved] = arr.splice(dragIndex, 1);
+                            arr.splice(idx, 0, moved);
+                            // first item must have interval 0
+                            if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
+                            return arr;
+                          });
+                          setDragIndex(null);
+                        }}
+                        onDragEnd={() => setDragIndex(null)}
+                        className={`rounded border bg-muted/40 p-1.5 space-y-1 ${dragIndex === idx ? 'opacity-50' : ''}`}
+                      >
                         <div className="flex items-center gap-1">
+                          <span className="cursor-grab active:cursor-grabbing text-muted-foreground" title="Arrastar para reordenar">
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </span>
                           <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
                           <span className="text-xs flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
                           <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
                             disabled={idx === 0}
                             onClick={() => setComponents(prev => {
-                              const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                              const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                              arr[0] = { ...arr[0], interval_days: 0 };
+                              return arr;
                             })}>
                             <ArrowUp className="h-3 w-3" />
                           </Button>
                           <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
                             disabled={idx === components.length - 1}
                             onClick={() => setComponents(prev => {
-                              const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                              const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+                              arr[0] = { ...arr[0], interval_days: 0 };
+                              return arr;
                             })}>
                             <ArrowDown className="h-3 w-3" />
                           </Button>
                           <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                            onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}>
+                            onClick={() => setComponents(prev => {
+                              const arr = prev.filter((_, i) => i !== idx);
+                              if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
+                              return arr;
+                            })}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -415,7 +474,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                               value={c.interval_days}
                               disabled={idx === 0}
                               onChange={(e) => setComponents(prev => prev.map((it, i) =>
-                                i === idx ? { ...it, interval_days: Math.max(0, Number(e.target.value) || 0) } : it
+                                i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
                               ))}
                               className="h-7 text-xs"
                             />
@@ -425,7 +484,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                             <CurrencyInput
                               value={c.price}
                               onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                i === idx ? { ...it, price: Number(v) || 0 } : it
+                                i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
                               ))}
                               className="h-7 text-xs"
                             />

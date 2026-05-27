@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench, ArrowUp, ArrowDown, X, GripVertical, Layers } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -117,6 +117,25 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  function validateComponents(comps: CompositeComponent[]): string | null {
+    if (!comps.length) return null;
+    const seen = new Set<string>();
+    for (let i = 0; i < comps.length; i++) {
+      const c = comps[i];
+      if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
+      if (c.service_id === service.id) return `Etapa ${i + 1}: o serviço não pode incluir a si mesmo no kit.`;
+      if (seen.has(c.service_id)) return `Serviço duplicado na etapa ${i + 1}.`;
+      seen.add(c.service_id);
+      if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
+        return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
+      }
+      if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
+      if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
+    }
+    return null;
+  }
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -266,6 +285,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   };
 
   const onSubmit = async (data: ServiceFormData) => {
+    const compError = validateComponents(components);
+    if (compError) {
+      toast.error(compError);
+      return;
+    }
     setIsSaving(true);
     try {
       const { error } = await supabase
@@ -526,6 +550,35 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                 </div>
               </div>
 
+              {components.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <h4 className="font-semibold text-sm">Kit de serviços ({components.length} etapa{components.length > 1 ? 's' : ''})</h4>
+                  </div>
+                  <div className="space-y-1.5">
+                    {components.map((c, idx) => {
+                      const svc = activeServices.find(s => s.id === c.service_id);
+                      return (
+                        <div key={`view-${c.service_id}-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
+                          <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                          <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
+                          <span className="text-muted-foreground">
+                            {idx === 0 ? 'Início' : `+${c.interval_days}d`}
+                          </span>
+                          <span className="font-semibold">{formatCurrency(Number(c.price || 0))}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-xs text-muted-foreground text-right pt-1 border-t">
+                    Total do kit: <span className="font-semibold text-foreground">{formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}</span>
+                  </div>
+                </div>
+              )}
+
+
+
 
               <div className="flex justify-between gap-2">
                 <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
@@ -751,6 +804,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   </p>
                   <Select value={componentPicker} onValueChange={(v) => {
                     if (!v) return;
+                    if (components.some(c => c.service_id === v)) {
+                      toast.error('Este serviço já está no kit.');
+                      setComponentPicker('');
+                      return;
+                    }
                     const svc = activeServices.find(s => s.id === v);
                     setComponents(prev => [...prev, {
                       service_id: v,
@@ -763,7 +821,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <SelectValue placeholder="Adicionar serviço ao kit..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeServices.filter(s => s.id !== service.id).map(s => (
+                      {activeServices.filter(s => s.id !== service.id && !components.some(c => c.service_id === s.id)).map(s => (
                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -773,26 +831,56 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       {components.map((c, idx) => {
                         const svc = activeServices.find(s => s.id === c.service_id);
                         return (
-                          <div key={`${c.service_id}-${idx}`} className="rounded border bg-muted/40 p-2 space-y-1.5">
+                          <div
+                            key={`${c.service_id}-${idx}`}
+                            draggable
+                            onDragStart={() => setDragIndex(idx)}
+                            onDragOver={(e) => { e.preventDefault(); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (dragIndex === null || dragIndex === idx) return;
+                              setComponents(prev => {
+                                const arr = [...prev];
+                                const [moved] = arr.splice(dragIndex, 1);
+                                arr.splice(idx, 0, moved);
+                                if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
+                                return arr;
+                              });
+                              setDragIndex(null);
+                            }}
+                            onDragEnd={() => setDragIndex(null)}
+                            className={`rounded border bg-muted/40 p-2 space-y-1.5 ${dragIndex === idx ? 'opacity-50' : ''}`}
+                          >
                             <div className="flex items-center gap-1">
+                              <span className="cursor-grab active:cursor-grabbing text-muted-foreground" title="Arrastar para reordenar">
+                                <GripVertical className="h-4 w-4" />
+                              </span>
                               <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
                               <span className="text-sm flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
                               <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
                                 disabled={idx === 0}
                                 onClick={() => setComponents(prev => {
-                                  const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                                  const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                                  arr[0] = { ...arr[0], interval_days: 0 };
+                                  return arr;
                                 })}>
                                 <ArrowUp className="h-3.5 w-3.5" />
                               </Button>
                               <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
                                 disabled={idx === components.length - 1}
                                 onClick={() => setComponents(prev => {
-                                  const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                                  const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+                                  arr[0] = { ...arr[0], interval_days: 0 };
+                                  return arr;
                                 })}>
                                 <ArrowDown className="h-3.5 w-3.5" />
                               </Button>
                               <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}>
+                                onClick={() => setComponents(prev => {
+                                  const arr = prev.filter((_, i) => i !== idx);
+                                  if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
+                                  return arr;
+                                })}>
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -808,7 +896,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                                   value={c.interval_days}
                                   disabled={idx === 0}
                                   onChange={(e) => setComponents(prev => prev.map((it, i) =>
-                                    i === idx ? { ...it, interval_days: Math.max(0, Number(e.target.value) || 0) } : it
+                                    i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
                                   ))}
                                   className="h-8 text-sm"
                                 />
@@ -818,7 +906,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                                 <CurrencyInput
                                   value={c.price}
                                   onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                    i === idx ? { ...it, price: Number(v) || 0 } : it
+                                    i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
                                   ))}
                                   className="h-8 text-sm"
                                 />

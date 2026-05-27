@@ -126,6 +126,11 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   });
 
   const onSubmit = async (data: ServiceFormData) => {
+    const compError = validateComponents(components);
+    if (compError) {
+      toast.error(compError);
+      return;
+    }
     setIsLoading(true);
     try {
       let assignedProfessionalId: string | null = null;

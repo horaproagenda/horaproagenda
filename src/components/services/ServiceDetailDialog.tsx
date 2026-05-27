@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
+import { Clock, DollarSign, Users, Calendar, RotateCcw, Home, User, Pencil, Trash2, ChevronDown, ChevronUp, Wrench, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -52,6 +52,7 @@ import { getCategoryColor } from '@/lib/categoryColors';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import {
@@ -110,8 +111,12 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment: allEquipment } = useEquipment();
+  const { activeServices } = useServices();
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  type CompositeComponent = { service_id: string; interval_days: number; price: number };
+  const [components, setComponents] = useState<CompositeComponent[]>([]);
+  const [componentPicker, setComponentPicker] = useState<string>('');
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -144,6 +149,23 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         return_days: service.return_days,
         is_active: service.is_active,
       });
+      // Hydrate composite kit components
+      const sc = (service as any).service_components;
+      if (Array.isArray(sc) && sc.length > 0) {
+        setComponents(sc.map((c: any) => ({
+          service_id: String(c.service_id),
+          interval_days: Number(c.interval_days) || 0,
+          price: Number(c.price) || 0,
+        })));
+      } else if (Array.isArray((service as any).component_service_ids) && (service as any).component_service_ids.length > 0) {
+        setComponents(((service as any).component_service_ids as string[]).map((id, i) => ({
+          service_id: id,
+          interval_days: i === 0 ? 0 : 7,
+          price: 0,
+        })));
+      } else {
+        setComponents([]);
+      }
       setIsEditing(false);
     }
   }, [open, service]);
@@ -259,7 +281,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           equipment: data.equipment || [],
           return_days: data.return_days || null,
           is_active: data.is_active,
-        })
+          component_service_ids: components.map(c => c.service_id),
+          service_components: components as any,
+        } as any)
         .eq('id', service.id);
 
       if (error) throw error;
@@ -715,6 +739,101 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     </div>
                   </div>
                 )}
+
+                {/* Kit composto: serviços com intervalo (dias) e valor por aplicação */}
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Kit de serviços (composto)</Label>
+                    <span className="text-xs text-muted-foreground">{components.length} etapa(s)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ao agendar este kit, o sistema cria um agendamento para cada serviço, com pagamento separado por etapa.
+                  </p>
+                  <Select value={componentPicker} onValueChange={(v) => {
+                    if (!v) return;
+                    const svc = activeServices.find(s => s.id === v);
+                    setComponents(prev => [...prev, {
+                      service_id: v,
+                      interval_days: prev.length === 0 ? 0 : 7,
+                      price: Number(svc?.price ?? 0),
+                    }]);
+                    setComponentPicker('');
+                  }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Adicionar serviço ao kit..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeServices.filter(s => s.id !== service.id).map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {components.length > 0 && (
+                    <div className="space-y-2">
+                      {components.map((c, idx) => {
+                        const svc = activeServices.find(s => s.id === c.service_id);
+                        return (
+                          <div key={`${c.service_id}-${idx}`} className="rounded border bg-muted/40 p-2 space-y-1.5">
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
+                              <span className="text-sm flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                disabled={idx === 0}
+                                onClick={() => setComponents(prev => {
+                                  const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                                })}>
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                disabled={idx === components.length - 1}
+                                onClick={() => setComponents(prev => {
+                                  const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                                })}>
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  {idx === 0 ? 'Início (dias)' : 'Intervalo após anterior (dias)'}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={365}
+                                  value={c.interval_days}
+                                  disabled={idx === 0}
+                                  onChange={(e) => setComponents(prev => prev.map((it, i) =>
+                                    i === idx ? { ...it, interval_days: Math.max(0, Number(e.target.value) || 0) } : it
+                                  ))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Valor desta etapa</Label>
+                                <CurrencyInput
+                                  value={c.price}
+                                  onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                                    i === idx ? { ...it, price: Number(v) || 0 } : it
+                                  ))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="text-xs text-muted-foreground text-right">
+                        Total do kit: {formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
 
                 <FormField
                   control={form.control}

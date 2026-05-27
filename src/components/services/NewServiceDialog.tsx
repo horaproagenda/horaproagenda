@@ -87,7 +87,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
-  const [componentIds, setComponentIds] = useState<string[]>([]);
+  type CompositeComponent = { service_id: string; interval_days: number; price: number };
+  const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
 
   const form = useForm<ServiceFormData>({
@@ -127,7 +128,8 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
         equipment: data.equipment || [],
         return_days: data.return_days || null,
         is_active: data.is_active,
-        component_service_ids: componentIds,
+        component_service_ids: components.map(c => c.service_id),
+        service_components: components,
       } as any).select('id').single();
 
       if (error) throw error;
@@ -145,7 +147,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       toast.success('Serviço cadastrado!');
       form.reset();
       setCommissionOverride(defaultCommissionOverride);
-      setComponentIds([]);
+      setComponents([]);
       setOpen(false);
       onServiceCreated?.();
     } catch (error: any) {
@@ -345,63 +347,100 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
               )}
             />
 
-            {/* Composição: serviços que compõem este tratamento (ordenado) */}
+            {/* Kit composto: serviços com intervalo (dias) e valor por aplicação */}
             <div className="space-y-1.5 rounded-md border p-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs">Serviços que compõem este tratamento</Label>
-                <span className="text-[10px] text-muted-foreground">{componentIds.length} adicionado(s)</span>
+                <Label className="text-xs">Kit de serviços (composto)</Label>
+                <span className="text-[10px] text-muted-foreground">{components.length} etapa(s)</span>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Combine serviços distintos em um único tratamento (ex.: limpeza + hidratação).
+                Ao agendar este kit, o sistema cria um agendamento para cada serviço, respeitando o intervalo configurado. O pagamento de cada etapa é cobrado separadamente.
               </p>
               <Select value={componentPicker} onValueChange={(v) => {
                 if (!v) return;
-                setComponentIds(prev => prev.includes(v) ? prev : [...prev, v]);
+                const svc = activeServices.find(s => s.id === v);
+                setComponents(prev => [...prev, {
+                  service_id: v,
+                  interval_days: prev.length === 0 ? 0 : 7,
+                  price: Number(svc?.price ?? 0),
+                }]);
                 setComponentPicker('');
               }}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Adicionar serviço..." />
+                  <SelectValue placeholder="Adicionar serviço ao kit..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeServices
-                    .filter(s => !componentIds.includes(s.id))
-                    .map(s => (
-                      <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
-                    ))}
+                  {activeServices.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {componentIds.length > 0 && (
-                <div className="space-y-1">
-                  {componentIds.map((id, idx) => {
-                    const svc = activeServices.find(s => s.id === id);
+              {components.length > 0 && (
+                <div className="space-y-1.5">
+                  {components.map((c, idx) => {
+                    const svc = activeServices.find(s => s.id === c.service_id);
                     return (
-                      <div key={id} className="flex items-center gap-1 rounded border bg-muted/40 px-2 py-1">
-                        <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
-                        <span className="text-xs flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
-                          disabled={idx === 0}
-                          onClick={() => setComponentIds(prev => {
-                            const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
-                          })}>
-                          <ArrowUp className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
-                          disabled={idx === componentIds.length - 1}
-                          onClick={() => setComponentIds(prev => {
-                            const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
-                          })}>
-                          <ArrowDown className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                          onClick={() => setComponentIds(prev => prev.filter(x => x !== id))}>
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div key={`${c.service_id}-${idx}`} className="rounded border bg-muted/40 p-1.5 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                          <span className="text-xs flex-1 truncate">{svc?.name ?? 'Serviço removido'}</span>
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                            disabled={idx === 0}
+                            onClick={() => setComponents(prev => {
+                              const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; return arr;
+                            })}>
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                            disabled={idx === components.length - 1}
+                            onClick={() => setComponents(prev => {
+                              const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; return arr;
+                            })}>
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                            onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              {idx === 0 ? 'Início (dias)' : 'Intervalo após anterior (dias)'}
+                            </Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={365}
+                              value={c.interval_days}
+                              disabled={idx === 0}
+                              onChange={(e) => setComponents(prev => prev.map((it, i) =>
+                                i === idx ? { ...it, interval_days: Math.max(0, Number(e.target.value) || 0) } : it
+                              ))}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">Valor desta etapa</Label>
+                            <CurrencyInput
+                              value={c.price}
+                              onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                                i === idx ? { ...it, price: Number(v) || 0 } : it
+                              ))}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
+                  <div className="text-[10px] text-muted-foreground text-right">
+                    Total do kit: R$ {components.reduce((sum, c) => sum + Number(c.price || 0), 0).toFixed(2)}
+                  </div>
                 </div>
               )}
             </div>
+
 
             {/* Equipment */}
             {equipment.filter(e => e.is_active).length > 0 && (

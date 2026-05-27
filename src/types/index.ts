@@ -68,6 +68,12 @@ export interface Professional {
   created_at: string;
   updated_at: string;
 }
+export interface ServiceComponent {
+  service_id: string;
+  interval_days: number;
+  price: number;
+}
+
 
 export interface Service {
   id: string;
@@ -82,6 +88,7 @@ export interface Service {
   professional_id: string | null;
   equipment: string[];
   component_service_ids?: string[];
+  service_components?: ServiceComponent[] | any;
   created_at: string;
   updated_at: string;
   room?: Room;

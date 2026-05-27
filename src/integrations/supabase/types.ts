@@ -302,6 +302,8 @@ export type Database = {
         Row: {
           amount_paid: number | null
           client_id: string
+          composite_group_id: string | null
+          composite_sequence_order: number | null
           created_at: string
           created_by: string | null
           discount_amount: number
@@ -324,6 +326,8 @@ export type Database = {
         Insert: {
           amount_paid?: number | null
           client_id: string
+          composite_group_id?: string | null
+          composite_sequence_order?: number | null
           created_at?: string
           created_by?: string | null
           discount_amount?: number
@@ -346,6 +350,8 @@ export type Database = {
         Update: {
           amount_paid?: number | null
           client_id?: string
+          composite_group_id?: string | null
+          composite_sequence_order?: number | null
           created_at?: string
           created_by?: string | null
           discount_amount?: number
@@ -3161,6 +3167,7 @@ export type Database = {
           professional_id: string | null
           return_days: number | null
           room_id: string | null
+          service_components: Json
           updated_at: string
           updated_by: string | null
         }
@@ -3178,6 +3185,7 @@ export type Database = {
           professional_id?: string | null
           return_days?: number | null
           room_id?: string | null
+          service_components?: Json
           updated_at?: string
           updated_by?: string | null
         }
@@ -3195,6 +3203,7 @@ export type Database = {
           professional_id?: string | null
           return_days?: number | null
           room_id?: string | null
+          service_components?: Json
           updated_at?: string
           updated_by?: string | null
         }

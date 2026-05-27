@@ -976,7 +976,106 @@ Até breve! ✨`;
               appointmentId: appointmentResult.id,
             });
           }
+
+          // === Kit composto: cria a cadeia de agendamentos seguintes ===
+          const composedItems: Array<{ service_id: string; interval_days: number; price: number }> =
+            Array.isArray((selectedServiceData as any)?.service_components)
+              ? ((selectedServiceData as any).service_components as any[]).map((c) => ({
+                  service_id: String(c.service_id),
+                  interval_days: Number(c.interval_days) || 0,
+                  price: Number(c.price) || 0,
+                }))
+              : [];
+
+          if (composedItems.length > 0 && appointmentResult?.id) {
+            try {
+              const compositeGroupId = (crypto as any).randomUUID
+                ? (crypto as any).randomUUID()
+                : appointmentResult.id;
+
+              // Mark first appointment as composite head
+              const firstPrice = composedItems[0]?.price;
+              const firstSvcPrice = Number(selectedServiceData?.price ?? 0);
+              const firstDiscount = firstPrice != null && firstPrice < firstSvcPrice
+                ? Math.max(0, firstSvcPrice - firstPrice)
+                : 0;
+              await (supabase as any)
+                .from('appointments')
+                .update({
+                  composite_group_id: compositeGroupId,
+                  composite_sequence_order: 1,
+                  ...(firstDiscount > 0 ? { discount_amount: firstDiscount } : {}),
+                })
+                .eq('id', appointmentResult.id);
+
+              // Build subsequent appointments respecting interval, business hours and absences
+              let cursorStart = new Date(startTime);
+              const inserts: any[] = [];
+              for (let i = 1; i < composedItems.length; i++) {
+                const comp = composedItems[i];
+                // Fetch component service for duration/price
+                const compSvc = services.find((s) => s.id === comp.service_id);
+                const durationMin = compSvc?.duration ?? 60;
+                const basePrice = Number(compSvc?.price ?? 0);
+                const discount = comp.price < basePrice ? Math.max(0, basePrice - comp.price) : 0;
+
+                // Advance cursor by interval_days
+                let nextStart = new Date(cursorStart);
+                nextStart.setDate(nextStart.getDate() + Math.max(0, comp.interval_days || 0));
+
+                // Skip forward until day is a work day and slot has no conflict
+                let safety = 365;
+                while (safety-- > 0) {
+                  const dayOk = typeof isWorkDay === 'function' ? isWorkDay(nextStart) : true;
+                  const candidateEnd = new Date(nextStart.getTime() + durationMin * 60_000);
+                  const conflict = dayOk
+                    ? getAvailabilityConflictReason(nextStart, candidateEnd, {
+                        appointments: appointments as any,
+                        absences: absences as any,
+                        selectedProfessional,
+                        selectedRoom,
+                      })
+                    : 'Fora do expediente';
+                  if (!conflict) break;
+                  nextStart.setDate(nextStart.getDate() + 1);
+                }
+
+                const nextEnd = new Date(nextStart.getTime() + durationMin * 60_000);
+                inserts.push({
+                  client_id: selectedClient,
+                  service_id: comp.service_id,
+                  professional_id: selectedProfessional || null,
+                  room_id: selectedRoom || null,
+                  start_time: nextStart.toISOString(),
+                  end_time: nextEnd.toISOString(),
+                  notes: notes || null,
+                  status: 'scheduled',
+                  payment_status: 'pending',
+                  composite_group_id: compositeGroupId,
+                  composite_sequence_order: i + 1,
+                  ...(discount > 0 ? { discount_amount: discount } : {}),
+                });
+                cursorStart = nextStart;
+              }
+
+              if (inserts.length > 0) {
+                const { error: insErr } = await (supabase as any)
+                  .from('appointments')
+                  .insert(inserts);
+                if (insErr) {
+                  toast.error('Kit: primeiro agendamento criado, mas falhou ao criar os seguintes: ' + insErr.message);
+                } else {
+                  toast.success(`Kit criado: ${inserts.length + 1} agendamentos na sequência.`);
+                  queryClient.invalidateQueries({ queryKey: ['appointments'] });
+                }
+              }
+            } catch (kitErr: any) {
+              console.error('Composite kit error', kitErr);
+              toast.error('Erro ao criar cadeia do kit: ' + (kitErr?.message ?? 'desconhecido'));
+            }
+          }
         }
+
 
       }
 

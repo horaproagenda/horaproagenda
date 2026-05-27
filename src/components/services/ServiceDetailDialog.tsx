@@ -285,6 +285,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   };
 
   const onSubmit = async (data: ServiceFormData) => {
+    const compError = validateComponents(components);
+    if (compError) {
+      toast.error(compError);
+      return;
+    }
     setIsSaving(true);
     try {
       const { error } = await supabase

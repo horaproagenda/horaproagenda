@@ -334,7 +334,7 @@ export function useClientPackages(clientId: string | null) {
 
       const { data: packagePaymentRows } = await supabase
         .from('package_appointments')
-        .select('appointment:appointments(amount_paid, payment_methods)')
+        .select('appointment:appointments!package_appointments_appointment_id_fkey(amount_paid, payment_methods)')
         .eq('package_id', packageId)
         .not('appointment_id', 'is', null);
 

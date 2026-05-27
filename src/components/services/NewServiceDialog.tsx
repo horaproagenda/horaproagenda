@@ -48,7 +48,24 @@ import { useServices } from '@/hooks/useServices';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { X, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+
+function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
+  if (!comps.length) return null;
+  const seen = new Set<string>();
+  for (let i = 0; i < comps.length; i++) {
+    const c = comps[i];
+    if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
+    if (seen.has(c.service_id)) return `Serviço duplicado na etapa ${i + 1}. Cada serviço só pode aparecer uma vez no kit.`;
+    seen.add(c.service_id);
+    if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
+      return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
+    }
+    if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
+    if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
+  }
+  return null;
+}
 
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),

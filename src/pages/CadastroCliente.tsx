@@ -14,12 +14,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle2, ShieldCheck, AlertTriangle, FileText, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { isValidCPF } from '@/lib/cpfValidator';
 import { validateCNPJ } from '@/lib/validationSchemas';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
-import { htmlToPlainText } from '@/lib/documentTemplateFields';
+import {
+  InteractiveDocumentFiller,
+  buildContentFromState,
+  emptyDocumentState,
+  type InteractiveDocumentState,
+} from '@/components/clients/InteractiveDocumentFiller';
+import { generateClientDocumentPdf } from '@/lib/clientDocumentPdf';
 
 const REFERRAL_SOURCES = ['Instagram', 'Facebook', 'Google', 'Indicação de amigo', 'Indicação de cliente', 'Passou na frente', 'WhatsApp', 'TikTok', 'Outros'];
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -56,13 +62,15 @@ interface LinkData {
   templates: Array<{ id: string; title: string; content: string; variables?: any }>;
 }
 
+type Step = 'form' | 'documents' | 'success';
+
 export default function CadastroCliente() {
   const { token } = useParams<{ token: string }>();
   const [linkData, setLinkData] = useState<LinkData | null>(null);
   const [loadingLink, setLoadingLink] = useState(true);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<Step>('form');
   const [cepLoading, setCepLoading] = useState(false);
 
   const [personType, setPersonType] = useState<'pf' | 'pj'>('pf');
@@ -72,8 +80,13 @@ export default function CadastroCliente() {
     cep: '', address_street: '', address_number: '', address_complement: '',
     address_neighborhood: '', address_city: '', address_state: '',
   });
-  const [docOverrides, setDocOverrides] = useState<Record<string, string>>({});
-  const [signedBy, setSignedBy] = useState<string>('');
+
+  // Documents step state
+  const [docStates, setDocStates] = useState<Record<string, InteractiveDocumentState>>({});
+  const [currentDocIndex, setCurrentDocIndex] = useState(0);
+  const [signedBy, setSignedBy] = useState('');
+  // Generated content per template (filled after submit, used for PDF downloads)
+  const [generatedDocs, setGeneratedDocs] = useState<Array<{ id: string; title: string; content: string }>>([]);
 
   const calcAge = (iso: string) => {
     if (!iso) return '';
@@ -86,7 +99,8 @@ export default function CadastroCliente() {
     return String(a);
   };
 
-  const fillTemplate = (raw: string): string => {
+  // Auto-fill map from registration form to document variables.
+  const autoFillMap = useMemo<Record<string, string>>(() => {
     const today = new Date().toLocaleDateString('pt-BR');
     const nascimentoBR = form.birthdate
       ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
@@ -98,41 +112,37 @@ export default function CadastroCliente() {
       form.address_city && form.address_state ? `${form.address_city}/${form.address_state}` : (form.address_city || form.address_state),
       form.cep,
     ].filter(Boolean).join(' - ');
-    const map: Record<string, string> = {
-      nome: signedBy || form.name || '',
-      cpf: form.cpf || '',
-      cnpj: form.cnpj || '',
-      telefone: form.phone || '',
-      celular: form.phone || '',
-      email: form.email || '',
-      'e-mail': form.email || '',
+    const profName = linkData?.professional?.name || '';
+    return {
+      nome: form.name,
+      nome_cliente: form.name,
+      cliente: form.name,
+      cpf: form.cpf,
+      cnpj: form.cnpj,
+      telefone: form.phone,
+      celular: form.phone,
+      email: form.email,
+      'e-mail': form.email,
       nascimento: nascimentoBR,
-      'data_nascimento': nascimentoBR,
+      data_nascimento: nascimentoBR,
       idade: calcAge(form.birthdate),
+      idade_cliente: calcAge(form.birthdate),
       data: today,
-      'data_atual': today,
-      endereco: endereco,
+      data_atual: today,
+      date: today,
+      data_extenso: today,
+      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      endereco,
       'endereço': endereco,
-      cep: form.cep || '',
-      cidade: form.address_city || '',
-      uf: form.address_state || '',
-      'razao_social': form.company_name || '',
+      cep: form.cep,
+      cidade: form.address_city,
+      uf: form.address_state,
+      razao_social: form.company_name,
+      profissional: profName,
+      professional: profName,
+      nome_profissional: profName,
     };
-    return raw.replace(/\{([^{}]+)\}/g, (_m, key) => {
-      const k = String(key).trim().toLowerCase();
-      const v = map[k];
-      return v !== undefined && v !== '' ? v : `{${key}}`;
-    });
-  };
-
-  const templateBase = useMemo(() => {
-    const out: Record<string, string> = {};
-    (linkData?.templates || []).forEach((t) => { out[t.id] = htmlToPlainText(t.content || ''); });
-    return out;
-  }, [linkData]);
-
-  const getDocValue = (id: string) =>
-    docOverrides[id] !== undefined ? docOverrides[id] : fillTemplate(templateBase[id] || '');
+  }, [form, linkData]);
 
   useEffect(() => {
     if (!token) return;
@@ -172,7 +182,7 @@ export default function CadastroCliente() {
     } finally { setCepLoading(false); }
   };
 
-  const validate = (): string | null => {
+  const validateForm = (): string | null => {
     if (!form.name || form.name.trim().length < 2) return 'Informe o nome completo.';
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 10) return 'Telefone inválido.';
@@ -191,26 +201,36 @@ export default function CadastroCliente() {
       if (cd.length !== 8) return 'CEP deve ter 8 dígitos.';
     }
     if (form.address_state && !UF_LIST.includes(form.address_state.toUpperCase())) return 'UF inválida.';
-    if (linkData?.templates?.length && !signedBy.trim()) return 'Informe seu nome para assinar os documentos.';
     return null;
   };
 
-  const handleSubmit = async () => {
-    const err = validate();
+  // Advance from form step. If templates exist, go to documents step (auto-fill them first).
+  const handleFormNext = () => {
+    const err = validateForm();
     if (err) { toast.error(err); return; }
+
+    const templates = linkData?.templates || [];
+    if (templates.length === 0) {
+      void submit([]);
+      return;
+    }
+
+    // Seed each document state with auto-filled data
+    const seed: Record<string, InteractiveDocumentState> = {};
+    templates.forEach((t) => {
+      const base = emptyDocumentState();
+      base.formData = { ...autoFillMap };
+      seed[t.id] = base;
+    });
+    setDocStates(seed);
+    setSignedBy(form.name);
+    setCurrentDocIndex(0);
+    setStep('documents');
+  };
+
+  const submit = async (filledDocs: Array<{ template_id: string; content: string; variables: Record<string, unknown>; signed_by: string }>) => {
     setSubmitting(true);
     try {
-      const filled_documents = (linkData?.templates || []).map((t) => ({
-        template_id: t.id,
-        content: getDocValue(t.id),
-        variables: { nome: signedBy || form.name, data: new Date().toLocaleDateString('pt-BR') },
-        signed_by: signedBy || form.name,
-      }));
-
-      // Usa supabase.functions.invoke para incluir automaticamente o apikey
-      // exigido pelo gateway de Edge Functions (mesmo com verify_jwt=false).
-      // Este endpoint cria apenas o registro de CLIENTE da clínica — nunca cria
-      // conta de usuário/login no aplicativo.
       const { data: result, error: invokeErr } = await supabase.functions.invoke(
         'submit-client-registration',
         {
@@ -218,13 +238,12 @@ export default function CadastroCliente() {
             token,
             person_type: personType,
             ...form,
-            filled_documents,
+            filled_documents: filledDocs,
           },
         }
       );
 
       if (invokeErr) {
-        // FunctionsHttpError vem com response body em context
         let msg = invokeErr.message || 'Erro ao enviar cadastro';
         try {
           const ctx: any = (invokeErr as any).context;
@@ -238,11 +257,59 @@ export default function CadastroCliente() {
       if (!result?.success) {
         throw new Error(result?.error || result?.errors?.[0]?.message || 'Erro ao enviar cadastro');
       }
-      setSuccess(true);
+
+      // Save generated docs to allow PDF download from success screen
+      setGeneratedDocs(filledDocs.map((d) => {
+        const tpl = linkData?.templates.find((t) => t.id === d.template_id);
+        return { id: d.template_id, title: tpl?.title || 'Documento', content: d.content };
+      }));
+      setStep('success');
     } catch (e: any) {
       toast.error(e.message || 'Erro ao enviar cadastro');
     } finally { setSubmitting(false); }
   };
+
+  const handleDocsSubmit = () => {
+    if (!signedBy.trim()) { toast.error('Informe seu nome completo para assinar.'); return; }
+    const templates = linkData?.templates || [];
+    const filled = templates.map((t) => {
+      const state = docStates[t.id] || emptyDocumentState();
+      // Ensure signed_by is reflected in the body where {nome} is used after editing
+      const withSignedName: InteractiveDocumentState = {
+        ...state,
+        formData: { ...state.formData, nome: signedBy || state.formData.nome || form.name },
+      };
+      const content = buildContentFromState(t.content, withSignedName);
+      return {
+        template_id: t.id,
+        content,
+        variables: { ...withSignedName.formData, data: new Date().toLocaleDateString('pt-BR'), signed_by: signedBy },
+        signed_by: signedBy,
+      };
+    });
+    void submit(filled);
+  };
+
+  const downloadDocPdf = (doc: { id: string; title: string; content: string }) => {
+    generateClientDocumentPdf({
+      title: doc.title,
+      filledContent: doc.content,
+      header: {
+        name: signedBy || form.name,
+        cpf: form.cpf || null,
+        birthdate: form.birthdate
+          ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+          : null,
+        professionalName: linkData?.professional?.name || null,
+      },
+    });
+  };
+
+  const downloadAllPdfs = () => {
+    generatedDocs.forEach((d, i) => setTimeout(() => downloadDocPdf(d), i * 250));
+  };
+
+  // ---------- RENDER ----------
 
   if (loadingLink) {
     return (
@@ -271,10 +338,10 @@ export default function CadastroCliente() {
     );
   }
 
-  if (success) {
+  if (step === 'success') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full">
+        <Card className="max-w-lg w-full">
           <CardHeader className="text-center">
             <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
             <CardTitle className="mt-2">Cadastro enviado!</CardTitle>
@@ -282,19 +349,132 @@ export default function CadastroCliente() {
               Seus dados foram registrados com sucesso. {linkData.professional?.name ? `${linkData.professional.name} entrará em contato em breve.` : ''}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex items-start gap-2 rounded-md border bg-primary/5 p-3 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <span>
-                Não é necessário criar conta nem fazer login. Você pode fechar esta página com tranquilidade.
-              </span>
+              <span>Não é necessário criar conta nem fazer login. Você pode fechar esta página com tranquilidade.</span>
             </div>
+
+            {generatedDocs.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <div>
+                  <p className="text-sm font-medium">Baixar documentos preenchidos em PDF</p>
+                  <p className="text-xs text-muted-foreground">
+                    Baixe, assine pelo Gov.br (ou à mão) e envie de volta ao profissional.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {generatedDocs.map((d) => (
+                    <Button
+                      key={d.id}
+                      variant="outline"
+                      className="w-full justify-between"
+                      onClick={() => downloadDocPdf(d)}
+                    >
+                      <span className="flex items-center gap-2 text-left truncate">
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{d.title}</span>
+                      </span>
+                      <Download className="h-4 w-4 shrink-0" />
+                    </Button>
+                  ))}
+                </div>
+                {generatedDocs.length > 1 && (
+                  <Button className="w-full" onClick={downloadAllPdfs}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar todos os PDFs
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  if (step === 'documents') {
+    const templates = linkData.templates;
+    const current = templates[currentDocIndex];
+    const state = docStates[current.id] || emptyDocumentState();
+    const isLast = currentDocIndex === templates.length - 1;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Documento {currentDocIndex + 1} de {templates.length}
+              </p>
+              <h1 className="text-xl font-semibold">{current.title}</h1>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Dados do cadastro já foram preenchidos automaticamente
+            </div>
+          </div>
+
+          <Card className="shadow-xl">
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {form.name && <div><span className="text-muted-foreground">Nome:</span> <strong>{form.name}</strong></div>}
+                {form.cpf && <div><span className="text-muted-foreground">CPF:</span> <strong>{form.cpf}</strong></div>}
+                {form.birthdate && <div><span className="text-muted-foreground">Nascimento:</span> <strong>{new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')}</strong></div>}
+                <div><span className="text-muted-foreground">Data:</span> <strong>{new Date().toLocaleDateString('pt-BR')}</strong></div>
+              </div>
+
+              <InteractiveDocumentFiller
+                rawContent={current.content}
+                state={state}
+                onChange={(next) => setDocStates((p) => ({ ...p, [current.id]: next }))}
+              />
+
+              {isLast && (
+                <div className="space-y-1.5 rounded-lg border border-primary/40 bg-primary/5 p-4">
+                  <Label className="text-sm font-medium">Assinatura (digite seu nome completo) *</Label>
+                  <Input
+                    value={signedBy}
+                    onChange={(e) => setSignedBy(e.target.value)}
+                    placeholder="Nome completo para assinatura"
+                    className="bg-background"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap gap-2 justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (currentDocIndex === 0) setStep('form');
+                else setCurrentDocIndex((i) => i - 1);
+              }}
+              disabled={submitting}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              {currentDocIndex === 0 ? 'Voltar ao cadastro' : 'Anterior'}
+            </Button>
+
+            {!isLast ? (
+              <Button onClick={() => setCurrentDocIndex((i) => i + 1)}>
+                Próximo
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleDocsSubmit} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {submitting ? 'Enviando...' : 'Enviar cadastro e documentos'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- FORM STEP ----------
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -424,39 +604,24 @@ export default function CadastroCliente() {
         </Card>
 
         {linkData.templates.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Documentos para preencher e assinar</CardTitle>
-              <CardDescription>Leia, complete o que for necessário e confirme abaixo. Os documentos serão salvos no seu perfil.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {linkData.templates.map((t) => (
-                <div key={t.id} className="space-y-2">
-                  <h4 className="text-sm font-medium">{t.title}</h4>
-                  <Textarea
-                    rows={10}
-                    value={getDocValue(t.id)}
-                    onChange={(e) => setDocOverrides((p) => ({ ...p, [t.id]: e.target.value }))}
-                    className="font-mono text-xs"
-                  />
-                </div>
-              ))}
-              <div className="space-y-1.5">
-                <Label>Assinatura (digite seu nome completo) *</Label>
-                <Input value={signedBy} onChange={(e) => setSignedBy(e.target.value)} placeholder="Nome completo para assinatura" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <span>
+              Após salvar, você preencherá {linkData.templates.length === 1 ? '1 documento' : `${linkData.templates.length} documentos`} (
+              {linkData.templates.map((t) => t.title).join(', ')}). Seus dados serão preenchidos automaticamente.
+            </span>
+          </div>
         )}
 
         <div className="flex items-start gap-2 rounded-md border bg-primary/5 p-3 text-xs text-muted-foreground">
           <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-          <span>Seus dados são protegidos. CPF, telefone e e-mail são validados. Você só verá esta tela uma vez.</span>
+          <span>Seus dados são protegidos. Você não precisa criar conta nem fazer login.</span>
         </div>
 
-        <Button className="w-full h-11" onClick={handleSubmit} disabled={submitting}>
+        <Button className="w-full h-11" onClick={handleFormNext} disabled={submitting}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          {submitting ? 'Enviando...' : 'Enviar cadastro'}
+          {linkData.templates.length > 0 ? 'Salvar e preencher documentos' : (submitting ? 'Enviando...' : 'Enviar cadastro')}
+          {linkData.templates.length > 0 && <ChevronRight className="h-4 w-4 ml-1" />}
         </Button>
       </div>
     </div>

@@ -294,13 +294,14 @@ export default function Auditoria() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Data/Hora</TableHead>
-                      <TableHead className="text-xs">Tabela</TableHead>
-                      <TableHead className="text-xs">Ação</TableHead>
-                      <TableHead className="text-xs">Usuário</TableHead>
+                      <TableHead className="text-xs font-semibold text-indigo-600">Data/Hora</TableHead>
+                      <TableHead className="text-xs font-semibold text-sky-600">Tabela</TableHead>
+                      <TableHead className="text-xs font-semibold text-emerald-600">Ação</TableHead>
+                      <TableHead className="text-xs font-semibold text-violet-600">Usuário</TableHead>
                       <TableHead className="text-xs w-16"></TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {auditLogs.map((log) => (
                       <TableRow key={log.id} className="hover:bg-muted/50">

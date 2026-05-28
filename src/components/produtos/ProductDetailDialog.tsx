@@ -816,15 +816,24 @@ export function ProductDetailDialog({
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
                                if (v) {
-                                 // 1) Snapshot do ciclo atual na compra ativa (se houver)
-                                 const activePurchase = productPurchases.find(
+                                 // 1) Snapshot do ciclo atual: encontra a compra ativa de forma robusta
+                                 let activePurchase = productPurchases.find(
                                    p => p.started_using_at && !p.finished_at
                                  );
+                                 if (!activePurchase) {
+                                   // Fallback: qualquer compra não encerrada (mais recente já está no topo)
+                                   activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
+                                 }
                                  if (activePurchase && onUpdatePurchase) {
                                    await onUpdatePurchase({
                                      id: activePurchase.id,
                                      finished_at: v,
-                                     ...(activePurchase.started_using_at ? {} : { started_using_at: product.started_using_at || v }),
+                                     // Garante data de início preservada (fallback em cascata)
+                                     started_using_at:
+                                       activePurchase.started_using_at
+                                       || product.started_using_at
+                                       || activePurchase.purchase_date
+                                       || v,
                                    });
                                  }
                                  // 2) Promove a próxima compra (se existir) como novo ciclo
@@ -841,11 +850,12 @@ export function ProductDetailDialog({
                                      current_stock: Number(next.quantity) || 0,
                                    });
                                  } else {
-                                   // SEMPRE persiste finished_at e zera o estoque (encerra ciclo)
+                                   // Encerra ciclo: zera estoque e limpa início de uso para o próximo ciclo
                                    await onUpdateProduct({
                                      id: product.id,
                                      finished_at: v,
                                      current_stock: 0,
+                                     started_using_at: null as any,
                                    });
                                  }
                                } else {
@@ -854,6 +864,8 @@ export function ProductDetailDialog({
                              }}
                              className="h-9"
                            />
+
+
 
 
                         ) : (

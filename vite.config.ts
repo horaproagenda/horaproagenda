@@ -23,6 +23,12 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
         },
+        // Nomes determinísticos com hash de conteúdo: garante que cada
+        // alteração gere um novo arquivo e que o SW nunca sirva conteúdo
+        // de uma página por outra (ex.: clicar em "Clientes" carregar Serviços).
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
   },
@@ -66,8 +72,12 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // Não pré-cacheia HTML: garante que o índice sempre venha da rede.
-        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        // Pré-cacheia somente arquivos estáveis (ícones, manifest, fontes).
+        // JS e CSS com hash NÃO entram no precache: cada deploy muda o hash,
+        // e precache cruzado entre versões podia fazer o navegador servir o
+        // chunk errado (clicar em "Clientes" e abrir "Serviços", etc.).
+        globPatterns: ["**/*.{ico,png,svg,woff2}"],
+        globIgnores: ["**/assets/**"],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
@@ -83,6 +93,22 @@ export default defineConfig(({ mode }) => ({
               cacheName: "html-cache",
               networkTimeoutSeconds: 6,
               expiration: { maxEntries: 5, maxAgeSeconds: 60 },
+            },
+          },
+          {
+            // Chunks de aplicação (JS/CSS sob /assets/). NetworkFirst garante
+            // que a versão mais recente sempre seja buscada; o cache só é
+            // usado como fallback offline. Imune ao bug de "rota errada
+            // ao clicar" causado por chunks antigos no precache.
+            urlPattern: ({ url, request }) =>
+              url.pathname.startsWith("/assets/") &&
+              (request.destination === "script" || request.destination === "style"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "app-assets",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {

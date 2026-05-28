@@ -207,21 +207,36 @@ export default function CadastroCliente() {
         signed_by: signedBy || form.name,
       }));
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL || 'https://nsgcllrbswodjoadybsj.supabase.co'}/functions/v1/submit-client-registration`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          person_type: personType,
-          ...form,
-          filled_documents,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        const msg = result.error || result.errors?.[0]?.message || 'Erro ao enviar cadastro';
+      // Usa supabase.functions.invoke para incluir automaticamente o apikey
+      // exigido pelo gateway de Edge Functions (mesmo com verify_jwt=false).
+      // Este endpoint cria apenas o registro de CLIENTE da clínica — nunca cria
+      // conta de usuário/login no aplicativo.
+      const { data: result, error: invokeErr } = await supabase.functions.invoke(
+        'submit-client-registration',
+        {
+          body: {
+            token,
+            person_type: personType,
+            ...form,
+            filled_documents,
+          },
+        }
+      );
+
+      if (invokeErr) {
+        // FunctionsHttpError vem com response body em context
+        let msg = invokeErr.message || 'Erro ao enviar cadastro';
+        try {
+          const ctx: any = (invokeErr as any).context;
+          if (ctx?.json) {
+            const j = await ctx.json();
+            msg = j.error || j.errors?.[0]?.message || msg;
+          }
+        } catch { /* ignore */ }
         throw new Error(msg);
+      }
+      if (!result?.success) {
+        throw new Error(result?.error || result?.errors?.[0]?.message || 'Erro ao enviar cadastro');
       }
       setSuccess(true);
     } catch (e: any) {

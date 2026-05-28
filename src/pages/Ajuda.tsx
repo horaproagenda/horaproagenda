@@ -187,12 +187,13 @@ const Ajuda = () => {
         <ScrollArea className="h-[calc(100vh-120px)]">
           <div className="space-y-4 pr-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4 h-9">
-                <TabsTrigger value="modules" className="text-xs">Módulos</TabsTrigger>
-                <TabsTrigger value="status" className="text-xs">Status</TabsTrigger>
-                <TabsTrigger value="roles" className="text-xs">Permissões</TabsTrigger>
-                <TabsTrigger value="tips" className="text-xs">Dicas</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 h-9 bg-muted/50 p-1 gap-1">
+                <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
+                <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
+                <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Permissões</TabsTrigger>
+                <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
+
 
             <TabsContent value="modules" className="space-y-3 page-enter">
               <p className="text-xs text-muted-foreground mb-4">

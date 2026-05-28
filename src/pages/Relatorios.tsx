@@ -406,27 +406,28 @@ const Relatorios = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid h-9">
-              <TabsTrigger value="aniversariantes" className="gap-1.5 text-xs px-3">
-                <Cake className="h-3.5 w-3.5" />
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid h-9 bg-muted/50 p-1 gap-1">
+              <TabsTrigger value="aniversariantes" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-pink-500/15 data-[state=active]:text-pink-700 data-[state=active]:border-pink-500/40">
+                <Cake className="h-3.5 w-3.5 text-pink-600" />
                 <span className="hidden sm:inline">Aniversários</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{aniversariantes.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3">
-                <RotateCcw className="h-3.5 w-3.5" />
+              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
+                <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
                 <span className="hidden sm:inline">Retornos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{retornos.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="sumidos" className="gap-1.5 text-xs px-3">
-                <UserX className="h-3.5 w-3.5" />
+              <TabsTrigger value="sumidos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40">
+                <UserX className="h-3.5 w-3.5 text-red-600" />
                 <span className="hidden sm:inline">Sumidos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{sumidos.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3">
-                <Users className="h-3.5 w-3.5" />
+              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
+                <Users className="h-3.5 w-3.5 text-sky-600" />
                 <span className="hidden sm:inline">Atendimentos</span>
               </TabsTrigger>
             </TabsList>
+
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">

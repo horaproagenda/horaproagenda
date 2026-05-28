@@ -270,72 +270,89 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                   )}
                 />
 
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium">Variáveis disponíveis</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Clique para inserir no ponto atual do cursor. Dados do cliente são preenchidos automaticamente.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {commonVariables.map(v => (
-                      <Button
-                        key={v.name}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => insertVariable(v.name)}
-                        title={v.description}
-                      >
-                        {'{' + v.name + '}'}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                <TooltipProvider delayDuration={150}>
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-medium">Variáveis disponíveis</span>
+                      <HelpHint text="Clique em uma variável para inseri-la na posição atual do cursor do documento. Cada variável vira um marcador (ex.: {nome_cliente}) que será substituído pelos dados reais no momento em que o documento for preenchido ou impresso. Passe o mouse sobre cada uma para ver o que ela representa." />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Separamos para deixar claro o que é do <strong>cliente</strong> e o que é da <strong>clínica</strong>.
+                    </p>
 
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium">Campos interativos</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Os padrões abaixo agora são inseridos exatamente na posição do cursor no documento.
-                  </p>
-                  <div className="space-y-1.5">
-                    {interactivePatterns.map(p => (
-                      <Button
-                        key={p.pattern}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-auto py-1.5 px-3 text-left w-full justify-start gap-2"
-                        onClick={() => insertPattern(p.pattern)}
-                      >
-                        {p.icon}
-                        <div>
-                          <span className="font-mono text-[10px]">{p.pattern}</span>
-                          <span className="text-[10px] text-muted-foreground ml-2">— {p.description}</span>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                    <VariableGroup
+                      title="Dados do cliente"
+                      icon={<User className="h-3.5 w-3.5 text-primary" />}
+                      hint="Preenchidos automaticamente com os dados do cliente do atendimento (nome, telefone, e-mail, endereço, etc.)."
+                      items={clientVariables}
+                      onInsert={insertVariable}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="variables"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Variáveis usadas (separadas por vírgula)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="nome, cpf, data, telefone" className="h-9" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <VariableGroup
+                      title="Dados da clínica / estabelecimento"
+                      icon={<Building2 className="h-3.5 w-3.5 text-primary" />}
+                      hint="Vêm das configurações do seu negócio (Configurações → Estabelecimento). Use para identificar a clínica no documento."
+                      items={clinicVariables}
+                      onInsert={insertVariable}
+                    />
+
+                    <VariableGroup
+                      title="Data e contexto"
+                      icon={<Calendar className="h-3.5 w-3.5 text-primary" />}
+                      hint='"Data por extenso" é SEMPRE a data atual do dia em que o documento for preenchido — não é uma data manual. Vale o mesmo para {data} e {hora}.'
+                      items={contextVariables}
+                      onInsert={insertVariable}
+                    />
+                  </div>
+
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-medium">Campos interativos</span>
+                      <HelpHint text="Padrões que viram elementos clicáveis ou editáveis quando o cliente preenche o documento online." />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Os padrões abaixo são inseridos exatamente na posição do cursor no documento.
+                    </p>
+                    <div className="space-y-1.5">
+                      {interactivePatterns.map(p => (
+                        <Button
+                          key={p.pattern}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-auto py-1.5 px-3 text-left w-full justify-start gap-2"
+                          onClick={() => insertPattern(p.pattern)}
+                        >
+                          {p.icon}
+                          <div>
+                            <span className="font-mono text-[10px]">{p.pattern}</span>
+                            <span className="text-[10px] text-muted-foreground ml-2">— {p.description}</span>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="variables"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs flex items-center gap-1.5">
+                          Variáveis usadas neste modelo (separadas por vírgula)
+                          <HelpHint text="Este campo é um RESUMO/ETIQUETA das variáveis que o seu modelo utiliza — serve para organização e relatórios. Ele é preenchido automaticamente toda vez que você clica em uma variável acima. Você só precisa editar manualmente se quiser remover alguma. As variáveis que efetivamente aparecem no documento são as que estão escritas dentro de chaves no conteúdo, ex.: {nome_cliente}." />
+                        </FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="nome_cliente, cpf, data, telefone_cliente" className="h-9" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TooltipProvider>
+
 
                 <FormField
                   control={form.control}

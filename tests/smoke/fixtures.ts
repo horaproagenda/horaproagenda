@@ -10,6 +10,12 @@ export interface SmokeContext {
   cleanup: () => Promise<void>;
 }
 
+// Unique phone suffix per run to avoid clients_phone_key collisions across retries
+function uniquePhone() {
+  const n = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+  return `11${n}`.slice(0, 11);
+}
+
 export async function bootstrap(c: SupabaseClient): Promise<SmokeContext> {
   const { data: userData } = await c.auth.getUser();
   const userId = userData.user!.id;
@@ -25,7 +31,11 @@ export async function bootstrap(c: SupabaseClient): Promise<SmokeContext> {
 
   const { data: client, error: clientErr } = await c
     .from('clients')
-    .insert({ name: tag('Cliente Smoke'), phone: '11999990000', assigned_professional_id: professionalId })
+    .insert({
+      name: tag('Cliente Smoke'),
+      phone: uniquePhone(),
+      assigned_professional_id: professionalId,
+    })
     .select('id')
     .single();
   if (clientErr) throw clientErr;
@@ -34,8 +44,10 @@ export async function bootstrap(c: SupabaseClient): Promise<SmokeContext> {
     .from('services')
     .insert({
       name: tag('Serviço Smoke'),
-      duration_minutes: 30,
+      category: 'Smoke',
+      duration: 30,
       price: 100,
+      is_active: true,
       professional_id: professionalId,
     })
     .select('id')
@@ -46,9 +58,14 @@ export async function bootstrap(c: SupabaseClient): Promise<SmokeContext> {
     .from('products')
     .insert({
       name: tag('Produto Smoke'),
+      product_type: 'liquid',
+      unit: 'ml',
+      quantity_purchased: 100,
+      unit_price: 1,
+      total_price: 100,
       current_stock: 100,
-      unit: 'un',
-      professional_id: professionalId,
+      is_active: true,
+      is_for_sale: false,
     })
     .select('id')
     .single();

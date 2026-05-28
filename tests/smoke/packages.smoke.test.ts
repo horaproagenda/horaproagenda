@@ -29,11 +29,14 @@ describeIfCreds('Smoke: pacotes standard e sequential', () => {
         service_id: ctx.serviceId,
         name: tag('Pacote Std'),
         total_sessions: 3,
-        used_sessions: 0,
+        sessions_scheduled: 0,
         package_type: 'standard',
-        total_amount: 270,
+        total_price: 270,
+        duration: 30,
+        category: 'Smoke',
+        is_active: true,
       })
-      .select('id, total_sessions, used_sessions')
+      .select('id, total_sessions, sessions_scheduled')
       .single();
     expect(error).toBeNull();
     expect(data!.total_sessions).toBe(3);
@@ -49,9 +52,12 @@ describeIfCreds('Smoke: pacotes standard e sequential', () => {
         service_id: ctx.serviceId,
         name: tag('Pacote Seq'),
         total_sessions: 2,
-        used_sessions: 0,
+        sessions_scheduled: 0,
         package_type: 'sequential',
-        total_amount: 180,
+        total_price: 180,
+        duration: 30,
+        category: 'Smoke',
+        is_active: true,
       })
       .select('id')
       .single();

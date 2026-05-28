@@ -41,15 +41,18 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     // Give listener time to subscribe
     await new Promise((r) => setTimeout(r, 1500));
 
-    const date = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+    const start = new Date(Date.now() + 5 * 86400000);
+    start.setHours(11, 0, 0, 0);
+    const end = new Date(start.getTime() + 30 * 60_000);
+
     await writer.from('appointments').insert({
       client_id: ctx.clientId,
       professional_id: ctx.professionalId,
       service_id: ctx.serviceId,
-      scheduled_date: date,
-      scheduled_time: '11:00',
-      duration_minutes: 30,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
       status: 'scheduled',
+      payment_status: 'pending',
     });
 
     const ok = await received;

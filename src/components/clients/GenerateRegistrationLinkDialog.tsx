@@ -84,7 +84,8 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
         .single();
 
       if (error) throw error;
-      const url = `${window.location.origin}/cadastro-cliente/${data.token}`;
+      const baseUrl = window.location.origin.includes('lovable') ? 'https://agendalume.app' : window.location.origin;
+      const url = `${baseUrl}/cadastro-cliente/${data.token}`;
       setGeneratedUrl(url);
       toast.success('Link de cadastro gerado!');
     } catch (e: any) {

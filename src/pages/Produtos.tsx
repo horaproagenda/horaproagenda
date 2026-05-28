@@ -369,7 +369,11 @@ export default function Produtos() {
       // Auto-promove se produto encerrado OU se usuário marcou "começar a usar hoje"
       const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
       const promoteNow = isFinished || purchaseForm.start_using_today;
-      const startedUsingAt = promoteNow ? today : null;
+      // Início do uso = "hoje" só quando explicitamente marcado; caso contrário, usa a data da compra
+      const cycleStartDate = purchaseForm.start_using_today
+        ? today
+        : (purchaseForm.purchase_date || today);
+      const startedUsingAt = promoteNow ? cycleStartDate : null;
 
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
@@ -405,6 +409,7 @@ export default function Produtos() {
       // toast shown by mutation
     }
   };
+
 
   const handleExport = () => {
     exportToCSV({

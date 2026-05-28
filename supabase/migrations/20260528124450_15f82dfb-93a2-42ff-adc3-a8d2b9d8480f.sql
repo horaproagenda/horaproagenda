@@ -1,0 +1,1 @@
+DELETE FROM public.clients WHERE name ILIKE '%__smoke_%' OR name ILIKE 'Cliente Smoke%';

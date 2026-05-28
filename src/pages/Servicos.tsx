@@ -357,10 +357,11 @@ const Servicos: React.FC = () => {
 
         {/* Line 2: Tabs (Serviços / Pacotes) */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="h-8">
-            <TabsTrigger value="services" className="text-xs h-7 px-3">Serviços</TabsTrigger>
-            <TabsTrigger value="packages" className="text-xs h-7 px-3">Pacotes</TabsTrigger>
+          <TabsList className="h-8 bg-muted/50 p-1 gap-1">
+            <TabsTrigger value="services" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Serviços</TabsTrigger>
+            <TabsTrigger value="packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-700 data-[state=active]:border-fuchsia-500/40">Pacotes</TabsTrigger>
           </TabsList>
+
 
           {/* Services Tab */}
           <TabsContent value="services" className="mt-3 space-y-3 page-enter">

@@ -26,6 +26,7 @@ describeIfCreds('Smoke: pagamento gera entrada de caixa e financeira', () => {
       .from('payment_methods')
       .select('id, name')
       .ilike('name', '%pix%')
+      .eq('is_active', true)
       .limit(1)
       .maybeSingle();
     if (!pm) {
@@ -37,11 +38,13 @@ describeIfCreds('Smoke: pagamento gera entrada de caixa e financeira', () => {
       .from('single_sales')
       .insert({
         client_id: ctx.clientId,
-        professional_id: ctx.professionalId,
         service_id: ctx.serviceId,
+        item_type: 'service',
         original_amount: 100,
+        discount_amount: 0,
         final_amount: 100,
         payment_method_id: pm.id,
+        sale_date: new Date().toISOString().slice(0, 10),
       })
       .select('id')
       .single();

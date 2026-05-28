@@ -22,20 +22,21 @@ export default function Caixa() {
       <div className="space-y-4 page-enter">
         <LiveCashTotalsBar />
         <Tabs value={safeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="h-9 bg-muted/50">
-            <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide">
-              <ShoppingCart className="h-3.5 w-3.5" />
+          <TabsList className="h-9 bg-muted/50 p-1 gap-1">
+            <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
+              <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
               <span className="hidden sm:inline">Nova Venda</span>
             </TabsTrigger>
-            <TabsTrigger value="caixa" className="gap-2 text-xs tracking-wide">
-              <Wallet className="h-3.5 w-3.5" />
+            <TabsTrigger value="caixa" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+              <Wallet className="h-3.5 w-3.5 text-amber-600" />
               <span className="hidden sm:inline">Controle</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide">
-              <History className="h-3.5 w-3.5" />
+            <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
+              <History className="h-3.5 w-3.5 text-indigo-600" />
               <span className="hidden sm:inline">Histórico</span>
             </TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="vendas" className="page-enter">
             <SaleForm />

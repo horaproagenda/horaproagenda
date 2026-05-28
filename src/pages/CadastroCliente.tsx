@@ -202,7 +202,7 @@ export default function CadastroCliente() {
     try {
       const filled_documents = (linkData?.templates || []).map((t) => ({
         template_id: t.id,
-        content: docContents[t.id] || '',
+        content: getDocValue(t.id),
         variables: { nome: signedBy || form.name, data: new Date().toLocaleDateString('pt-BR') },
         signed_by: signedBy || form.name,
       }));

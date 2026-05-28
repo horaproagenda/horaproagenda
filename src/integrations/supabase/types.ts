@@ -3968,32 +3968,19 @@ export type Database = {
       }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }
-      process_payment_low:
-        | {
-            Args: {
-              p_amount: number
-              p_client_id: string
-              p_note?: string
-              p_payment_method: string
-              p_payment_type: string
-              p_processed_by: string
-              p_single_sale_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_amount: number
-              p_change_amount?: number
-              p_client_id: string
-              p_note?: string
-              p_payment_method: string
-              p_payment_type: string
-              p_processed_by: string
-              p_single_sale_id: string
-            }
-            Returns: undefined
-          }
+      process_payment_low: {
+        Args: {
+          p_amount: number
+          p_change_amount?: number
+          p_client_id: string
+          p_note?: string
+          p_payment_method: string
+          p_payment_type: string
+          p_processed_by: string
+          p_single_sale_id: string
+        }
+        Returns: undefined
+      }
       realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }
       recalculate_package_minimum_intervals: {
         Args: { _package_appointment_id: string }

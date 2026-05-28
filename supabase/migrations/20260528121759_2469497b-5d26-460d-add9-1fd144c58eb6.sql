@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.process_payment_low(uuid, uuid, uuid, text, numeric, text, text);

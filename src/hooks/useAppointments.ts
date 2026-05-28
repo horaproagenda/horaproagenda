@@ -509,18 +509,19 @@ export function useAppointments() {
       return { ...data, sessionReleased: false };
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'active' });
       queryClient.invalidateQueries({ queryKey: ['client'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_details'] });
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      // Invalidate financial queries when status changes (cancelled/missed/rescheduled)
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+      // Notify other tabs/devices to refresh immediately
+      broadcastDataChange();
 
       void logAccess({
         module: 'agenda',

@@ -186,35 +186,35 @@ input::-webkit-clear-button {
     --popover: 240 5% 90%;
     --popover-foreground: 240 5% 10%;
 
-    --primary: 333 71% 50%;
-    --primary-foreground: 327 73% 97%;
+    --primary: 25 35% 38%;
+    --primary-foreground: 30 30% 97%;
 
-    --secondary: 240 5% 33%;
+    --secondary: 25 12% 30%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 4% 83%;
-    --muted-foreground: 240 5% 10%;
+    --muted: 30 10% 86%;
+    --muted-foreground: 25 10% 25%;
 
-    --accent: 355 100% 97%;
-    --accent-foreground: 349 89% 60%;
+    --accent: 30 35% 94%;
+    --accent-foreground: 25 35% 35%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
 
-    --border: 240 4% 83%;
-    --input: 240 4% 83%;
-    --ring: 333 71% 50%;
+    --border: 30 10% 83%;
+    --input: 30 10% 83%;
+    --ring: 25 35% 38%;
 
     --radius: 1.5rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 5% 10%;
-    --sidebar-primary: 333 71% 50%;
-    --sidebar-primary-foreground: 327 73% 97%;
-    --sidebar-accent: 240 5% 33%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 83%;
-    --sidebar-ring: 333 71% 50%;
+    --sidebar-foreground: 25 10% 15%;
+    --sidebar-primary: 25 35% 38%;
+    --sidebar-primary-foreground: 30 30% 97%;
+    --sidebar-accent: 30 25% 92%;
+    --sidebar-accent-foreground: 25 35% 35%;
+    --sidebar-border: 30 10% 83%;
+    --sidebar-ring: 25 35% 38%;
 
     /* Custom tokens */
     --success: 152 50% 45%;
@@ -225,9 +225,9 @@ input::-webkit-clear-button {
     --info-foreground: 0 0% 100%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(350 40% 65%), hsl(350 50% 72%));
-    --gradient-accent: linear-gradient(135deg, hsl(38 60% 70%), hsl(38 70% 78%));
-    --gradient-hero: linear-gradient(180deg, hsl(30 20% 98%) 0%, hsl(350 30% 96%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(25 35% 45%), hsl(28 40% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(35 40% 75%), hsl(35 50% 82%));
+    --gradient-hero: linear-gradient(180deg, hsl(30 25% 98%) 0%, hsl(30 30% 94%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);

@@ -316,12 +316,13 @@ export default function Produtos() {
       const product = products.find(p => p.id === stockForm.product_id);
       if (!product) return;
 
-      const today = format(new Date(), 'yyyy-MM-dd');
       const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
 
       // Produto encerrado (sem uso ativo / estoque zerado / finalizado): promove esta compra como novo ciclo
       const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
+      // Início do uso = data da compra (não "hoje"), respeitando o que o usuário informou
+      const cycleStartDate = stockForm.purchase_date || format(new Date(), 'yyyy-MM-dd');
 
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
@@ -330,7 +331,7 @@ export default function Produtos() {
         total_price: normalizeBrazilianCurrency(stockForm.total_price),
         supplier: product.supplier || null,
         purchase_date: stockForm.purchase_date,
-        started_using_at: isFinished ? today : null,
+        started_using_at: isFinished ? cycleStartDate : null,
         finished_at: null,
         notes: stockForm.expiry_date ? `Validade: ${stockForm.expiry_date}` : null,
         skip_cash_transaction: stockForm.skip_cash_transaction,
@@ -344,7 +345,7 @@ export default function Produtos() {
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
         purchase_date: stockForm.purchase_date,
         expiry_date: stockForm.expiry_date || product.expiry_date,
-        ...(isFinished ? { started_using_at: today, finished_at: null as any } : {}),
+        ...(isFinished ? { started_using_at: cycleStartDate, finished_at: null as any } : {}),
       });
 
       setStockDialogOpen(false);
@@ -353,6 +354,7 @@ export default function Produtos() {
       // toast shown by mutation
     }
   };
+
 
   const handlePurchaseSubmit = async () => {
     if (!purchaseForm.product_id || purchaseForm.quantity <= 0) return;

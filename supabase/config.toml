@@ -40,3 +40,5 @@ project_id = "nsgcllrbswodjoadybsj"
 
   [functions.twilio-status-webhook]
     verify_jwt = false
+  [functions.submit-client-registration]
+    verify_jwt = false

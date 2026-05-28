@@ -72,8 +72,67 @@ export default function CadastroCliente() {
     cep: '', address_street: '', address_number: '', address_complement: '',
     address_neighborhood: '', address_city: '', address_state: '',
   });
-  const [docContents, setDocContents] = useState<Record<string, string>>({});
+  const [docOverrides, setDocOverrides] = useState<Record<string, string>>({});
   const [signedBy, setSignedBy] = useState<string>('');
+
+  const calcAge = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso + 'T12:00:00');
+    if (isNaN(d.getTime())) return '';
+    const now = new Date();
+    let a = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+    return String(a);
+  };
+
+  const fillTemplate = (raw: string): string => {
+    const today = new Date().toLocaleDateString('pt-BR');
+    const nascimentoBR = form.birthdate
+      ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+      : '';
+    const endereco = [
+      form.address_street && `${form.address_street}${form.address_number ? ', ' + form.address_number : ''}`,
+      form.address_complement,
+      form.address_neighborhood,
+      form.address_city && form.address_state ? `${form.address_city}/${form.address_state}` : (form.address_city || form.address_state),
+      form.cep,
+    ].filter(Boolean).join(' - ');
+    const map: Record<string, string> = {
+      nome: signedBy || form.name || '',
+      cpf: form.cpf || '',
+      cnpj: form.cnpj || '',
+      telefone: form.phone || '',
+      celular: form.phone || '',
+      email: form.email || '',
+      'e-mail': form.email || '',
+      nascimento: nascimentoBR,
+      'data_nascimento': nascimentoBR,
+      idade: calcAge(form.birthdate),
+      data: today,
+      'data_atual': today,
+      endereco: endereco,
+      'endereço': endereco,
+      cep: form.cep || '',
+      cidade: form.address_city || '',
+      uf: form.address_state || '',
+      'razao_social': form.company_name || '',
+    };
+    return raw.replace(/\{([^{}]+)\}/g, (_m, key) => {
+      const k = String(key).trim().toLowerCase();
+      const v = map[k];
+      return v !== undefined && v !== '' ? v : `{${key}}`;
+    });
+  };
+
+  const templateBase = useMemo(() => {
+    const out: Record<string, string> = {};
+    (linkData?.templates || []).forEach((t) => { out[t.id] = htmlToPlainText(t.content || ''); });
+    return out;
+  }, [linkData]);
+
+  const getDocValue = (id: string) =>
+    docOverrides[id] !== undefined ? docOverrides[id] : fillTemplate(templateBase[id] || '');
 
   useEffect(() => {
     if (!token) return;
@@ -88,10 +147,6 @@ export default function CadastroCliente() {
           setLinkError('Este link de cadastro já foi utilizado.');
         } else {
           setLinkData(ld);
-          // Pre-populate doc contents with template stripped text
-          const init: Record<string, string> = {};
-          (ld.templates || []).forEach((t) => { init[t.id] = htmlToPlainText(t.content || ''); });
-          setDocContents(init);
         }
       }
       setLoadingLink(false);
@@ -147,7 +202,7 @@ export default function CadastroCliente() {
     try {
       const filled_documents = (linkData?.templates || []).map((t) => ({
         template_id: t.id,
-        content: docContents[t.id] || '',
+        content: getDocValue(t.id),
         variables: { nome: signedBy || form.name, data: new Date().toLocaleDateString('pt-BR') },
         signed_by: signedBy || form.name,
       }));
@@ -357,8 +412,8 @@ export default function CadastroCliente() {
                   <h4 className="text-sm font-medium">{t.title}</h4>
                   <Textarea
                     rows={10}
-                    value={docContents[t.id] || ''}
-                    onChange={(e) => setDocContents((p) => ({ ...p, [t.id]: e.target.value }))}
+                    value={getDocValue(t.id)}
+                    onChange={(e) => setDocOverrides((p) => ({ ...p, [t.id]: e.target.value }))}
                     className="font-mono text-xs"
                   />
                 </div>

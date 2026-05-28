@@ -95,16 +95,28 @@ input[type="submit"] {
   font-family: inherit;
 }
 
-/* Scrollbars: esconde em ambas plataformas (estilo iOS) */
-* {
+/* ============================================================
+   SCROLLBAR LOCK — NÃO ALTERAR
+   ============================================================
+   Política unificada de barras de rolagem do app.
+   - Containers de conteúdo (overflow-auto/scroll, diálogos, sheets,
+     popovers, tabelas) DEVEM exibir barra fina visível.
+   - O restante do app (elementos sem overflow) fica limpo.
+   Qualquer alteração aqui PRECISA preservar o bloco
+   ".overflow-* / [role=dialog] / table" definido mais abaixo
+   (procure por "SCROLLBAR OVERRIDE — NÃO ALTERAR").
+   ============================================================ */
+html, body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-*::-webkit-scrollbar {
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
 }
+
 
 /* Date/time nativos: padroniza a apresentação para ficar idêntica ao iOS
    — mesma altura, padding, peso tipográfico e alinhamento numérico.

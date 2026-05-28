@@ -3981,6 +3981,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      force_delete_client: { Args: { _client_id: string }; Returns: undefined }
+      get_client_outstanding_balance: {
+        Args: { _client_id: string }
+        Returns: number
+      }
       get_client_registration_link_by_token: {
         Args: { p_token: string }
         Returns: Json

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Phone, MoreVertical, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { Client } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClients } from '@/hooks/useClients';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -42,14 +42,29 @@ function getInitials(name: string) {
 
 export function ClientCard({ client }: ClientCardProps) {
   const navigate = useNavigate();
-  const { deleteClient } = useClients();
+  const { deleteClient, forceDeleteClient } = useClients();
   const { hasRole } = useAuth();
   const canDelete = hasRole('admin');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pendingBalance, setPendingBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showDeleteDialog) return;
+    setPendingBalance(null);
+    supabase
+      .rpc('get_client_outstanding_balance' as any, { _client_id: client.id })
+      .then(({ data }) => setPendingBalance(Number(data) || 0));
+  }, [showDeleteDialog, client.id]);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await deleteClient.mutateAsync(client.id);
+    setShowDeleteDialog(false);
+  };
+
+  const handleForceDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await forceDeleteClient.mutateAsync(client.id);
     setShowDeleteDialog(false);
   };
 
@@ -134,27 +149,60 @@ export function ClientCard({ client }: ClientCardProps) {
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base">Excluir Cliente</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm">
-              Tem certeza que deseja excluir "{client.name}"? 
-              Esta ação removerá documentos, fotos e orçamentos.
-              <br /><br />
-              <strong className="text-destructive text-xs">Clientes com agendamentos não podem ser excluídos.</strong>
+            <AlertDialogDescription className="text-sm space-y-2">
+              <span className="block">
+                Escolha como deseja excluir <strong>"{client.name}"</strong>:
+              </span>
+              {pendingBalance !== null && pendingBalance > 0 && (
+                <span className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-2 text-amber-700 dark:text-amber-400 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    Este cliente possui <strong>R$ {pendingBalance.toFixed(2)}</strong> em valores pendentes a receber.
+                  </span>
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteClient.isPending || forceDeleteClient.isPending}
+              className="w-full text-left rounded-md border border-border bg-card hover:bg-muted/50 transition-colors p-3 disabled:opacity-50"
+            >
+              <div className="text-xs font-medium text-foreground">Excluir apenas o cadastro</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Remove documentos, fotos e orçamentos. <strong>Não funciona</strong> se houver agendamentos ou pacotes vinculados.
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleForceDelete}
+              disabled={deleteClient.isPending || forceDeleteClient.isPending}
+              className="w-full text-left rounded-md border border-destructive/40 bg-destructive/5 hover:bg-destructive/10 transition-colors p-3 disabled:opacity-50"
+            >
+              <div className="text-xs font-medium text-destructive flex items-center gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" />
+                Excluir cliente e TODOS os registros
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Apaga o cliente, agendamentos (incluindo agenda), pacotes, vendas, pagamentos,
+                documentos, fotos, orçamentos e lançamentos financeiros. Esta ação é <strong>irreversível</strong>.
+              </div>
+            </button>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
-            >
-              Excluir
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </>
   );
 }

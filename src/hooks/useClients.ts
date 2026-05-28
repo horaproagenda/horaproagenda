@@ -79,9 +79,26 @@ export function useClients() {
     },
   });
 
+  const forceDeleteClient = useMutation({
+    mutationFn: async (clientId: string) => {
+      const { error } = await supabase.rpc('force_delete_client' as any, { _client_id: clientId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      toast.success('Cliente e todos os registros excluídos com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao excluir cliente e registros');
+    },
+  });
+
   const refetch = () => {
     queryClient.invalidateQueries({ queryKey: ['clients'] });
   };
 
-  return { clients, isLoading, error, refetch, deleteClient };
+  return { clients, isLoading, error, refetch, deleteClient, forceDeleteClient };
 }

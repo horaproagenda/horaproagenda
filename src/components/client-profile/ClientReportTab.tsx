@@ -610,13 +610,8 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                               className="h-7 w-7 text-destructive hover:text-destructive"
                               title="Excluir"
                               onClick={() => {
-                                const isPackageAppointment = Boolean(appointment.package_appointment_id || appointment.package_appointment);
-                                if (window.confirm('Deseja apagar este agendamento? O registro original do pacote será preservado.')) {
-                                  if (isPackageAppointment) {
-                                    updateAppointment.mutate({ id: appointment.id, updates: { status: 'cancelled' } });
-                                  } else {
-                                    deleteAppointment.mutate(appointment.id);
-                                  }
+                                if (window.confirm('Deseja apagar este agendamento? Esta ação não pode ser desfeita.')) {
+                                  deleteAppointment.mutate(appointment.id);
                                 }
                               }}
                               disabled={deleteAppointment.isPending || updateAppointment.isPending}

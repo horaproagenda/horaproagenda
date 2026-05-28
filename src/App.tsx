@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ForcePasswordChangeGate } from "@/components/auth/ForcePasswordChangeGate";
@@ -12,43 +12,61 @@ import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { useVersionWatcher } from "@/hooks/useVersionWatcher";
-import Index from "./pages/Index";
-import Agenda from "./pages/Agenda";
-import Clientes from "./pages/Clientes";
-import ClienteDetalhes from "./pages/ClienteDetalhes";
-import ProfissionalDetalhes from "./pages/ProfissionalDetalhes";
-import Servicos from "./pages/Servicos";
-import Cadastros from "./pages/Cadastros";
-import Caixa from "./pages/Caixa";
-import Financeiro from "./pages/Financeiro";
-import Produtos from "./pages/Produtos";
-import Relatorios from "./pages/Relatorios";
-import Lembretes from "./pages/Lembretes";
+import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
 
-import Documentos from "./pages/Documentos";
-import Configuracoes from "./pages/Configuracoes";
-import Auditoria from "./pages/Auditoria";
-import AdminPanel from "./pages/AdminPanel";
-import Ajuda from "./pages/Ajuda";
-import Suporte from "./pages/Suporte";
+// Eager: rotas críticas no boot (login, dashboard, 404)
 import Auth from "./pages/Auth";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Assinatura from "./pages/Assinatura";
-import AssinaturaSucesso from "./pages/AssinaturaSucesso";
-import AssinaturaCancelado from "./pages/AssinaturaCancelado";
-import PreencherDocumento from "./pages/PreencherDocumento";
-import Unsubscribe from "./pages/Unsubscribe";
-import TermosDeServico from "./pages/TermosDeServico";
-import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
+
+// Lazy: cada página vira um chunk independente.
+// Reduz bundle inicial e acelera navegação subsequente.
+const Agenda = lazy(() => import("./pages/Agenda"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+const ClienteDetalhes = lazy(() => import("./pages/ClienteDetalhes"));
+const ProfissionalDetalhes = lazy(() => import("./pages/ProfissionalDetalhes"));
+const Servicos = lazy(() => import("./pages/Servicos"));
+const Cadastros = lazy(() => import("./pages/Cadastros"));
+const Caixa = lazy(() => import("./pages/Caixa"));
+const Financeiro = lazy(() => import("./pages/Financeiro"));
+const Produtos = lazy(() => import("./pages/Produtos"));
+const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Lembretes = lazy(() => import("./pages/Lembretes"));
+const Documentos = lazy(() => import("./pages/Documentos"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Auditoria = lazy(() => import("./pages/Auditoria"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const Ajuda = lazy(() => import("./pages/Ajuda"));
+const Suporte = lazy(() => import("./pages/Suporte"));
+const Assinatura = lazy(() => import("./pages/Assinatura"));
+const AssinaturaSucesso = lazy(() => import("./pages/AssinaturaSucesso"));
+const AssinaturaCancelado = lazy(() => import("./pages/AssinaturaCancelado"));
+const PreencherDocumento = lazy(() => import("./pages/PreencherDocumento"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
+const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
+
+// Fallback minimalista enquanto o chunk da rota carrega.
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+    </div>
+  );
+}
 
 // Configuração otimizada do QueryClient - criado uma única vez
 const createQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
       // staleTime curto: garante que ao trocar de tela/aba/dispositivo
-      // os dados sejam revalidados rapidamente.
-      staleTime: 1000 * 30, // 30s
+      // os dados sejam revalidados rapidamente. Aumentado para 60s para
+      // reduzir refetch agressivo em navegações rápidas entre rotas.
+      staleTime: 1000 * 60, // 60s
       gcTime: 1000 * 60 * 10, // 10 minutos - mantém cache p/ navegação rápida
+      // placeholderData global: zero flicker entre navegações que reutilizam
+      // o mesmo queryKey (listas, filtros, paginação).
+      placeholderData: keepPreviousData,
       // Revalida ao focar a janela e ao voltar online -> sincroniza
       // automaticamente celular/tablet/desktop quando o usuário volta a usar.
       refetchOnWindowFocus: true,
@@ -57,8 +75,6 @@ const createQueryClient = () => new QueryClient({
     },
   },
 });
-
-import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
 
 // Componente wrapper para ativar realtime sync + sincronização entre dispositivos
 function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
@@ -84,6 +100,7 @@ const App = () => {
             <Sonner />
             <ForcePasswordChangeGate>
             <BrowserRouter>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 {/* Public routes */}
@@ -104,7 +121,6 @@ const App = () => {
                 <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
                 <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
                 <Route path="/lembretes" element={<ProtectedRoute><Lembretes /></ProtectedRoute>} />
-                
                 <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<ProtectedRoute><Auditoria /></ProtectedRoute>} />
@@ -116,6 +132,7 @@ const App = () => {
                 <Route path="/assinatura/cancelado" element={<ProtectedRoute><AssinaturaCancelado /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </BrowserRouter>
             </ForcePasswordChangeGate>
           </TooltipProvider>

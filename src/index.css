@@ -889,19 +889,6 @@ input[type="number"] {
   }
 }
 
-/* Aplicar scrollbar visível e rolagem completa em diálogos, sheets,
-   popovers, dropdowns, comandos e qualquer área overflow do app */
-[role="dialog"],
-[data-radix-dialog-content],
-[data-radix-sheet-content],
-[data-radix-popper-content-wrapper] [role="menu"],
-[data-radix-popper-content-wrapper] [role="listbox"],
-[cmdk-list],
-[data-radix-scroll-area-viewport],
-.overflow-auto,
-.overflow-y-auto,
-.overflow-x-auto,
-.overflow-scroll {
 /* ============================================================
    SCROLLBAR OVERRIDE — NÃO ALTERAR
    ============================================================

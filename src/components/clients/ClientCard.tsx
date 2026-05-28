@@ -113,12 +113,19 @@ export function ClientCard({ client }: ClientCardProps) {
           </p>
 
           <div className="mt-1 flex items-center justify-between gap-1">
-            <Badge
-              variant={client.is_active ? "default" : "secondary"}
-              className="text-[9px] px-1.5 py-0 h-4"
-            >
-              {client.is_active ? 'Ativo' : 'Inativo'}
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge
+                variant={client.is_active ? "default" : "secondary"}
+                className="text-[9px] px-1.5 py-0 h-4"
+              >
+                {client.is_active ? 'Ativo' : 'Inativo'}
+              </Badge>
+              {client.registration_source === 'self_link' && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                  Cadastro via link
+                </Badge>
+              )}
+            </div>
             <span className="text-[10px] text-muted-foreground truncate">
               Desde {format(new Date(client.created_at), "MMM/yy", { locale: ptBR })}
             </span>

@@ -67,39 +67,41 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-af74f314'], (function (workbox) { 'use strict';
+define(['./workbox-a5781ada'], (function (workbox) { 'use strict';
 
-  self.skipWaiting();
-  workbox.clientsClaim();
-
-  /**
-   * The precacheAndRoute() method efficiently caches and responds to
-   * requests for URLs in the manifest.
-   * See https://goo.gl/S9QRab
-   */
-  workbox.precacheAndRoute([{
-    "url": "registerSW.js",
-    "revision": "3ca0b8505b4bec776b69afdba2768812"
-  }], {});
-  workbox.cleanupOutdatedCaches();
-  workbox.registerRoute(({
-    request
-  }) => request.mode === "navigate", new workbox.NetworkFirst({
-    "cacheName": "html-cache",
-    "networkTimeoutSeconds": 6,
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 5,
-      maxAgeSeconds: 60
-    })]
-  }), 'GET');
-  workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "google-fonts-cache",
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 10,
-      maxAgeSeconds: 31536000
-    })]
-  }), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\.supabase\.co\/realtime\/.*/i, new workbox.NetworkOnly(), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\.supabase\.co\/(auth|rest|functions|storage)\/.*/i, new workbox.NetworkOnly(), 'GET');
+	self.skipWaiting();
+	workbox.clientsClaim();
+	workbox.registerRoute(({
+	  request
+	}) => request.mode === "navigate", new workbox.NetworkFirst({
+	  "cacheName": "html-cache",
+	  "networkTimeoutSeconds": 6,
+	  plugins: [new workbox.ExpirationPlugin({
+	    maxEntries: 5,
+	    maxAgeSeconds: 60
+	  })]
+	}), 'GET');
+	workbox.registerRoute(({
+	  url,
+	  request
+	}) => url.pathname.startsWith("/assets/") && (request.destination === "script" || request.destination === "style"), new workbox.NetworkFirst({
+	  "cacheName": "app-assets",
+	  "networkTimeoutSeconds": 4,
+	  plugins: [new workbox.ExpirationPlugin({
+	    maxEntries: 80,
+	    maxAgeSeconds: 604800
+	  }), new workbox.CacheableResponsePlugin({
+	    statuses: [0, 200]
+	  })]
+	}), 'GET');
+	workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({
+	  "cacheName": "google-fonts-cache",
+	  plugins: [new workbox.ExpirationPlugin({
+	    maxEntries: 10,
+	    maxAgeSeconds: 31536000
+	  })]
+	}), 'GET');
+	workbox.registerRoute(/^https:\/\/.*\.supabase\.co\/realtime\/.*/i, new workbox.NetworkOnly(), 'GET');
+	workbox.registerRoute(/^https:\/\/.*\.supabase\.co\/(auth|rest|functions|storage)\/.*/i, new workbox.NetworkOnly(), 'GET');
 
 }));

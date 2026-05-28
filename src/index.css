@@ -233,7 +233,7 @@ input::-webkit-clear-button {
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
     --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
     --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-glow: 0 0 20px hsl(350 40% 65% / 0.15);
+    --shadow-glow: 0 0 20px hsl(25 35% 45% / 0.18);
 
     /* Font families */
     --font-display: 'Playfair Display', serif;

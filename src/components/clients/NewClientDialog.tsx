@@ -103,10 +103,14 @@ type ClientFormData = z.infer<typeof clientSchema>;
 interface NewClientDialogProps {
   onClientCreated?: () => void;
   children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function NewClientDialog({ onClientCreated, children }: NewClientDialogProps) {
-  const [open, setOpen] = useState(false);
+export function NewClientDialog({ onClientCreated, children, open: openProp, onOpenChange }: NewClientDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = (v: boolean) => { onOpenChange ? onOpenChange(v) : setInternalOpen(v); };
   const [isLoading, setIsLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const { clients } = useClients();

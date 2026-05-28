@@ -282,6 +282,14 @@ export default function CadastroCliente() {
               Seus dados foram registrados com sucesso. {linkData.professional?.name ? `${linkData.professional.name} entrará em contato em breve.` : ''}
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-2 rounded-md border bg-primary/5 p-3 text-xs text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <span>
+                Não é necessário criar conta nem fazer login. Você pode fechar esta página com tranquilidade.
+              </span>
+            </div>
+          </CardContent>
         </Card>
       </div>
     );

@@ -7,6 +7,7 @@ import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, Layou
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
+import { GenerateRegistrationLinkDialog } from '@/components/clients/GenerateRegistrationLinkDialog';
 import { BulkImportClientsDialog } from '@/components/clients/BulkImportClientsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

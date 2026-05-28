@@ -1152,6 +1152,63 @@ export type Database = {
           },
         ]
       }
+      client_registration_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_client_id: string | null
+          expires_at: string | null
+          id: string
+          professional_id: string
+          single_use: boolean
+          template_ids: string[]
+          token: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_client_id?: string | null
+          expires_at?: string | null
+          id?: string
+          professional_id: string
+          single_use?: boolean
+          template_ids?: string[]
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_client_id?: string | null
+          expires_at?: string | null
+          id?: string
+          professional_id?: string
+          single_use?: boolean
+          template_ids?: string[]
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_registration_links_created_client_id_fkey"
+            columns: ["created_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_registration_links_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_services: {
         Row: {
           amount_paid: number
@@ -1253,6 +1310,7 @@ export type Database = {
           notes: string | null
           phone: string
           referral_source: string | null
+          registration_source: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -1279,6 +1337,7 @@ export type Database = {
           notes?: string | null
           phone: string
           referral_source?: string | null
+          registration_source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -1305,6 +1364,7 @@ export type Database = {
           notes?: string | null
           phone?: string
           referral_source?: string | null
+          registration_source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -3920,6 +3980,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_client_registration_link_by_token: {
+        Args: { p_token: string }
+        Returns: Json
       }
       get_document_fill_link_by_token: {
         Args: { p_token: string }

@@ -347,13 +347,9 @@ const Clientes = () => {
               </Button>
             </div>
 
-            {/* New Client Button */}
-            <NewClientDialog onClientCreated={refetch}>
-              <Button size="sm" className="h-9 gap-1.5 text-xs">
-                <Plus className="h-3.5 w-3.5" />
-                <span>Novo Cliente</span>
-              </Button>
-            </NewClientDialog>
+            {/* New Client Button - dropdown: manual ou link */}
+            <NewClientButtonGroup onRefetch={refetch} />
+
           </div>
         </div>
 

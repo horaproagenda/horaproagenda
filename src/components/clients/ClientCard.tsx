@@ -42,14 +42,29 @@ function getInitials(name: string) {
 
 export function ClientCard({ client }: ClientCardProps) {
   const navigate = useNavigate();
-  const { deleteClient } = useClients();
+  const { deleteClient, forceDeleteClient } = useClients();
   const { hasRole } = useAuth();
   const canDelete = hasRole('admin');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pendingBalance, setPendingBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showDeleteDialog) return;
+    setPendingBalance(null);
+    supabase
+      .rpc('get_client_outstanding_balance' as any, { _client_id: client.id })
+      .then(({ data }) => setPendingBalance(Number(data) || 0));
+  }, [showDeleteDialog, client.id]);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await deleteClient.mutateAsync(client.id);
+    setShowDeleteDialog(false);
+  };
+
+  const handleForceDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await forceDeleteClient.mutateAsync(client.id);
     setShowDeleteDialog(false);
   };
 

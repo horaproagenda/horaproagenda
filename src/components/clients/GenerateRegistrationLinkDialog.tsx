@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { buildClientRegistrationUrl } from '@/lib/publicRoutes';
 import {
   Dialog,
   DialogContent,
@@ -84,8 +85,7 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
         .single();
 
       if (error) throw error;
-      const baseUrl = window.location.origin.includes('lovable') ? 'https://agendalume.app' : window.location.origin;
-      const url = `${baseUrl}/cadastro-cliente/${data.token}`;
+      const url = buildClientRegistrationUrl(data.token);
       setGeneratedUrl(url);
       toast.success('Link de cadastro gerado!');
     } catch (e: any) {

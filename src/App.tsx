@@ -58,10 +58,13 @@ const createQueryClient = () => new QueryClient({
   },
 });
 
+import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
+
 // Componente wrapper para ativar realtime sync + sincronização entre dispositivos
 function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useRealtimeSync();
   useCrossDeviceSync();
+  usePostUpdateDataHeal();
   return <>{children}</>;
 }
 

@@ -47,16 +47,30 @@ function safeParseInfo(raw: string | null | undefined): Record<string, unknown> 
 export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { deleteClient } = useClients();
+  const { deleteClient, forceDeleteClient } = useClients();
   const { hasRole, user } = useAuth();
   const canDelete = hasRole('admin');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [pendingBalance, setPendingBalance] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showDeleteDialog) return;
+    setPendingBalance(null);
+    supabase
+      .rpc('get_client_outstanding_balance' as any, { _client_id: client.id })
+      .then(({ data }) => setPendingBalance(Number(data) || 0));
+  }, [showDeleteDialog, client.id]);
 
   const handleDelete = async () => {
     await deleteClient.mutateAsync(client.id);
+    navigate('/clientes');
+  };
+
+  const handleForceDelete = async () => {
+    await forceDeleteClient.mutateAsync(client.id);
     navigate('/clientes');
   };
 

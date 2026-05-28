@@ -65,6 +65,30 @@ export type Database = {
         }
         Relationships: []
       }
+      app_data_migrations: {
+        Row: {
+          details: Json | null
+          executed_at: string
+          executed_by: string | null
+          id: string
+          migration_key: string
+        }
+        Insert: {
+          details?: Json | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          migration_key: string
+        }
+        Update: {
+          details?: Json | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          migration_key?: string
+        }
+        Relationships: []
+      }
       app_version_events: {
         Row: {
           created_at: string
@@ -3928,6 +3952,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      heal_legacy_data: { Args: never; Returns: Json }
       link_current_user_professional: { Args: never; Returns: string }
       log_access: {
         Args: {
@@ -3973,6 +3998,10 @@ export type Database = {
       recalculate_package_minimum_intervals: {
         Args: { _package_appointment_id: string }
         Returns: number
+      }
+      record_data_migration: {
+        Args: { p_details?: Json; p_key: string }
+        Returns: boolean
       }
       record_migration: {
         Args: {

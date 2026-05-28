@@ -327,8 +327,8 @@ export default function Auditoria() {
             )}
           </CardContent>
         </Card>
-          </TabsContent>
-        </Tabs>
+        </div>
+
       </div>
     </AppLayout>
   );

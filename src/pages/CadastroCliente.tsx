@@ -412,8 +412,8 @@ export default function CadastroCliente() {
                   <h4 className="text-sm font-medium">{t.title}</h4>
                   <Textarea
                     rows={10}
-                    value={docContents[t.id] || ''}
-                    onChange={(e) => setDocContents((p) => ({ ...p, [t.id]: e.target.value }))}
+                    value={getDocValue(t.id)}
+                    onChange={(e) => setDocOverrides((p) => ({ ...p, [t.id]: e.target.value }))}
                     className="font-mono text-xs"
                   />
                 </div>

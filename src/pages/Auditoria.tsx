@@ -20,8 +20,6 @@ import { exportToCSV } from '@/lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { AccessLogsTable } from '@/components/auditoria/AccessLogsTable';
 
 const tableNameMap: Record<string, string> = {
   clients: 'Clientes',

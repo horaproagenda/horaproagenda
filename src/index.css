@@ -902,8 +902,30 @@ input[type="number"] {
 .overflow-y-auto,
 .overflow-x-auto,
 .overflow-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
+/* ============================================================
+   SCROLLBAR OVERRIDE — NÃO ALTERAR
+   ============================================================
+   Garante barra visível em TODAS as áreas roláveis do app:
+   páginas (main overflow-auto), diálogos, sheets, popovers,
+   dropdowns, command palettes, scroll-areas Radix e tabelas.
+   Não remover seletores nem reduzir specificity.
+   ============================================================ */
+[role="dialog"],
+[data-radix-dialog-content],
+[data-radix-sheet-content],
+[data-radix-popper-content-wrapper] [role="menu"],
+[data-radix-popper-content-wrapper] [role="listbox"],
+[cmdk-list],
+[data-radix-scroll-area-viewport],
+main,
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+table {
+  scrollbar-width: thin !important;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 [role="dialog"]::-webkit-scrollbar,
@@ -913,12 +935,15 @@ input[type="number"] {
 [data-radix-popper-content-wrapper] [role="listbox"]::-webkit-scrollbar,
 [cmdk-list]::-webkit-scrollbar,
 [data-radix-scroll-area-viewport]::-webkit-scrollbar,
+main::-webkit-scrollbar,
 .overflow-auto::-webkit-scrollbar,
 .overflow-y-auto::-webkit-scrollbar,
 .overflow-x-auto::-webkit-scrollbar,
-.overflow-scroll::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+.overflow-scroll::-webkit-scrollbar,
+table::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
 }
 
 [role="dialog"]::-webkit-scrollbar-track,
@@ -926,13 +951,16 @@ input[type="number"] {
 [data-radix-sheet-content]::-webkit-scrollbar-track,
 [cmdk-list]::-webkit-scrollbar-track,
 [data-radix-scroll-area-viewport]::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track,
 .overflow-auto::-webkit-scrollbar-track,
 .overflow-y-auto::-webkit-scrollbar-track,
 .overflow-x-auto::-webkit-scrollbar-track,
-.overflow-scroll::-webkit-scrollbar-track {
+.overflow-scroll::-webkit-scrollbar-track,
+table::-webkit-scrollbar-track {
   background: hsl(var(--muted) / 0.3);
   border-radius: 8px;
 }
+
 
 [role="dialog"]::-webkit-scrollbar-thumb,
 [data-radix-dialog-content]::-webkit-scrollbar-thumb,

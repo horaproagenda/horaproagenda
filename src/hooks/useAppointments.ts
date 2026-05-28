@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import { logAccess } from '@/hooks/useLogAccess';
+import { broadcastDataChange } from '@/hooks/useCrossDeviceSync';
 
 // Use environment variable for URL - ensures consistency between preview and production
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

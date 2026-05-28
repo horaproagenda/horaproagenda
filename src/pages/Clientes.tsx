@@ -3,7 +3,7 @@ import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useListPosition } from '@/hooks/useListPosition';
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
-import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Users, Loader2, UserCheck, UserX, Upload, Download, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, UserPlus, Link2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';

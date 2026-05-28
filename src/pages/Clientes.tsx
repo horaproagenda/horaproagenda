@@ -46,6 +46,36 @@ type SortDirection = 'asc' | 'desc';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
+function NewClientButtonGroup({ onRefetch }: { onRefetch: () => void }) {
+  const [manualOpen, setManualOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" className="h-9 gap-1.5 text-xs">
+            <Plus className="h-3.5 w-3.5" />
+            <span>Novo Cliente</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => setManualOpen(true)} className="text-xs">
+            <UserPlus className="h-3.5 w-3.5 mr-2" />
+            Cadastrar manualmente
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setLinkOpen(true)} className="text-xs">
+            <Link2 className="h-3.5 w-3.5 mr-2" />
+            Enviar link para o cliente
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <NewClientDialog open={manualOpen} onOpenChange={setManualOpen} onClientCreated={onRefetch} />
+      <GenerateRegistrationLinkDialog open={linkOpen} onOpenChange={setLinkOpen} />
+    </>
+  );
+}
+
+
 const Clientes = () => {
   useLogAccessOnMount({ module: 'clientes', action: 'view', fieldsViewed: ['name', 'phone', 'email', 'cpf', 'birthdate', 'address', 'tags', 'last_appointment'] });
   const [searchTerm, setSearchTerm] = useLocalStorage<string>('clientes:searchTerm', '');

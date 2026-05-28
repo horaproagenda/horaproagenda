@@ -42,6 +42,7 @@ const Assinatura = lazy(() => import("./pages/Assinatura"));
 const AssinaturaSucesso = lazy(() => import("./pages/AssinaturaSucesso"));
 const AssinaturaCancelado = lazy(() => import("./pages/AssinaturaCancelado"));
 const PreencherDocumento = lazy(() => import("./pages/PreencherDocumento"));
+const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
 const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
@@ -106,6 +107,7 @@ const App = () => {
                 {/* Public routes */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
+                <Route path="/cadastro-cliente/:token" element={<CadastroCliente />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />

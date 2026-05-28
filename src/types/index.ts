@@ -32,6 +32,7 @@ export interface Client {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  registration_source?: string | null;
   assigned_professional?: Professional;
 }
 

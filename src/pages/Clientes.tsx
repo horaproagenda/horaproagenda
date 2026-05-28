@@ -88,9 +88,10 @@ const Clientes = () => {
     if (!savedState?.lastItemId || isLoading) return;
     const stillExists = clients.some((c) => c.id === savedState.lastItemId);
     if (!stillExists) {
-      savePosition({ lastItemId: undefined, lastItemLabel: undefined });
+      // limpa do storage e do estado em memória para sumir o banner com link morto
+      dismiss();
     }
-  }, [clients, isLoading, savedState?.lastItemId, savePosition]);
+  }, [clients, isLoading, savedState?.lastItemId, dismiss]);
 
   const activeClients = clients.filter(c => c.is_active);
   const inactiveClients = clients.filter(c => !c.is_active);

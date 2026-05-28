@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { buildClientRegistrationUrl } from '@/lib/publicRoutes';
 import {
   Dialog,
   DialogContent,

@@ -3981,6 +3981,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_appointment_cascade: {
+        Args: { _appointment_id: string }
+        Returns: Json
+      }
+      delete_client_registration_only: {
+        Args: { _client_id: string }
+        Returns: undefined
+      }
       force_delete_client: { Args: { _client_id: string }; Returns: undefined }
       get_client_outstanding_balance: {
         Args: { _client_id: string }

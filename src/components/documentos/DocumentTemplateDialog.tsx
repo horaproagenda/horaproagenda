@@ -21,7 +21,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Info, CheckSquare, Type } from 'lucide-react';
+import { Info, CheckSquare, Type, HelpCircle, User, Building2, Calendar } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
 import { RichTextEditor, type RichTextEditorHandle } from './RichTextEditor';
 
@@ -42,22 +43,35 @@ interface DocumentTemplateDialogProps {
   onSave: (data: TemplateFormData) => Promise<void>;
 }
 
-const commonVariables = [
-  { name: 'nome', description: 'Nome do cliente' },
+type VarItem = { name: string; description: string };
+
+// Dados do CLIENTE — preenchidos automaticamente com os dados do cliente do atendimento
+const clientVariables: VarItem[] = [
+  { name: 'nome_cliente', description: 'Nome do cliente' },
   { name: 'cpf', description: 'CPF do cliente' },
-  { name: 'data', description: 'Data atual (dd/mm/aaaa)' },
-  { name: 'data_atual', description: 'Data atual (dd/mm/aaaa)' },
-  { name: 'data_extenso', description: 'Data por extenso' },
-  { name: 'nascimento', description: 'Data de nascimento do cliente' },
-  { name: 'idade', description: 'Idade do cliente' },
+  { name: 'telefone_cliente', description: 'Telefone do cliente' },
+  { name: 'email_cliente', description: 'E-mail do cliente' },
+  { name: 'endereco_cliente', description: 'Endereço completo do cliente (rua, número, bairro, cidade)' },
   { name: 'cidade', description: 'Cidade do cliente' },
-  { name: 'endereco', description: 'Endereço completo do cliente' },
-  { name: 'endereco_clinica', description: 'Endereço da clínica' },
-  { name: 'nome_clinica', description: 'Nome da clínica' },
+  { name: 'nascimento', description: 'Data de nascimento do cliente' },
+  { name: 'idade', description: 'Idade calculada do cliente' },
+];
+
+// Dados da CLÍNICA / ESTABELECIMENTO — vêm das configurações do seu negócio
+const clinicVariables: VarItem[] = [
+  { name: 'nome_clinica', description: 'Nome da clínica/estabelecimento' },
   { name: 'telefone_clinica', description: 'Telefone da clínica' },
-  { name: 'telefone', description: 'Telefone do cliente' },
-  { name: 'email', description: 'Email do cliente' },
-  { name: 'profissional', description: 'Nome do profissional' },
+  { name: 'email_clinica', description: 'E-mail da clínica' },
+  { name: 'endereco_clinica', description: 'Endereço da clínica' },
+  { name: 'cnpj_clinica', description: 'CNPJ da clínica' },
+];
+
+// Dados de CONTEXTO / DATA — gerados no momento do preenchimento
+const contextVariables: VarItem[] = [
+  { name: 'data', description: 'Data atual no formato dd/mm/aaaa (sempre o dia em que o documento é preenchido)' },
+  { name: 'data_extenso', description: 'Data atual por extenso, ex.: "28 de maio de 2026". É sempre a data do dia em que o documento é preenchido — não é uma data digitada manualmente.' },
+  { name: 'hora', description: 'Hora atual (HH:mm) no momento do preenchimento' },
+  { name: 'profissional', description: 'Nome do profissional do atendimento' },
   { name: 'servico', description: 'Serviço ou pacote selecionado' },
   { name: 'valor', description: 'Valor do serviço/pacote' },
 ];
@@ -67,6 +81,65 @@ const interactivePatterns = [
   { pattern: '( ) Sim ( ) Não', description: 'Pergunta Sim/Não - o cliente marca com X', icon: <CheckSquare className="h-3.5 w-3.5" /> },
   { pattern: '[TEXTO_LIVRE]', description: 'Caixa de texto - espaço para o cliente escrever', icon: <Type className="h-3.5 w-3.5" /> },
 ];
+
+function HelpHint({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="inline-flex text-muted-foreground hover:text-foreground transition-colors" aria-label="Ajuda">
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function VariableGroup({
+  title,
+  hint,
+  icon,
+  items,
+  onInsert,
+}: {
+  title: string;
+  hint: string;
+  icon: React.ReactNode;
+  items: VarItem[];
+  onInsert: (name: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <span className="text-[11px] font-medium">{title}</span>
+        <HelpHint text={hint} />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map(v => (
+          <Tooltip key={v.name}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px] px-2"
+                onClick={() => onInsert(v.name)}
+              >
+                {'{' + v.name + '}'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs text-xs">
+              {v.description}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }: DocumentTemplateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);

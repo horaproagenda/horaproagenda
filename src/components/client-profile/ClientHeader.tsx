@@ -4,7 +4,7 @@ import { Client } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Phone, Mail, Trash2, Edit, Camera, X, Loader2 } from 'lucide-react';
+import { Phone, Mail, Trash2, Edit, Camera, X, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClients } from '@/hooks/useClients';

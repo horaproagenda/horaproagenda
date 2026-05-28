@@ -21,53 +21,7 @@ export function useClients() {
 
   const deleteClient = useMutation({
     mutationFn: async (clientId: string) => {
-      // Check for appointments
-      const { data: appointments } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('client_id', clientId)
-        .limit(1);
-      
-      if (appointments && appointments.length > 0) {
-        throw new Error('Cliente possui agendamentos vinculados. Remova os agendamentos primeiro.');
-      }
-
-      // Check for documents
-      const { data: documents } = await supabase
-        .from('client_documents')
-        .select('id')
-        .eq('client_id', clientId)
-        .limit(1);
-      
-      if (documents && documents.length > 0) {
-        // Delete documents first
-        await supabase.from('client_documents').delete().eq('client_id', clientId);
-      }
-
-      // Check for photos
-      const { data: photos } = await supabase
-        .from('treatment_photos')
-        .select('id')
-        .eq('client_id', clientId)
-        .limit(1);
-      
-      if (photos && photos.length > 0) {
-        await supabase.from('treatment_photos').delete().eq('client_id', clientId);
-      }
-
-      // Check for quotes
-      const { data: quotes } = await supabase
-        .from('quotes')
-        .select('id')
-        .eq('client_id', clientId)
-        .limit(1);
-      
-      if (quotes && quotes.length > 0) {
-        await supabase.from('quotes').delete().eq('client_id', clientId);
-      }
-
-      // Delete the client
-      const { error } = await supabase.from('clients').delete().eq('id', clientId);
+      const { error } = await supabase.rpc('delete_client_registration_only' as any, { _client_id: clientId });
       if (error) throw error;
     },
     onSuccess: () => {

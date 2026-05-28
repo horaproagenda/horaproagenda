@@ -1575,8 +1575,12 @@ export function ProductDetailDialog({
                 product={product}
                 consumptionRecords={consumptionRecords}
                 productConsumption={productConsumption}
+                appointments={appointments}
+                serviceLinks={productServiceLinks}
+                templateLinks={productTemplateLinks}
               />
             </TabsContent>
+
 
           </Tabs>
         </ScrollArea>

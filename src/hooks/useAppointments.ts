@@ -325,23 +325,54 @@ export function useAppointments() {
     mutationFn: async ({ id, updates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      let updateQuery = supabase
-        .from('appointments')
-        .update({
-          ...updates,
-          updated_by: user?.id,
-        })
-        .eq('id', id);
+      const runUpdate = async (versionGuard?: number) => {
+        let q = supabase
+          .from('appointments')
+          .update({
+            ...updates,
+            updated_by: user?.id,
+          })
+          .eq('id', id);
+        if (typeof versionGuard === 'number') {
+          q = q.eq('version', versionGuard);
+        }
+        return q.select('*, package_appointment_id, version').maybeSingle();
+      };
 
-      if (typeof expectedVersion === 'number') {
-        updateQuery = updateQuery.eq('version', expectedVersion);
+      let { data, error } = await runUpdate(expectedVersion);
+      if (error) throw error;
+
+      // Version mismatch: fetch latest row to decide whether it's a real conflict
+      // (another user edited it) or just a stale local version (same user re-editing
+      // their own recent change — common when realtime hasn't refreshed cache yet,
+      // or when server-side triggers bump version after our own write).
+      if (!data && typeof expectedVersion === 'number') {
+        const { data: latest } = await supabase
+          .from('appointments')
+          .select('id, version, updated_by')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (!latest) throw new AppointmentConflictError();
+
+        const sameUser = latest.updated_by && user?.id && latest.updated_by === user.id;
+        if (sameUser) {
+          const retry = await runUpdate(latest.version);
+          if (retry.error) throw retry.error;
+          if (retry.data) {
+            data = retry.data;
+          } else {
+            // Fallback: force update without version guard for same user
+            const force = await runUpdate(undefined);
+            if (force.error) throw force.error;
+            if (!force.data) throw new AppointmentConflictError();
+            data = force.data;
+          }
+        } else {
+          throw new AppointmentConflictError();
+        }
       }
 
-      const { data, error } = await updateQuery
-        .select('*, package_appointment_id, version')
-        .maybeSingle();
-
-      if (error) throw error;
       if (!data) throw new AppointmentConflictError();
 
       // If status changed to completed and this appointment is linked to a package session,

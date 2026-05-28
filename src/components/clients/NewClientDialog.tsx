@@ -309,14 +309,16 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button size="sm" className="gap-1.5 btn-vibrant">
-            <UserPlus className="h-3.5 w-3.5" />
-            <span className="text-xs">Novo Cliente</span>
-          </Button>
-        )}
-      </DialogTrigger>
+      {openProp === undefined && (
+        <DialogTrigger asChild>
+          {children || (
+            <Button size="sm" className="gap-1.5 btn-vibrant">
+              <UserPlus className="h-3.5 w-3.5" />
+              <span className="text-xs">Novo Cliente</span>
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">Novo Cliente</DialogTitle>

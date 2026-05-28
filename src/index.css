@@ -238,10 +238,10 @@ input::-webkit-clear-button {
     /* Font families */
     --font-display: 'Playfair Display', serif;
     --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --chart-1: 328 85% 70%;
-    --chart-2: 351 94% 71%;
-    --chart-3: 327 87% 81%;
-    --chart-4: 352 95% 81%;
+    --chart-1: 25 35% 45%;
+    --chart-2: 35 45% 55%;
+    --chart-3: 20 30% 35%;
+    --chart-4: 40 40% 65%;
     --chart-5: 240 3% 46%;
     --sidebar: 0 0% 98%;
     --font-serif: 'Merriweather', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;

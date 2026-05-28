@@ -42,6 +42,7 @@ const Assinatura = lazy(() => import("./pages/Assinatura"));
 const AssinaturaSucesso = lazy(() => import("./pages/AssinaturaSucesso"));
 const AssinaturaCancelado = lazy(() => import("./pages/AssinaturaCancelado"));
 const PreencherDocumento = lazy(() => import("./pages/PreencherDocumento"));
+const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
 const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));

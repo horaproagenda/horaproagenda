@@ -147,10 +147,6 @@ export default function CadastroCliente() {
           setLinkError('Este link de cadastro já foi utilizado.');
         } else {
           setLinkData(ld);
-          // Pre-populate doc contents with template stripped text
-          const init: Record<string, string> = {};
-          (ld.templates || []).forEach((t) => { init[t.id] = htmlToPlainText(t.content || ''); });
-          setDocContents(init);
         }
       }
       setLoadingLink(false);

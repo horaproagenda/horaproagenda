@@ -25,7 +25,7 @@ export async function bootstrap(c: SupabaseClient): Promise<SmokeContext> {
 
   const { data: client, error: clientErr } = await c
     .from('clients')
-    .insert({ name: tag('Cliente Smoke'), assigned_professional_id: professionalId })
+    .insert({ name: tag('Cliente Smoke'), phone: '11999990000', assigned_professional_id: professionalId })
     .select('id')
     .single();
   if (clientErr) throw clientErr;

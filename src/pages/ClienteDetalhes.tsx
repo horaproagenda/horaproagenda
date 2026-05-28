@@ -113,36 +113,37 @@ export default function ClienteDetalhes() {
 
         {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7 h-9">
-            <TabsTrigger value="report" className="flex items-center gap-1 text-xs px-1">
-              <BarChart3 className="h-3.5 w-3.5" />
+          <TabsList className="grid w-full grid-cols-7 h-9 bg-muted/50 p-1 gap-1">
+            <TabsTrigger value="report" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
+              <BarChart3 className="h-3.5 w-3.5 text-sky-600" />
               <span className="hidden sm:inline">Relatório</span>
             </TabsTrigger>
-            <TabsTrigger value="credits" className="flex items-center gap-1 text-xs px-1">
-              <CreditCard className="h-3.5 w-3.5" />
+            <TabsTrigger value="credits" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
+              <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
               <span className="hidden sm:inline">Créditos</span>
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex items-center gap-1 text-xs px-1">
-              <Calendar className="h-3.5 w-3.5" />
+            <TabsTrigger value="appointments" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">
+              <Calendar className="h-3.5 w-3.5 text-violet-600" />
               <span className="hidden sm:inline">Agenda</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-1 text-xs px-1">
-              <FileText className="h-3.5 w-3.5" />
+            <TabsTrigger value="documents" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40">
+              <FileText className="h-3.5 w-3.5 text-teal-600" />
               <span className="hidden sm:inline">Docs</span>
             </TabsTrigger>
-            <TabsTrigger value="quotes" className="flex items-center gap-1 text-xs px-1">
-              <Receipt className="h-3.5 w-3.5" />
+            <TabsTrigger value="quotes" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+              <Receipt className="h-3.5 w-3.5 text-amber-600" />
               <span className="hidden sm:inline">Orçamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs px-1">
-              <Image className="h-3.5 w-3.5" />
+            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-pink-500/15 data-[state=active]:text-pink-700 data-[state=active]:border-pink-500/40">
+              <Image className="h-3.5 w-3.5 text-pink-600" />
               <span className="hidden sm:inline">Fotos</span>
             </TabsTrigger>
-            <TabsTrigger value="info" className="flex items-center gap-1 text-xs px-1">
-              <Info className="h-3.5 w-3.5" />
+            <TabsTrigger value="info" className="flex items-center gap-1 text-xs px-1 border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
+              <Info className="h-3.5 w-3.5 text-indigo-600" />
               <span className="hidden sm:inline">Info</span>
             </TabsTrigger>
           </TabsList>
+
           
           <TabsContent value="report" className="mt-3">
             <ClientReportTab 

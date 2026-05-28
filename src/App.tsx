@@ -107,6 +107,7 @@ const App = () => {
                 {/* Public routes */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
+                <Route path="/cadastro-cliente/:token" element={<CadastroCliente />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />

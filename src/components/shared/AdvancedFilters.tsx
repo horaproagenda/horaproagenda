@@ -159,7 +159,7 @@ export function AdvancedFilters({
                       <span>Todos</span>
                     </button>
 
-                    {group.options.map((option) => {
+                    {group.options.filter((o) => o.value !== 'all').map((option) => {
                       const isSelected = selectedFilters[group.id]?.includes(
                         option.value,
                       );

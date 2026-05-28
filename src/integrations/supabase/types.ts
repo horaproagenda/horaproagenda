@@ -3989,7 +3989,7 @@ export type Database = {
         Args: { _client_id: string }
         Returns: undefined
       }
-      force_delete_client: { Args: { _client_id: string }; Returns: undefined }
+      force_delete_client: { Args: { _client_id: string }; Returns: Json }
       get_client_outstanding_balance: {
         Args: { _client_id: string }
         Returns: number

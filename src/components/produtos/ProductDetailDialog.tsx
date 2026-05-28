@@ -816,15 +816,24 @@ export function ProductDetailDialog({
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
                                if (v) {
-                                 // 1) Snapshot do ciclo atual na compra ativa (se houver)
-                                 const activePurchase = productPurchases.find(
+                                 // 1) Snapshot do ciclo atual: encontra a compra ativa de forma robusta
+                                 let activePurchase = productPurchases.find(
                                    p => p.started_using_at && !p.finished_at
                                  );
+                                 if (!activePurchase) {
+                                   // Fallback: qualquer compra não encerrada (mais recente já está no topo)
+                                   activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
+                                 }
                                  if (activePurchase && onUpdatePurchase) {
                                    await onUpdatePurchase({
                                      id: activePurchase.id,
                                      finished_at: v,
-                                     ...(activePurchase.started_using_at ? {} : { started_using_at: product.started_using_at || v }),
+                                     // Garante data de início preservada (fallback em cascata)
+                                     started_using_at:
+                                       activePurchase.started_using_at
+                                       || product.started_using_at
+                                       || activePurchase.purchase_date
+                                       || v,
                                    });
                                  }
                                  // 2) Promove a próxima compra (se existir) como novo ciclo
@@ -841,11 +850,12 @@ export function ProductDetailDialog({
                                      current_stock: Number(next.quantity) || 0,
                                    });
                                  } else {
-                                   // SEMPRE persiste finished_at e zera o estoque (encerra ciclo)
+                                   // Encerra ciclo: zera estoque e limpa início de uso para o próximo ciclo
                                    await onUpdateProduct({
                                      id: product.id,
                                      finished_at: v,
                                      current_stock: 0,
+                                     started_using_at: null as any,
                                    });
                                  }
                                } else {
@@ -854,6 +864,8 @@ export function ProductDetailDialog({
                              }}
                              className="h-9"
                            />
+
+
 
 
                         ) : (
@@ -1563,8 +1575,12 @@ export function ProductDetailDialog({
                 product={product}
                 consumptionRecords={consumptionRecords}
                 productConsumption={productConsumption}
+                appointments={appointments}
+                serviceLinks={productServiceLinks}
+                templateLinks={productTemplateLinks}
               />
             </TabsContent>
+
 
           </Tabs>
         </ScrollArea>
@@ -1577,10 +1593,16 @@ function ProductAutomaticConsumption({
   product,
   consumptionRecords,
   productConsumption,
+  appointments,
+  serviceLinks,
+  templateLinks,
 }: {
   product: Product;
   consumptionRecords: any[];
   productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
+  appointments: any[];
+  serviceLinks: any[];
+  templateLinks: any[];
 }) {
   const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label || product.unit;
 
@@ -1588,6 +1610,45 @@ function ProductAutomaticConsumption({
     () => (consumptionRecords || []).filter((r: any) => r.product_id === product.id),
     [consumptionRecords, product.id]
   );
+
+  // Eventos de consumo derivados: usa registros explícitos quando existem,
+  // senão calcula a partir dos atendimentos concluídos vinculados ao produto.
+  const consumptionEvents = useMemo(() => {
+    if (productRecords.length > 0) {
+      return productRecords
+        .map((r: any) => ({
+          date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
+          qty: Number(r.quantity_used) || 0,
+        }))
+        .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+    }
+
+    // Fallback automático: deriva consumo de atendimentos concluídos
+    const serviceQtyMap = new Map<string, number>();
+    for (const sp of serviceLinks || []) {
+      serviceQtyMap.set(sp.service_id, Number(sp.quantity_per_use) || 0);
+    }
+    const templateQtyMap = new Map<string, number>();
+    for (const tp of templateLinks || []) {
+      templateQtyMap.set(tp.package_template_id, Number(tp.quantity_per_use) || 0);
+    }
+
+    const events: { date: Date; qty: number }[] = [];
+    for (const apt of appointments || []) {
+      if (apt.status !== 'completed') continue;
+      let qty = 0;
+      if (apt.service_id && serviceQtyMap.has(apt.service_id)) {
+        qty = serviceQtyMap.get(apt.service_id) || 0;
+      } else if (apt.package_template_id && templateQtyMap.has(apt.package_template_id)) {
+        qty = templateQtyMap.get(apt.package_template_id) || 0;
+      }
+      if (qty <= 0) continue;
+      const d = apt.start_time ? new Date(apt.start_time) : null;
+      if (!d || isNaN(d.getTime())) continue;
+      events.push({ date: d, qty });
+    }
+    return events;
+  }, [productRecords, appointments, serviceLinks, templateLinks]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -1600,11 +1661,9 @@ function ProductAutomaticConsumption({
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
     const acc = { today: 0, week: 0, month: 0, semester: 0, year: 0 };
-    for (const r of productRecords) {
-      const ts = r.appointment?.start_time;
-      if (!ts) continue;
-      const d = parseISO(ts);
-      const qty = Number(r.quantity_used) || 0;
+    for (const e of consumptionEvents) {
+      const d = e.date;
+      const qty = e.qty;
       const dStr = format(d, 'yyyy-MM-dd');
       if (dStr === todayStr) acc.today += qty;
       if (d >= weekStart && d <= weekEnd) acc.week += qty;
@@ -1613,7 +1672,7 @@ function ProductAutomaticConsumption({
       if (d >= yearStart) acc.year += qty;
     }
     return acc;
-  }, [productRecords]);
+  }, [consumptionEvents]);
 
   const history = useMemo(() => {
     return [...productRecords]
@@ -1621,6 +1680,7 @@ function ProductAutomaticConsumption({
       .sort((a: any, b: any) => new Date(b.appointment.start_time).getTime() - new Date(a.appointment.start_time).getTime())
       .slice(0, 50);
   }, [productRecords]);
+
 
   return (
     <div className="space-y-4">

@@ -429,18 +429,19 @@ export function RemindersPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="active" className="space-y-3">
-        <TabsList className="h-8">
-          <TabsTrigger value="active" className="gap-1.5 text-xs px-3">
-            <AlertCircle className="h-3 w-3" />
+        <TabsList className="h-8 bg-muted/50 p-1 gap-1">
+          <TabsTrigger value="active" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+            <AlertCircle className="h-3 w-3 text-amber-600" />
             Pendentes
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredActiveReminders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3">
-            <CheckCircle className="h-3 w-3" />
+          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
+            <CheckCircle className="h-3 w-3 text-emerald-600" />
             Concluídos
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredCompletedReminders.length}</Badge>
           </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="active" className="page-enter">
           {filteredActiveReminders.length === 0 ? (

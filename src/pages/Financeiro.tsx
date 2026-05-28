@@ -151,24 +151,27 @@ export default function Financeiro() {
           <div className="overflow-x-auto -mx-2 px-2 scrollbar-thin">
           <TabsList className="inline-flex w-max min-w-full h-auto gap-1.5 bg-muted/50 p-1">
             {[
-              { v: 'relatorio', label: 'Relatório', Icon: FileText },
-              { v: 'pacotes', label: 'Pacotes', Icon: Tag },
-              { v: 'extrato', label: 'Extrato', Icon: FileText },
-              { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard },
-              { v: 'comissoes', label: 'Comissões', Icon: Percent },
-              { v: 'metas', label: 'Metas', Icon: Target },
-              { v: 'precificacao', label: 'Precificação', Icon: Calculator },
-              { v: 'categorias', label: 'Categorias', Icon: Tag },
-              { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle },
-              { v: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
-            ].map(({ v, label, Icon }) => (
+              { v: 'relatorio', label: 'Relatório', Icon: FileText, color: 'text-sky-600', active: 'data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40' },
+              { v: 'extrato', label: 'Extratos', Icon: FileText, color: 'text-indigo-600', active: 'data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40' },
+              { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle, color: 'text-red-600', active: 'data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40' },
+              { v: 'categorias', label: 'Categorias', Icon: Tag, color: 'text-amber-600', active: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40' },
+              { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-emerald-600', active: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40' },
+              { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-fuchsia-600', active: 'data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-700 data-[state=active]:border-fuchsia-500/40' },
+              { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-violet-600', active: 'data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40' },
+              { v: 'metas', label: 'Metas', Icon: Target, color: 'text-rose-600', active: 'data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 data-[state=active]:border-rose-500/40' },
+              { v: 'precificacao', label: 'Precificação', Icon: Calculator, color: 'text-orange-600', active: 'data-[state=active]:bg-orange-500/15 data-[state=active]:text-orange-700 data-[state=active]:border-orange-500/40' },
+              { v: 'dashboard', label: 'Dashboard', Icon: BarChart3, color: 'text-teal-600', active: 'data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40' },
+            ].map(({ v, label, Icon, color, active }) => (
               <TabsTrigger
                 key={v}
                 value={v}
                 title={label}
-                className="flex items-center gap-1.5 whitespace-nowrap text-[11px] tracking-wide h-8 px-2.5"
+                className={cn(
+                  "flex items-center gap-1.5 whitespace-nowrap text-[11px] tracking-wide h-8 px-2.5 border border-transparent transition-colors",
+                  active
+                )}
               >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <Icon className={cn("h-3.5 w-3.5 shrink-0", color)} />
                 <span>{label}</span>
               </TabsTrigger>
             ))}

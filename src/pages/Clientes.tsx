@@ -82,6 +82,16 @@ const Clientes = () => {
     savePosition({ page: currentPage, search: searchTerm });
   }, [currentPage, searchTerm, savePosition]);
 
+  // Invalida "Continuar em [cliente]" se o registro foi apagado/desativado,
+  // evitando banner com link morto.
+  useEffect(() => {
+    if (!savedState?.lastItemId || isLoading) return;
+    const stillExists = clients.some((c) => c.id === savedState.lastItemId);
+    if (!stillExists) {
+      savePosition({ lastItemId: undefined, lastItemLabel: undefined });
+    }
+  }, [clients, isLoading, savedState?.lastItemId, savePosition]);
+
   const activeClients = clients.filter(c => c.is_active);
   const inactiveClients = clients.filter(c => !c.is_active);
 

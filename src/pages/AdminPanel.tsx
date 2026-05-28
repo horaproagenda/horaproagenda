@@ -204,11 +204,12 @@ export default function AdminPanel() {
         </div>
 
         <Tabs defaultValue="access" className="w-full">
-          <TabsList className="h-8">
-            <TabsTrigger value="access" className="text-xs">Logs de Acesso</TabsTrigger>
-            <TabsTrigger value="users" className="text-xs">Usuários e Permissões</TabsTrigger>
-            <TabsTrigger value="professionals" className="text-xs">Profissionais</TabsTrigger>
+          <TabsList className="h-8 bg-muted/50 p-1 gap-1">
+            <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">Logs de Acesso</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Usuários e Permissões</TabsTrigger>
+            <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Profissionais</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="access" className="mt-4 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">

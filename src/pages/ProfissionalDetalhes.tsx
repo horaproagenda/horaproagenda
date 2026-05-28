@@ -560,28 +560,29 @@ export default function ProfissionalDetalhes() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-5 h-10">
-                <TabsTrigger value="info" className="text-xs gap-1.5">
-                  <User className="h-3.5 w-3.5 hidden sm:block" />
+              <TabsList className="grid w-full grid-cols-5 h-10 bg-muted/50 p-1 gap-1">
+                <TabsTrigger value="info" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
+                  <User className="h-3.5 w-3.5 hidden sm:block text-indigo-600" />
                   Informações
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="text-xs gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 hidden sm:block" />
+                <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
+                  <TrendingUp className="h-3.5 w-3.5 hidden sm:block text-emerald-600" />
                   Desempenho
                 </TabsTrigger>
-                <TabsTrigger value="commissions" className="text-xs gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5 hidden sm:block" />
+                <TabsTrigger value="commissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">
+                  <DollarSign className="h-3.5 w-3.5 hidden sm:block text-violet-600" />
                   Comissões
                 </TabsTrigger>
-                <TabsTrigger value="appointments" className="text-xs gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 hidden sm:block" />
+                <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
+                  <Calendar className="h-3.5 w-3.5 hidden sm:block text-sky-600" />
                   Histórico
                 </TabsTrigger>
-                <TabsTrigger value="permissions" className="text-xs gap-1.5">
-                  <Shield className="h-3.5 w-3.5 hidden sm:block" />
+                <TabsTrigger value="permissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+                  <Shield className="h-3.5 w-3.5 hidden sm:block text-amber-600" />
                   Permissões
                 </TabsTrigger>
               </TabsList>
+
 
               <TabsContent value="info" className="space-y-4 mt-6">
                 <div className="grid gap-4 md:grid-cols-2">

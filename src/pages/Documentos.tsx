@@ -192,11 +192,12 @@ const Documentos = () => {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="h-9">
-                <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
-                <TabsTrigger value="anamnese" className="text-xs">Anamneses</TabsTrigger>
-                <TabsTrigger value="contracts" className="text-xs">Contratos/Termos</TabsTrigger>
+              <TabsList className="h-9 bg-muted/50 p-1 gap-1">
+                <TabsTrigger value="all" className="text-xs border border-transparent data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-700 data-[state=active]:border-slate-500/40">Todos</TabsTrigger>
+                <TabsTrigger value="anamnese" className="text-xs border border-transparent data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40">Anamneses</TabsTrigger>
+                <TabsTrigger value="contracts" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Contratos/Termos</TabsTrigger>
               </TabsList>
+
 
               <TabsContent value={activeTab} className="mt-4">
                 {isLoading ? (

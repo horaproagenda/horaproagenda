@@ -98,7 +98,7 @@ export function useDocumentFillLinks(templateId?: string) {
         });
 
         if (active) {
-          const baseUrl = window.location.origin;
+          const baseUrl = window.location.origin.includes('lovable') ? 'https://agendalume.app' : window.location.origin;
           const friendlySlug = buildFriendlyDocumentSlug(options?.clientName, options?.documentTitle);
           const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${active.token}`;
           toast.info('Já existe um link ativo para este documento e cliente. Reutilizando o link atual. Para gerar outro, apague o link existente ou aguarde o vencimento.');
@@ -131,7 +131,7 @@ export function useDocumentFillLinks(templateId?: string) {
 
       queryClient.invalidateQueries({ queryKey: ['document_fill_links'] });
 
-      const baseUrl = window.location.origin;
+      const baseUrl = window.location.origin.includes('lovable') ? 'https://agendalume.app' : window.location.origin;
       const friendlySlug = buildFriendlyDocumentSlug(options?.clientName, options?.documentTitle);
       const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${token}`;
 

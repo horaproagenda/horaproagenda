@@ -7,6 +7,11 @@ import { bootstrapAppearance } from "./hooks/useAppearanceSettings";
 import { restoreUrlIfNeeded, scheduleFormRestore } from "./lib/preReloadState";
 import { logVersionEvent } from "./lib/appVersionLog";
 import { bootVersionGuard } from "./lib/bootVersionGuard";
+import { installChunkErrorRecovery } from "./lib/chunkErrorRecovery";
+
+// Recupera de chunks obsoletos após deploy (clicar em rota e carregar
+// chunk antigo do cache): força um reload único quando detecta o erro.
+installChunkErrorRecovery();
 
 // Guarda de versão de boot: detecta bundle obsoleto (cache de CDN, SW antigo,
 // novo navegador/login com cache local antigo) e força purge + reload ANTES

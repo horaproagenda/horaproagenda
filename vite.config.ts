@@ -23,6 +23,12 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
         },
+        // Nomes determinísticos com hash de conteúdo: garante que cada
+        // alteração gere um novo arquivo e que o SW nunca sirva conteúdo
+        // de uma página por outra (ex.: clicar em "Clientes" carregar Serviços).
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
   },

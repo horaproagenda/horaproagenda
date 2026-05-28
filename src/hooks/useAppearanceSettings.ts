@@ -8,6 +8,10 @@ export interface AppearanceSettings {
 }
 
 export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[] = [
+  { name: 'Marrom Neutro',   hsl: '25 35% 38%',  hex: '#7D573D' },
+  { name: 'Marrom Claro',    hsl: '28 40% 55%',  hex: '#B08868' },
+  { name: 'Café',            hsl: '20 25% 28%',  hex: '#594236' },
+  { name: 'Areia',           hsl: '35 30% 60%',  hex: '#B8A079' },
   { name: 'Rosa Pink',       hsl: '333 71% 50%', hex: '#E0238A' },
   { name: 'Rosa Suave',      hsl: '350 60% 65%', hex: '#D88793' },
   { name: 'Coral',           hsl: '14 90% 60%',  hex: '#F26D3D' },
@@ -27,7 +31,6 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
   { name: 'Roxo',            hsl: '280 70% 55%', hex: '#A855F7' },
   { name: 'Magenta',         hsl: '310 75% 55%', hex: '#D946EF' },
   { name: 'Pink Vibrante',   hsl: '328 85% 60%', hex: '#EC4899' },
-  { name: 'Marrom',          hsl: '25 35% 45%',  hex: '#9A6B4D' },
   { name: 'Cinza Grafite',   hsl: '220 10% 35%', hex: '#4B5563' },
   { name: 'Preto Suave',     hsl: '240 6% 18%',  hex: '#2C2C30' },
 ];
@@ -35,7 +38,7 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
 const STORAGE_KEY = 'appearance-settings-v1';
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
-  primaryColor: '333 71% 50%',
+  primaryColor: '25 35% 38%',
   darkMode: false,
   animations: true,
 };

@@ -186,35 +186,35 @@ input::-webkit-clear-button {
     --popover: 240 5% 90%;
     --popover-foreground: 240 5% 10%;
 
-    --primary: 333 71% 50%;
-    --primary-foreground: 327 73% 97%;
+    --primary: 25 35% 38%;
+    --primary-foreground: 30 30% 97%;
 
-    --secondary: 240 5% 33%;
+    --secondary: 25 12% 30%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 4% 83%;
-    --muted-foreground: 240 5% 10%;
+    --muted: 30 10% 86%;
+    --muted-foreground: 25 10% 25%;
 
-    --accent: 355 100% 97%;
-    --accent-foreground: 349 89% 60%;
+    --accent: 30 35% 94%;
+    --accent-foreground: 25 35% 35%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
 
-    --border: 240 4% 83%;
-    --input: 240 4% 83%;
-    --ring: 333 71% 50%;
+    --border: 30 10% 83%;
+    --input: 30 10% 83%;
+    --ring: 25 35% 38%;
 
     --radius: 1.5rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 5% 10%;
-    --sidebar-primary: 333 71% 50%;
-    --sidebar-primary-foreground: 327 73% 97%;
-    --sidebar-accent: 240 5% 33%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 83%;
-    --sidebar-ring: 333 71% 50%;
+    --sidebar-foreground: 25 10% 15%;
+    --sidebar-primary: 25 35% 38%;
+    --sidebar-primary-foreground: 30 30% 97%;
+    --sidebar-accent: 30 25% 92%;
+    --sidebar-accent-foreground: 25 35% 35%;
+    --sidebar-border: 30 10% 83%;
+    --sidebar-ring: 25 35% 38%;
 
     /* Custom tokens */
     --success: 152 50% 45%;
@@ -225,23 +225,23 @@ input::-webkit-clear-button {
     --info-foreground: 0 0% 100%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(350 40% 65%), hsl(350 50% 72%));
-    --gradient-accent: linear-gradient(135deg, hsl(38 60% 70%), hsl(38 70% 78%));
-    --gradient-hero: linear-gradient(180deg, hsl(30 20% 98%) 0%, hsl(350 30% 96%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(25 35% 45%), hsl(28 40% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(35 40% 75%), hsl(35 50% 82%));
+    --gradient-hero: linear-gradient(180deg, hsl(30 25% 98%) 0%, hsl(30 30% 94%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
     --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
     --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-glow: 0 0 20px hsl(350 40% 65% / 0.15);
+    --shadow-glow: 0 0 20px hsl(25 35% 45% / 0.18);
 
     /* Font families */
     --font-display: 'Playfair Display', serif;
     --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --chart-1: 328 85% 70%;
-    --chart-2: 351 94% 71%;
-    --chart-3: 327 87% 81%;
-    --chart-4: 352 95% 81%;
+    --chart-1: 25 35% 45%;
+    --chart-2: 35 45% 55%;
+    --chart-3: 20 30% 35%;
+    --chart-4: 40 40% 65%;
     --chart-5: 240 3% 46%;
     --sidebar: 0 0% 98%;
     --font-serif: 'Merriweather', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
@@ -265,39 +265,39 @@ input::-webkit-clear-button {
     --popover: 240 5% 26%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 328 85% 70%;
-    --primary-foreground: 336 83% 17%;
+    --primary: 28 45% 62%;
+    --primary-foreground: 25 40% 12%;
 
-    --secondary: 240 3% 46%;
+    --secondary: 25 8% 28%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 3% 46%;
-    --muted-foreground: 0 0% 98%;
+    --muted: 25 5% 25%;
+    --muted-foreground: 30 10% 85%;
 
-    --accent: 343 87% 15%;
-    --accent-foreground: 351 94% 71%;
+    --accent: 25 30% 22%;
+    --accent-foreground: 30 40% 88%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 85% 97%;
 
-    --border: 240 5% 33%;
-    --input: 240 5% 33%;
-    --ring: 328 85% 70%;
+    --border: 25 6% 28%;
+    --input: 25 6% 28%;
+    --ring: 28 45% 62%;
 
-    --sidebar-background: 20 15% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 328 85% 70%;
-    --sidebar-primary-foreground: 336 83% 17%;
-    --sidebar-accent: 351 94% 71%;
-    --sidebar-accent-foreground: 343 87% 15%;
-    --sidebar-border: 240 5% 33%;
-    --sidebar-ring: 328 85% 70%;
-    --chart-1: 327 87% 81%;
-    --chart-2: 352 95% 81%;
-    --chart-3: 328 85% 70%;
-    --chart-4: 351 94% 71%;
-    --chart-5: 240 5% 33%;
-    --sidebar: 240 3% 15%;
+    --sidebar-background: 25 15% 10%;
+    --sidebar-foreground: 30 15% 92%;
+    --sidebar-primary: 28 45% 62%;
+    --sidebar-primary-foreground: 25 40% 12%;
+    --sidebar-accent: 25 20% 18%;
+    --sidebar-accent-foreground: 30 40% 88%;
+    --sidebar-border: 25 8% 25%;
+    --sidebar-ring: 28 45% 62%;
+    --chart-1: 28 45% 62%;
+    --chart-2: 35 50% 70%;
+    --chart-3: 20 35% 50%;
+    --chart-4: 40 45% 72%;
+    --chart-5: 240 5% 60%;
+    --sidebar: 25 12% 12%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);

@@ -733,7 +733,7 @@ export function ServiceProductsDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+        <Button variant="accent" size="sm" className="h-8 gap-1.5 text-xs">
           <Link2 className="h-3.5 w-3.5" />
           Vincular Produtos
         </Button>

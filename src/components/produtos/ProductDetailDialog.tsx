@@ -53,6 +53,7 @@ import {
 import { cn } from '@/lib/utils';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { convertQuantity } from '@/lib/productStock';
+import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';

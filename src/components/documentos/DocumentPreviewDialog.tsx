@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Edit2, Download, ExternalLink, FileSignature } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { sanitizeHtmlContent } from '@/lib/htmlSanitizer';
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -71,7 +72,7 @@ export function DocumentPreviewDialog({
             {/<[a-z][\s\S]*?>/i.test(template.content || '') ? (
               <div
                 className="bg-muted/30 rounded-lg p-4 border whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: template.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtmlContent(template.content) }}
               />
             ) : (
               <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">

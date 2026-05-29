@@ -92,6 +92,7 @@ import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
+import { isProductExpired } from '@/lib/productExpiry';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },

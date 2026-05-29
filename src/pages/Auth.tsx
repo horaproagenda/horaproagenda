@@ -141,37 +141,21 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const { data: row, error: fetchErr } = await supabase
-        .from('verificacoes_whatsapp')
-        .select('id, codigo_verificacao, verificado, criado_em')
-        .eq('id', verificationId)
-        .maybeSingle();
+      const { data: ok, error: rpcErr } = await supabase.rpc('confirmar_codigo_whatsapp', {
+        p_id: verificationId,
+        p_codigo: whatsappCode,
+      });
 
-      if (fetchErr) throw fetchErr;
-      if (!row) {
-        toast({ title: 'Código expirado', description: 'Solicite um novo código.', variant: 'destructive' });
-        setSignupStep('identify');
+      if (rpcErr) throw rpcErr;
+
+      if (!ok) {
+        toast({
+          title: 'Código incorreto ou expirado',
+          description: 'Confira os 6 dígitos ou solicite um novo código.',
+          variant: 'destructive',
+        });
         return;
       }
-
-      const idadeMin = (Date.now() - new Date(row.criado_em).getTime()) / 60_000;
-      if (idadeMin > 15) {
-        toast({ title: 'Código expirado', description: 'Solicite um novo código.', variant: 'destructive' });
-        setSignupStep('identify');
-        return;
-      }
-
-      if (row.codigo_verificacao !== whatsappCode) {
-        toast({ title: 'Código incorreto', description: 'Confira os 6 dígitos enviados.', variant: 'destructive' });
-        return;
-      }
-
-      const { error: updateErr } = await supabase
-        .from('verificacoes_whatsapp')
-        .update({ verificado: true })
-        .eq('id', verificationId);
-
-      if (updateErr) throw updateErr;
 
       toast({
         title: 'WhatsApp confirmado!',

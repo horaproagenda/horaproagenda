@@ -3940,6 +3940,10 @@ export type Database = {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
       }
+      confirmar_codigo_whatsapp: {
+        Args: { p_codigo: string; p_id: string }
+        Returns: boolean
+      }
       create_client_document: {
         Args: {
           _client_id: string

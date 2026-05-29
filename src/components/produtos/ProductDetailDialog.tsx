@@ -48,6 +48,7 @@ import {
   Gift,
   Trash2,
   BarChart3,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SafeDateInput } from '@/components/ui/safe-date-input';

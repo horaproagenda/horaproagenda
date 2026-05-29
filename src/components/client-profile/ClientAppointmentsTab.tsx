@@ -12,7 +12,13 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
-import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
+import {
+  buildAppointmentPackageSequenceMap,
+  buildAppointmentRecurringSequenceMap,
+  formatAppointmentNotesWithRecurringSequence,
+  getAppointmentRecurringSessionLabel,
+  getPackageApplicationLabel,
+} from '@/lib/packageSequence';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
@@ -66,6 +72,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
   
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
+  const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
 
   const filteredAppointments = useMemo(() => {
     return appointments
@@ -354,8 +361,10 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const isSelected = selectedAppointments.has(appointment.id);
                 const totalSessions = packageData?.total_sessions;
                 const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id));
+                const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
                 const displayName = packageData?.name || appointment.service?.name || 'Serviço';
                 const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
+                const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
                 return (
                   <div
@@ -393,6 +402,11 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                             {applicationLabel}
                           </Badge>
                         )}
+                        {!isPackage && recurringLabel && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
+                            {recurringLabel}
+                          </Badge>
+                        )}
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}>
                           {status.label}
                         </Badge>
@@ -412,9 +426,9 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                       <div className="truncate">Sala: {appointment.room?.name || packageData?.room?.name || '-'}</div>
                     </div>
 
-                    {appointment.notes && (
+                    {displayNotes && (
                       <p className="mt-1 text-[10px] text-muted-foreground italic truncate">
-                        {appointment.notes}
+                        {displayNotes}
                       </p>
                     )}
                   </div>

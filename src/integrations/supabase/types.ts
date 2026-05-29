@@ -4141,6 +4141,10 @@ export type Database = {
             }
             Returns: string
           }
+      sync_recurring_session_notes: {
+        Args: { p_recurring_group_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "receptionist" | "professional"

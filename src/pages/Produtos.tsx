@@ -268,6 +268,7 @@ export default function Produtos() {
   const clearFilters = () => setFilters(defaultFilters);
 
   const lowStockProducts = useMemo(() => products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active), [products]);
+  const expiredProducts = useMemo(() => products.filter(p => isProductExpired(p)), [products]);
 
   // Calculate appointments for a product
   const getProductAppointments = (productId: string) => {

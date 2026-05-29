@@ -484,10 +484,10 @@ export default function Produtos() {
             {/* Filters */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                <Button variant="info" size="sm" className="h-8 gap-1 text-xs">
                   <Filter className="h-3.5 w-3.5" />
                   Filtros
-                  {activeFiltersCount > 0 && <Badge variant="secondary" className="h-4 w-4 p-0 text-[9px] justify-center">{activeFiltersCount}</Badge>}
+                  {activeFiltersCount > 0 && <Badge variant="outline" className="h-4 w-4 p-0 text-[9px] justify-center bg-white/20 text-white border-white/30">{activeFiltersCount}</Badge>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-3" align="start">
@@ -556,7 +556,7 @@ export default function Produtos() {
               {/* ── Adicionar no Estoque ── */}
               <Dialog open={stockDialogOpen} onOpenChange={(open) => { setStockDialogOpen(open); if (!open) setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false }); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                  <Button variant="success" size="sm" className="h-8 gap-1 text-xs">
                     <WarehouseIcon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Adicionar no Estoque</span>
                     <span className="sm:hidden">Estoque</span>
@@ -627,7 +627,7 @@ export default function Produtos() {
               {/* ── Nova Compra ── */}
               <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm(createEmptyPurchaseForm()); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                  <Button size="sm" className="h-8 gap-1 text-xs btn-vibrant">
                     <ShoppingCart className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Nova Compra</span>
                     <span className="sm:hidden">Compra</span>

@@ -48,7 +48,7 @@ export function ManageSuppliersDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+        <Button variant="warning" size="sm" className="h-8 gap-1.5 text-xs">
           <Truck className="h-3.5 w-3.5" />
           Fornecedores
         </Button>

@@ -968,6 +968,16 @@ export default function Produtos() {
                             {isLowStock && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal border-amber-500 text-amber-600">Baixo</Badge>}
                           </TableCell>
                           <TableCell className="py-1">
+                            {product.expiry_date ? (
+                              <span className={cn("font-medium text-[11px] tabular-nums", expired && "text-destructive")}>
+                                {format(parseISO(product.expiry_date), 'dd/MM/yyyy')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                            {expired && <Badge variant="destructive" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal">Vencido</Badge>}
+                          </TableCell>
+                          <TableCell className="py-1">
                             {product.is_for_sale ? (
                               <div className="flex items-center gap-1 text-green-600">
                                 <Store className="h-2.5 w-2.5" /><span className="text-[10px]">Venda</span>

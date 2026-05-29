@@ -920,6 +920,7 @@ export default function Produtos() {
                   <TableRow className="h-7">
                     <TableHead className="h-7 py-1 text-[10px]">Produto</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Estoque</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Validade</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Tipo de Uso</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Atend.</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Status</TableHead>

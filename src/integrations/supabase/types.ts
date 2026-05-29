@@ -3671,6 +3671,30 @@ export type Database = {
         }
         Relationships: []
       }
+      verificacoes_whatsapp: {
+        Row: {
+          codigo_verificacao: string
+          criado_em: string
+          id: string
+          telefone: string
+          verificado: boolean
+        }
+        Insert: {
+          codigo_verificacao: string
+          criado_em?: string
+          id?: string
+          telefone: string
+          verificado?: boolean
+        }
+        Update: {
+          codigo_verificacao?: string
+          criado_em?: string
+          id?: string
+          telefone?: string
+          verificado?: boolean
+        }
+        Relationships: []
+      }
       verification_codes: {
         Row: {
           attempts: number

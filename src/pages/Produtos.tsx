@@ -627,7 +627,7 @@ export default function Produtos() {
               {/* ── Nova Compra ── */}
               <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm(createEmptyPurchaseForm()); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                  <Button size="sm" className="h-8 gap-1 text-xs btn-vibrant">
                     <ShoppingCart className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Nova Compra</span>
                     <span className="sm:hidden">Compra</span>

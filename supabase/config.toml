@@ -11,10 +11,6 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.complete-signup]
     verify_jwt = false
-  [functions.send-phone-verification]
-    verify_jwt = false
-  [functions.verify-phone-code]
-    verify_jwt = false
   [functions.admin-delete-user]
     verify_jwt = true
   [functions.notify-overdue-bills]
@@ -38,7 +34,5 @@ project_id = "nsgcllrbswodjoadybsj"
   [functions.handle-email-suppression]
     verify_jwt = false
 
-  [functions.twilio-status-webhook]
-    verify_jwt = false
   [functions.submit-client-registration]
     verify_jwt = false

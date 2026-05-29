@@ -76,6 +76,7 @@ import {
   Upload,
   Download,
   WarehouseIcon,
+  AlertCircle,
 } from 'lucide-react';
 import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';

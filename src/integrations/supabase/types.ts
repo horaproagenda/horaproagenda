@@ -3894,6 +3894,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      appointment_has_conflict: {
+        Args: {
+          p_end: string
+          p_id: string
+          p_professional_id: string
+          p_start: string
+          p_status: string
+        }
+        Returns: string
+      }
       attach_document_trigger: { Args: { table_name: string }; Returns: string }
       attach_document_trigger_2: {
         Args: { schema_name: string; table_name: string }
@@ -3943,6 +3953,14 @@ export type Database = {
       confirmar_codigo_whatsapp: {
         Args: { p_codigo: string; p_id: string }
         Returns: boolean
+      }
+      corrigir_agendamentos_duplicados: {
+        Args: never
+        Returns: {
+          appointment_id: string
+          new_start: string
+          old_start: string
+        }[]
       }
       create_client_document: {
         Args: {

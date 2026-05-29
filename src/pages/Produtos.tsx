@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
@@ -76,6 +76,7 @@ import {
   Upload,
   Download,
   WarehouseIcon,
+  AlertCircle,
 } from 'lucide-react';
 import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
@@ -91,6 +92,7 @@ import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
+import { isProductExpired } from '@/lib/productExpiry';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
   { value: 'solid', label: 'Sólido', icon: <Box className="h-4 w-4" /> },
@@ -266,6 +268,7 @@ export default function Produtos() {
   const clearFilters = () => setFilters(defaultFilters);
 
   const lowStockProducts = useMemo(() => products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active), [products]);
+  const expiredProducts = useMemo(() => products.filter(p => isProductExpired(p)), [products]);
 
   // Calculate appointments for a product
   const getProductAppointments = (productId: string) => {
@@ -864,6 +867,28 @@ export default function Produtos() {
           </div>
         )}
 
+        {/* Expired Products Alert */}
+        {expiredProducts.length > 0 && (
+          <Card className="border-destructive/50 bg-destructive/5 card-hover">
+            <CardHeader className="py-1.5 px-2.5">
+              <CardTitle className="text-[11px] flex items-center gap-1.5 text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                Produtos Vencidos ({expiredProducts.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-1.5 px-2.5">
+              <div className="flex flex-wrap gap-1">
+                {expiredProducts.slice(0, 5).map(p => (
+                  <Badge key={p.id} variant="outline" className="border-destructive/60 text-destructive text-[9px] px-1.5 py-0 h-4 cursor-pointer hover:bg-destructive/10" onClick={() => { setSelectedProduct(p); setDetailDialogOpen(true); }}>
+                    {p.name} ({format(parseISO(p.expiry_date!), 'dd/MM/yyyy')})
+                  </Badge>
+                ))}
+                {expiredProducts.length > 5 && <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">+{expiredProducts.length - 5} mais</Badge>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Low Stock Alert */}
         {lowStockProducts.length > 0 && !filters.lowStock && (
           <Card className="border-warning/50 bg-warning/5 card-hover">
@@ -895,6 +920,7 @@ export default function Produtos() {
                   <TableRow className="h-7">
                     <TableHead className="h-7 py-1 text-[10px]">Produto</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Estoque</TableHead>
+                    <TableHead className="h-7 py-1 text-[10px]">Validade</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Tipo de Uso</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Atend.</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Status</TableHead>
@@ -904,7 +930,7 @@ export default function Produtos() {
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-xs">
+                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-xs">
                         <Package className="h-7 w-7 mx-auto mb-2 opacity-20" />
                         <p>Nenhum produto cadastrado</p>
                       </TableCell>
@@ -912,12 +938,17 @@ export default function Produtos() {
                   ) : (
                     filteredProducts.map(product => {
                       const isLowStock = product.current_stock <= (product.min_stock_alert || 0) && product.is_active;
+                      const expired = isProductExpired(product);
                       const totalAppointments = getProductAppointments(product.id);
 
                       return (
                         <TableRow
                           key={product.id}
-                          className={cn("cursor-pointer hover:bg-muted/50", isLowStock && "bg-amber-50/50 dark:bg-amber-950/20")}
+                          className={cn(
+                            "cursor-pointer hover:bg-muted/50",
+                            isLowStock && "bg-amber-50/50 dark:bg-amber-950/20",
+                            expired && "bg-red-50/60 dark:bg-red-950/20"
+                          )}
                           onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }}
                         >
                           <TableCell className="py-1">
@@ -935,6 +966,16 @@ export default function Produtos() {
                               {product.current_stock} {getUnitLabel(product.unit)}
                             </span>
                             {isLowStock && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal border-amber-500 text-amber-600">Baixo</Badge>}
+                          </TableCell>
+                          <TableCell className="py-1">
+                            {product.expiry_date ? (
+                              <span className={cn("font-medium text-[11px] tabular-nums", expired && "text-destructive")}>
+                                {format(parseISO(product.expiry_date), 'dd/MM/yyyy')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                            {expired && <Badge variant="destructive" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal">Vencido</Badge>}
                           </TableCell>
                           <TableCell className="py-1">
                             {product.is_for_sale ? (

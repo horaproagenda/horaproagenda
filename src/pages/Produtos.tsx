@@ -556,7 +556,7 @@ export default function Produtos() {
               {/* ── Adicionar no Estoque ── */}
               <Dialog open={stockDialogOpen} onOpenChange={(open) => { setStockDialogOpen(open); if (!open) setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false }); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                  <Button variant="success" size="sm" className="h-8 gap-1 text-xs">
                     <WarehouseIcon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Adicionar no Estoque</span>
                     <span className="sm:hidden">Estoque</span>

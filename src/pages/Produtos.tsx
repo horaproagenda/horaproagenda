@@ -930,7 +930,7 @@ export default function Produtos() {
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-xs">
+                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-xs">
                         <Package className="h-7 w-7 mx-auto mb-2 opacity-20" />
                         <p>Nenhum produto cadastrado</p>
                       </TableCell>
@@ -938,6 +938,7 @@ export default function Produtos() {
                   ) : (
                     filteredProducts.map(product => {
                       const isLowStock = product.current_stock <= (product.min_stock_alert || 0) && product.is_active;
+                      const expired = isProductExpired(product);
                       const totalAppointments = getProductAppointments(product.id);
 
                       return (

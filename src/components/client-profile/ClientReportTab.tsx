@@ -31,7 +31,12 @@ import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
-import { buildAppointmentPackageSequenceMap, getPackageApplicationLabel } from '@/lib/packageSequence';
+import {
+  buildAppointmentPackageSequenceMap,
+  buildAppointmentRecurringSequenceMap,
+  getAppointmentRecurringSessionLabel,
+  getPackageApplicationLabel,
+} from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { exportToCSV as exportRowsToCSV } from '@/lib/exportUtils';
 import jsPDF from 'jspdf';
@@ -104,6 +109,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
+  const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
 
   // Filter data by selected month (or show all if 'all' selected)
   const filterByMonth = (dateStr: string) => {
@@ -552,6 +558,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                     const packageId = packageData?.id;
                     const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
+                    const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
 
                     return (
                       <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
@@ -566,9 +573,9 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                         <TableCell className="text-xs py-2">{roomName}</TableCell>
                         <TableCell className="text-xs py-2">{equipmentNames || '-'}</TableCell>
                         <TableCell className="py-2">
-                          {packageSession ? (
+                          {packageSession || recurringLabel ? (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
-                              {applicationLabel}
+                              {packageSession ? applicationLabel : recurringLabel}
                             </Badge>
                           ) : '-'}
                         </TableCell>

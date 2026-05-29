@@ -944,7 +944,11 @@ export default function Produtos() {
                       return (
                         <TableRow
                           key={product.id}
-                          className={cn("cursor-pointer hover:bg-muted/50", isLowStock && "bg-amber-50/50 dark:bg-amber-950/20")}
+                          className={cn(
+                            "cursor-pointer hover:bg-muted/50",
+                            isLowStock && "bg-amber-50/50 dark:bg-amber-950/20",
+                            expired && "bg-red-50/60 dark:bg-red-950/20"
+                          )}
                           onClick={() => { setSelectedProduct(product); setDetailDialogOpen(true); }}
                         >
                           <TableCell className="py-1">

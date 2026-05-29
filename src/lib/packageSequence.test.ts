@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAppointmentPackageSequenceMap,
+  buildAppointmentRecurringSequenceMap,
   countRealizedPackageSessions,
+  formatAppointmentNotesWithRecurringSequence,
   getAppointmentPackageApplicationLabel,
+  getAppointmentRecurringSessionLabel,
   getPackageApplicationLabel,
   isPackageSessionRealized,
 } from './packageSequence';
@@ -40,5 +43,19 @@ describe('packageSequence', () => {
 
     expect(getAppointmentPackageApplicationLabel(appointments[0], sequence.get('apt-old'))).toBe('Aplicação 1/2');
     expect(getAppointmentPackageApplicationLabel(appointments[1], sequence.get('apt-next'))).toBe('Aplicação 2/2');
+  });
+
+  it('numera séries recorrentes pela data real mesmo quando as anotações estão fora de ordem', () => {
+    const appointments = [
+      { id: 'apt-6', recurring_group_id: 'rec', status: 'completed', start_time: '2026-05-29T13:00:00', created_at: '2026-01-01T00:00:06', notes: 'Sessão 6 de 10' },
+      { id: 'apt-5', recurring_group_id: 'rec', status: 'completed', start_time: '2026-06-19T13:00:00', created_at: '2026-01-01T00:00:05', notes: 'Sessão 5 de 10' },
+      { id: 'apt-1', recurring_group_id: 'rec', status: 'completed', start_time: '2026-02-06T13:00:00', created_at: '2026-01-01T00:00:01', notes: 'Sessão 1 de 10' },
+    ] as any[];
+
+    const sequence = buildAppointmentRecurringSequenceMap(appointments);
+
+    expect(getAppointmentRecurringSessionLabel(sequence.get('apt-6'))).toBe('Sessão 2 de 3');
+    expect(getAppointmentRecurringSessionLabel(sequence.get('apt-5'))).toBe('Sessão 3 de 3');
+    expect(formatAppointmentNotesWithRecurringSequence(appointments[0].notes, sequence.get('apt-6'))).toBe('Sessão 2 de 3');
   });
 });

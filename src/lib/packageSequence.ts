@@ -107,3 +107,54 @@ export const getAppointmentPackageApplicationLabel = (appointment: Appointment, 
     sequenceNumber,
   );
 };
+
+type RecurringAppointment = Pick<Appointment, 'id' | 'start_time' | 'created_at' | 'recurring_group_id' | 'status' | 'notes'>;
+
+const inactiveRecurringStatuses = new Set(['cancelled', 'rescheduled']);
+
+export const buildAppointmentRecurringSequenceMap = (appointments: RecurringAppointment[]) => {
+  const grouped = new Map<string, RecurringAppointment[]>();
+
+  appointments.forEach((appointment) => {
+    if (!appointment.recurring_group_id || inactiveRecurringStatuses.has(appointment.status)) return;
+    const current = grouped.get(appointment.recurring_group_id) || [];
+    current.push(appointment);
+    grouped.set(appointment.recurring_group_id, current);
+  });
+
+  const map = new Map<string, { index: number; total: number }>();
+  grouped.forEach((seriesAppointments) => {
+    const ordered = seriesAppointments.slice().sort((a, b) => {
+      const dateA = new Date(a.start_time).getTime();
+      const dateB = new Date(b.start_time).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+
+      const createdA = new Date(a.created_at || 0).getTime();
+      const createdB = new Date(b.created_at || 0).getTime();
+      if (createdA !== createdB) return createdA - createdB;
+
+      return a.id.localeCompare(b.id);
+    });
+
+    ordered.forEach((appointment, index) => {
+      map.set(appointment.id, { index: index + 1, total: ordered.length });
+    });
+  });
+
+  return map;
+};
+
+export const getAppointmentRecurringSessionLabel = (sequence?: { index: number; total: number } | null) => {
+  if (!sequence) return null;
+  return `Sessão ${sequence.index} de ${sequence.total}`;
+};
+
+export const formatAppointmentNotesWithRecurringSequence = (
+  notes?: string | null,
+  sequence?: { index: number; total: number } | null,
+) => {
+  if (!notes) return notes;
+  const label = getAppointmentRecurringSessionLabel(sequence);
+  if (!label) return notes;
+  return notes.replace(/Sessão\s+\d+\s+de\s+\d+/gi, label);
+};

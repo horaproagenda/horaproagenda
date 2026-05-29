@@ -430,6 +430,17 @@ export function ProductDetailDialog({
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
+              {isProductExpired(product) && (
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Produto Vencido</p>
+                    <p className="text-xs text-destructive/80">
+                      A validade deste produto expirou em {format(parseISO(product.expiry_date!), 'dd/MM/yyyy')}. Não utilize e descarte conforme as normas de segurança.
+                    </p>
+                  </div>
+                </div>
+              )}
               {isEditing ? (
                 // Edit Mode
                 <div className="space-y-4">

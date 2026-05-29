@@ -867,6 +867,28 @@ export default function Produtos() {
           </div>
         )}
 
+        {/* Expired Products Alert */}
+        {expiredProducts.length > 0 && (
+          <Card className="border-destructive/50 bg-destructive/5 card-hover">
+            <CardHeader className="py-1.5 px-2.5">
+              <CardTitle className="text-[11px] flex items-center gap-1.5 text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                Produtos Vencidos ({expiredProducts.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-1.5 px-2.5">
+              <div className="flex flex-wrap gap-1">
+                {expiredProducts.slice(0, 5).map(p => (
+                  <Badge key={p.id} variant="outline" className="border-destructive/60 text-destructive text-[9px] px-1.5 py-0 h-4 cursor-pointer hover:bg-destructive/10" onClick={() => { setSelectedProduct(p); setDetailDialogOpen(true); }}>
+                    {p.name} ({format(parseISO(p.expiry_date!), 'dd/MM/yyyy')})
+                  </Badge>
+                ))}
+                {expiredProducts.length > 5 && <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">+{expiredProducts.length - 5} mais</Badge>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Low Stock Alert */}
         {lowStockProducts.length > 0 && !filters.lowStock && (
           <Card className="border-warning/50 bg-warning/5 card-hover">

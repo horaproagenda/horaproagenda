@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizePhoneForWaMe,
   buildWaMeUrl,
+  buildWebWhatsappUrl,
   openWhatsappWithMessage,
   renderTemplate,
   adjustHourToQuietWindow,
@@ -33,19 +34,56 @@ describe('buildWaMeUrl', () => {
   });
 });
 
+describe('buildWebWhatsappUrl', () => {
+  it('builds a web.whatsapp.com/send link with phone and encoded message', () => {
+    const url = buildWebWhatsappUrl('11987654321', 'Olá, tudo bem?');
+    expect(url).toMatch(/^https:\/\/web\.whatsapp\.com\/send\?phone=5511987654321&text=/);
+    expect(url).toContain(encodeURIComponent('Olá, tudo bem?'));
+  });
+});
+
 describe('openWhatsappWithMessage', () => {
-  afterEach(() => vi.restoreAllMocks());
-  it('opens a new top-level tab via an anchor click (escapes preview iframe)', () => {
-    const clickSpy = vi.fn();
-    const origCreate = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-      const el = origCreate(tag) as HTMLAnchorElement;
-      if (tag === 'a') el.click = clickSpy;
-      return el;
-    });
-    const ok = openWhatsappWithMessage('11987654321', 'oi');
-    expect(ok).toBe(true);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    sessionStorage.clear();
+  });
+
+  it('tries wa.me first and then moves the same popup to web.whatsapp.com/send', () => {
+    vi.useFakeTimers();
+    const navigations: string[] = [];
+    const popup = {
+      closed: false,
+      location: { replace: vi.fn((url: string) => navigations.push(url)), href: '' },
+    } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(popup);
+
+    const result = openWhatsappWithMessage('11987654321', 'oi', { fallbackDelayMs: 10 });
+
+    expect(result.ok).toBe(true);
+    expect(result.route).toBe('wa.me');
+    expect(navigations[0]).toBe('https://wa.me/5511987654321?text=oi');
+
+    vi.advanceTimersByTime(10);
+
+    expect(navigations[1]).toBe('https://web.whatsapp.com/send?phone=5511987654321&text=oi');
+    expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).toContain('web.whatsapp.com/send');
+  });
+
+  it('opens web.whatsapp.com/send directly when wa.me popup is blocked', () => {
+    vi.spyOn(window, 'open')
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce({} as Window);
+
+    const result = openWhatsappWithMessage('11987654321', 'oi');
+
+    expect(result.ok).toBe(true);
+    expect(result.route).toBe('web.whatsapp.com/send');
+    expect(window.open).toHaveBeenLastCalledWith(
+      'https://web.whatsapp.com/send?phone=5511987654321&text=oi',
+      '_blank',
+      'noopener,noreferrer',
+    );
   });
 });
 

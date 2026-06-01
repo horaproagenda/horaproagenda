@@ -191,6 +191,7 @@ const Servicos: React.FC = () => {
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
   const [packageTypeFilter, setPackageTypeFilter] = useLocalStorage<'all' | 'standard' | 'sequential'>('servicos-package-type-filter', 'all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useLocalStorage<'all' | 'service' | 'kit'>('servicos-service-type-filter', 'all');
 
   const { services, isLoading, refetch } = useServices();
   const { templates: packages, isLoading: packagesLoading, refetch: refetchPackages } = usePackageTemplates();
@@ -254,6 +255,17 @@ const Servicos: React.FC = () => {
     return result;
   }, [services, serviceFilters, searchTerm, appointments]);
 
+  const isKitServiceItem = (s: Service) => Array.isArray((s as any).component_service_ids) && (s as any).component_service_ids.length > 0;
+  const standardServicesCount = filteredServices.filter(s => !isKitServiceItem(s)).length;
+  const kitServicesCount = filteredServices.filter(isKitServiceItem).length;
+  const visibleServices = filteredServices.filter(s => {
+    if (serviceTypeFilter === 'kit') return isKitServiceItem(s);
+    if (serviceTypeFilter === 'service') return !isKitServiceItem(s);
+    return true;
+  });
+  const standardServices = visibleServices.filter(s => !isKitServiceItem(s));
+  const kitServices = visibleServices.filter(isKitServiceItem);
+
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
       if (packageFilters.category && pkg.category !== packageFilters.category) return false;
@@ -314,10 +326,8 @@ const Servicos: React.FC = () => {
     setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
-  const isKitService = (s: Service) => Array.isArray((s as any).component_service_ids) && (s as any).component_service_ids.length > 0;
-
   const exportServicesCSV = () => {
-    const onlyServices = filteredServices.filter(s => !isKitService(s));
+    const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
     exportToCSV({
       filename: 'servicos',
       headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
@@ -329,7 +339,7 @@ const Servicos: React.FC = () => {
   };
 
   const exportKitServicesCSV = () => {
-    const onlyKits = filteredServices.filter(isKitService);
+    const onlyKits = filteredServices.filter(isKitServiceItem);
     exportToCSV({
       filename: 'kits-de-servicos',
       headers: ['Nome', 'Categoria', 'Preço total', 'Duração total (min)', 'Nº de etapas', 'Status'],
@@ -398,6 +408,34 @@ const Servicos: React.FC = () => {
 
           {/* Services Tab */}
           <TabsContent value="services" className="mt-3 space-y-3 page-enter">
+            {/* Type chips (Serviços / Kits) — mesmo esquema de Pacotes */}
+            <div className="flex justify-center">
+              <div className="inline-flex w-full max-w-md items-center justify-center rounded-lg border bg-muted/30 p-1 shadow-sm sm:w-auto">
+                <Button
+                  type="button"
+                  variant={serviceTypeFilter === 'service' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setServiceTypeFilter(serviceTypeFilter === 'service' ? 'all' : 'service')}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Serviços
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{standardServicesCount}</Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant={serviceTypeFilter === 'kit' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setServiceTypeFilter(serviceTypeFilter === 'kit' ? 'all' : 'kit')}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Kits de Serviços
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{kitServicesCount}</Badge>
+                </Button>
+              </div>
+            </div>
+
             {/* Line 3: Filters + New Service + Import/Export */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -458,7 +496,7 @@ const Servicos: React.FC = () => {
               <NewServiceDialog onServiceCreated={refetch}>
                 <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium tracking-wide">Novo Serviço</span>
+                  <span className="text-xs font-medium tracking-wide">{serviceTypeFilter === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</span>
                 </Button>
               </NewServiceDialog>
             </div>
@@ -494,13 +532,39 @@ const Servicos: React.FC = () => {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : filteredServices.length > 0 ? (
-              <ServicesGrid
-                items={filteredServices}
-                onSelect={setSelectedService}
-                onEdit={setSelectedService}
-                onDelete={refetch}
-              />
+            ) : visibleServices.length > 0 ? (
+              <div className="space-y-5">
+                {standardServices.length > 0 && (
+                  <section className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      <h3 className="text-sm font-semibold">Serviços</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{standardServices.length}</Badge>
+                    </div>
+                    <ServicesGrid
+                      items={standardServices}
+                      onSelect={setSelectedService}
+                      onEdit={setSelectedService}
+                      onDelete={refetch}
+                    />
+                  </section>
+                )}
+                {kitServices.length > 0 && (
+                  <section className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5 text-teal-600" />
+                      <h3 className="text-sm font-semibold">Kits de Serviços</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{kitServices.length}</Badge>
+                    </div>
+                    <ServicesGrid
+                      items={kitServices}
+                      onSelect={setSelectedService}
+                      onEdit={setSelectedService}
+                      onDelete={refetch}
+                    />
+                  </section>
+                )}
+              </div>
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />

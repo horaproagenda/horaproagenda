@@ -6,15 +6,13 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
   await context.route('https://wa.me/**', route => route.fulfill({ status: 200, body: 'wa.me intercepted' }));
   await context.route('https://web.whatsapp.com/**', route => route.fulfill({ status: 200, body: 'web.whatsapp intercepted' }));
 
-  await page.goto('about:blank');
-  await page.setContent(`
-    <button type="button" aria-label="Enviar documento">Enviar documento</button>
-  `);
-
-  await page.addScriptTag({
-    type: 'module',
-    content: `
-      import { openWhatsappWithMessage } from '${appUrl}/src/lib/whatsappLink.ts';
+  await page.route(`${appUrl}/whatsapp-e2e`, route => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: `
+      <button type="button" aria-label="Enviar documento">Enviar documento</button>
+      <script type="module">
+      import { openWhatsappWithMessage } from '/src/lib/whatsappLink.ts';
 
       const documentMessage = [
         '📄 *Termo de Consentimento*',
@@ -32,8 +30,10 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
       document.querySelector('button').addEventListener('click', () => {
         window.__whatsappOpenResult = openWhatsappWithMessage('(11) 98765-4321', documentMessage);
       });
+      </script>
     `,
-  });
+  }));
+  await page.goto(`${appUrl}/whatsapp-e2e`, { waitUntil: 'domcontentloaded' });
 
   const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', { name: /enviar documento/i }).click();

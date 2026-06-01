@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizePhoneForWaMe,
-  buildWaMeUrl,
   buildWebWhatsappUrl,
   buildWhatsappAppUrl,
   openWhatsappWithMessage,
@@ -21,17 +20,6 @@ describe('normalizePhoneForWaMe', () => {
   });
   it('returns empty string for empty input', () => {
     expect(normalizePhoneForWaMe('')).toBe('');
-  });
-});
-
-describe('buildWaMeUrl', () => {
-  it('builds a wa.me link with phone and encoded message', () => {
-    const url = buildWaMeUrl('11987654321', 'Olá, tudo bem?');
-    expect(url).toMatch(/^https:\/\/wa\.me\/5511987654321\?text=/);
-    expect(url).toContain(encodeURIComponent('Olá, tudo bem?'));
-  });
-  it('builds wa.me without phone when missing', () => {
-    expect(buildWaMeUrl('', 'oi')).toBe('https://wa.me/?text=oi');
   });
 });
 

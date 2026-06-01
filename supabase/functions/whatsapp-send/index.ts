@@ -6,8 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TWILIO_GATEWAY = 'https://connector-gateway.lovable.dev/twilio';
-
 function normalizeE164(p: string): string {
   let digits = (p || '').replace(/\D/g, '');
   if (digits.startsWith('0')) digits = digits.substring(1);
@@ -15,26 +13,49 @@ function normalizeE164(p: string): string {
   return '+' + digits;
 }
 
-async function sendWhatsappViaTwilio(opts: { from: string; to: string; body: string }) {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  const TWILIO_API_KEY = Deno.env.get('TWILIO_API_KEY');
-  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY não configurado');
-  if (!TWILIO_API_KEY) throw new Error('TWILIO_API_KEY não configurado (conector Twilio)');
+function normalizeEvolutionApiKey(rawKey: string | undefined) {
+  return (rawKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
+}
 
-  const fromWa = opts.from.startsWith('whatsapp:') ? opts.from : `whatsapp:${normalizeE164(opts.from)}`;
-  const toWa = opts.to.startsWith('whatsapp:') ? opts.to : `whatsapp:${normalizeE164(opts.to)}`;
+function normalizeEvolutionNumber(phone: string): string {
+  return normalizeE164(phone).replace(/\D/g, '');
+}
 
-  const r = await fetch(`${TWILIO_GATEWAY}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'X-Connection-Api-Key': TWILIO_API_KEY,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({ From: fromWa, To: toWa, Body: opts.body }),
+async function getConnectionState(opts: { baseUrl: string; apiKey: string; instance: string }) {
+  const r = await fetch(`${opts.baseUrl}/instance/connectionState/${encodeURIComponent(opts.instance)}`, {
+    method: 'GET',
+    headers: { apikey: opts.apiKey },
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Twilio ${r.status}: ${JSON.stringify(data)}`);
+  if (!r.ok) return { connected: false, state: null, data, status: r.status };
+  const state = data?.instance?.state || data?.state || data?.connectionState || null;
+  return { connected: state === 'open', state, data, status: r.status };
+}
+
+async function sendWhatsappViaEvolution(opts: { instance: string; to: string; body: string }) {
+  const baseUrl = (Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/+$/, '');
+  const apiKey = normalizeEvolutionApiKey(Deno.env.get('EVOLUTION_API_KEY'));
+  if (!baseUrl || !apiKey) throw new Error('Evolution API não configurada. Configure EVOLUTION_API_URL e EVOLUTION_API_KEY.');
+
+  const state = await getConnectionState({ baseUrl, apiKey, instance: opts.instance });
+  if (!state.connected) {
+    throw new Error(`WhatsApp não conectado para a instância "${opts.instance}"${state.state ? ` (estado: ${state.state})` : ''}. Conecte por QR Code em Configurações → WhatsApp.`);
+  }
+
+  const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(opts.instance)}`, {
+    method: 'POST',
+    headers: {
+      apikey: apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      number: normalizeEvolutionNumber(opts.to),
+      text: opts.body,
+      linkPreview: false,
+    }),
+  });
+  const data = await r.json().catch(async () => ({ raw: await r.text().catch(() => '') }));
+  if (!r.ok) throw new Error(`Evolution API ${r.status}: ${JSON.stringify(data).slice(0, 500)}`);
   return data;
 }
 
@@ -106,24 +127,25 @@ serve(async (req) => {
       }
     }
 
-    // Resolve "From" WhatsApp number
-    let from: string | null = null;
+    if (!professional_id && client_id) {
+      const { data: clientRow } = await supabaseService
+        .from('clients').select('assigned_professional_id').eq('id', client_id).maybeSingle();
+      professional_id = clientRow?.assigned_professional_id || undefined;
+    }
+
+    // Resolve Evolution instance. Per-professional instance is stored in
+    // professionals.whatsapp_from_number for backward compatibility with the
+    // existing settings screen; otherwise the clinic default instance is used.
+    let instance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
     if (professional_id) {
       const { data: prof } = await supabaseService
         .from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
       const v = (prof?.whatsapp_from_number || '').trim();
-      if (v) from = v;
+      if (v) instance = v;
     }
-    if (!from) {
-      const { data: bs } = await supabaseService
-        .from('business_settings').select('twilio_from_number').limit(1).maybeSingle();
-      const v = (bs?.twilio_from_number || '').trim();
-      if (v) from = v;
-    }
-    if (!from) throw new Error('Número remetente do WhatsApp não configurado. Defina em Configurações → WhatsApp.');
 
-    const result = await sendWhatsappViaTwilio({ from, to: phone, body: message });
-    return new Response(JSON.stringify({ success: true, data: result, from }),
+    const result = await sendWhatsappViaEvolution({ instance, to: phone, body: message });
+    return new Response(JSON.stringify({ success: true, provider: 'evolution', route: 'evolution-api', data: result, instance }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {

@@ -289,18 +289,24 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
     }
     setIsSaving(true);
     try {
+      const isKitEdit = components.length > 0;
+      const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
+      const kitTotalDuration = components.reduce(
+        (sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0),
+        0,
+      );
       const { error } = await supabase
         .from('services')
         .update({
           name: data.name,
           description: data.description || null,
-          duration: data.duration,
-          price: data.price,
+          duration: isKitEdit ? Math.max(5, kitTotalDuration) : data.duration,
+          price: isKitEdit ? kitTotalPrice : data.price,
           category: data.category,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
-          return_days: data.return_days || null,
+          return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
           component_service_ids: components.map(c => c.service_id),
           service_components: components as any,
@@ -560,8 +566,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                         <div key={`view-${c.service_id}-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
                           <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
                           <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
-                          <span className="text-muted-foreground">
-                            {idx === 0 ? 'Início' : `+${c.interval_days}d`}
+                          <span className="text-muted-foreground text-[11px]">
+                            {idx === 0 ? 'Início (dia 0)' : `+${c.interval_days}d após etapa ${idx}`}
                           </span>
                           <span className="font-semibold">{formatCurrency(Number(c.price || 0))}</span>
                         </div>
@@ -816,7 +822,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                               <Select
                                 value={c.service_id || '_none'}
                                 onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: it.price || Number(activeServices.find(s => s.id === v)?.price ?? 0) } : it
+                                  i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
                                 ))}
                               >
                                 <SelectTrigger className="h-8 text-sm">
@@ -860,7 +866,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
-                                {idx === 0 ? 'Início (dias)' : 'Após anterior (dias)'}
+                                {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
                               </Label>
                               <Input
                                 type="number"

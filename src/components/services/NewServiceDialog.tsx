@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ProfessionalCommissionField,
@@ -86,9 +86,11 @@ const categories = [
 interface NewServiceDialogProps {
   onServiceCreated?: () => void;
   children?: React.ReactNode;
+  /** When set, locks the dialog to a single mode: 'service' (plain service, kit section hidden) or 'kit' (kit section only, starts with 1 empty step). */
+  lockType?: 'service' | 'kit';
 }
 
-export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialogProps) {
+export function NewServiceDialog({ onServiceCreated, children, lockType }: NewServiceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { rooms } = useRooms();
@@ -122,11 +124,27 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
     },
   });
 
-  const isKit = components.length > 0;
+  // When opening in kit mode, seed first empty step so UI is consistent.
+  // When opening in service mode, clear any leftover steps.
+  // Always reset when dialog re-opens.
+  React.useEffect(() => {
+    if (!open) return;
+    if (lockType === 'kit') {
+      setComponents((prev) => (prev.length > 0 ? prev : [{ service_id: '', interval_days: 0, price: 0 }]));
+    } else if (lockType === 'service') {
+      setComponents([]);
+    }
+  }, [open, lockType]);
+
+  const isKit = lockType === 'kit' || components.length > 0;
   const kitTotalDuration = components.reduce((sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0), 0);
   const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
 
   const onSubmit = async (data: ServiceFormData) => {
+    if (lockType === 'kit' && components.length === 0) {
+      toast.error('Adicione pelo menos uma etapa ao kit.');
+      return;
+    }
     const compError = validateComponents(components);
     if (compError) {
       toast.error(compError);
@@ -193,7 +211,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">Novo Serviço</DialogTitle>
+          <DialogTitle className="text-base">{lockType === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
@@ -384,6 +402,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
             />
 
             {/* Kit composto: sequência de serviços (igual pacote sequencial), com valor por etapa */}
+            {lockType !== 'service' && (
             <div className="space-y-2 rounded-md border p-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Kit de serviços (sequencial)</Label>
@@ -397,7 +416,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Defina a sequência de serviços (pode repetir o mesmo serviço). Ao agendar, o sistema cria um agendamento para cada etapa respeitando o intervalo. Cada etapa é cobrada separadamente.
+                Defina a sequência de serviços (pode repetir o mesmo serviço). Para cada etapa, informe quantos dias após a etapa anterior ela deve ocorrer. A primeira etapa é sempre o início (0 dias).
               </p>
               {components.length > 0 && (
                 <div className="space-y-1.5">
@@ -409,7 +428,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                           <Select
                             value={c.service_id || '_none'}
                             onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: it.price || Number(activeServices.find(s => s.id === v)?.price ?? 0) } : it
+                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
                             ))}
                           >
                             <SelectTrigger className="h-7 text-xs">
@@ -442,6 +461,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                           <ArrowDown className="h-3 w-3" />
                         </Button>
                         <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                          disabled={lockType === 'kit' && components.length === 1}
                           onClick={() => setComponents(prev => {
                             const arr = prev.filter((_, i) => i !== idx);
                             if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
@@ -453,7 +473,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                       <div className="grid grid-cols-2 gap-1.5">
                         <div className="space-y-0.5">
                           <Label className="text-[10px] text-muted-foreground">
-                            {idx === 0 ? 'Início (dias)' : 'Após anterior (dias)'}
+                            {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
                           </Label>
                           <Input
                             type="number"
@@ -486,6 +506,7 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
                 </div>
               )}
             </div>
+            )}
 
 
 

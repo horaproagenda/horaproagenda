@@ -493,7 +493,11 @@ const Servicos: React.FC = () => {
                 </NewCategoryDialog>
               </div>
 
-              <NewServiceDialog onServiceCreated={refetch}>
+              <NewServiceDialog
+                key={`new-${serviceTypeFilter === 'kit' ? 'kit' : 'service'}`}
+                lockType={serviceTypeFilter === 'kit' ? 'kit' : 'service'}
+                onServiceCreated={refetch}
+              >
                 <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium tracking-wide">{serviceTypeFilter === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</span>
@@ -578,10 +582,14 @@ const Servicos: React.FC = () => {
                       <li><span className="font-semibold text-foreground">2.</span> Informe a duração, o valor e (opcional) o retorno em dias.</li>
                       <li><span className="font-semibold text-foreground">3.</span> Vincule o profissional, a sala e os equipamentos.</li>
                     </ol>
-                    <NewServiceDialog onServiceCreated={refetch}>
+                    <NewServiceDialog
+                      key={`empty-${serviceTypeFilter === 'kit' ? 'kit' : 'service'}`}
+                      lockType={serviceTypeFilter === 'kit' ? 'kit' : 'service'}
+                      onServiceCreated={refetch}
+                    >
                       <Button size="sm" className="btn-vibrant mt-3">
                         <Plus className="h-3.5 w-3.5 mr-1" />
-                        Cadastrar primeiro serviço
+                        {serviceTypeFilter === 'kit' ? 'Cadastrar primeiro kit' : 'Cadastrar primeiro serviço'}
                       </Button>
                     </NewServiceDialog>
                   </>

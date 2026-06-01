@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { openWhatsappWithMessage, renderTemplate, adjustHourToQuietWindow } from '@/lib/whatsappLink';
 import { toast } from 'sonner';
 
 const templateTypes = [
@@ -96,12 +96,22 @@ export function WhatsappTemplatesSettings() {
       return;
     }
 
+    const adjustedSendOffset = ['follow_up', 'birthday'].includes(formData.type)
+      ? (formData.type === 'birthday'
+          ? adjustHourToQuietWindow(formData.send_offset_hours, formData.quiet_hours_start, formData.quiet_hours_end)
+          : formData.send_offset_hours)
+      : null;
+
+    if (formData.type === 'birthday' && adjustedSendOffset !== formData.send_offset_hours) {
+      toast.info(`Horário ajustado para ${String(adjustedSendOffset).padStart(2,'0')}:00 para respeitar a janela permitida.`);
+    }
+
     const payload = {
       name: formData.name,
       type: formData.type,
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
-      send_offset_hours: ['follow_up', 'birthday'].includes(formData.type) ? formData.send_offset_hours : null,
+      send_offset_hours: adjustedSendOffset,
       quiet_hours_start: formData.quiet_hours_start,
       quiet_hours_end: formData.quiet_hours_end,
       professional_id: targetProfId,

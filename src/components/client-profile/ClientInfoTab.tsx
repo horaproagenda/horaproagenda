@@ -236,7 +236,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-sm">{REFERRAL_SOURCES.find(s => s.value === client.referral_source)?.label || '-'}</p>
+                <p className="text-sm">{REFERRAL_SOURCES.find(s => s.value === client.referral_source)?.label || client.referral_source || '-'}</p>
               )}
             </div>
 

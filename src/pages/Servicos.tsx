@@ -326,10 +326,8 @@ const Servicos: React.FC = () => {
     setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
-  const isKitService = (s: Service) => Array.isArray((s as any).component_service_ids) && (s as any).component_service_ids.length > 0;
-
   const exportServicesCSV = () => {
-    const onlyServices = filteredServices.filter(s => !isKitService(s));
+    const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
     exportToCSV({
       filename: 'servicos',
       headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
@@ -341,7 +339,7 @@ const Servicos: React.FC = () => {
   };
 
   const exportKitServicesCSV = () => {
-    const onlyKits = filteredServices.filter(isKitService);
+    const onlyKits = filteredServices.filter(isKitServiceItem);
     exportToCSV({
       filename: 'kits-de-servicos',
       headers: ['Nome', 'Categoria', 'Preço total', 'Duração total (min)', 'Nº de etapas', 'Status'],

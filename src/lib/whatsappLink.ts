@@ -19,12 +19,40 @@ export function buildWaMeUrl(phone: string, message: string): string {
     : `https://wa.me/?text=${text}`;
 }
 
-/** Opens WhatsApp in a new tab using the device/browser session (Web or installed app). */
+/** Build a web.whatsapp.com URL (works when wa.me/api.whatsapp.com is blocked in an iframe). */
+export function buildWebWhatsappUrl(phone: string, message: string): string {
+  const digits = normalizePhoneForWaMe(phone);
+  const text = encodeURIComponent(message || '');
+  return digits
+    ? `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
+    : `https://web.whatsapp.com/send?text=${text}`;
+}
+
+/**
+ * Opens WhatsApp in a new top-level tab. Uses an anchor click (rather than
+ * window.open) so it escapes preview iframes where api.whatsapp.com refuses
+ * to load (ERR_BLOCKED_BY_RESPONSE). Falls back to web.whatsapp.com when
+ * the popup is blocked.
+ */
 export function openWhatsappWithMessage(phone: string, message: string): boolean {
   const url = buildWaMeUrl(phone, message);
-  const win = window.open(url, '_blank', 'noopener,noreferrer');
-  return !!win;
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    // Make sure it's in the DOM for some browsers (Safari) to honor the click.
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return true;
+  } catch {
+    const win = window.open(buildWebWhatsappUrl(phone, message), '_blank', 'noopener,noreferrer');
+    return !!win;
+  }
 }
+
 
 export interface TemplateRenderContext {
   clientName?: string;

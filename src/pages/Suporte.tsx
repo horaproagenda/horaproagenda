@@ -12,6 +12,7 @@ import {
   MessageSquare, Mail, Phone, Clock, HelpCircle, 
   Bug, Lightbulb, AlertTriangle, Send, ExternalLink
 } from "lucide-react";
+import { buildWebWhatsappUrl, openWhatsappWithMessage } from "@/lib/whatsappLink";
 
 const Suporte = () => {
   const [formData, setFormData] = useState({
@@ -34,16 +35,15 @@ const Suporte = () => {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const whatsappMessage = encodeURIComponent(
+    const whatsappMessage =
       `*Suporte - ${formData.type}*\n\n` +
       `*Nome:* ${formData.name}\n` +
       `*Email:* ${formData.email}\n` +
       `*Assunto:* ${formData.subject}\n\n` +
-      `*Mensagem:*\n${formData.message}`
-    );
+      `*Mensagem:*\n${formData.message}`;
     
     const whatsappNumber = "5511999999999";
-    window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank");
+    openWhatsappWithMessage(whatsappNumber, whatsappMessage);
     
     toast.success("Redirecionando para o WhatsApp...");
     setIsSubmitting(false);
@@ -62,7 +62,7 @@ const Suporte = () => {
       icon: <MessageSquare className="h-5 w-5" />,
       title: "WhatsApp",
       description: "Atendimento rápido",
-      href: "https://wa.me/5511999999999",
+      href: buildWebWhatsappUrl("5511999999999", ""),
       color: "bg-green-500",
     },
     {

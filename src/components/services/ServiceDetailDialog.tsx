@@ -822,7 +822,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                               <Select
                                 value={c.service_id || '_none'}
                                 onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: it.price || Number(activeServices.find(s => s.id === v)?.price ?? 0) } : it
+                                  i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
                                 ))}
                               >
                                 <SelectTrigger className="h-8 text-sm">

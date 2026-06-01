@@ -237,61 +237,73 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
             </div>
 
             {/* Duration, Price, Return */}
-            <div className="grid grid-cols-3 gap-3">
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Duração *</FormLabel>
-                    <FormControl>
-                      <DurationSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        minDuration={5}
-                        maxDuration={480}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Valor *</FormLabel>
-                    <FormControl>
-                      <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="return_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Retorno (dias)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min={0} 
-                        max={365} 
-                        placeholder="30"
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {isKit ? (
+              <div className="rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Kit de serviços ativo</p>
+                <p>Duração, valor e retorno são calculados automaticamente a partir das etapas:</p>
+                <ul className="grid grid-cols-3 gap-1 pt-1">
+                  <li><span className="block text-[10px] uppercase">Duração total</span><span className="text-sm font-semibold text-foreground">{kitTotalDuration} min</span></li>
+                  <li><span className="block text-[10px] uppercase">Valor total</span><span className="text-sm font-semibold text-foreground">R$ {kitTotalPrice.toFixed(2)}</span></li>
+                  <li><span className="block text-[10px] uppercase">Retorno</span><span className="text-sm font-semibold text-foreground">por etapa</span></li>
+                </ul>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Duração *</FormLabel>
+                      <FormControl>
+                        <DurationSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          minDuration={5}
+                          maxDuration={480}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Valor *</FormLabel>
+                      <FormControl>
+                        <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="return_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Retorno (dias)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={365}
+                          placeholder="30"
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             {/* Professional & Room */}
             <div className="grid grid-cols-2 gap-3">

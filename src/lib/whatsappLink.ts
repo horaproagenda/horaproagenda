@@ -105,7 +105,12 @@ export function openWhatsappWithMessage(
   const primaryUrl = preferNativeApp ? appUrl : webUrl;
 
   try {
-    const popup = window.open(primaryUrl, '_blank', 'noopener,noreferrer');
+    const popup = window.open(primaryUrl, '_blank');
+    try {
+      if (popup) popup.opener = null;
+    } catch {
+      // Some browsers lock this property after opening external URLs.
+    }
     recordWhatsappRoute(
       primaryRoute,
       popup ? 'opened' : 'blocked',
@@ -122,7 +127,12 @@ export function openWhatsappWithMessage(
       fallbackScheduled: false,
     };
   } catch {
-    const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
+    const fallback = window.open(webUrl, '_blank');
+    try {
+      if (fallback) fallback.opener = null;
+    } catch {
+      // Best-effort only.
+    }
     recordWhatsappRoute(
       'web.whatsapp.com/send',
       fallback ? 'opened' : 'failed',

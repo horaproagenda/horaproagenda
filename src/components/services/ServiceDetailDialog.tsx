@@ -866,7 +866,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
-                                {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
+                                {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
                               </Label>
                               <Input
                                 type="number"

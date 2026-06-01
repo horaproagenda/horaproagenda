@@ -3846,6 +3846,8 @@ export type Database = {
           message: string
           name: string
           professional_id: string | null
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
           send_offset_hours: number | null
           type: string
           updated_at: string
@@ -3860,6 +3862,8 @@ export type Database = {
           message: string
           name: string
           professional_id?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           send_offset_hours?: number | null
           type?: string
           updated_at?: string
@@ -3874,6 +3878,8 @@ export type Database = {
           message?: string
           name?: string
           professional_id?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           send_offset_hours?: number | null
           type?: string
           updated_at?: string

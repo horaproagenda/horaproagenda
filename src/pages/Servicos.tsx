@@ -408,6 +408,34 @@ const Servicos: React.FC = () => {
 
           {/* Services Tab */}
           <TabsContent value="services" className="mt-3 space-y-3 page-enter">
+            {/* Type chips (Serviços / Kits) — mesmo esquema de Pacotes */}
+            <div className="flex justify-center">
+              <div className="inline-flex w-full max-w-md items-center justify-center rounded-lg border bg-muted/30 p-1 shadow-sm sm:w-auto">
+                <Button
+                  type="button"
+                  variant={serviceTypeFilter === 'service' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setServiceTypeFilter(serviceTypeFilter === 'service' ? 'all' : 'service')}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Serviços
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{standardServicesCount}</Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant={serviceTypeFilter === 'kit' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 px-3 text-xs font-semibold sm:flex-none"
+                  onClick={() => setServiceTypeFilter(serviceTypeFilter === 'kit' ? 'all' : 'kit')}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Kits de Serviços
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{kitServicesCount}</Badge>
+                </Button>
+              </div>
+            </div>
+
             {/* Line 3: Filters + New Service + Import/Export */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">

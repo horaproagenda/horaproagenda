@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
@@ -109,17 +110,17 @@ export function WhatsappSettings() {
         <div className="space-y-2">
           <Label htmlFor="whatsapp-professional">Profissional / instância</Label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
-            <select
-              id="whatsapp-professional"
-              value={selectedProfessionalId}
-              onChange={(e) => setSelectedProfessionalId(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Padrão da clínica</option>
-              {professionals.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <Select value={selectedProfessionalId || 'default'} onValueChange={(value) => setSelectedProfessionalId(value === 'default' ? '' : value)}>
+              <SelectTrigger id="whatsapp-professional" className="h-9 text-sm">
+                <SelectValue placeholder="Padrão da clínica" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Padrão da clínica</SelectItem>
+                {professionals.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="outline" onClick={() => checkConnection(selectedProfessionalId || undefined)} disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Verificar

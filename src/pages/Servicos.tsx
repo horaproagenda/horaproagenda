@@ -438,7 +438,11 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportServicesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Serviços
+                      Exportar Serviços avulsos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportKitServicesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Kits de serviços
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

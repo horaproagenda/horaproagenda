@@ -96,7 +96,7 @@ function navigatePopup(popup: Window, url: string) {
 /**
  * Opens WhatsApp in two stages: first wa.me, then web.whatsapp.com/send in the
  * same tab. The second step prevents the user from getting stuck when wa.me is
- * redirected to a browser-blocked intermediate page inside previews/iframes.
+ * redirected to a browser-blocked intermediate page inside previews.
  */
 export function openWhatsappWithMessage(
   phone: string,

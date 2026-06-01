@@ -28,7 +28,7 @@ export function buildWebWhatsappUrl(phone: string, message: string): string {
     : `https://web.whatsapp.com/send?text=${text}`;
 }
 
-export type WhatsappOpenRoute = 'wa.me' | 'web.whatsapp.com/send';
+export type WhatsappOpenRoute = 'whatsapp://send' | 'web.whatsapp.com/send';
 
 export interface WhatsappRouteLog {
   route: WhatsappOpenRoute;
@@ -47,12 +47,11 @@ export interface WhatsappOpenResult {
 }
 
 export interface WhatsappOpenOptions {
-  fallbackDelayMs?: number;
+  preferNativeApp?: boolean;
   onRoute?: (log: WhatsappRouteLog) => void;
 }
 
 const WHATSAPP_ROUTE_STORAGE_KEY = 'agendalume:last-whatsapp-route';
-const DEFAULT_WHATSAPP_FALLBACK_DELAY_MS = 0;
 
 function recordWhatsappRoute(
   route: WhatsappOpenRoute,
@@ -85,95 +84,51 @@ function recordWhatsappRoute(
   onRoute?.(log);
 }
 
-function navigatePopup(popup: Window, url: string) {
-  if (typeof popup.location?.replace === 'function') {
-    popup.location.replace(url);
-    return;
-  }
-  popup.location.href = url;
+/** Build a native WhatsApp deep link for phones/tablets with the app installed. */
+export function buildWhatsappAppUrl(phone: string, message: string): string {
+  const digits = normalizePhoneForWaMe(phone);
+  const text = encodeURIComponent(message || '');
+  return digits
+    ? `whatsapp://send?phone=${digits}&text=${text}`
+    : `whatsapp://send?text=${text}`;
+}
+
+function shouldPreferNativeWhatsapp(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 /**
- * Opens WhatsApp in two stages: first wa.me, then web.whatsapp.com/send in the
- * same tab. The second step prevents the user from getting stuck when wa.me is
- * redirected to a browser-blocked intermediate page inside previews.
+ * Opens WhatsApp without wa.me/api.whatsapp.com redirects. Desktop browsers go
+ * straight to WhatsApp Web; mobile devices can use the installed WhatsApp app.
  */
 export function openWhatsappWithMessage(
   phone: string,
   message: string,
   options: WhatsappOpenOptions = {},
 ): WhatsappOpenResult {
-  const waUrl = buildWaMeUrl(phone, message);
   const webUrl = buildWebWhatsappUrl(phone, message);
-  const fallbackDelayMs = options.fallbackDelayMs ?? DEFAULT_WHATSAPP_FALLBACK_DELAY_MS;
+  const appUrl = buildWhatsappAppUrl(phone, message);
+  const preferNativeApp = options.preferNativeApp ?? shouldPreferNativeWhatsapp();
+  const primaryRoute: WhatsappOpenRoute = preferNativeApp ? 'whatsapp://send' : 'web.whatsapp.com/send';
+  const primaryUrl = preferNativeApp ? appUrl : webUrl;
 
   try {
-    const popup = window.open('about:blank', '_blank');
-
-    if (!popup) {
-      recordWhatsappRoute('wa.me', 'blocked', waUrl, 'Popup bloqueado antes de abrir wa.me', options.onRoute);
-      const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
-      recordWhatsappRoute(
-        'web.whatsapp.com/send',
-        fallback ? 'opened' : 'blocked',
-        webUrl,
-        fallback ? 'Fallback aberto após bloqueio do wa.me' : 'Popup bloqueado também no fallback web',
-        options.onRoute,
-      );
-      return {
-        ok: !!fallback,
-        route: fallback ? 'web.whatsapp.com/send' : null,
-        url: fallback ? webUrl : null,
-        fallbackUrl: webUrl,
-        fallbackScheduled: false,
-      };
-    }
-
-    try {
-      popup.opener = null;
-    } catch {
-      // Some browsers lock this property; opening still continues safely.
-    }
-
-    navigatePopup(popup, waUrl);
-    recordWhatsappRoute('wa.me', 'attempted', waUrl, 'Primeira tentativa via wa.me', options.onRoute);
-
-    const openWebFallback = () => {
-      try {
-        if (!popup.closed) {
-          navigatePopup(popup, webUrl);
-          recordWhatsappRoute(
-            'web.whatsapp.com/send',
-            'opened',
-            webUrl,
-            'Fallback automático no mesmo popup após wa.me',
-            options.onRoute,
-          );
-        }
-      } catch {
-        const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
-        recordWhatsappRoute(
-          'web.whatsapp.com/send',
-          fallback ? 'opened' : 'failed',
-          webUrl,
-          fallback ? 'Fallback aberto em nova aba' : 'Falha ao navegar o popup para o fallback web',
-          options.onRoute,
-        );
-      }
-    };
-
-    if (fallbackDelayMs <= 0) {
-      openWebFallback();
-    } else {
-      window.setTimeout(openWebFallback, fallbackDelayMs);
-    }
+    const popup = window.open(primaryUrl, '_blank', 'noopener,noreferrer');
+    recordWhatsappRoute(
+      primaryRoute,
+      popup ? 'opened' : 'blocked',
+      primaryUrl,
+      popup ? 'WhatsApp aberto sem redirecionar por api.whatsapp.com' : 'Popup bloqueado pelo navegador',
+      options.onRoute,
+    );
 
     return {
-      ok: true,
-      route: fallbackDelayMs <= 0 ? 'web.whatsapp.com/send' : 'wa.me',
-      url: fallbackDelayMs <= 0 ? webUrl : waUrl,
+      ok: !!popup,
+      route: popup ? primaryRoute : null,
+      url: popup ? primaryUrl : null,
       fallbackUrl: webUrl,
-      fallbackScheduled: fallbackDelayMs > 0,
+      fallbackScheduled: false,
     };
   } catch {
     const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
@@ -181,7 +136,7 @@ export function openWhatsappWithMessage(
       'web.whatsapp.com/send',
       fallback ? 'opened' : 'failed',
       webUrl,
-      'Exceção ao preparar wa.me; usando fallback web',
+      'Exceção ao abrir WhatsApp; usando WhatsApp Web direto',
       options.onRoute,
     );
 

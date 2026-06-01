@@ -260,14 +260,16 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
-              <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
-                Pacote padrão
-              </Button>
-              <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
-                Sequencial
-              </Button>
-            </div>
+            {!lockType && (
+              <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
+                <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
+                  Pacote padrão
+                </Button>
+                <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
+                  Sequencial (Kit)
+                </Button>
+              </div>
+            )}
 
             {/* Sessions, Interval, Duration */}
             {packageType === 'standard' ? (

@@ -596,9 +596,13 @@ const Servicos: React.FC = () => {
                     <DropdownMenuItem asChild>
                       <BulkImportDialog type="package_templates" onImportComplete={refetchPackages} />
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportPackagesCSV}>
+                    <DropdownMenuItem onClick={exportStandardPackagesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Pacotes
+                      Exportar Pacotes comuns
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportSequentialPackagesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Pacotes sequenciais
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

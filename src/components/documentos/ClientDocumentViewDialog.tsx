@@ -32,7 +32,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
-import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentViewDialogProps {

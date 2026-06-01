@@ -1,22 +1,13 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-/** Normalizes phone for wa.me (digits only, with country code). Adds 55 if Brazilian and missing. */
+/** Normalizes phone for WhatsApp links (digits only, with country code). Adds 55 if Brazilian and missing. */
 export function normalizePhoneForWaMe(phone: string): string {
   let digits = (phone || '').replace(/\D/g, '');
   if (!digits) return '';
   if (digits.startsWith('0')) digits = digits.substring(1);
   if (!digits.startsWith('55') && digits.length <= 11) digits = '55' + digits;
   return digits;
-}
-
-/** Build a wa.me URL that opens WhatsApp (Web or installed app) with prefilled message. */
-export function buildWaMeUrl(phone: string, message: string): string {
-  const digits = normalizePhoneForWaMe(phone);
-  const text = encodeURIComponent(message || '');
-  return digits
-    ? `https://wa.me/${digits}?text=${text}`
-    : `https://wa.me/?text=${text}`;
 }
 
 /** Build a web.whatsapp.com URL for browsers already logged into WhatsApp Web. */

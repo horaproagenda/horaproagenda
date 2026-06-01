@@ -148,8 +148,8 @@ export function WhatsappTemplatesSettings() {
       appointmentDate: new Date(),
       appointmentTime: '14:30',
     });
-    const opened = openWhatsappWithMessage('', message);
-    if (!opened) toast.error('Não foi possível abrir o WhatsApp.');
+    const result = openWhatsappWithMessage('', message);
+    if (!result.ok) toast.error('Não foi possível abrir o WhatsApp.');
   };
 
   const getTypeLabel = (type: string) => templateTypes.find(t => t.value === type)?.label || type;

@@ -71,14 +71,15 @@ const categories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
-export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
+export function NewPackageDialog({ onPackageCreated, children, initialType = 'standard', lockType = false }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
   const { activeServices } = useServices();
-  const [packageType, setPackageType] = useState<'standard' | 'sequential'>('standard');
+  const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
+  useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
     { service_id: '', interval_after_days: 7 },
     { service_id: '', interval_after_days: 7 },

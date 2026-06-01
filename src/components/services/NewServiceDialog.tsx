@@ -207,7 +207,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">Novo Serviço</DialogTitle>
+          <DialogTitle className="text-base">{lockType === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">

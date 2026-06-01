@@ -465,18 +465,25 @@ const Servicos: React.FC = () => {
                 onDelete={refetch}
               />
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+              <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
-                  {searchTerm || serviceFilters.category || serviceFilters.professional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
+                <p className="mt-2 text-sm font-medium">
+                  {searchTerm || serviceFilters.category || serviceFilters.professional ? 'Nenhum serviço encontrado' : 'Cadastre seu primeiro serviço'}
                 </p>
-                {!searchTerm && !serviceFilters.category && (
-                  <NewServiceDialog onServiceCreated={refetch}>
-                    <Button size="sm" variant="secondary" className="mt-3">
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Cadastrar Serviço
-                    </Button>
-                  </NewServiceDialog>
+                {!searchTerm && !serviceFilters.category && !serviceFilters.professional && (
+                  <>
+                    <ol className="mx-auto mt-3 max-w-sm space-y-1 text-left text-[11px] text-muted-foreground">
+                      <li><span className="font-semibold text-foreground">1.</span> Dê um nome e escolha uma categoria.</li>
+                      <li><span className="font-semibold text-foreground">2.</span> Informe a duração, o valor e (opcional) o retorno em dias.</li>
+                      <li><span className="font-semibold text-foreground">3.</span> Vincule o profissional, a sala e os equipamentos.</li>
+                    </ol>
+                    <NewServiceDialog onServiceCreated={refetch}>
+                      <Button size="sm" className="btn-vibrant mt-3">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Cadastrar primeiro serviço
+                      </Button>
+                    </NewServiceDialog>
+                  </>
                 )}
               </div>
             )}
@@ -626,26 +633,45 @@ const Servicos: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+              <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
-                  {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote ou kit cadastrado'}
+                <p className="mt-2 text-sm font-medium">
+                  {searchTerm ? 'Nenhum pacote encontrado' : (packageTypeFilter === 'sequential' ? 'Cadastre seu primeiro Kit de Serviços' : packageTypeFilter === 'standard' ? 'Cadastre seu primeiro Pacote Comum' : 'Cadastre seu primeiro pacote ou kit')}
                 </p>
                 {!searchTerm && (
-                  <div className="mt-3 flex items-center justify-center gap-2">
-                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
-                      <Button size="sm" variant="secondary">
-                        <Package className="h-3.5 w-3.5 mr-1" />
-                        Pacote Comum
-                      </Button>
-                    </NewPackageDialog>
-                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
-                      <Button size="sm" variant="secondary">
-                        <Repeat className="h-3.5 w-3.5 mr-1" />
-                        Kit de Serviços
-                      </Button>
-                    </NewPackageDialog>
-                  </div>
+                  <>
+                    <ol className="mx-auto mt-3 max-w-md space-y-1 text-left text-[11px] text-muted-foreground">
+                      {packageTypeFilter !== 'sequential' && (
+                        <>
+                          <li><span className="font-semibold text-foreground">Pacote Comum:</span> mesmo serviço repetido N vezes (ex.: 10 massagens).</li>
+                        </>
+                      )}
+                      {packageTypeFilter !== 'standard' && (
+                        <>
+                          <li><span className="font-semibold text-foreground">Kit Sequencial:</span> serviços diferentes em etapas, com intervalo entre cada uma.</li>
+                        </>
+                      )}
+                      <li><span className="font-semibold text-foreground">Dica:</span> defina nome, serviço(s), quantidade e valor — você poderá editar depois.</li>
+                    </ol>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      {packageTypeFilter !== 'sequential' && (
+                        <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
+                          <Button size="sm" className="btn-vibrant">
+                            <Package className="h-3.5 w-3.5 mr-1" />
+                            Novo Pacote Comum
+                          </Button>
+                        </NewPackageDialog>
+                      )}
+                      {packageTypeFilter !== 'standard' && (
+                        <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
+                          <Button size="sm" variant="secondary">
+                            <Repeat className="h-3.5 w-3.5 mr-1" />
+                            Novo Kit de Serviços
+                          </Button>
+                        </NewPackageDialog>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             )}

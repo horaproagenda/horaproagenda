@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -331,17 +332,19 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
                   <div key={index} className="grid grid-cols-[1fr_88px_28px] gap-2 items-end">
                     <div>
                       <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
-                      <Select value={step.service_id || '_none'} onValueChange={(value) => updateStep(index, { service_id: value === '_none' ? '' : value })}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Serviço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_none">Selecione</SelectItem>
-                          {compatibleServices.map(service => (
-                            <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        className="h-8 text-xs"
+                        value={step.service_id}
+                        onChange={(value) => updateStep(index, { service_id: value })}
+                        options={compatibleServices.map((service: any) => ({
+                          value: service.id,
+                          label: service.name,
+                          sublabel: service.category || undefined,
+                        }))}
+                        placeholder="Selecione o serviço"
+                        searchPlaceholder="Buscar serviço..."
+                        emptyMessage="Nenhum serviço encontrado."
+                      />
                     </div>
                     <div>
                       <FormLabel className="text-[10px]">Após (dias)</FormLabel>

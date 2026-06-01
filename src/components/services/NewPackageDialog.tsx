@@ -63,20 +63,23 @@ interface SequentialStep {
 interface NewPackageDialogProps {
   onPackageCreated?: () => void;
   children?: React.ReactNode;
+  initialType?: 'standard' | 'sequential';
+  lockType?: boolean;
 }
 
 const categories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
-export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialogProps) {
+export function NewPackageDialog({ onPackageCreated, children, initialType = 'standard', lockType = false }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
   const { activeServices } = useServices();
-  const [packageType, setPackageType] = useState<'standard' | 'sequential'>('standard');
+  const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
+  useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
     { service_id: '', interval_after_days: 7 },
     { service_id: '', interval_after_days: 7 },
@@ -217,7 +220,7 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">Novo Pacote</DialogTitle>
+          <DialogTitle className="text-base">{lockType ? (packageType === 'sequential' ? 'Novo Kit de Serviços' : 'Novo Pacote Comum') : 'Novo Pacote'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
@@ -257,14 +260,16 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
-              <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
-                Pacote padrão
-              </Button>
-              <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
-                Sequencial
-              </Button>
-            </div>
+            {!lockType && (
+              <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
+                <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
+                  Pacote padrão
+                </Button>
+                <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
+                  Sequencial (Kit)
+                </Button>
+              </div>
+            )}
 
             {/* Sessions, Interval, Duration */}
             {packageType === 'standard' ? (

@@ -508,7 +508,7 @@ const Servicos: React.FC = () => {
                   onClick={() => setPackageTypeFilter(packageTypeFilter === 'sequential' ? 'all' : 'sequential')}
                 >
                   <Repeat className="h-3.5 w-3.5" />
-                  Sequencial
+                  Kit de Serviços
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                     {sequentialPackagesCount}
                   </Badge>
@@ -566,12 +566,20 @@ const Servicos: React.FC = () => {
                 <PackageAvailabilityReportDialog />
               </div>
 
-              <NewPackageDialog onPackageCreated={refetchPackages}>
-                <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
-                  <Package className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
-                </Button>
-              </NewPackageDialog>
+              <div className="flex items-center gap-2">
+                <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
+                  <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
+                    <Package className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium tracking-wide">Novo Pacote Comum</span>
+                  </Button>
+                </NewPackageDialog>
+                <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
+                  <Button size="sm" className="h-8 gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white btn-vibrant">
+                    <Repeat className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium tracking-wide">Novo Kit de Serviços</span>
+                  </Button>
+                </NewPackageDialog>
+              </div>
             </div>
 
           {/* Stats Summary */}
@@ -598,13 +606,21 @@ const Servicos: React.FC = () => {
               <div className="space-y-5">
                 {nonSequentialPackages.length > 0 && (
                   <section className="space-y-2">
-                    <h3 className="text-sm font-semibold">Pacotes não sequenciais</h3>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5 text-violet-600" />
+                      <h3 className="text-sm font-semibold">Pacotes comuns</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{nonSequentialPackages.length}</Badge>
+                    </div>
                     {renderPackageCards(nonSequentialPackages)}
                   </section>
                 )}
                 {sequentialPackages.length > 0 && (
                   <section className="space-y-2">
-                    <h3 className="text-sm font-semibold">Pacotes sequenciais</h3>
+                    <div className="flex items-center gap-2">
+                      <Repeat className="h-3.5 w-3.5 text-fuchsia-600" />
+                      <h3 className="text-sm font-semibold">Kits de serviços (sequenciais)</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{sequentialPackages.length}</Badge>
+                    </div>
                     {renderPackageCards(sequentialPackages)}
                   </section>
                 )}
@@ -613,15 +629,23 @@ const Servicos: React.FC = () => {
               <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground tracking-wide">
-                  {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
+                  {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote ou kit cadastrado'}
                 </p>
                 {!searchTerm && (
-                  <NewPackageDialog onPackageCreated={refetchPackages}>
-                    <Button size="sm" variant="secondary" className="mt-3">
-                      <Package className="h-3.5 w-3.5 mr-1" />
-                      Criar Pacote
-                    </Button>
-                  </NewPackageDialog>
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
+                      <Button size="sm" variant="secondary">
+                        <Package className="h-3.5 w-3.5 mr-1" />
+                        Pacote Comum
+                      </Button>
+                    </NewPackageDialog>
+                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
+                      <Button size="sm" variant="secondary">
+                        <Repeat className="h-3.5 w-3.5 mr-1" />
+                        Kit de Serviços
+                      </Button>
+                    </NewPackageDialog>
+                  </div>
                 )}
               </div>
             )}

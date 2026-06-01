@@ -9,6 +9,8 @@ export interface WhatsappTemplate {
   message: string;
   hours_before: number | null;
   send_offset_hours: number | null;
+  quiet_hours_start: number | null;
+  quiet_hours_end: number | null;
   professional_id: string | null;
   is_active: boolean;
   created_at: string;

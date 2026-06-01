@@ -32,7 +32,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
-import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentViewDialogProps {
@@ -76,8 +76,6 @@ export function ClientDocumentViewDialog({
   const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [whatsappSent, setWhatsappSent] = useState(false);
-  
-  const { sendMessage, isLoading: whatsappLoading } = useWhatsapp();
 
   useEffect(() => {
     let cancelled = false;
@@ -261,15 +259,17 @@ ${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n..
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
-      const success = await sendMessage(phone, message);
-      
-      if (success) {
+      const opened = openWhatsappWithMessage(phone, message);
+      if (opened) {
         setWhatsappSent(true);
+        toast.success('WhatsApp aberto com a mensagem pronta para envio');
         setTimeout(() => setWhatsappSent(false), 3000);
+      } else {
+        toast.error('Não foi possível abrir o WhatsApp. Verifique o bloqueador de pop-ups.');
       }
     } catch (error: any) {
-      console.error('Error sending WhatsApp:', error);
-      toast.error('Erro ao enviar por WhatsApp');
+      console.error('Error opening WhatsApp:', error);
+      toast.error('Erro ao abrir WhatsApp');
     } finally {
       setIsSendingWhatsapp(false);
     }
@@ -461,14 +461,14 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                           size="sm" 
                           className="w-full bg-green-600 hover:bg-green-700"
                           onClick={handleSendWhatsApp}
-                          disabled={isSendingWhatsapp || whatsappLoading}
+                          disabled={isSendingWhatsapp}
                         >
-                          {isSendingWhatsapp || whatsappLoading ? (
+                          {isSendingWhatsapp ? (
                             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           ) : (
                             <Send className="h-4 w-4 mr-1.5" />
                           )}
-                          Enviar por WhatsApp
+                          Abrir WhatsApp
                         </Button>
                       </div>
                     </PopoverContent>

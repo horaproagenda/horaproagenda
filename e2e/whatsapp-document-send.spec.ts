@@ -8,7 +8,7 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
 
   await page.route(`${appUrl}/whatsapp-e2e`, route => route.fulfill({
     status: 200,
-    contentType: 'text/html',
+    contentType: 'text/html; charset=utf-8',
     body: `
       <button type="button" aria-label="Enviar documento">Enviar documento</button>
       <script type="module">

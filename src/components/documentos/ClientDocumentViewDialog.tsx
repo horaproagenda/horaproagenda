@@ -461,14 +461,14 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                           size="sm" 
                           className="w-full bg-green-600 hover:bg-green-700"
                           onClick={handleSendWhatsApp}
-                          disabled={isSendingWhatsapp || whatsappLoading}
+                          disabled={isSendingWhatsapp}
                         >
-                          {isSendingWhatsapp || whatsappLoading ? (
+                          {isSendingWhatsapp ? (
                             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           ) : (
                             <Send className="h-4 w-4 mr-1.5" />
                           )}
-                          Enviar por WhatsApp
+                          Abrir WhatsApp
                         </Button>
                       </div>
                     </PopoverContent>

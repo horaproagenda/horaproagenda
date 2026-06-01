@@ -532,13 +532,39 @@ const Servicos: React.FC = () => {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : filteredServices.length > 0 ? (
-              <ServicesGrid
-                items={filteredServices}
-                onSelect={setSelectedService}
-                onEdit={setSelectedService}
-                onDelete={refetch}
-              />
+            ) : visibleServices.length > 0 ? (
+              <div className="space-y-5">
+                {standardServices.length > 0 && (
+                  <section className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      <h3 className="text-sm font-semibold">Serviços</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{standardServices.length}</Badge>
+                    </div>
+                    <ServicesGrid
+                      items={standardServices}
+                      onSelect={setSelectedService}
+                      onEdit={setSelectedService}
+                      onDelete={refetch}
+                    />
+                  </section>
+                )}
+                {kitServices.length > 0 && (
+                  <section className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5 text-teal-600" />
+                      <h3 className="text-sm font-semibold">Kits de Serviços</h3>
+                      <Badge variant="secondary" className="text-[10px] h-5">{kitServices.length}</Badge>
+                    </div>
+                    <ServicesGrid
+                      items={kitServices}
+                      onSelect={setSelectedService}
+                      onEdit={setSelectedService}
+                      onDelete={refetch}
+                    />
+                  </section>
+                )}
+              </div>
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />

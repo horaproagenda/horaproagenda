@@ -75,3 +75,24 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
     return v !== undefined ? v : _m;
   });
 }
+
+/**
+ * Adjusts a desired send hour (0-23) to fit within a quiet-hours window [start, end).
+ * If the hour is before the start, returns start; if at/after the end, returns end-1.
+ * Returns the hour unchanged when it already fits the window or the window is invalid.
+ */
+export function adjustHourToQuietWindow(
+  desiredHour: number,
+  quietStart: number | null | undefined,
+  quietEnd: number | null | undefined,
+): number {
+  const h = Math.max(0, Math.min(23, Math.floor(desiredHour)));
+  if (quietStart == null || quietEnd == null) return h;
+  const s = Math.max(0, Math.min(23, Math.floor(quietStart)));
+  const e = Math.max(1, Math.min(24, Math.floor(quietEnd)));
+  if (s >= e) return h;
+  if (h < s) return s;
+  if (h >= e) return e - 1;
+  return h;
+}
+

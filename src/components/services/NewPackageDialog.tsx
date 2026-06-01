@@ -63,6 +63,8 @@ interface SequentialStep {
 interface NewPackageDialogProps {
   onPackageCreated?: () => void;
   children?: React.ReactNode;
+  initialType?: 'standard' | 'sequential';
+  lockType?: boolean;
 }
 
 const categories = [

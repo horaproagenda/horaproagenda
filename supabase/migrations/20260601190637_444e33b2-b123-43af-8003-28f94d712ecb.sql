@@ -1,0 +1,1 @@
+DELETE FROM rooms WHERE id = '4601f79d-b158-41cd-917f-97a1bf501dee';

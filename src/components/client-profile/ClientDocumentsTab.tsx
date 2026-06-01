@@ -517,8 +517,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                       </div>
 
                       <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {/* Send by Link button — apenas para documentos baseados em modelo (não para uploads manuais) */}
-                        {!doc.file_path && !doc.file_url && (
+                        {/* Send by Link button — apenas para documentos baseados em modelo que ainda NÃO foram preenchidos nem assinados */}
+                        {!doc.file_path && !doc.file_url && !isFilled && !isSigned && (
                           <Button 
                             variant="ghost" 
                             size="icon" 

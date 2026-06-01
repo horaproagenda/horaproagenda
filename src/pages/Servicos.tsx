@@ -493,7 +493,11 @@ const Servicos: React.FC = () => {
                 </NewCategoryDialog>
               </div>
 
-              <NewServiceDialog onServiceCreated={refetch}>
+              <NewServiceDialog
+                key={`new-${serviceTypeFilter === 'kit' ? 'kit' : 'service'}`}
+                lockType={serviceTypeFilter === 'kit' ? 'kit' : 'service'}
+                onServiceCreated={refetch}
+              >
                 <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium tracking-wide">{serviceTypeFilter === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</span>

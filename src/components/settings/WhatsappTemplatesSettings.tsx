@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { openWhatsappWithMessage, renderTemplate, adjustHourToQuietWindow } from '@/lib/whatsappLink';
 import { toast } from 'sonner';
 
 const templateTypes = [

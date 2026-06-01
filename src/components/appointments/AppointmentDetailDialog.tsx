@@ -83,6 +83,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
@@ -991,8 +992,8 @@ export function AppointmentDetailDialog({
       await navigator.share(shareData);
       return;
     }
-    const message = encodeURIComponent(`Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`);
-    window.open(`https://wa.me/55${phone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
+    openWhatsappWithMessage(phone, message);
     toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.');
   };
 

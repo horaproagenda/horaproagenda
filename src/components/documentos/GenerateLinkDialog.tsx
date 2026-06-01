@@ -36,6 +36,7 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
 import { supabase } from '@/integrations/supabase/client';
 import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 
 const formatBRL = (n: number | string | null | undefined): string => {
   const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
@@ -203,18 +204,16 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent(
+    const message =
       `Olá${selectedClient ? ` ${selectedClient.name.split(' ')[0]}` : ''}!\n\n` +
       `Por favor, preencha e assine o documento *"${template?.title}"* pelo link abaixo.\n` +
       `Para sua segurança, será necessário informar seu CPF cadastrado para acessar.\n\n` +
-      `${generatedUrl}`
-    );
+      `${generatedUrl}`;
 
     if (selectedClient?.phone) {
-      const phone = selectedClient.phone.replace(/\D/g, '');
-      window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
+      openWhatsappWithMessage(selectedClient.phone, message);
     } else {
-      window.open(`https://wa.me/?text=${message}`, '_blank');
+      openWhatsappWithMessage('', message);
     }
   };
 

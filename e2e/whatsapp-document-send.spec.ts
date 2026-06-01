@@ -3,7 +3,15 @@ import { test, expect } from '@playwright/test';
 const appUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
 
 test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota usada', async ({ page, context }) => {
-  await context.route('https://wa.me/**', route => route.fulfill({ status: 200, body: 'wa.me intercepted' }));
+  const blockedRedirectRoutes: string[] = [];
+  await context.route('https://wa.me/**', route => {
+    blockedRedirectRoutes.push(route.request().url());
+    return route.abort();
+  });
+  await context.route('https://api.whatsapp.com/**', route => {
+    blockedRedirectRoutes.push(route.request().url());
+    return route.abort();
+  });
   await context.route('https://web.whatsapp.com/**', route => route.fulfill({ status: 200, body: 'web.whatsapp intercepted' }));
 
   await page.route(`${appUrl}/whatsapp-e2e`, route => route.fulfill({
@@ -60,4 +68,5 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
   expect(routeLog).toContain('web.whatsapp.com/send');
   expect(routeLog).toContain('opened');
   expect(routeLog).not.toContain('api.whatsapp.com');
+  expect(blockedRedirectRoutes).toEqual([]);
 });

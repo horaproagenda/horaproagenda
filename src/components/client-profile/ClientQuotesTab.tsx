@@ -15,6 +15,7 @@ import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 
 interface ClientQuotesTabProps {
   quotes: Quote[];
@@ -178,10 +179,7 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
 
   const sendViaWhatsApp = async (quote: Quote) => {
     const message = generateQuoteMessage(quote);
-    const phone = clientPhone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
-    
-    window.open(whatsappUrl, '_blank');
+    openWhatsappWithMessage(clientPhone, message);
 
     await onUpdateQuote({
       id: quote.id,

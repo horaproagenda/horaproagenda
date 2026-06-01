@@ -27,6 +27,7 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 
 interface Props {
   open: boolean;
@@ -107,10 +108,9 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
   };
 
   const handleWhatsApp = () => {
-    const msg = encodeURIComponent(
+    const msg =
       `Olá! Para iniciarmos o seu atendimento, preencha o seu cadastro pelo link abaixo (leva poucos minutos):\n\n${generatedUrl}`
-    );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    openWhatsappWithMessage('', msg);
   };
 
   const handleReset = () => {

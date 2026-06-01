@@ -398,6 +398,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
             />
 
             {/* Kit composto: sequência de serviços (igual pacote sequencial), com valor por etapa */}
+            {lockType !== 'service' && (
             <div className="space-y-2 rounded-md border p-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Kit de serviços (sequencial)</Label>
@@ -411,7 +412,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Defina a sequência de serviços (pode repetir o mesmo serviço). Ao agendar, o sistema cria um agendamento para cada etapa respeitando o intervalo. Cada etapa é cobrada separadamente.
+                Defina a sequência de serviços (pode repetir o mesmo serviço). Para cada etapa, informe quantos dias após a etapa anterior ela deve ocorrer. A primeira etapa é sempre o início (0 dias).
               </p>
               {components.length > 0 && (
                 <div className="space-y-1.5">
@@ -423,7 +424,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                           <Select
                             value={c.service_id || '_none'}
                             onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: it.price || Number(activeServices.find(s => s.id === v)?.price ?? 0) } : it
+                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
                             ))}
                           >
                             <SelectTrigger className="h-7 text-xs">
@@ -456,6 +457,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                           <ArrowDown className="h-3 w-3" />
                         </Button>
                         <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                          disabled={lockType === 'kit' && components.length === 1}
                           onClick={() => setComponents(prev => {
                             const arr = prev.filter((_, i) => i !== idx);
                             if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
@@ -467,7 +469,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                       <div className="grid grid-cols-2 gap-1.5">
                         <div className="space-y-0.5">
                           <Label className="text-[10px] text-muted-foreground">
-                            {idx === 0 ? 'Início (dias)' : 'Após anterior (dias)'}
+                            {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
                           </Label>
                           <Input
                             type="number"
@@ -500,6 +502,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                 </div>
               )}
             </div>
+            )}
 
 
 

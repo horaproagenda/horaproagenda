@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MessageSquare, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { MessageSquare, Plus, Edit2, Trash2, Save, X, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { toast } from 'sonner';
 
 const templateTypes = [
   { value: 'reminder', label: 'Lembrete de Agendamento' },
@@ -19,12 +21,16 @@ const templateTypes = [
 ];
 
 const variablesHelp = [
-  { variable: '{{cliente}}', description: 'Nome do cliente' },
-  { variable: '{{data}}', description: 'Data do agendamento' },
+  { variable: '{{cliente}}', description: 'Nome completo do cliente' },
+  { variable: '{{primeiro_nome}}', description: 'Apenas o primeiro nome' },
+  { variable: '{{data}}', description: 'Data (dd/mm/aaaa)' },
+  { variable: '{{data_extenso}}', description: 'Data por extenso (ex: segunda-feira, 1 de junho de 2026)' },
   { variable: '{{horario}}', description: 'Horário do agendamento' },
   { variable: '{{servico}}', description: 'Nome do serviço' },
   { variable: '{{profissional}}', description: 'Nome do profissional' },
 ];
+
+const MAX_TEMPLATES_PER_PROFESSIONAL = 3;
 
 type FormState = {
   name: string;
@@ -32,6 +38,8 @@ type FormState = {
   message: string;
   hours_before: number;
   send_offset_hours: number;
+  quiet_hours_start: number;
+  quiet_hours_end: number;
   professional_id: string;
   is_active: boolean;
 };
@@ -41,7 +49,9 @@ const initialForm: FormState = {
   type: 'reminder',
   message: '',
   hours_before: 24,
-  send_offset_hours: 2,
+  send_offset_hours: 9,
+  quiet_hours_start: 8,
+  quiet_hours_end: 20,
   professional_id: '',
   is_active: true,
 };
@@ -61,19 +71,40 @@ export function WhatsappTemplatesSettings() {
       message: template.message,
       hours_before: template.hours_before ?? 24,
       send_offset_hours: template.send_offset_hours ?? (template.type === 'birthday' ? 9 : 2),
+      quiet_hours_start: template.quiet_hours_start ?? 8,
+      quiet_hours_end: template.quiet_hours_end ?? 20,
       professional_id: template.professional_id ?? '',
       is_active: template.is_active,
     });
   };
 
+  const countForProfessional = (profId: string | null, exceptId?: string) =>
+    templates.filter(t => (t.professional_id ?? null) === (profId ?? null) && t.id !== exceptId).length;
+
   const handleSave = () => {
+    const targetProfId = formData.professional_id || null;
+    const existingCount = countForProfessional(targetProfId, editingId ?? undefined);
+    if (existingCount >= MAX_TEMPLATES_PER_PROFESSIONAL) {
+      toast.error(
+        `Limite atingido: cada profissional pode ter no máximo ${MAX_TEMPLATES_PER_PROFESSIONAL} mensagens pré-definidas.`
+      );
+      return;
+    }
+
+    if (formData.quiet_hours_start >= formData.quiet_hours_end) {
+      toast.error('A janela de envio é inválida: o horário inicial deve ser menor que o final.');
+      return;
+    }
+
     const payload = {
       name: formData.name,
       type: formData.type,
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: ['follow_up', 'birthday'].includes(formData.type) ? formData.send_offset_hours : null,
-      professional_id: formData.professional_id || null,
+      quiet_hours_start: formData.quiet_hours_start,
+      quiet_hours_end: formData.quiet_hours_end,
+      professional_id: targetProfId,
       is_active: formData.is_active,
     };
     if (editingId) {
@@ -98,8 +129,28 @@ export function WhatsappTemplatesSettings() {
     }
   };
 
+  const handlePreviewSend = () => {
+    const sampleClient = 'Maria Aparecida Silva';
+    const message = renderTemplate(formData.message, {
+      clientName: sampleClient,
+      serviceName: 'Limpeza de pele',
+      professionalName: professionals.find(p => p.id === formData.professional_id)?.name || 'Profissional',
+      appointmentDate: new Date(),
+      appointmentTime: '14:30',
+    });
+    const opened = openWhatsappWithMessage('', message);
+    if (!opened) toast.error('Não foi possível abrir o WhatsApp.');
+  };
+
   const getTypeLabel = (type: string) => templateTypes.find(t => t.value === type)?.label || type;
-  const getProfName = (id: string | null) => id ? (professionals.find(p => p.id === id)?.name || '—') : 'Todos os profissionais';
+  const getProfName = (id: string | null) =>
+    id ? (professionals.find(p => p.id === id)?.name || '—') : 'Todos os profissionais';
+
+  const limitWarning = useMemo(() => {
+    const targetProfId = formData.professional_id || null;
+    const count = countForProfessional(targetProfId, editingId ?? undefined);
+    return count >= MAX_TEMPLATES_PER_PROFESSIONAL;
+  }, [formData.professional_id, templates, editingId]);
 
   return (
     <Card className="lg:col-span-2">
@@ -111,7 +162,10 @@ export function WhatsappTemplatesSettings() {
             </div>
             <div>
               <CardTitle className="text-lg">Mensagens WhatsApp</CardTitle>
-              <CardDescription>Configure mensagens automáticas (lembretes, aniversário, pós-atendimento)</CardDescription>
+              <CardDescription>
+                Até {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens por profissional. O envio é feito pelo WhatsApp do
+                navegador/aparelho do profissional (igual ao envio de documentos).
+              </CardDescription>
             </div>
           </div>
           {!isCreating && !editingId && (
@@ -128,7 +182,7 @@ export function WhatsappTemplatesSettings() {
           <div className="flex flex-wrap gap-2">
             {variablesHelp.map(v => (
               <Badge key={v.variable} variant="outline" className="text-xs">
-                {v.variable} - {v.description}
+                {v.variable} — {v.description}
               </Badge>
             ))}
           </div>
@@ -175,9 +229,11 @@ export function WhatsappTemplatesSettings() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Quando vinculado a um profissional, a mensagem é enviada apenas para clientes desse profissional, do número dele.
-              </p>
+              {limitWarning && (
+                <p className="text-xs text-destructive">
+                  Este profissional já possui {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens. Exclua uma antes de criar outra.
+                </p>
+              )}
             </div>
 
             {(formData.type === 'reminder' || formData.type === 'confirmation') && (
@@ -191,9 +247,7 @@ export function WhatsappTemplatesSettings() {
                   max={168}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {formData.type === 'confirmation'
-                    ? 'Quantas horas antes do agendamento enviar a confirmação automática.'
-                    : 'Quantas horas antes do agendamento enviar o lembrete automático.'}
+                  Quantas horas antes do agendamento esta mensagem será disparada.
                 </p>
               </div>
             )}
@@ -208,13 +262,12 @@ export function WhatsappTemplatesSettings() {
                   min={1}
                   max={720}
                 />
-                <p className="text-xs text-muted-foreground">Quando enviar a mensagem após o término do atendimento.</p>
               </div>
             )}
 
             {formData.type === 'birthday' && (
               <div className="space-y-2">
-                <Label>Hora de envio (0–23)</Label>
+                <Label>Hora preferencial de envio (0–23)</Label>
                 <Input
                   type="number"
                   value={formData.send_offset_hours}
@@ -222,22 +275,51 @@ export function WhatsappTemplatesSettings() {
                   min={0}
                   max={23}
                 />
-                <p className="text-xs text-muted-foreground">Hora do dia em que a mensagem de aniversário será enviada.</p>
+                <p className="text-xs text-muted-foreground">
+                  Se o horário estiver fora da janela permitida abaixo, a mensagem será enviada no horário limite mais próximo.
+                </p>
               </div>
             )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Não enviar antes das (0–23)</Label>
+                <Input
+                  type="number"
+                  value={formData.quiet_hours_start}
+                  onChange={(e) => setFormData({ ...formData, quiet_hours_start: Number(e.target.value) })}
+                  min={0}
+                  max={23}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Não enviar após as (1–24)</Label>
+                <Input
+                  type="number"
+                  value={formData.quiet_hours_end}
+                  onChange={(e) => setFormData({ ...formData, quiet_hours_end: Number(e.target.value) })}
+                  min={1}
+                  max={24}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground col-span-2">
+                Janela de envio permitida (ex: 8 às 20). Mensagens agendadas fora desta janela serão ajustadas para o
+                limite mais próximo.
+              </p>
+            </div>
 
             <div className="space-y-2">
               <Label>Mensagem</Label>
               <Textarea
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Digite a mensagem usando as variáveis disponíveis..."
+                placeholder="Ex: Oi {{primeiro_nome}}, lembrando do seu horário em {{data_extenso}} às {{horario}}."
                 rows={8}
                 className="font-mono text-sm"
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.is_active}
@@ -246,10 +328,13 @@ export function WhatsappTemplatesSettings() {
                 <Label>Ativo</Label>
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handlePreviewSend} disabled={!formData.message}>
+                  <Send className="h-4 w-4 mr-1" /> Testar no WhatsApp
+                </Button>
                 <Button variant="outline" onClick={handleCancel}>
                   <X className="h-4 w-4 mr-1" /> Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={!formData.name || !formData.message}>
+                <Button onClick={handleSave} disabled={!formData.name || !formData.message || limitWarning}>
                   <Save className="h-4 w-4 mr-1" /> Salvar
                 </Button>
               </div>
@@ -282,6 +367,11 @@ export function WhatsappTemplatesSettings() {
                       )}
                       {template.type === 'birthday' && template.send_offset_hours != null && (
                         <Badge variant="outline" className="text-xs">às {String(template.send_offset_hours).padStart(2,'0')}:00</Badge>
+                      )}
+                      {template.quiet_hours_start != null && template.quiet_hours_end != null && (
+                        <Badge variant="outline" className="text-xs">
+                          janela {String(template.quiet_hours_start).padStart(2,'0')}–{String(template.quiet_hours_end).padStart(2,'0')}h
+                        </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">{getProfName(template.professional_id)}</Badge>
                     </div>

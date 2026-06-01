@@ -515,7 +515,7 @@ const Servicos: React.FC = () => {
                   onClick={() => setPackageTypeFilter(packageTypeFilter === 'sequential' ? 'all' : 'sequential')}
                 >
                   <Repeat className="h-3.5 w-3.5" />
-                  Kit de Serviços
+                  Pacote sequencial
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                     {sequentialPackagesCount}
                   </Badge>

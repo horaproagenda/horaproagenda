@@ -86,9 +86,11 @@ const categories = [
 interface NewServiceDialogProps {
   onServiceCreated?: () => void;
   children?: React.ReactNode;
+  /** When set, locks the dialog to a single mode: 'service' (plain service, kit section hidden) or 'kit' (kit section only, starts with 1 empty step). */
+  lockType?: 'service' | 'kit';
 }
 
-export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialogProps) {
+export function NewServiceDialog({ onServiceCreated, children, lockType }: NewServiceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { rooms } = useRooms();
@@ -122,7 +124,19 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
     },
   });
 
-  const isKit = components.length > 0;
+  // When opening in kit mode, seed first empty step so UI is consistent.
+  // When opening in service mode, clear any leftover steps.
+  // Always reset when dialog re-opens.
+  React.useEffect(() => {
+    if (!open) return;
+    if (lockType === 'kit') {
+      setComponents((prev) => (prev.length > 0 ? prev : [{ service_id: '', interval_days: 0, price: 0 }]));
+    } else if (lockType === 'service') {
+      setComponents([]);
+    }
+  }, [open, lockType]);
+
+  const isKit = lockType === 'kit' || components.length > 0;
   const kitTotalDuration = components.reduce((sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0), 0);
   const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
 

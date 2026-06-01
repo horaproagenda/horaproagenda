@@ -18,12 +18,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 
+// IMPORTANT: values must match exactly the strings persisted by NewClientDialog
+// and CadastroCliente (public self-registration), otherwise the saved value
+// won't be shown in the client profile.
 const REFERRAL_SOURCES = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'google', label: 'Google' },
-  { value: 'indicacao', label: 'Indicação' },
-  { value: 'outro', label: 'Outro' },
+  { value: 'Instagram', label: 'Instagram' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'Google', label: 'Google' },
+  { value: 'Indicação de amigo', label: 'Indicação de amigo' },
+  { value: 'Indicação de cliente', label: 'Indicação de cliente' },
+  { value: 'Passou na frente', label: 'Passou na frente' },
+  { value: 'WhatsApp', label: 'WhatsApp' },
+  { value: 'TikTok', label: 'TikTok' },
+  { value: 'Outros', label: 'Outros' },
 ];
 
 interface ClientInfoTabProps {

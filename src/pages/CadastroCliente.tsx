@@ -306,7 +306,17 @@ export default function CadastroCliente() {
   };
 
   const downloadAllPdfs = () => {
-    generatedDocs.forEach((d, i) => setTimeout(() => downloadDocPdf(d), i * 250));
+    generateCombinedClientDocumentsPdf({
+      documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
+      header: {
+        name: signedBy || form.name,
+        cpf: form.cpf || null,
+        birthdate: form.birthdate
+          ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+          : null,
+        professionalName: linkData?.professional?.name || null,
+      },
+    });
   };
 
   // ---------- RENDER ----------

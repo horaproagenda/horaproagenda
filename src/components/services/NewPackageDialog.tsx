@@ -255,52 +255,58 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
             </div>
 
             {/* Sessions, Interval, Duration */}
-            <div className="grid grid-cols-3 gap-3">
-              <FormField
-                control={form.control}
-                name="total_sessions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">{packageType === 'sequential' ? 'Etapas' : 'Aplicações'} *</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} max={100} className="h-8 text-sm" disabled={packageType === 'sequential'} value={packageType === 'sequential' ? steps.length : field.value} onChange={field.onChange} />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="interval_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Duração *</FormLabel>
-                    <FormControl>
-                      <DurationSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        minDuration={15}
-                        maxDuration={480}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {packageType === 'standard' ? (
+              <div className="grid grid-cols-3 gap-3">
+                <FormField
+                  control={form.control}
+                  name="total_sessions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Aplicações *</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} max={100} className="h-8 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="interval_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Duração *</FormLabel>
+                      <FormControl>
+                        <DurationSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          minDuration={15}
+                          maxDuration={480}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                No kit sequencial, <span className="font-medium text-foreground">duração, intervalo de retorno e valor</span> de cada etapa vêm do próprio serviço cadastrado.
+              </div>
+            )}
 
             {packageType === 'sequential' && (
               <div className="space-y-2 rounded-lg border p-3">

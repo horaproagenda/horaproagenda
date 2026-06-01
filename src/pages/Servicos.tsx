@@ -314,25 +314,58 @@ const Servicos: React.FC = () => {
     setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
+  const isKitService = (s: Service) => Array.isArray((s as any).component_service_ids) && (s as any).component_service_ids.length > 0;
+
   const exportServicesCSV = () => {
+    const onlyServices = filteredServices.filter(s => !isKitService(s));
     exportToCSV({
       filename: 'servicos',
       headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
-      rows: filteredServices.map(s => [
+      rows: onlyServices.map(s => [
         s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
       ]),
       successMessage: 'Serviços exportados com sucesso!',
     });
   };
 
-  const exportPackagesCSV = () => {
+  const exportKitServicesCSV = () => {
+    const onlyKits = filteredServices.filter(isKitService);
     exportToCSV({
-      filename: 'pacotes',
-      headers: ['Nome', 'Categoria', 'Preço', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Tipo', 'Status'],
-      rows: filteredPackages.map(p => [
-        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.package_type === 'sequential' ? 'Sequencial' : 'Não sequencial', p.is_active ? 'Ativo' : 'Inativo'
+      filename: 'kits-de-servicos',
+      headers: ['Nome', 'Categoria', 'Preço total', 'Duração total (min)', 'Nº de etapas', 'Status'],
+      rows: onlyKits.map(s => [
+        s.name,
+        s.category,
+        Number(s.price).toFixed(2),
+        s.duration,
+        ((s as any).component_service_ids || []).length,
+        s.is_active ? 'Ativo' : 'Inativo',
       ]),
-      successMessage: 'Pacotes exportados com sucesso!',
+      successMessage: 'Kits de serviços exportados com sucesso!',
+    });
+  };
+
+  const exportStandardPackagesCSV = () => {
+    const onlyStandard = filteredPackages.filter(p => p.package_type !== 'sequential');
+    exportToCSV({
+      filename: 'pacotes-comuns',
+      headers: ['Nome', 'Categoria', 'Preço', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      rows: onlyStandard.map(p => [
+        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+      ]),
+      successMessage: 'Pacotes comuns exportados com sucesso!',
+    });
+  };
+
+  const exportSequentialPackagesCSV = () => {
+    const onlySeq = filteredPackages.filter(p => p.package_type === 'sequential');
+    exportToCSV({
+      filename: 'pacotes-sequenciais',
+      headers: ['Nome', 'Categoria', 'Preço', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      rows: onlySeq.map(p => [
+        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+      ]),
+      successMessage: 'Pacotes sequenciais exportados com sucesso!',
     });
   };
 
@@ -405,7 +438,11 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportServicesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Serviços
+                      Exportar Serviços avulsos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportKitServicesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Kits de serviços
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -563,9 +600,13 @@ const Servicos: React.FC = () => {
                     <DropdownMenuItem asChild>
                       <BulkImportDialog type="package_templates" onImportComplete={refetchPackages} />
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportPackagesCSV}>
+                    <DropdownMenuItem onClick={exportStandardPackagesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Pacotes
+                      Exportar Pacotes comuns
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportSequentialPackagesCSV}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Exportar Pacotes sequenciais
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

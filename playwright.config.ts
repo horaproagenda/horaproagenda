@@ -1,4 +1,7 @@
+import { existsSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
+
+const systemChromium = existsSync('/bin/chromium') ? '/bin/chromium' : undefined;
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,5 +11,6 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     trace: 'retain-on-failure',
+    launchOptions: systemChromium ? { executablePath: systemChromium } : undefined,
   },
 });

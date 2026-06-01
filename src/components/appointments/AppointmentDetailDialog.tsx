@@ -407,6 +407,14 @@ export function AppointmentDetailDialog({
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [propagateDates, setPropagateDates] = useState(false); // New: propagate dates to following appointments
+  // Post-save confirmation when date/time of a package/recurring step changes
+  const [pendingPropagation, setPendingPropagation] = useState<null | {
+    new_start_time: Date;
+    new_end_time: Date;
+    type: 'package' | 'recurring';
+    package_id?: string;
+    recurring_group_id?: string;
+  }>(null);
 
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
@@ -730,11 +738,14 @@ export function AppointmentDetailDialog({
       expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
-        // Check if we need to propagate dates to following appointments
+        const isPackageApt = !!appointment.package_appointment;
+        const isRecurringApt = !!appointment.recurring_group_id;
+        const dateChanged =
+          new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
+          new Date(appointment.end_time).getTime() !== newEndTime.getTime();
+
+        // If user pre-checked the inline option, propagate immediately
         if (propagateDates) {
-          const isPackageApt = !!appointment.package_appointment;
-          const isRecurringApt = !!appointment.recurring_group_id;
-          
           if (isRecurringApt) {
             propagateSeriesDates.mutate({
               appointment_id: appointment.id,
@@ -752,13 +763,44 @@ export function AppointmentDetailDialog({
               package_id: appointment.package_appointment.package_id,
             });
           }
+        } else if (dateChanged && (isPackageApt || isRecurringApt)) {
+          // Ask the user whether to also shift following steps
+          setPendingPropagation({
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            type: isRecurringApt ? 'recurring' : 'package',
+            recurring_group_id: appointment.recurring_group_id || undefined,
+            package_id: appointment.package_appointment?.package_id,
+          });
         }
-        
+
         setIsEditing(false);
         setPropagateDates(false);
         void releaseLock();
       },
     });
+  };
+
+  const handleConfirmPropagation = () => {
+    if (!pendingPropagation) return;
+    if (pendingPropagation.type === 'recurring' && pendingPropagation.recurring_group_id) {
+      propagateSeriesDates.mutate({
+        appointment_id: appointment.id,
+        new_start_time: pendingPropagation.new_start_time,
+        new_end_time: pendingPropagation.new_end_time,
+        propagate_type: 'recurring',
+        recurring_group_id: pendingPropagation.recurring_group_id,
+      });
+    } else if (pendingPropagation.type === 'package' && pendingPropagation.package_id) {
+      propagateSeriesDates.mutate({
+        appointment_id: appointment.id,
+        new_start_time: pendingPropagation.new_start_time,
+        new_end_time: pendingPropagation.new_end_time,
+        propagate_type: 'package',
+        package_id: pendingPropagation.package_id,
+      });
+    }
+    setPendingPropagation(null);
   };
 
   const handleCancelEdit = () => {
@@ -2115,7 +2157,29 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Propagate dates confirmation (package / recurring step rescheduled) */}
+      <AlertDialog open={!!pendingPropagation} onOpenChange={(o) => { if (!o) setPendingPropagation(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar próximas etapas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você alterou a data desta etapa do {pendingPropagation?.type === 'package' ? 'kit/pacote' : 'recorrente'}.
+              Deseja reagendar automaticamente as etapas seguintes mantendo o mesmo intervalo entre elas,
+              respeitando os dias e horários de funcionamento?
+              <br /><br />
+              <strong>Sim</strong>: as próximas datas serão recalculadas.<br />
+              <strong>Não</strong>: as próximas datas permanecem como estão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingPropagation(null)}>Não alterar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPropagation}>Sim, ajustar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Reverse Payment Confirmation Dialog */}
+
       <AlertDialog open={confirmReverseOpen} onOpenChange={setConfirmReverseOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

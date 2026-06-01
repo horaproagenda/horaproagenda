@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { adjustToBusinessHours, type BusinessHoursConfig } from '@/lib/businessHoursAdjustment';
 
 // Use environment variable for URL - ensures consistency between preview and production
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -506,6 +507,23 @@ Até breve! ✨`;
         // Get following appointments (excluding the current one which will be updated separately)
         appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
       } else if (params.propagate_type === 'package' && params.package_id) {
+        // Fetch business settings once to respect open days/hours
+        const { data: bsRow } = await supabase
+          .from('business_settings')
+          .select('opening_time, closing_time, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, work_saturdays, work_sundays')
+          .limit(1)
+          .maybeSingle();
+        const businessCfg: BusinessHoursConfig = {
+          opening_time: bsRow?.opening_time || '08:00',
+          closing_time: bsRow?.closing_time || '20:00',
+          saturday_opening_time: bsRow?.saturday_opening_time,
+          saturday_closing_time: bsRow?.saturday_closing_time,
+          sunday_opening_time: bsRow?.sunday_opening_time,
+          sunday_closing_time: bsRow?.sunday_closing_time,
+          work_saturdays: bsRow?.work_saturdays,
+          work_sundays: bsRow?.work_sundays,
+        };
+
         // Get all sessions of the package, in order
         const { data: packageAppointments, error: fetchError } = await supabase
           .from('package_appointments')
@@ -546,14 +564,24 @@ Até breve! ✨`;
           followingPairs.push({ pa: sessions[i], intervalDaysFromPrevious });
         }
 
-        // Update each following session preserving its own interval and time
+        // Update each following session preserving its own interval and time,
+        // adjusting to business hours/days.
         let baseDate = params.new_start_time;
         const updatedAppointments: any[] = [];
 
         for (const { pa, intervalDaysFromPrevious } of followingPairs) {
-          const nextDate = addDays(baseDate, intervalDaysFromPrevious);
+          let nextDate = addDays(baseDate, intervalDaysFromPrevious);
           // Preserve the originally requested time
           nextDate.setHours(params.new_start_time.getHours(), params.new_start_time.getMinutes(), 0, 0);
+
+          // Compute duration from existing appointment (or default to new range)
+          const originalStart = pa.appointment ? new Date(pa.appointment.start_time) : params.new_start_time;
+          const originalEnd = pa.appointment ? new Date(pa.appointment.end_time) : params.new_end_time;
+          const duration = originalEnd.getTime() - originalStart.getTime();
+
+          // Adjust to business hours / open days
+          nextDate = adjustToBusinessHours(nextDate, duration, businessCfg);
+          const newEnd = new Date(nextDate.getTime() + duration);
 
           // Update the package_appointment scheduled_date even if no appointment is linked yet
           await supabase
@@ -562,11 +590,6 @@ Até breve! ✨`;
             .eq('id', pa.id);
 
           if (pa.appointment && pa.appointment.id && !['completed', 'missed', 'cancelled'].includes(pa.appointment.status)) {
-            const originalStart = new Date(pa.appointment.start_time);
-            const originalEnd = new Date(pa.appointment.end_time);
-            const duration = originalEnd.getTime() - originalStart.getTime();
-            const newEnd = new Date(nextDate.getTime() + duration);
-
             const { data: updated } = await supabase
               .from('appointments')
               .update({

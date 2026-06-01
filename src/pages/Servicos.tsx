@@ -191,6 +191,7 @@ const Servicos: React.FC = () => {
   const [packageStatus, setPackageStatus] = useState<string | null>(null);
   const [packageSort, setPackageSort] = useState('name-asc');
   const [packageTypeFilter, setPackageTypeFilter] = useLocalStorage<'all' | 'standard' | 'sequential'>('servicos-package-type-filter', 'all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useLocalStorage<'all' | 'service' | 'kit'>('servicos-service-type-filter', 'all');
 
   const { services, isLoading, refetch } = useServices();
   const { templates: packages, isLoading: packagesLoading, refetch: refetchPackages } = usePackageTemplates();

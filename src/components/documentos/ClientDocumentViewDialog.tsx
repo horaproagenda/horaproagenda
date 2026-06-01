@@ -259,15 +259,17 @@ ${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n..
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
-      const success = await sendMessage(phone, message);
-      
-      if (success) {
+      const opened = openWhatsappWithMessage(phone, message);
+      if (opened) {
         setWhatsappSent(true);
+        toast.success('WhatsApp aberto com a mensagem pronta para envio');
         setTimeout(() => setWhatsappSent(false), 3000);
+      } else {
+        toast.error('Não foi possível abrir o WhatsApp. Verifique o bloqueador de pop-ups.');
       }
     } catch (error: any) {
-      console.error('Error sending WhatsApp:', error);
-      toast.error('Erro ao enviar por WhatsApp');
+      console.error('Error opening WhatsApp:', error);
+      toast.error('Erro ao abrir WhatsApp');
     } finally {
       setIsSendingWhatsapp(false);
     }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { ClientDocumentViewDialog } from './ClientDocumentViewDialog';
 
@@ -10,7 +10,6 @@ describe('ClientDocumentViewDialog WhatsApp send', () => {
   });
 
   it('opens document sending through wa.me first and keeps the expected message for WhatsApp Web fallback', async () => {
-    vi.useFakeTimers();
     const replace = vi.fn();
     vi.spyOn(window, 'open').mockReturnValue({
       closed: false,
@@ -46,9 +45,10 @@ describe('ClientDocumentViewDialog WhatsApp send', () => {
     expect(waMessage).toContain('Autorizo o procedimento estético facial.');
     expect(waMessage).toContain('Documento gerado em 01/06/2026 às 10:00');
 
-    act(() => vi.advanceTimersByTime(900));
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith(expect.stringContaining('https://web.whatsapp.com/send?phone=5511987654321&text=')));
+    await waitFor(
+      () => expect(replace).toHaveBeenCalledWith(expect.stringContaining('https://web.whatsapp.com/send?phone=5511987654321&text=')),
+      { timeout: 1500 },
+    );
     const webUrl = new URL(replace.mock.calls[1][0]);
     expect(webUrl.searchParams.get('text')).toBe(waMessage);
   });

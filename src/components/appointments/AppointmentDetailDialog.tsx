@@ -738,11 +738,14 @@ export function AppointmentDetailDialog({
       expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
-        // Check if we need to propagate dates to following appointments
+        const isPackageApt = !!appointment.package_appointment;
+        const isRecurringApt = !!appointment.recurring_group_id;
+        const dateChanged =
+          new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
+          new Date(appointment.end_time).getTime() !== newEndTime.getTime();
+
+        // If user pre-checked the inline option, propagate immediately
         if (propagateDates) {
-          const isPackageApt = !!appointment.package_appointment;
-          const isRecurringApt = !!appointment.recurring_group_id;
-          
           if (isRecurringApt) {
             propagateSeriesDates.mutate({
               appointment_id: appointment.id,
@@ -760,13 +763,44 @@ export function AppointmentDetailDialog({
               package_id: appointment.package_appointment.package_id,
             });
           }
+        } else if (dateChanged && (isPackageApt || isRecurringApt)) {
+          // Ask the user whether to also shift following steps
+          setPendingPropagation({
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            type: isRecurringApt ? 'recurring' : 'package',
+            recurring_group_id: appointment.recurring_group_id || undefined,
+            package_id: appointment.package_appointment?.package_id,
+          });
         }
-        
+
         setIsEditing(false);
         setPropagateDates(false);
         void releaseLock();
       },
     });
+  };
+
+  const handleConfirmPropagation = () => {
+    if (!pendingPropagation) return;
+    if (pendingPropagation.type === 'recurring' && pendingPropagation.recurring_group_id) {
+      propagateSeriesDates.mutate({
+        appointment_id: appointment.id,
+        new_start_time: pendingPropagation.new_start_time,
+        new_end_time: pendingPropagation.new_end_time,
+        propagate_type: 'recurring',
+        recurring_group_id: pendingPropagation.recurring_group_id,
+      });
+    } else if (pendingPropagation.type === 'package' && pendingPropagation.package_id) {
+      propagateSeriesDates.mutate({
+        appointment_id: appointment.id,
+        new_start_time: pendingPropagation.new_start_time,
+        new_end_time: pendingPropagation.new_end_time,
+        propagate_type: 'package',
+        package_id: pendingPropagation.package_id,
+      });
+    }
+    setPendingPropagation(null);
   };
 
   const handleCancelEdit = () => {

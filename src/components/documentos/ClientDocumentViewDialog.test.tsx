@@ -15,6 +15,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 describe('ClientDocumentViewDialog WhatsApp send', () => {
   afterEach(() => {
     vi.useRealTimers();
+    invokeMock.mockReset();
     vi.restoreAllMocks();
     sessionStorage.clear();
   });

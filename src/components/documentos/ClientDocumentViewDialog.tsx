@@ -76,8 +76,6 @@ export function ClientDocumentViewDialog({
   const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [whatsappSent, setWhatsappSent] = useState(false);
-  
-  const { sendMessage, isLoading: whatsappLoading } = useWhatsapp();
 
   useEffect(() => {
     let cancelled = false;

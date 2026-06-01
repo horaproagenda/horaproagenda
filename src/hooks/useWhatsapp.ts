@@ -7,6 +7,8 @@ interface WhatsAppConnectionStatus {
   connected: boolean;
   state?: string;
   instance?: string;
+  message?: string;
+  provider?: string;
   error?: string;
 }
 

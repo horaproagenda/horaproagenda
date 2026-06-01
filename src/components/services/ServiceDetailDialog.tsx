@@ -289,18 +289,24 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
     }
     setIsSaving(true);
     try {
+      const isKitEdit = components.length > 0;
+      const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
+      const kitTotalDuration = components.reduce(
+        (sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0),
+        0,
+      );
       const { error } = await supabase
         .from('services')
         .update({
           name: data.name,
           description: data.description || null,
-          duration: data.duration,
-          price: data.price,
+          duration: isKitEdit ? Math.max(5, kitTotalDuration) : data.duration,
+          price: isKitEdit ? kitTotalPrice : data.price,
           category: data.category,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
-          return_days: data.return_days || null,
+          return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
           component_service_ids: components.map(c => c.service_id),
           service_components: components as any,

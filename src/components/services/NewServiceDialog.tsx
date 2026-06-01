@@ -122,6 +122,10 @@ export function NewServiceDialog({ onServiceCreated, children }: NewServiceDialo
     },
   });
 
+  const isKit = components.length > 0;
+  const kitTotalDuration = components.reduce((sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0), 0);
+  const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
+
   const onSubmit = async (data: ServiceFormData) => {
     const compError = validateComponents(components);
     if (compError) {

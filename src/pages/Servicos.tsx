@@ -582,10 +582,14 @@ const Servicos: React.FC = () => {
                       <li><span className="font-semibold text-foreground">2.</span> Informe a duração, o valor e (opcional) o retorno em dias.</li>
                       <li><span className="font-semibold text-foreground">3.</span> Vincule o profissional, a sala e os equipamentos.</li>
                     </ol>
-                    <NewServiceDialog onServiceCreated={refetch}>
+                    <NewServiceDialog
+                      key={`empty-${serviceTypeFilter === 'kit' ? 'kit' : 'service'}`}
+                      lockType={serviceTypeFilter === 'kit' ? 'kit' : 'service'}
+                      onServiceCreated={refetch}
+                    >
                       <Button size="sm" className="btn-vibrant mt-3">
                         <Plus className="h-3.5 w-3.5 mr-1" />
-                        Cadastrar primeiro serviço
+                        {serviceTypeFilter === 'kit' ? 'Cadastrar primeiro kit' : 'Cadastrar primeiro serviço'}
                       </Button>
                     </NewServiceDialog>
                   </>

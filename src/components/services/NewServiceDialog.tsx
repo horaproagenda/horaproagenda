@@ -141,6 +141,10 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
   const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
 
   const onSubmit = async (data: ServiceFormData) => {
+    if (lockType === 'kit' && components.length === 0) {
+      toast.error('Adicione pelo menos uma etapa ao kit.');
+      return;
+    }
     const compError = validateComponents(components);
     if (compError) {
       toast.error(compError);

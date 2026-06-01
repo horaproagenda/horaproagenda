@@ -55,7 +55,6 @@ describe('openWhatsappWithMessage', () => {
     expect(window.open).toHaveBeenCalledWith(
       'https://web.whatsapp.com/send?phone=5511987654321&text=oi',
       '_blank',
-      'noopener,noreferrer',
     );
     expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).toContain('web.whatsapp.com/send');
     expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).not.toContain('api.whatsapp.com');
@@ -71,7 +70,6 @@ describe('openWhatsappWithMessage', () => {
     expect(window.open).toHaveBeenLastCalledWith(
       'whatsapp://send?phone=5511987654321&text=oi',
       '_blank',
-      'noopener,noreferrer',
     );
   });
 });

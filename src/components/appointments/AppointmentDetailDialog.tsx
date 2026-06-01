@@ -2157,7 +2157,29 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Propagate dates confirmation (package / recurring step rescheduled) */}
+      <AlertDialog open={!!pendingPropagation} onOpenChange={(o) => { if (!o) setPendingPropagation(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar próximas etapas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você alterou a data desta etapa do {pendingPropagation?.type === 'package' ? 'kit/pacote' : 'recorrente'}.
+              Deseja reagendar automaticamente as etapas seguintes mantendo o mesmo intervalo entre elas,
+              respeitando os dias e horários de funcionamento?
+              <br /><br />
+              <strong>Sim</strong>: as próximas datas serão recalculadas.<br />
+              <strong>Não</strong>: as próximas datas permanecem como estão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingPropagation(null)}>Não alterar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPropagation}>Sim, ajustar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Reverse Payment Confirmation Dialog */}
+
       <AlertDialog open={confirmReverseOpen} onOpenChange={setConfirmReverseOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

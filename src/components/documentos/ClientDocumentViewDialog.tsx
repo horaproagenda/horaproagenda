@@ -32,14 +32,14 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 
 interface ClientDocumentViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   document: any;
-  client?: { name: string; phone: string; email?: string };
+  client?: { id?: string; name: string; phone: string; email?: string };
   onDelete?: (id: string) => void;
 }
 
@@ -76,6 +76,7 @@ export function ClientDocumentViewDialog({
   const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [whatsappSent, setWhatsappSent] = useState(false);
+  const { sendMessage: sendWhatsappMessage } = useWhatsapp();
 
   useEffect(() => {
     let cancelled = false;
@@ -259,19 +260,14 @@ ${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n..
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
-      const result = openWhatsappWithMessage(phone, message);
-      if (result.ok) {
+      const result = await sendWhatsappMessage(phone, message, { client_id: client?.id });
+      if (result) {
         setWhatsappSent(true);
-        toast.success(result.route === 'whatsapp://send'
-          ? 'WhatsApp aberto no aplicativo com a mensagem pronta para envio'
-          : 'WhatsApp Web aberto com a mensagem pronta para envio');
         setTimeout(() => setWhatsappSent(false), 3000);
-      } else {
-        toast.error('Não foi possível abrir o WhatsApp. Verifique o bloqueador de pop-ups.');
       }
     } catch (error: any) {
-      console.error('Error opening WhatsApp:', error);
-      toast.error('Erro ao abrir WhatsApp');
+      console.error('Error sending WhatsApp:', error);
+      toast.error('Erro ao enviar WhatsApp');
     } finally {
       setIsSendingWhatsapp(false);
     }
@@ -471,7 +467,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                           ) : (
                             <Send className="h-4 w-4 mr-1.5" />
                           )}
-                          Abrir WhatsApp
+                          Enviar documento
                         </Button>
                       </div>
                     </PopoverContent>

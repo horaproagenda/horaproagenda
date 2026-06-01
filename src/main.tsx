@@ -84,6 +84,8 @@ if ('serviceWorker' in navigator) {
         console.error("Erro ao registrar Service Worker:", error);
       },
     });
+  }).catch((error) => {
+    console.warn('Registro do Service Worker indisponível nesta sessão:', error);
   });
 }
 

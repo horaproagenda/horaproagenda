@@ -7,6 +7,8 @@ interface WhatsAppConnectionStatus {
   connected: boolean;
   state?: string;
   instance?: string;
+  message?: string;
+  provider?: string;
   error?: string;
 }
 
@@ -18,6 +20,12 @@ interface QRCodeResponse {
   connected?: boolean;
   message?: string;
   error?: string;
+}
+
+interface SendMessageOptions {
+  client_id?: string;
+  professional_id?: string;
+  test?: boolean;
 }
 
 export function useWhatsapp() {
@@ -92,11 +100,11 @@ export function useWhatsapp() {
     }
   }, [checkConnection]);
 
-  const sendMessage = useCallback(async (phone: string, message: string) => {
+  const sendMessage = useCallback(async (phone: string, message: string, options: SendMessageOptions = {}) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('whatsapp-send', {
-        body: { phone, message }
+        body: { phone, message, ...options }
       });
       
       if (error) throw error;
@@ -105,8 +113,8 @@ export function useWhatsapp() {
         throw new Error(data.error || 'Failed to send message');
       }
       
-      toast.success('Mensagem enviada com sucesso!');
-      return true;
+      toast.success(data?.instance ? `Mensagem enviada pelo WhatsApp conectado (${data.instance})!` : 'Mensagem enviada com sucesso!');
+      return data || true;
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
       toast.error('Erro ao enviar mensagem: ' + error.message);

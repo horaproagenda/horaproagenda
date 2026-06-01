@@ -588,6 +588,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
         onOpenChange={setViewDialogOpen}
         document={selectedDocument}
         client={client ? { 
+          id: client.id,
           name: client.name, 
           phone: client.phone, 
           email: client.email || undefined 

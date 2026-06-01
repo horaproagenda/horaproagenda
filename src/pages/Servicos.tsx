@@ -574,16 +574,10 @@ const Servicos: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
-                  <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
-                    <Package className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium tracking-wide">Novo Pacote Comum</span>
-                  </Button>
-                </NewPackageDialog>
-                <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
-                  <Button size="sm" className="h-8 gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white btn-vibrant">
-                    <Repeat className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium tracking-wide">Novo Kit de Serviços</span>
+                <NewPackageDialog onPackageCreated={refetchPackages}>
+                  <Button size="sm" className="h-8 gap-1.5 btn-vibrant">
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
                   </Button>
                 </NewPackageDialog>
               </div>

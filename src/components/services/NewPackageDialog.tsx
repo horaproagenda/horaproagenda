@@ -425,24 +425,33 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
             })()}
 
             {/* Price */}
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
-                  <FormControl>
-                    <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
-                  </FormControl>
-                  {watchTotalSessions > 0 && watchPrice > 0 && (
-                    <p className="text-[10px] text-muted-foreground">
-                      {formatCurrency(pricePerSession)}/aplicação
-                    </p>
-                  )}
-                  <FormMessage className="text-[10px]" />
-                </FormItem>
-              )}
-            />
+            {packageType === 'standard' ? (
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
+                    <FormControl>
+                      <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
+                    </FormControl>
+                    {watchTotalSessions > 0 && watchPrice > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatCurrency(pricePerSession)}/aplicação
+                      </p>
+                    )}
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Valor total do kit (soma das etapas)</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(sequentialTotalPrice)}</span>
+                </div>
+              </div>
+            )}
 
             {/* Description */}
             <FormField

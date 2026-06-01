@@ -157,6 +157,14 @@ export function InteractiveDocumentFiller({ rawContent, state, onChange, showObs
     <div className="space-y-3">
       {plain.split('\n').map((line, index) => {
         const tokens = tokenizeDocumentLine(line, index);
+        // Empty / blank lines: render as plain spacer (no bordered card) to avoid
+        // "little empty brackets" between questions.
+        const isBlankLine =
+          tokens.length === 0 ||
+          (tokens.length === 1 && tokens[0].type === 'text' && !tokens[0].value.trim());
+        if (isBlankLine) {
+          return <div key={`line-${index}`} className="h-2" aria-hidden="true" />;
+        }
         const hasBlockField = tokens.some((t) => t.type === 'freeText');
         return (
           <div key={`line-${index}`} className="space-y-2 rounded-lg border border-border/60 bg-card p-4">

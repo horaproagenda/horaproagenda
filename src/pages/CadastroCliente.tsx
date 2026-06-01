@@ -25,7 +25,7 @@ import {
   emptyDocumentState,
   type InteractiveDocumentState,
 } from '@/components/clients/InteractiveDocumentFiller';
-import { generateClientDocumentPdf } from '@/lib/clientDocumentPdf';
+import { generateClientDocumentPdf, generateCombinedClientDocumentsPdf } from '@/lib/clientDocumentPdf';
 
 const REFERRAL_SOURCES = ['Instagram', 'Facebook', 'Google', 'Indicação de amigo', 'Indicação de cliente', 'Passou na frente', 'WhatsApp', 'TikTok', 'Outros'];
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -306,7 +306,17 @@ export default function CadastroCliente() {
   };
 
   const downloadAllPdfs = () => {
-    generatedDocs.forEach((d, i) => setTimeout(() => downloadDocPdf(d), i * 250));
+    generateCombinedClientDocumentsPdf({
+      documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
+      header: {
+        name: signedBy || form.name,
+        cpf: form.cpf || null,
+        birthdate: form.birthdate
+          ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+          : null,
+        professionalName: linkData?.professional?.name || null,
+      },
+    });
   };
 
   // ---------- RENDER ----------

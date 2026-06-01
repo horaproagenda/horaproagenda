@@ -465,18 +465,25 @@ const Servicos: React.FC = () => {
                 onDelete={refetch}
               />
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+              <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
                 <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
-                  {searchTerm || serviceFilters.category || serviceFilters.professional ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
+                <p className="mt-2 text-sm font-medium">
+                  {searchTerm || serviceFilters.category || serviceFilters.professional ? 'Nenhum serviço encontrado' : 'Cadastre seu primeiro serviço'}
                 </p>
-                {!searchTerm && !serviceFilters.category && (
-                  <NewServiceDialog onServiceCreated={refetch}>
-                    <Button size="sm" variant="secondary" className="mt-3">
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Cadastrar Serviço
-                    </Button>
-                  </NewServiceDialog>
+                {!searchTerm && !serviceFilters.category && !serviceFilters.professional && (
+                  <>
+                    <ol className="mx-auto mt-3 max-w-sm space-y-1 text-left text-[11px] text-muted-foreground">
+                      <li><span className="font-semibold text-foreground">1.</span> Dê um nome e escolha uma categoria.</li>
+                      <li><span className="font-semibold text-foreground">2.</span> Informe a duração, o valor e (opcional) o retorno em dias.</li>
+                      <li><span className="font-semibold text-foreground">3.</span> Vincule o profissional, a sala e os equipamentos.</li>
+                    </ol>
+                    <NewServiceDialog onServiceCreated={refetch}>
+                      <Button size="sm" className="btn-vibrant mt-3">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Cadastrar primeiro serviço
+                      </Button>
+                    </NewServiceDialog>
+                  </>
                 )}
               </div>
             )}

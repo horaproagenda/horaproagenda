@@ -119,7 +119,7 @@ export function openWhatsappWithMessage(
       primaryRoute,
       popup ? 'opened' : 'blocked',
       primaryUrl,
-      popup ? 'WhatsApp aberto sem redirecionar por api.whatsapp.com' : 'Popup bloqueado pelo navegador',
+      popup ? 'WhatsApp aberto pela rota direta configurada' : 'Popup bloqueado pelo navegador',
       options.onRoute,
     );
 

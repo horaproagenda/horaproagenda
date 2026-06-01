@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -108,6 +108,17 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
     room_id: watchRoomId && watchRoomId !== '_none' ? watchRoomId : null,
   };
   const compatibleServices = activeServices.filter(service => isServiceCompatibleWithPackage(service, packageScope));
+
+  const sequentialTotalPrice = steps.reduce((total, step) => {
+    const service = activeServices.find(s => s.id === step.service_id) as any;
+    return total + (Number(service?.price) || 0);
+  }, 0);
+
+  useEffect(() => {
+    if (packageType === 'sequential') {
+      form.setValue('price', sequentialTotalPrice, { shouldValidate: false });
+    }
+  }, [packageType, sequentialTotalPrice, form]);
 
   const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
@@ -255,52 +266,58 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
             </div>
 
             {/* Sessions, Interval, Duration */}
-            <div className="grid grid-cols-3 gap-3">
-              <FormField
-                control={form.control}
-                name="total_sessions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">{packageType === 'sequential' ? 'Etapas' : 'Aplicações'} *</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} max={100} className="h-8 text-sm" disabled={packageType === 'sequential'} value={packageType === 'sequential' ? steps.length : field.value} onChange={field.onChange} />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="interval_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Duração *</FormLabel>
-                    <FormControl>
-                      <DurationSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        minDuration={15}
-                        maxDuration={480}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {packageType === 'standard' ? (
+              <div className="grid grid-cols-3 gap-3">
+                <FormField
+                  control={form.control}
+                  name="total_sessions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Aplicações *</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} max={100} className="h-8 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="interval_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Duração *</FormLabel>
+                      <FormControl>
+                        <DurationSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          minDuration={15}
+                          maxDuration={480}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                No kit sequencial, <span className="font-medium text-foreground">duração, intervalo de retorno e valor</span> de cada etapa vêm do próprio serviço cadastrado.
+              </div>
+            )}
 
             {packageType === 'sequential' && (
               <div className="space-y-2 rounded-lg border p-3">
@@ -408,24 +425,33 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
             })()}
 
             {/* Price */}
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
-                  <FormControl>
-                    <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
-                  </FormControl>
-                  {watchTotalSessions > 0 && watchPrice > 0 && (
-                    <p className="text-[10px] text-muted-foreground">
-                      {formatCurrency(pricePerSession)}/aplicação
-                    </p>
-                  )}
-                  <FormMessage className="text-[10px]" />
-                </FormItem>
-              )}
-            />
+            {packageType === 'standard' ? (
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Valor Total (R$) *</FormLabel>
+                    <FormControl>
+                      <CurrencyInput value={field.value} onValueChange={field.onChange} className="h-8 text-sm" />
+                    </FormControl>
+                    {watchTotalSessions > 0 && watchPrice > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatCurrency(pricePerSession)}/aplicação
+                      </p>
+                    )}
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Valor total do kit (soma das etapas)</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(sequentialTotalPrice)}</span>
+                </div>
+              </div>
+            )}
 
             {/* Description */}
             <FormField

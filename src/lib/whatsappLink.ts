@@ -52,7 +52,7 @@ export interface WhatsappOpenOptions {
 }
 
 const WHATSAPP_ROUTE_STORAGE_KEY = 'agendalume:last-whatsapp-route';
-const DEFAULT_WHATSAPP_FALLBACK_DELAY_MS = 900;
+const DEFAULT_WHATSAPP_FALLBACK_DELAY_MS = 0;
 
 function recordWhatsappRoute(
   route: WhatsappOpenRoute,
@@ -138,7 +138,7 @@ export function openWhatsappWithMessage(
     navigatePopup(popup, waUrl);
     recordWhatsappRoute('wa.me', 'attempted', waUrl, 'Primeira tentativa via wa.me', options.onRoute);
 
-    window.setTimeout(() => {
+    const openWebFallback = () => {
       try {
         if (!popup.closed) {
           navigatePopup(popup, webUrl);
@@ -160,14 +160,20 @@ export function openWhatsappWithMessage(
           options.onRoute,
         );
       }
-    }, Math.max(0, fallbackDelayMs));
+    };
+
+    if (fallbackDelayMs <= 0) {
+      openWebFallback();
+    } else {
+      window.setTimeout(openWebFallback, fallbackDelayMs);
+    }
 
     return {
       ok: true,
-      route: 'wa.me',
-      url: waUrl,
+      route: fallbackDelayMs <= 0 ? 'web.whatsapp.com/send' : 'wa.me',
+      url: fallbackDelayMs <= 0 ? webUrl : waUrl,
       fallbackUrl: webUrl,
-      fallbackScheduled: true,
+      fallbackScheduled: fallbackDelayMs > 0,
     };
   } catch {
     const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');

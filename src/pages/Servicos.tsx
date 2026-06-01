@@ -496,7 +496,7 @@ const Servicos: React.FC = () => {
               <NewServiceDialog onServiceCreated={refetch}>
                 <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium tracking-wide">Novo Serviço</span>
+                  <span className="text-xs font-medium tracking-wide">{serviceTypeFilter === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</span>
                 </Button>
               </NewServiceDialog>
             </div>

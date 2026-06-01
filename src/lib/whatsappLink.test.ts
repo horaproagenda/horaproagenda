@@ -35,19 +35,17 @@ describe('buildWaMeUrl', () => {
 
 describe('openWhatsappWithMessage', () => {
   afterEach(() => vi.restoreAllMocks());
-  it('opens a new window with the wa.me URL (device/browser WhatsApp session)', () => {
-    const fakeWindow = {} as Window;
-    const spy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow);
+  it('opens a new top-level tab via an anchor click (escapes preview iframe)', () => {
+    const clickSpy = vi.fn();
+    const origCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = origCreate(tag) as HTMLAnchorElement;
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
     const ok = openWhatsappWithMessage('11987654321', 'oi');
     expect(ok).toBe(true);
-    expect(spy).toHaveBeenCalledTimes(1);
-    const [url, target] = spy.mock.calls[0];
-    expect(String(url)).toContain('https://wa.me/5511987654321?text=');
-    expect(target).toBe('_blank');
-  });
-  it('returns false when the browser blocks the popup', () => {
-    vi.spyOn(window, 'open').mockReturnValue(null);
-    expect(openWhatsappWithMessage('11987654321', 'oi')).toBe(false);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 });
 

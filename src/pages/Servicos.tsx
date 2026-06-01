@@ -515,7 +515,7 @@ const Servicos: React.FC = () => {
                   onClick={() => setPackageTypeFilter(packageTypeFilter === 'sequential' ? 'all' : 'sequential')}
                 >
                   <Repeat className="h-3.5 w-3.5" />
-                  Kit de Serviços
+                  Pacote sequencial
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                     {sequentialPackagesCount}
                   </Badge>
@@ -574,16 +574,10 @@ const Servicos: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
-                  <Button size="sm" className="h-8 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white btn-vibrant">
-                    <Package className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium tracking-wide">Novo Pacote Comum</span>
-                  </Button>
-                </NewPackageDialog>
-                <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
-                  <Button size="sm" className="h-8 gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white btn-vibrant">
-                    <Repeat className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium tracking-wide">Novo Kit de Serviços</span>
+                <NewPackageDialog onPackageCreated={refetchPackages}>
+                  <Button size="sm" className="h-8 gap-1.5 btn-vibrant">
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
                   </Button>
                 </NewPackageDialog>
               </div>
@@ -625,7 +619,7 @@ const Servicos: React.FC = () => {
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Repeat className="h-3.5 w-3.5 text-fuchsia-600" />
-                      <h3 className="text-sm font-semibold">Kits de serviços (sequenciais)</h3>
+                      <h3 className="text-sm font-semibold">Pacotes sequenciais</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{sequentialPackages.length}</Badge>
                     </div>
                     {renderPackageCards(sequentialPackages)}
@@ -633,45 +627,18 @@ const Servicos: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+              <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm font-medium">
-                  {searchTerm ? 'Nenhum pacote encontrado' : (packageTypeFilter === 'sequential' ? 'Cadastre seu primeiro Kit de Serviços' : packageTypeFilter === 'standard' ? 'Cadastre seu primeiro Pacote Comum' : 'Cadastre seu primeiro pacote ou kit')}
+                <p className="mt-2 text-sm text-muted-foreground tracking-wide">
+                  {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
                 </p>
                 {!searchTerm && (
-                  <>
-                    <ol className="mx-auto mt-3 max-w-md space-y-1 text-left text-[11px] text-muted-foreground">
-                      {packageTypeFilter !== 'sequential' && (
-                        <>
-                          <li><span className="font-semibold text-foreground">Pacote Comum:</span> mesmo serviço repetido N vezes (ex.: 10 massagens).</li>
-                        </>
-                      )}
-                      {packageTypeFilter !== 'standard' && (
-                        <>
-                          <li><span className="font-semibold text-foreground">Kit Sequencial:</span> serviços diferentes em etapas, com intervalo entre cada uma.</li>
-                        </>
-                      )}
-                      <li><span className="font-semibold text-foreground">Dica:</span> defina nome, serviço(s), quantidade e valor — você poderá editar depois.</li>
-                    </ol>
-                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                      {packageTypeFilter !== 'sequential' && (
-                        <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
-                          <Button size="sm" className="btn-vibrant">
-                            <Package className="h-3.5 w-3.5 mr-1" />
-                            Novo Pacote Comum
-                          </Button>
-                        </NewPackageDialog>
-                      )}
-                      {packageTypeFilter !== 'standard' && (
-                        <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
-                          <Button size="sm" variant="secondary">
-                            <Repeat className="h-3.5 w-3.5 mr-1" />
-                            Novo Kit de Serviços
-                          </Button>
-                        </NewPackageDialog>
-                      )}
-                    </div>
-                  </>
+                  <NewPackageDialog onPackageCreated={refetchPackages}>
+                    <Button size="sm" variant="secondary" className="mt-3">
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Novo Pacote
+                    </Button>
+                  </NewPackageDialog>
                 )}
               </div>
             )}

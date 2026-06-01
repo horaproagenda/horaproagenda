@@ -109,6 +109,17 @@ export function NewPackageDialog({ onPackageCreated, children }: NewPackageDialo
   };
   const compatibleServices = activeServices.filter(service => isServiceCompatibleWithPackage(service, packageScope));
 
+  const sequentialTotalPrice = steps.reduce((total, step) => {
+    const service = activeServices.find(s => s.id === step.service_id) as any;
+    return total + (Number(service?.price) || 0);
+  }, 0);
+
+  useEffect(() => {
+    if (packageType === 'sequential') {
+      form.setValue('price', sequentialTotalPrice, { shouldValidate: false });
+    }
+  }, [packageType, sequentialTotalPrice, form]);
+
   const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const updateStep = (index: number, updates: Partial<SequentialStep>) => {

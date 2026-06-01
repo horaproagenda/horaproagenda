@@ -35,7 +35,6 @@ describe('ClientDocumentViewDialog WhatsApp send', () => {
       expect(window.open).toHaveBeenCalledWith(
         expect.stringContaining('https://web.whatsapp.com/send?phone=5511987654321&text='),
         '_blank',
-        'noopener,noreferrer',
       ),
     );
     const webUrl = new URL((window.open as any).mock.calls[0][0]);

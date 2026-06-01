@@ -262,8 +262,8 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
       const result = openWhatsappWithMessage(phone, message);
       if (result.ok) {
         setWhatsappSent(true);
-        toast.success(result.fallbackScheduled
-          ? 'WhatsApp aberto; se o wa.me for bloqueado, o WhatsApp Web será usado automaticamente.'
+        toast.success(result.route === 'whatsapp://send'
+          ? 'WhatsApp aberto no aplicativo com a mensagem pronta para envio'
           : 'WhatsApp Web aberto com a mensagem pronta para envio');
         setTimeout(() => setWhatsappSent(false), 3000);
       } else {

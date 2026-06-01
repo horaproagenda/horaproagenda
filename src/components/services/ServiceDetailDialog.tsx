@@ -566,8 +566,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                         <div key={`view-${c.service_id}-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
                           <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
                           <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
-                          <span className="text-muted-foreground">
-                            {idx === 0 ? 'Início' : `+${c.interval_days}d`}
+                          <span className="text-muted-foreground text-[11px]">
+                            {idx === 0 ? 'Início (dia 0)' : `+${c.interval_days}d após etapa ${idx}`}
                           </span>
                           <span className="font-semibold">{formatCurrency(Number(c.price || 0))}</span>
                         </div>

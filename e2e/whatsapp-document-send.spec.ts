@@ -25,7 +25,7 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
         '---',
         '',
         'Documento gerado em 01/06/2026 às 10:00'
-      ].join('\n');
+      ].join('\\n');
 
       document.querySelector('button').addEventListener('click', () => {
         window.__whatsappOpenResult = openWhatsappWithMessage('(11) 98765-4321', documentMessage);

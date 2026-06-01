@@ -6,7 +6,7 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
   await context.route('https://wa.me/**', route => route.fulfill({ status: 200, body: 'wa.me intercepted' }));
   await context.route('https://web.whatsapp.com/**', route => route.fulfill({ status: 200, body: 'web.whatsapp intercepted' }));
 
-  await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto('about:blank');
   await page.setContent(`
     <button type="button" aria-label="Enviar documento">Enviar documento</button>
   `);
@@ -14,7 +14,7 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
   await page.addScriptTag({
     type: 'module',
     content: `
-      import { openWhatsappWithMessage } from '/src/lib/whatsappLink.ts';
+      import { openWhatsappWithMessage } from '${appUrl}/src/lib/whatsappLink.ts';
 
       const documentMessage = [
         '📄 *Termo de Consentimento*',

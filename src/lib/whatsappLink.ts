@@ -19,7 +19,7 @@ export function buildWaMeUrl(phone: string, message: string): string {
     : `https://wa.me/?text=${text}`;
 }
 
-/** Build a web.whatsapp.com URL (works when wa.me/api.whatsapp.com is blocked in an iframe). */
+/** Build a web.whatsapp.com URL for browsers already logged into WhatsApp Web. */
 export function buildWebWhatsappUrl(phone: string, message: string): string {
   const digits = normalizePhoneForWaMe(phone);
   const text = encodeURIComponent(message || '');
@@ -28,28 +28,164 @@ export function buildWebWhatsappUrl(phone: string, message: string): string {
     : `https://web.whatsapp.com/send?text=${text}`;
 }
 
-/**
- * Opens WhatsApp in a new top-level tab. Uses an anchor click (rather than
- * window.open) so it escapes preview iframes where api.whatsapp.com refuses
- * to load (ERR_BLOCKED_BY_RESPONSE). Falls back to web.whatsapp.com when
- * the popup is blocked.
- */
-export function openWhatsappWithMessage(phone: string, message: string): boolean {
-  const url = buildWaMeUrl(phone, message);
+export type WhatsappOpenRoute = 'wa.me' | 'web.whatsapp.com/send';
+
+export interface WhatsappRouteLog {
+  route: WhatsappOpenRoute;
+  status: 'attempted' | 'opened' | 'blocked' | 'failed';
+  url: string;
+  timestamp: string;
+  reason?: string;
+}
+
+export interface WhatsappOpenResult {
+  ok: boolean;
+  route: WhatsappOpenRoute | null;
+  url: string | null;
+  fallbackUrl: string;
+  fallbackScheduled: boolean;
+}
+
+export interface WhatsappOpenOptions {
+  fallbackDelayMs?: number;
+  onRoute?: (log: WhatsappRouteLog) => void;
+}
+
+const WHATSAPP_ROUTE_STORAGE_KEY = 'agendalume:last-whatsapp-route';
+const DEFAULT_WHATSAPP_FALLBACK_DELAY_MS = 900;
+
+function recordWhatsappRoute(
+  route: WhatsappOpenRoute,
+  status: WhatsappRouteLog['status'],
+  url: string,
+  reason?: string,
+  onRoute?: (log: WhatsappRouteLog) => void,
+) {
+  const log: WhatsappRouteLog = {
+    route,
+    status,
+    url,
+    timestamp: new Date().toISOString(),
+    ...(reason ? { reason } : {}),
+  };
+
   try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    // Make sure it's in the DOM for some browsers (Safari) to honor the click.
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    return true;
+    sessionStorage.setItem(WHATSAPP_ROUTE_STORAGE_KEY, JSON.stringify(log));
   } catch {
-    const win = window.open(buildWebWhatsappUrl(phone, message), '_blank', 'noopener,noreferrer');
-    return !!win;
+    // Storage can be unavailable in private browsing or restricted iframes.
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent('whatsapp-route', { detail: log }));
+  } catch {
+    // CustomEvent is best-effort only; the console log below is the durable fallback.
+  }
+
+  console.info('[WhatsApp] Rota de abertura registrada', log);
+  onRoute?.(log);
+}
+
+function navigatePopup(popup: Window, url: string) {
+  if (typeof popup.location?.replace === 'function') {
+    popup.location.replace(url);
+    return;
+  }
+  popup.location.href = url;
+}
+
+/**
+ * Opens WhatsApp in two stages: first wa.me, then web.whatsapp.com/send in the
+ * same tab. The second step prevents the user from getting stuck when wa.me is
+ * redirected to a browser-blocked intermediate page inside previews.
+ */
+export function openWhatsappWithMessage(
+  phone: string,
+  message: string,
+  options: WhatsappOpenOptions = {},
+): WhatsappOpenResult {
+  const waUrl = buildWaMeUrl(phone, message);
+  const webUrl = buildWebWhatsappUrl(phone, message);
+  const fallbackDelayMs = options.fallbackDelayMs ?? DEFAULT_WHATSAPP_FALLBACK_DELAY_MS;
+
+  try {
+    const popup = window.open('about:blank', '_blank');
+
+    if (!popup) {
+      recordWhatsappRoute('wa.me', 'blocked', waUrl, 'Popup bloqueado antes de abrir wa.me', options.onRoute);
+      const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
+      recordWhatsappRoute(
+        'web.whatsapp.com/send',
+        fallback ? 'opened' : 'blocked',
+        webUrl,
+        fallback ? 'Fallback aberto após bloqueio do wa.me' : 'Popup bloqueado também no fallback web',
+        options.onRoute,
+      );
+      return {
+        ok: !!fallback,
+        route: fallback ? 'web.whatsapp.com/send' : null,
+        url: fallback ? webUrl : null,
+        fallbackUrl: webUrl,
+        fallbackScheduled: false,
+      };
+    }
+
+    try {
+      popup.opener = null;
+    } catch {
+      // Some browsers lock this property; opening still continues safely.
+    }
+
+    navigatePopup(popup, waUrl);
+    recordWhatsappRoute('wa.me', 'attempted', waUrl, 'Primeira tentativa via wa.me', options.onRoute);
+
+    window.setTimeout(() => {
+      try {
+        if (!popup.closed) {
+          navigatePopup(popup, webUrl);
+          recordWhatsappRoute(
+            'web.whatsapp.com/send',
+            'opened',
+            webUrl,
+            'Fallback automático no mesmo popup após wa.me',
+            options.onRoute,
+          );
+        }
+      } catch {
+        const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
+        recordWhatsappRoute(
+          'web.whatsapp.com/send',
+          fallback ? 'opened' : 'failed',
+          webUrl,
+          fallback ? 'Fallback aberto em nova aba' : 'Falha ao navegar o popup para o fallback web',
+          options.onRoute,
+        );
+      }
+    }, Math.max(0, fallbackDelayMs));
+
+    return {
+      ok: true,
+      route: 'wa.me',
+      url: waUrl,
+      fallbackUrl: webUrl,
+      fallbackScheduled: true,
+    };
+  } catch {
+    const fallback = window.open(webUrl, '_blank', 'noopener,noreferrer');
+    recordWhatsappRoute(
+      'web.whatsapp.com/send',
+      fallback ? 'opened' : 'failed',
+      webUrl,
+      'Exceção ao preparar wa.me; usando fallback web',
+      options.onRoute,
+    );
+
+    return {
+      ok: !!fallback,
+      route: fallback ? 'web.whatsapp.com/send' : null,
+      url: fallback ? webUrl : null,
+      fallbackUrl: webUrl,
+      fallbackScheduled: false,
+    };
   }
 }
 

@@ -259,10 +259,12 @@ ${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n..
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
-      const opened = openWhatsappWithMessage(phone, message);
-      if (opened) {
+      const result = openWhatsappWithMessage(phone, message);
+      if (result.ok) {
         setWhatsappSent(true);
-        toast.success('WhatsApp aberto com a mensagem pronta para envio');
+        toast.success(result.fallbackScheduled
+          ? 'WhatsApp aberto; se o wa.me for bloqueado, o WhatsApp Web será usado automaticamente.'
+          : 'WhatsApp Web aberto com a mensagem pronta para envio');
         setTimeout(() => setWhatsappSent(false), 3000);
       } else {
         toast.error('Não foi possível abrir o WhatsApp. Verifique o bloqueador de pop-ups.');
@@ -457,11 +459,12 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                             </p>
                           )}
                         </div>
-                        <Button 
+                          <Button 
                           size="sm" 
                           className="w-full bg-green-600 hover:bg-green-700"
                           onClick={handleSendWhatsApp}
                           disabled={isSendingWhatsapp}
+                           aria-label="Enviar documento pelo WhatsApp"
                         >
                           {isSendingWhatsapp ? (
                             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

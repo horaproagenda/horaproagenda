@@ -473,7 +473,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                       <div className="grid grid-cols-2 gap-1.5">
                         <div className="space-y-0.5">
                           <Label className="text-[10px] text-muted-foreground">
-                            {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
+                            {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
                           </Label>
                           <Input
                             type="number"

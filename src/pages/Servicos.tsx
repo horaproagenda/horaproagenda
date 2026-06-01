@@ -255,6 +255,17 @@ const Servicos: React.FC = () => {
     return result;
   }, [services, serviceFilters, searchTerm, appointments]);
 
+  const isKitServiceItem = (s: Service) => Array.isArray((s as any).component_service_ids) && (s as any).component_service_ids.length > 0;
+  const standardServicesCount = filteredServices.filter(s => !isKitServiceItem(s)).length;
+  const kitServicesCount = filteredServices.filter(isKitServiceItem).length;
+  const visibleServices = filteredServices.filter(s => {
+    if (serviceTypeFilter === 'kit') return isKitServiceItem(s);
+    if (serviceTypeFilter === 'service') return !isKitServiceItem(s);
+    return true;
+  });
+  const standardServices = visibleServices.filter(s => !isKitServiceItem(s));
+  const kitServices = visibleServices.filter(isKitServiceItem);
+
   const filteredPackages = useMemo(() => {
     let result = packages.filter(pkg => {
       if (packageFilters.category && pkg.category !== packageFilters.category) return false;

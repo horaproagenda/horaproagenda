@@ -9,7 +9,11 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
   await page.setContent(`
     <button type="button" aria-label="Enviar documento">Enviar documento</button>
-    <script type="module">
+  `);
+
+  await page.addScriptTag({
+    type: 'module',
+    content: `
       import { openWhatsappWithMessage } from '/src/lib/whatsappLink.ts';
 
       const documentMessage = [
@@ -28,8 +32,8 @@ test('enviar documento abre WhatsApp Web com mensagem esperada e registra a rota
       document.querySelector('button').addEventListener('click', () => {
         window.__whatsappOpenResult = openWhatsappWithMessage('(11) 98765-4321', documentMessage);
       });
-    </script>
-  `);
+    `,
+  });
 
   const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', { name: /enviar documento/i }).click();

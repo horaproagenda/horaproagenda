@@ -340,20 +340,36 @@ const Servicos: React.FC = () => {
 
   const exportKitServicesCSV = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);
+    const serviceById = new Map(services.map(s => [s.id, s] as const));
     exportToCSV({
       filename: 'kits-de-servicos',
-      headers: ['Nome', 'Categoria', 'Preço total', 'Duração total (min)', 'Nº de etapas', 'Status'],
-      rows: onlyKits.map(s => [
-        s.name,
-        s.category,
-        Number(s.price).toFixed(2),
-        s.duration,
-        ((s as any).component_service_ids || []).length,
-        s.is_active ? 'Ativo' : 'Inativo',
-      ]),
+      headers: ['Nome', 'Categoria', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Status'],
+      rows: onlyKits.map(s => {
+        const comps: { service_id: string; interval_days: number; price: number }[] =
+          Array.isArray((s as any).service_components)
+            ? ((s as any).service_components as any[])
+            : ((s as any).component_service_ids || []).map((id: string) => ({ service_id: id, interval_days: 0, price: 0 }));
+        const detail = comps.map((c, i) => {
+          const sv = serviceById.get(c.service_id);
+          const name = sv?.name || 'Serviço removido';
+          const dur = Number(sv?.duration) || 0;
+          const when = i === 0 ? 'dia 0' : `+${c.interval_days}d após etapa ${i}`;
+          return `${i + 1}. ${name} (${when}; ${dur}min; R$ ${Number(c.price || 0).toFixed(2)})`;
+        }).join(' | ');
+        return [
+          s.name,
+          s.category,
+          Number(s.price).toFixed(2),
+          s.duration,
+          comps.length,
+          detail,
+          s.is_active ? 'Ativo' : 'Inativo',
+        ];
+      }),
       successMessage: 'Kits de serviços exportados com sucesso!',
     });
   };
+
 
   const exportStandardPackagesCSV = () => {
     const onlyStandard = filteredPackages.filter(p => p.package_type !== 'sequential');

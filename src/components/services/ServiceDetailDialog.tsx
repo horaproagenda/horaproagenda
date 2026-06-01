@@ -567,7 +567,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                           <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
                           <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
                           <span className="text-muted-foreground text-[11px]">
-                            {idx === 0 ? 'Início (dia 0)' : `+${c.interval_days}d após etapa ${idx}`}
+                            {idx === 0 ? 'Início do kit (dia 0)' : `+${c.interval_days}d após a etapa ${idx}`}
                           </span>
                           <span className="font-semibold">{formatCurrency(Number(c.price || 0))}</span>
                         </div>
@@ -866,7 +866,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
-                                {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
+                                {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
                               </Label>
                               <Input
                                 type="number"

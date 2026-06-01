@@ -407,6 +407,14 @@ export function AppointmentDetailDialog({
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [propagateDates, setPropagateDates] = useState(false); // New: propagate dates to following appointments
+  // Post-save confirmation when date/time of a package/recurring step changes
+  const [pendingPropagation, setPendingPropagation] = useState<null | {
+    new_start_time: Date;
+    new_end_time: Date;
+    type: 'package' | 'recurring';
+    package_id?: string;
+    recurring_group_id?: string;
+  }>(null);
 
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {

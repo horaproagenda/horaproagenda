@@ -43,6 +43,8 @@ export function SystemHealthPanel() {
   const [report, setReport] = useState<HealthReport | null>(null);
   const [running, setRunning] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  const autoHeal = useAutoHealing();
+
 
   const run = async () => {
     setRunning(true);

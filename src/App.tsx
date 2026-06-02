@@ -85,6 +85,7 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useCrossDeviceSync();
   usePostUpdateDataHeal();
   useAutoHealing();
+  useAgendaIntegrityAutoCheck();
   return <>{children}</>;
 }
 

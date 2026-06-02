@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Parser as ExprParser } from 'expr-eval';
 import {
   Bold,
   Italic,

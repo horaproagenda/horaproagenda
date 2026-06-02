@@ -32,13 +32,21 @@ export function useCrossDeviceSync() {
       // Throttle padrão: 30s entre refetches globais. Eventos críticos
       // (boot, login, retorno online, link novo) usam `force: true` para
       // sincronizar imediatamente.
-      if (!opts?.force && now - lastInvalidate < 30_000) return;
+      if (!opts?.force && now - lastInvalidate < 30_000) {
+        logSyncEvent(reason, 'skipped', { reason: 'throttle', sinceMs: now - lastInvalidate });
+        return;
+      }
       lastInvalidate = now;
       console.log(`[CrossDeviceSync] Sincronizando dados (${reason})`);
-      void queryClient.invalidateQueries({
-        predicate: () => true,
-        refetchType: 'active',
-      });
+      try {
+        void queryClient.invalidateQueries({
+          predicate: () => true,
+          refetchType: 'active',
+        });
+        logSyncEvent(reason, 'ok', { forced: !!opts?.force });
+      } catch (err) {
+        logSyncEvent(reason, 'error', { error: String(err) });
+      }
     };
 
     // 0. Refetch imediato no mount — qualquer link/aba/dispositivo recém-aberto

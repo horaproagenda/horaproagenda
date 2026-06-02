@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, MinusCircle, RefreshCw, Wrench, Download, ShieldCheck } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, MinusCircle, RefreshCw, Wrench, Download, ShieldCheck, CalendarCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   runSystemHealthCheck,
   autoRepair,
@@ -100,6 +101,52 @@ export function SystemHealthPanel() {
       URL.revokeObjectURL(url);
     } catch (e) {
       toast.error('Erro ao exportar: ' + String(e));
+    }
+  };
+
+  const [agendaReport, setAgendaReport] = useState<Record<string, number> | null>(null);
+  const [agendaRunning, setAgendaRunning] = useState(false);
+
+  const checkAgendaIntegrity = async () => {
+    setAgendaRunning(true);
+    const id = toast.loading('Verificando integridade de agenda e pacotes...');
+    try {
+      const { data, error } = await supabase.rpc('get_agenda_package_integrity_report' as never);
+      if (error) throw error;
+      const r = (data || {}) as Record<string, number>;
+      setAgendaReport(r);
+      toast.dismiss(id);
+      const totalIssues = ['cancelledLinkedPackageSessions','cancelledAppointmentsStillLinked','orphanedPackageLinks','statusMismatches','counterMismatches']
+        .reduce((sum, k) => sum + Number(r[k] || 0), 0);
+      if (totalIssues === 0) toast.success('Agenda e pacotes íntegros');
+      else toast.warning(`${totalIssues} divergência(s) encontrada(s)`, { description: 'Clique em "Reparar agenda/pacotes" para corrigir.' });
+    } catch (e) {
+      toast.dismiss(id);
+      toast.error('Erro ao verificar agenda: ' + String(e));
+    } finally {
+      setAgendaRunning(false);
+    }
+  };
+
+  const repairAgendaIntegrity = async () => {
+    setAgendaRunning(true);
+    const id = toast.loading('Reparando agenda e pacotes...');
+    try {
+      const { data, error } = await supabase.rpc('repair_agenda_package_integrity' as never);
+      if (error) throw error;
+      const r = (data || {}) as Record<string, number>;
+      toast.dismiss(id);
+      toast.success('Reparo concluído', {
+        description: `Sessões liberadas: ${r.releasedPackageSessions || 0} · Status: ${r.statusMismatchesFixed || 0} · Vínculos órfãos: ${r.orphanedLinksFixed || 0}`,
+        duration: 8000,
+      });
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
+      await checkAgendaIntegrity();
+    } catch (e) {
+      toast.dismiss(id);
+      toast.error('Falha ao reparar agenda: ' + String(e));
+    } finally {
+      setAgendaRunning(false);
     }
   };
 
@@ -207,6 +254,42 @@ export function SystemHealthPanel() {
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Exportar log de sincronização
           </Button>
+        </div>
+
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2.5">
+          <div className="flex items-start gap-2.5">
+            <CalendarCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium">Integridade Agenda &amp; Pacotes</div>
+              <div className="text-[11px] text-muted-foreground">
+                Detecta agendamentos cancelados que travam sessões do pacote, contadores divergentes e status fora de sincronia. Corrige liberando sessões para reagendamento.
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={checkAgendaIntegrity} disabled={agendaRunning}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${agendaRunning ? 'animate-spin' : ''}`} />
+              Verificar agenda/pacotes
+            </Button>
+            <Button size="sm" onClick={repairAgendaIntegrity} disabled={agendaRunning}>
+              <Wrench className="h-3.5 w-3.5 mr-1.5" />
+              Reparar agenda/pacotes
+            </Button>
+          </div>
+          {agendaReport && (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] pt-1">
+              <span className="text-muted-foreground">Sessões travadas por cancelamento</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.cancelledLinkedPackageSessions ?? 0}</span>
+              <span className="text-muted-foreground">Agendamentos cancelados ainda vinculados</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.cancelledAppointmentsStillLinked ?? 0}</span>
+              <span className="text-muted-foreground">Vínculos órfãos</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.orphanedPackageLinks ?? 0}</span>
+              <span className="text-muted-foreground">Status fora de sincronia</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.statusMismatches ?? 0}</span>
+              <span className="text-muted-foreground">Contadores divergentes</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.counterMismatches ?? 0}</span>
+            </div>
+          )}
         </div>
 
         {report && (

@@ -94,19 +94,31 @@ async function checkRealtime(): Promise<HealthCheckItem> {
   const t0 = performance.now();
   return await new Promise<HealthCheckItem>((resolve) => {
     const channel = supabase.channel(`health-${Date.now()}`);
+    let settled = false;
+    const cleanup = () => {
+      // Defer removal to the next tick so we never call removeChannel
+      // synchronously from inside a channel callback (causes infinite
+      // recursion when CLOSED triggers another close handler).
+      setTimeout(() => {
+        try { supabase.removeChannel(channel); } catch { /* noop */ }
+      }, 0);
+    };
+    const settle = (item: HealthCheckItem) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      cleanup();
+      resolve(item);
+    };
     const timeout = window.setTimeout(() => {
-      try { supabase.removeChannel(channel); } catch { /* noop */ }
-      resolve({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'fail', durationMs: Math.round(performance.now() - t0), detail: 'Timeout 5s', fixable: true });
+      settle({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'fail', durationMs: Math.round(performance.now() - t0), detail: 'Timeout 5s', fixable: true });
     }, 5000);
     channel.subscribe((status) => {
+      if (settled) return;
       if (status === 'SUBSCRIBED') {
-        window.clearTimeout(timeout);
-        try { supabase.removeChannel(channel); } catch { /* noop */ }
-        resolve({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'ok', durationMs: Math.round(performance.now() - t0) });
+        settle({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'ok', durationMs: Math.round(performance.now() - t0) });
       } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
-        window.clearTimeout(timeout);
-        try { supabase.removeChannel(channel); } catch { /* noop */ }
-        resolve({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'fail', durationMs: Math.round(performance.now() - t0), detail: status, fixable: true });
+        settle({ id: 'realtime', label: 'Realtime (WebSocket)', status: 'fail', durationMs: Math.round(performance.now() - t0), detail: status, fixable: true });
       }
     });
   });

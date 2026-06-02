@@ -93,21 +93,13 @@ export function useCrossDeviceSync() {
       console.warn('[CrossDeviceSync] BroadcastChannel indisponível', e);
     }
 
-    // 4. Watchdog do canal Realtime — se cair, força refetch e tenta reconectar
+    // 4. Watchdog do canal Realtime — se cair, força refetch (sem re-subscribe
+    //    do canal já fechado: o cliente Supabase reconecta sozinho, e chamar
+    //    subscribe() de dentro do callback CLOSED causa loop de stack).
     const heartbeatChannel = supabase.channel('cross-device-heartbeat');
     heartbeatChannel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         invalidateAll('realtime-subscribed');
-      }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        // Tenta reconectar em 3s
-        window.setTimeout(() => {
-          try {
-            heartbeatChannel.subscribe();
-          } catch {
-            /* noop */
-          }
-        }, 3000);
       }
     });
 

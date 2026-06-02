@@ -256,6 +256,42 @@ export function SystemHealthPanel() {
           </Button>
         </div>
 
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2.5">
+          <div className="flex items-start gap-2.5">
+            <CalendarCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium">Integridade Agenda &amp; Pacotes</div>
+              <div className="text-[11px] text-muted-foreground">
+                Detecta agendamentos cancelados que travam sessões do pacote, contadores divergentes e status fora de sincronia. Corrige liberando sessões para reagendamento.
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={checkAgendaIntegrity} disabled={agendaRunning}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${agendaRunning ? 'animate-spin' : ''}`} />
+              Verificar agenda/pacotes
+            </Button>
+            <Button size="sm" onClick={repairAgendaIntegrity} disabled={agendaRunning}>
+              <Wrench className="h-3.5 w-3.5 mr-1.5" />
+              Reparar agenda/pacotes
+            </Button>
+          </div>
+          {agendaReport && (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] pt-1">
+              <span className="text-muted-foreground">Sessões travadas por cancelamento</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.cancelledLinkedPackageSessions ?? 0}</span>
+              <span className="text-muted-foreground">Agendamentos cancelados ainda vinculados</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.cancelledAppointmentsStillLinked ?? 0}</span>
+              <span className="text-muted-foreground">Vínculos órfãos</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.orphanedPackageLinks ?? 0}</span>
+              <span className="text-muted-foreground">Status fora de sincronia</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.statusMismatches ?? 0}</span>
+              <span className="text-muted-foreground">Contadores divergentes</span>
+              <span className="text-right tabular-nums font-medium">{agendaReport.counterMismatches ?? 0}</span>
+            </div>
+          )}
+        </div>
+
         {report && (
           <div className="rounded-lg border divide-y">
             {report.items.map((item) => {

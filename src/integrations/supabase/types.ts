@@ -3728,6 +3728,76 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          preferred_date: string | null
+          preferred_time_end: string | null
+          preferred_time_start: string | null
+          professional_id: string | null
+          service_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          preferred_date?: string | null
+          preferred_time_end?: string | null
+          preferred_time_start?: string | null
+          professional_id?: string | null
+          service_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          preferred_date?: string | null
+          preferred_time_end?: string | null
+          preferred_time_start?: string | null
+          professional_id?: string | null
+          service_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_logs: {
         Row: {
           created_at: string | null

@@ -18,6 +18,7 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
 import ReminderConfigSettings from '@/components/settings/ReminderConfigSettings';
 import { StockAlertSettings } from '@/components/settings/StockAlertSettings';
+import { SystemHealthPanel } from '@/components/settings/SystemHealthPanel';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -94,6 +95,9 @@ const Configuracoes = () => {
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           {/* Gestão de usuários movida para o Painel do Administrador (/admin) */}
+
+          {/* Diagnóstico do Sistema (saúde + auto-reparo) */}
+          <SystemHealthPanel />
 
           {/* WhatsApp Connection Status */}
           <WhatsappSettings />

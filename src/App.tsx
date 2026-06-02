@@ -14,6 +14,7 @@ import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { useVersionWatcher } from "@/hooks/useVersionWatcher";
 import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
 import { useAutoHealing } from "@/hooks/useAutoHealing";
+import { useAgendaIntegrityAutoCheck } from "@/hooks/useAgendaIntegrityAutoCheck";
 
 // Eager: rotas críticas no boot (login, dashboard, 404)
 import Auth from "./pages/Auth";

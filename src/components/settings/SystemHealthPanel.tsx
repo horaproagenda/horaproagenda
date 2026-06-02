@@ -131,6 +131,64 @@ export function SystemHealthPanel() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium">Modo auto-reparo</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Detecta falhas e tenta reparar automaticamente com re-tentativas e timeout.
+                </div>
+              </div>
+            </div>
+            <Switch
+              checked={autoHeal.config.enabled}
+              onCheckedChange={(v) => autoHeal.updateConfig({ enabled: v })}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Intervalo (s)</Label>
+              <Input
+                type="number" min={15} className="h-7 text-xs"
+                value={autoHeal.config.intervalSec}
+                onChange={(e) => autoHeal.updateConfig({ intervalSec: Math.max(15, Number(e.target.value) || 15) })}
+                disabled={!autoHeal.config.enabled}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Re-tentativas</Label>
+              <Input
+                type="number" min={0} max={10} className="h-7 text-xs"
+                value={autoHeal.config.maxRetries}
+                onChange={(e) => autoHeal.updateConfig({ maxRetries: Math.max(0, Number(e.target.value) || 0) })}
+                disabled={!autoHeal.config.enabled}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Timeout (ms)</Label>
+              <Input
+                type="number" min={1000} step={500} className="h-7 text-xs"
+                value={autoHeal.config.timeoutMs}
+                onChange={(e) => autoHeal.updateConfig({ timeoutMs: Math.max(1000, Number(e.target.value) || 1000) })}
+                disabled={!autoHeal.config.enabled}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>
+              {autoHeal.running ? 'Executando ciclo...' :
+                autoHeal.lastRunAt ? `Último ciclo: ${new Date(autoHeal.lastRunAt).toLocaleTimeString('pt-BR')} · ${autoHeal.lastActions.length} ação(ões)` :
+                'Nenhum ciclo executado ainda'}
+              {autoHeal.consecutiveFailures > 0 && ` · ${autoHeal.consecutiveFailures} falha(s) consecutiva(s)`}
+            </span>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={autoHeal.runNow} disabled={autoHeal.running}>
+              Executar agora
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={run} disabled={running}>
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${running ? 'animate-spin' : ''}`} />

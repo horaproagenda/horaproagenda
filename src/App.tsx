@@ -13,6 +13,7 @@ import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { useVersionWatcher } from "@/hooks/useVersionWatcher";
 import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
+import { useAutoHealing } from "@/hooks/useAutoHealing";
 
 // Eager: rotas críticas no boot (login, dashboard, 404)
 import Auth from "./pages/Auth";

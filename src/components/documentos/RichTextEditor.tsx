@@ -166,8 +166,7 @@ const evaluateFormula = (formula: string, table: HTMLTableElement): number | str
     // Only allow numbers and arithmetic
     if (!/^[\d+\-*/().,\s]*$/.test(expr)) return '#ERRO';
     // Safe arithmetic evaluator (no eval/Function)
-    const { Parser } = require('expr-eval') as typeof import('expr-eval');
-    const result = new Parser().evaluate(expr || '0');
+    const result = new ExprParser().evaluate(expr || '0');
     if (typeof result !== 'number' || !Number.isFinite(result)) return '#ERRO';
     return result;
   } catch {

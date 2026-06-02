@@ -4112,6 +4112,7 @@ export type Database = {
         Returns: undefined
       }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
+      get_agenda_package_integrity_report: { Args: never; Returns: Json }
       get_client_outstanding_balance: {
         Args: { _client_id: string }
         Returns: number
@@ -4198,6 +4199,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      recount_service_package_sessions: {
+        Args: { _package_id: string }
+        Returns: undefined
+      }
+      repair_agenda_package_integrity: { Args: never; Returns: Json }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
       submit_document_fill_by_token:
         | {

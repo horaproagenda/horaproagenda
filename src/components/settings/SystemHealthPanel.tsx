@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, MinusCircle, RefreshCw, Wrench, Download } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, MinusCircle, RefreshCw, Wrench, Download, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
   runSystemHealthCheck,
@@ -12,6 +15,7 @@ import {
   type CheckStatus,
 } from '@/lib/systemHealthCheck';
 import { exportSyncAuditLog } from '@/lib/syncAudit';
+import { useAutoHealing } from '@/hooks/useAutoHealing';
 
 const STATUS_ICONS: Record<CheckStatus, React.ComponentType<{ className?: string }>> = {
   ok: CheckCircle2,

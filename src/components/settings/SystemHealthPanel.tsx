@@ -104,6 +104,52 @@ export function SystemHealthPanel() {
     }
   };
 
+  const [agendaReport, setAgendaReport] = useState<Record<string, number> | null>(null);
+  const [agendaRunning, setAgendaRunning] = useState(false);
+
+  const checkAgendaIntegrity = async () => {
+    setAgendaRunning(true);
+    const id = toast.loading('Verificando integridade de agenda e pacotes...');
+    try {
+      const { data, error } = await supabase.rpc('get_agenda_package_integrity_report' as never);
+      if (error) throw error;
+      const r = (data || {}) as Record<string, number>;
+      setAgendaReport(r);
+      toast.dismiss(id);
+      const totalIssues = ['cancelledLinkedPackageSessions','cancelledAppointmentsStillLinked','orphanedPackageLinks','statusMismatches','counterMismatches']
+        .reduce((sum, k) => sum + Number(r[k] || 0), 0);
+      if (totalIssues === 0) toast.success('Agenda e pacotes íntegros');
+      else toast.warning(`${totalIssues} divergência(s) encontrada(s)`, { description: 'Clique em "Reparar agenda/pacotes" para corrigir.' });
+    } catch (e) {
+      toast.dismiss(id);
+      toast.error('Erro ao verificar agenda: ' + String(e));
+    } finally {
+      setAgendaRunning(false);
+    }
+  };
+
+  const repairAgendaIntegrity = async () => {
+    setAgendaRunning(true);
+    const id = toast.loading('Reparando agenda e pacotes...');
+    try {
+      const { data, error } = await supabase.rpc('repair_agenda_package_integrity' as never);
+      if (error) throw error;
+      const r = (data || {}) as Record<string, number>;
+      toast.dismiss(id);
+      toast.success('Reparo concluído', {
+        description: `Sessões liberadas: ${r.releasedPackageSessions || 0} · Status: ${r.statusMismatchesFixed || 0} · Vínculos órfãos: ${r.orphanedLinksFixed || 0}`,
+        duration: 8000,
+      });
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
+      await checkAgendaIntegrity();
+    } catch (e) {
+      toast.dismiss(id);
+      toast.error('Falha ao reparar agenda: ' + String(e));
+    } finally {
+      setAgendaRunning(false);
+    }
+  };
+
   const hasFixable = report?.items.some((i) => i.fixable && i.status !== 'ok');
 
   return (

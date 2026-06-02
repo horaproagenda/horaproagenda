@@ -26,11 +26,12 @@ export function useCrossDeviceSync() {
 
   useEffect(() => {
     let lastInvalidate = 0;
-    const invalidateAll = (reason: string) => {
+    const invalidateAll = (reason: string, opts?: { force?: boolean }) => {
       const now = Date.now();
-      // Throttle: no máximo 1 refetch global a cada 60s para evitar piscar/loop
-      // de carregamento em telas pesadas (ex.: perfil do cliente).
-      if (now - lastInvalidate < 60_000) return;
+      // Throttle padrão: 30s entre refetches globais. Eventos críticos
+      // (boot, login, retorno online, link novo) usam `force: true` para
+      // sincronizar imediatamente.
+      if (!opts?.force && now - lastInvalidate < 30_000) return;
       lastInvalidate = now;
       console.log(`[CrossDeviceSync] Sincronizando dados (${reason})`);
       void queryClient.invalidateQueries({
@@ -39,24 +40,28 @@ export function useCrossDeviceSync() {
       });
     };
 
+    // 0. Refetch imediato no mount — qualquer link/aba/dispositivo recém-aberto
+    //    deve baixar a versão mais recente antes que a UI mostre dados em cache.
+    invalidateAll('mount', { force: true });
+
     // 1. Foco/visibilidade -> revalida tudo (com throttle)
     const handleFocus = () => invalidateAll('focus');
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') invalidateAll('visible');
     };
-    const handleOnline = () => invalidateAll('online');
+    const handleOnline = () => invalidateAll('online', { force: true });
 
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 2. Heartbeat de fundo (a cada 2 minutos) — fallback caso o Realtime falhe.
-    // Mais espaçado para não piscar a UI; o Realtime cobre as mudanças instantâneas.
+    // 2. Heartbeat de fundo (a cada 60s) — fallback caso o Realtime falhe.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 120_000);
+    }, 60_000);
+
 
     // 3. Sincronização entre abas via BroadcastChannel
     let bc: BroadcastChannel | null = null;

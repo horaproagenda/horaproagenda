@@ -108,14 +108,13 @@ export function useCrossDeviceSync() {
     // qualquer valor obsoleto vindo de cache local.
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        // bypassa throttle: novo login deve sincronizar AGORA
-        lastInvalidate = 0;
-        invalidateAll(`auth:${event}`);
+        invalidateAll(`auth:${event}`, { force: true });
       }
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
       }
     });
+
 
     return () => {
       window.removeEventListener('focus', handleFocus);

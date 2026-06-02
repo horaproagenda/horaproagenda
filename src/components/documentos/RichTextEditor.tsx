@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Parser as ExprParser } from 'expr-eval';
 import {
   Bold,
   Italic,
@@ -164,8 +165,8 @@ const evaluateFormula = (formula: string, table: HTMLTableElement): number | str
 
     // Only allow numbers and arithmetic
     if (!/^[\d+\-*/().,\s]*$/.test(expr)) return '#ERRO';
-    // eslint-disable-next-line no-new-func
-    const result = Function(`"use strict"; return (${expr || '0'});`)();
+    // Safe arithmetic evaluator (no eval/Function)
+    const result = new ExprParser().evaluate(expr || '0');
     if (typeof result !== 'number' || !Number.isFinite(result)) return '#ERRO';
     return result;
   } catch {

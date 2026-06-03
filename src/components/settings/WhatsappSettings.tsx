@@ -310,6 +310,10 @@ export function WhatsappSettings() {
           </AlertDescription>
         </Alert>
 
+        <QueueStatusPanel />
+
+
+
         {/* Credentials editor: only for a selected professional */}
         {selectedProfId && (
           <div className="space-y-3 rounded-lg border p-3">

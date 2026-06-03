@@ -72,20 +72,20 @@ serve(async (req) => {
     // Use service role for data access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE');
+    const ultramsgBase = (Deno.env.get('ULTRAMSG_API_URL') || 'https://api.ultramsg.com').replace(/\/+$/, '');
+    const ultramsgInstance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
+    const ultramsgToken = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
 
     console.log('Starting overdue bills notification check...');
 
-    // Check if WhatsApp is configured
-    if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstance) {
-      console.log('WhatsApp not configured, skipping notifications');
+    // Check if WhatsApp (UltraMsg) is configured
+    if (!ultramsgInstance || !ultramsgToken) {
+      console.log('UltraMsg not configured, skipping notifications');
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'WhatsApp not configured',
-          sent: 0 
+        JSON.stringify({
+          success: false,
+          message: 'UltraMsg not configured',
+          sent: 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -141,17 +141,16 @@ serve(async (req) => {
 
       try {
         console.log(`Sending notification to ${entry.client.name} (${phone})`);
-        
-        const response = await fetch(`${evolutionApiUrl}/message/sendText/${encodeURIComponent(evolutionInstance)}`, {
+
+        const form = new URLSearchParams();
+        form.set('token', ultramsgToken);
+        form.set('to', phone);
+        form.set('body', message);
+
+        const response = await fetch(`${ultramsgBase}/${encodeURIComponent(ultramsgInstance)}/messages/chat`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': evolutionApiKey,
-          },
-          body: JSON.stringify({
-            number: phone,
-            text: message,
-          }),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: form.toString(),
         });
 
         if (response.ok) {

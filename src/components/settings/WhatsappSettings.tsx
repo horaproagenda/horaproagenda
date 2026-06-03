@@ -58,7 +58,9 @@ export function WhatsappSettings() {
           {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
           <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
           <AlertDescription className="text-xs">
-            {connectionStatus?.message || connectionStatus?.error || 'Gere o QR Code e leia com o WhatsApp do aparelho que enviará as mensagens.'}
+            {connected
+              ? 'Seu WhatsApp está autenticado. As mensagens automáticas (lembretes, confirmações, follow-ups, aniversários, cobranças e alertas de estoque) serão enviadas respeitando a janela de horário configurada em cada template.'
+              : (connectionStatus?.message || connectionStatus?.error || 'Gere o QR Code e leia com o WhatsApp do aparelho que enviará as mensagens.')}
           </AlertDescription>
         </Alert>
 
@@ -67,13 +69,15 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
-            {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
-            Gerar QR Code
-          </Button>
+          {!connected && (
+            <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
+              {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
+              Gerar QR Code
+            </Button>
+          )}
         </div>
 
-        {(qrCode || pairingCode) && (
+        {!connected && (qrCode || pairingCode) && (
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[180px_1fr]">
             {qrCode && (
               <img
@@ -93,3 +97,4 @@ export function WhatsappSettings() {
     </Card>
   );
 }
+

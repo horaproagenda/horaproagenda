@@ -1,19 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ultramsgSendText } from "../_shared/ultramsg.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TWILIO_GATEWAY = 'https://connector-gateway.lovable.dev/twilio';
-
-function normalizeE164(p: string): string {
-  let digits = (p || '').replace(/\D/g, '');
-  if (digits.startsWith('0')) digits = digits.substring(1);
-  if (!digits.startsWith('55') && digits.length <= 11) digits = '55' + digits;
-  return '+' + digits;
-}
 function fmtDate(d: Date) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 }
@@ -33,21 +26,26 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
     .replace(/\{horario\}/g, vars.horario || '');
 }
 
-async function sendWA(lovableKey: string, twilioKey: string, from: string, to: string, message: string) {
-  const fromWa = from.startsWith('whatsapp:') ? from : `whatsapp:${normalizeE164(from)}`;
-  const toWa = `whatsapp:${normalizeE164(to)}`;
-  const r = await fetch(`${TWILIO_GATEWAY}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': twilioKey,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({ From: fromWa, To: toWa, Body: message }),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Twilio ${r.status}: ${JSON.stringify(data)}`);
-  return data;
+function currentHourSP(): number {
+  const now = new Date();
+  return Number(now.toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+}
+
+/** True if `hour` falls inside [start, end) considering the configured quiet/send window. */
+function withinSendWindow(tpl: any, hour: number): boolean {
+  const start = tpl?.quiet_hours_start;
+  const end = tpl?.quiet_hours_end;
+  if (start == null || end == null) return true; // no window = always allowed
+  const s = Number(start);
+  const e = Number(end);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || s === e) return true;
+  if (s < e) return hour >= s && hour < e;
+  // window crossing midnight, e.g. 20→6
+  return hour >= s || hour < e;
+}
+
+async function sendWA(to: string, message: string) {
+  await ultramsgSendText({ to, body: message });
 }
 
 serve(async (req) => {
@@ -85,30 +83,15 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const summary: any = { sent: 0, skipped: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  const summary: any = { sent: 0, skipped: 0, skippedByWindow: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
-    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders, twilio_from_number').limit(1).maybeSingle();
+    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
     if (!settings?.automation_whatsapp_reminders) {
       return new Response(JSON.stringify({ success: true, message: 'Envios desativados', summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-    const twilioKey = Deno.env.get('TWILIO_API_KEY');
-    if (!lovableKey || !twilioKey) throw new Error('Twilio (conector) não configurado: LOVABLE_API_KEY/TWILIO_API_KEY ausente');
-
-    const globalFrom = (settings?.twilio_from_number || '').trim();
-
-    const fromFor = async (professional_id: string | null): Promise<string | null> => {
-      if (professional_id) {
-        const { data } = await supabase.from('professionals').select('whatsapp_from_number').eq('id', professional_id).maybeSingle();
-        const v = (data?.whatsapp_from_number || '').trim();
-        if (v) return v;
-      }
-      return globalFrom || null;
-    };
 
     const { data: templatesAll } = await supabase.from('whatsapp_templates').select('*').eq('is_active', true);
     const templates = templatesAll ?? [];
@@ -120,6 +103,7 @@ serve(async (req) => {
     };
 
     const now = Date.now();
+    const hourSP = currentHourSP();
 
     // ============ REMINDERS ============
     const reminderTpls = tplByType('reminder');
@@ -144,6 +128,7 @@ serve(async (req) => {
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
           if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+          if (!withinSendWindow(tpl, hourSP)) { summary.skippedByWindow++; continue; }
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -157,9 +142,7 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const from = await fromFor((apt as any).professional_id ?? null);
-            if (!from) throw new Error('Número remetente não configurado');
-            await sendWA(lovableKey, twilioKey, from, phone, message);
+            await sendWA(phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
             });
@@ -194,6 +177,7 @@ serve(async (req) => {
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
           if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+          if (!withinSendWindow(tpl, hourSP)) { summary.skippedByWindow++; continue; }
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -207,9 +191,7 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const from = await fromFor((apt as any).professional_id ?? null);
-            if (!from) throw new Error('Número remetente não configurado');
-            await sendWA(lovableKey, twilioKey, from, phone, message);
+            await sendWA(phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
             });
@@ -243,6 +225,7 @@ serve(async (req) => {
           if (!tpl) continue;
           const off = Number(tpl.send_offset_hours);
           if (!(hoursAfter >= off && hoursAfter <= off + 0.5)) continue;
+          if (!withinSendWindow(tpl, hourSP)) { summary.skippedByWindow++; continue; }
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -256,9 +239,7 @@ serve(async (req) => {
             profissional: (apt as any).professional?.name || '',
           });
           try {
-            const from = await fromFor((apt as any).professional_id ?? null);
-            if (!from) throw new Error('Número remetente não configurado');
-            await sendWA(lovableKey, twilioKey, from, phone, message);
+            await sendWA(phone, message);
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: -off, provider: 'whatsapp_followup', channel: 'whatsapp', status: 'sent',
             });
@@ -274,7 +255,6 @@ serve(async (req) => {
     const bdayTpls = tplByType('birthday');
     if (bdayTpls.length > 0) {
       const today = new Date();
-      const nowHourLocal = Number(today.toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
       const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
       const dd = String(today.getUTCDate()).padStart(2, '0');
 
@@ -288,7 +268,8 @@ serve(async (req) => {
         const tpl = pickTpl('birthday', (c as any).assigned_professional_id ?? null);
         if (!tpl) continue;
         const sendHour = Number(tpl.send_offset_hours ?? 9);
-        if (nowHourLocal !== sendHour) continue;
+        if (hourSP !== sendHour) continue;
+        if (!withinSendWindow(tpl, hourSP)) { summary.skippedByWindow++; continue; }
 
         const dedupKey = `bday-${c.id}-${today.getUTCFullYear()}`;
         const { data: existing } = await supabase
@@ -297,9 +278,7 @@ serve(async (req) => {
 
         const message = renderTemplate(tpl.message, { cliente: c.name || 'cliente', data: '', horario: '', servico: '', profissional: '' });
         try {
-          const from = await fromFor((c as any).assigned_professional_id ?? null);
-          if (!from) throw new Error('Número remetente não configurado');
-          await sendWA(lovableKey, twilioKey, from, c.phone, message);
+          await sendWA(c.phone, message);
           await supabase.from('appointment_reminder_log').insert({
             appointment_id: null, hours_before: sendHour, provider: 'whatsapp_birthday', channel: 'whatsapp', status: 'sent', error: dedupKey,
           });

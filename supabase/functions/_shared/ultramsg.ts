@@ -3,11 +3,16 @@
 
 const DEFAULT_BASE = 'https://api.ultramsg.com';
 
-export function getUltramsgConfig() {
-  let base = (Deno.env.get('ULTRAMSG_API_URL') || DEFAULT_BASE).replace(/\/+$/, '');
-  const instance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
-  const token = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
-  // Defensive: if user pasted full base including /instance<id>, strip it so we don't duplicate the path.
+export interface UltramsgCreds {
+  base?: string | null;
+  instance: string;
+  token: string;
+}
+
+export function getUltramsgConfig(override?: UltramsgCreds | null) {
+  let base = ((override?.base ?? Deno.env.get('ULTRAMSG_API_URL')) || DEFAULT_BASE).replace(/\/+$/, '');
+  const instance = (override?.instance ?? Deno.env.get('ULTRAMSG_INSTANCE_ID') ?? '').trim();
+  const token = (override?.token ?? Deno.env.get('ULTRAMSG_TOKEN') ?? '').trim();
   if (instance && base.toLowerCase().endsWith(`/${instance.toLowerCase()}`)) {
     base = base.slice(0, -1 - instance.length);
   }
@@ -21,8 +26,36 @@ export function normalizeBrPhone(phone: string): string {
   return digits;
 }
 
-export async function ultramsgStatus() {
-  const { base, instance, token, configured } = getUltramsgConfig();
+/**
+ * Resolve UltraMsg credentials for a given professional, falling back to global env.
+ * Returns { creds, source: 'professional' | 'global' | 'none' }.
+ */
+export async function resolveProfessionalCreds(
+  supabaseService: any,
+  professional_id?: string | null,
+): Promise<{ creds: UltramsgCreds | null; source: 'professional' | 'global' | 'none' }> {
+  if (professional_id) {
+    const { data } = await supabaseService
+      .from('professional_whatsapp_credentials')
+      .select('api_url, instance_id, token, is_active')
+      .eq('professional_id', professional_id)
+      .maybeSingle();
+    if (data?.is_active && data.instance_id && data.token) {
+      return {
+        creds: { base: data.api_url || null, instance: data.instance_id, token: data.token },
+        source: 'professional',
+      };
+    }
+  }
+  const env = getUltramsgConfig();
+  if (env.configured) {
+    return { creds: { base: env.base, instance: env.instance, token: env.token }, source: 'global' };
+  }
+  return { creds: null, source: 'none' };
+}
+
+export async function ultramsgStatus(override?: UltramsgCreds | null) {
+  const { base, instance, token, configured } = getUltramsgConfig(override);
   if (!configured) {
     return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
   }
@@ -50,17 +83,15 @@ export async function ultramsgStatus() {
   };
 }
 
-export async function ultramsgGetQrCode() {
-  const { base, instance, token, configured } = getUltramsgConfig();
+export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
+  const { base, instance, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
-  // Check if already connected first
-  const st = await ultramsgStatus();
+  const st = await ultramsgStatus(override);
   if (st.connected) {
     return { connected: true, instance, qrcode: null };
   }
 
-  // Try JSON endpoint: /instance/qrCode -> { qrCode: "data:image/png;base64,..." }
   const tryJson = async () => {
     const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
     const data = await r.json().catch(() => ({}));
@@ -72,35 +103,30 @@ export async function ultramsgGetQrCode() {
     return q;
   };
 
-  // Fallback: /instance/qrImage returns the PNG image bytes directly
   const tryImage = async () => {
     const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrImage?token=${encodeURIComponent(token)}`);
     if (!r.ok) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
-    if (buf.byteLength < 100) return null; // too small to be a QR image
+    if (buf.byteLength < 100) return null;
     let bin = '';
     for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
     return `data:image/png;base64,${btoa(bin)}`;
   };
 
   let qrcode: string | null = null;
-  try {
-    qrcode = await tryJson();
-  } catch (e) {
+  try { qrcode = await tryJson(); } catch (e) {
     console.warn('UltraMsg qrCode JSON failed, trying qrImage:', e);
   }
-  if (!qrcode) {
-    qrcode = await tryImage();
-  }
+  if (!qrcode) qrcode = await tryImage();
 
   return { connected: false, instance, qrcode, state: st.state, substatus: st.substatus };
 }
 
-export async function ultramsgSendText(opts: { to: string; body: string }) {
-  const { base, instance, token, configured } = getUltramsgConfig();
+export async function ultramsgSendText(opts: { to: string; body: string }, override?: UltramsgCreds | null) {
+  const { base, instance, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
-  const st = await ultramsgStatus();
+  const st = await ultramsgStatus(override);
   if (!st.connected) {
     throw new Error(`WhatsApp não conectado no UltraMsg (estado: ${st.state || 'desconhecido'}). Conecte por QR Code em Configurações → WhatsApp.`);
   }

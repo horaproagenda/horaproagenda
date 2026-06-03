@@ -16,10 +16,6 @@ import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplat
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
-import ReminderConfigSettings from '@/components/settings/ReminderConfigSettings';
-import { ProfessionalQuietHours } from '@/components/settings/ProfessionalQuietHours';
-import { StockAlertSettings } from '@/components/settings/StockAlertSettings';
-import { SystemHealthPanel } from '@/components/settings/SystemHealthPanel';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();

@@ -317,6 +317,7 @@ export function enqueueWhatsappMessage(
   phone: string,
   message: string,
   options?: WhatsappJob['options'],
+  idempotencyKey?: string,
 ) {
-  return whatsappMessageQueue.enqueue({ phone, message, options });
+  return whatsappMessageQueue.enqueue({ phone, message, options, idempotencyKey });
 }

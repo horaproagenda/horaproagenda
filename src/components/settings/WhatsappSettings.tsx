@@ -134,10 +134,22 @@ export function WhatsappSettings() {
   const configured = connectionStatus?.configured !== false;
   const usingFallback = !!selectedProfId && connectionStatus?.source === 'global';
 
+  // Keep-alive: faz ping silencioso a cada 60s para manter a sessão saudável
+  // e detectar quedas cedo, evitando que o profissional ache que precisa
+  // criar uma nova instância.
+  useWhatsappConnectionKeepAlive(selectedProfId || null, {
+    enabled: !!selectedProfId && !!credsMap[selectedProfId],
+  });
+
   const selectedName = useMemo(() => {
     if (!selectedProfId) return 'Conta do salão (global)';
     return professionals.find(p => p.id === selectedProfId)?.name || 'Profissional';
   }, [selectedProfId, professionals]);
+
+  const selectedCreds = selectedProfId ? credsMap[selectedProfId] : null;
+  const lastConnectedAt = selectedCreds?.last_connected_at
+    ? new Date(selectedCreds.last_connected_at).toLocaleString('pt-BR')
+    : null;
 
   const handleGenerateQr = async () => {
     if (!selectedProfId) {

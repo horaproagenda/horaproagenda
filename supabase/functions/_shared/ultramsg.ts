@@ -4,9 +4,13 @@
 const DEFAULT_BASE = 'https://api.ultramsg.com';
 
 export function getUltramsgConfig() {
-  const base = (Deno.env.get('ULTRAMSG_API_URL') || DEFAULT_BASE).replace(/\/+$/, '');
+  let base = (Deno.env.get('ULTRAMSG_API_URL') || DEFAULT_BASE).replace(/\/+$/, '');
   const instance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
   const token = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
+  // Defensive: if user pasted full base including /instance<id>, strip it so we don't duplicate the path.
+  if (instance && base.toLowerCase().endsWith(`/${instance.toLowerCase()}`)) {
+    base = base.slice(0, -1 - instance.length);
+  }
   return { base, instance, token, configured: Boolean(base && instance && token) };
 }
 

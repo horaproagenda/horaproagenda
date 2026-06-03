@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgSendText, normalizeBrPhone, getUltramsgConfig } from "../_shared/ultramsg.ts";
+import { ultramsgSendText, normalizeBrPhone, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,16 +45,22 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { phone, message, client_id } = body as { phone: string; message: string; client_id?: string };
+    const { phone, message, client_id, professional_id } = body as {
+      phone: string; message: string; client_id?: string; professional_id?: string;
+    };
 
     if (!phone || !message) throw new Error('phone e message são obrigatórios');
     if (phone.length > 20 || message.length > 4096) throw new Error('Comprimento inválido');
 
-    // Restrict professionals to their own clients
-    if (isProfessional && !isAdmin && !isReceptionist) {
+    // Resolve current professional (caller) to scope client checks and pick credentials default.
+    let currentProfId: string | null = null;
+    {
       const { data: prof } = await supabaseService
         .from('professionals').select('id').eq('user_id', userId).maybeSingle();
-      const currentProfId = prof?.id ?? null;
+      currentProfId = prof?.id ?? null;
+    }
+
+    if (isProfessional && !isAdmin && !isReceptionist) {
       if (!currentProfId) {
         return new Response(JSON.stringify({ success: false, error: 'Profissional não vinculado.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -70,10 +76,16 @@ serve(async (req) => {
       }
     }
 
-    const { instance } = getUltramsgConfig();
-    const result = await ultramsgSendText({ to: phone, body: message });
-    return new Response(JSON.stringify({ success: true, provider: 'ultramsg', route: 'ultramsg-api', data: result, instance }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Pick credentials: explicit professional_id > caller's professional > global fallback
+    const targetProf = professional_id || currentProfId || null;
+    const { creds, source } = await resolveProfessionalCreds(supabaseService, targetProf);
+    if (!creds) throw new Error('UltraMsg não configurado.');
+
+    const result = await ultramsgSendText({ to: phone, body: message }, creds);
+    return new Response(JSON.stringify({
+      success: true, provider: 'ultramsg', route: 'ultramsg-api',
+      data: result, instance: creds.instance, source,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

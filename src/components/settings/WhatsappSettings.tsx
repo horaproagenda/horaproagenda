@@ -87,11 +87,47 @@ export function WhatsappSettings() {
         token: c?.token || '',
       });
       void checkConnection(selectedProfId);
+      // Load quiet hours for this professional
+      (async () => {
+        const { data } = await supabase
+          .from('professionals')
+          .select('quiet_hours_start, quiet_hours_end')
+          .eq('id', selectedProfId)
+          .maybeSingle();
+        setQuietHours({
+          start: data?.quiet_hours_start != null ? String(data.quiet_hours_start) : '',
+          end: data?.quiet_hours_end != null ? String(data.quiet_hours_end) : '',
+        });
+      })();
     } else {
       setForm({ api_url: '', instance_id: '', token: '' });
+      setQuietHours({ start: '', end: '' });
       void checkConnection(undefined);
     }
   }, [selectedProfId, credsMap, checkConnection]);
+
+  const handleSaveQuietHours = async () => {
+    if (!selectedProfId) return;
+    const start = quietHours.start === '' ? null : Number(quietHours.start);
+    const end = quietHours.end === '' ? null : Number(quietHours.end);
+    if ((start != null && end == null) || (start == null && end != null)) {
+      toast.error('Preencha início e fim, ou deixe ambos vazios.');
+      return;
+    }
+    if (start != null && end != null && (start < 0 || start > 23 || end < 0 || end > 23)) {
+      toast.error('Use horas entre 0 e 23.');
+      return;
+    }
+    setSavingQuiet(true);
+    const { error } = await supabase
+      .from('professionals')
+      .update({ quiet_hours_start: start, quiet_hours_end: end })
+      .eq('id', selectedProfId);
+    setSavingQuiet(false);
+    if (error) return toast.error('Erro ao salvar janela: ' + error.message);
+    toast.success('Janela de envio salva.');
+  };
+
 
   const connected = connectionStatus?.connected === true;
   const configured = connectionStatus?.configured !== false;

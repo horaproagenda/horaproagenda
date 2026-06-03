@@ -1657,6 +1657,14 @@ const Agenda = () => {
           dayStats={mobileDayStats}
           mobileView={mobileView}
           onMobileViewChange={setMobileView}
+          onNewAbsence={handleOpenNewAbsence}
+          onManageAbsences={() => setShowMobileAbsencePanel(true)}
+          onToday={() => {
+            const today = new Date();
+            setSelectedDate(today);
+            setWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
+            setMonthStart(startOfMonth(today));
+          }}
         />
         
         {/* Mobile Appointment List */}

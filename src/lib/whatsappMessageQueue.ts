@@ -92,13 +92,34 @@ class WhatsappMessageQueue {
     message: string;
     options?: WhatsappJob['options'];
     maxAttempts?: number;
+    idempotencyKey?: string;
   }): string {
+    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input);
+
+    // 1) Dedup: já existe um job ativo (pending/running) com a mesma chave?
+    for (const existing of this.jobs.values()) {
+      if (
+        existing.idempotencyKey === idempotencyKey &&
+        (existing.status === 'pending' || existing.status === 'running')
+      ) {
+        return existing.id;
+      }
+    }
+
+    // 2) Dedup TTL: já enviamos essa mesma mensagem recentemente?
+    const lastSentAt = this.recentlySent.get(idempotencyKey);
+    if (lastSentAt && Date.now() - lastSentAt < DEDUP_TTL_MS) {
+      // Cria um job "done" virtual só pra retornar id estável? Não — apenas ignora.
+      return `dedup:${idempotencyKey}`;
+    }
+
     const id = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
     const job: WhatsappJob = {
       id,
       phone: input.phone,
       message: input.message,
       options: input.options,
+      idempotencyKey,
       attempts: 0,
       maxAttempts: input.maxAttempts ?? 4,
       nextRunAt: Date.now(),

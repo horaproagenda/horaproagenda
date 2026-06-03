@@ -535,7 +535,11 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
           )}
         </div>
 
-        <DialogFooter className="pt-4 border-t">
+        <DialogFooter className="pt-4 border-t flex-wrap gap-2">
+          <Button variant="ghost" type="button" onClick={handleDownloadTemplate} className="mr-auto">
+            <FileText className="h-4 w-4 mr-2" />
+            Baixar modelo CSV
+          </Button>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>

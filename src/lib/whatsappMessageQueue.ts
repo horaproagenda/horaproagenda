@@ -25,6 +25,7 @@ export interface WhatsappJob {
     professional_id?: string;
     test?: boolean;
   };
+  idempotencyKey: string;
   attempts: number;
   maxAttempts: number;
   nextRunAt: number; // epoch ms
@@ -34,6 +35,29 @@ export interface WhatsappJob {
 }
 
 type Listener = (snapshot: QueueSnapshot) => void;
+
+/** Janela de deduplicação para jobs já concluídos (ms). */
+const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutos
+
+function normalizePhoneForKey(phone: string): string {
+  return (phone || '').replace(/\D/g, '');
+}
+
+function defaultIdempotencyKey(input: {
+  phone: string;
+  message: string;
+  options?: WhatsappJob['options'];
+}): string {
+  const phone = normalizePhoneForKey(input.phone);
+  const msg = (input.message || '').trim();
+  const client = input.options?.client_id ?? '';
+  const prof = input.options?.professional_id ?? '';
+  // Hash leve (djb2) — suficiente para deduplicação local.
+  const raw = `${phone}|${client}|${prof}|${msg}`;
+  let h = 5381;
+  for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) | 0;
+  return `wa_${phone}_${(h >>> 0).toString(36)}`;
+}
 
 export interface QueueSnapshot {
   pending: number;
@@ -49,6 +73,8 @@ const BASE_BACKOFF_MS = 4_000;
 
 class WhatsappMessageQueue {
   private jobs: Map<string, WhatsappJob> = new Map();
+  /** idempotencyKey -> timestamp do último envio concluído (para dedup TTL). */
+  private recentlySent: Map<string, number> = new Map();
   private running = 0;
   private listeners = new Set<Listener>();
   private tickTimer: number | null = null;
@@ -66,13 +92,34 @@ class WhatsappMessageQueue {
     message: string;
     options?: WhatsappJob['options'];
     maxAttempts?: number;
+    idempotencyKey?: string;
   }): string {
+    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input);
+
+    // 1) Dedup: já existe um job ativo (pending/running) com a mesma chave?
+    for (const existing of this.jobs.values()) {
+      if (
+        existing.idempotencyKey === idempotencyKey &&
+        (existing.status === 'pending' || existing.status === 'running')
+      ) {
+        return existing.id;
+      }
+    }
+
+    // 2) Dedup TTL: já enviamos essa mesma mensagem recentemente?
+    const lastSentAt = this.recentlySent.get(idempotencyKey);
+    if (lastSentAt && Date.now() - lastSentAt < DEDUP_TTL_MS) {
+      // Cria um job "done" virtual só pra retornar id estável? Não — apenas ignora.
+      return `dedup:${idempotencyKey}`;
+    }
+
     const id = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
     const job: WhatsappJob = {
       id,
       phone: input.phone,
       message: input.message,
       options: input.options,
+      idempotencyKey,
       attempts: 0,
       maxAttempts: input.maxAttempts ?? 4,
       nextRunAt: Date.now(),
@@ -155,6 +202,20 @@ class WhatsappMessageQueue {
       arr.forEach((j) => {
         // Jobs que estavam "running" antes do reload voltam para pending.
         if (j.status === 'running') j.status = 'pending';
+        // Backfill idempotencyKey para jobs persistidos antes da feature.
+        if (!j.idempotencyKey) {
+          j.idempotencyKey = defaultIdempotencyKey({
+            phone: j.phone,
+            message: j.message,
+            options: j.options,
+          });
+        }
+        // Dedup na restauração: se já existe um job ativo com a mesma chave, descarta o duplicado.
+        const dup = Array.from(this.jobs.values()).find(
+          (x) => x.idempotencyKey === j.idempotencyKey &&
+            (x.status === 'pending' || x.status === 'running'),
+        );
+        if (dup) return;
         this.jobs.set(j.id, j);
       });
     } catch { /* ignore */ }
@@ -218,6 +279,13 @@ class WhatsappMessageQueue {
       }
       job.status = 'done';
       job.lastError = undefined;
+      // Marca como recém-enviado para deduplicar reenfileiramentos próximos.
+      this.recentlySent.set(job.idempotencyKey, Date.now());
+      // Limpa entradas antigas para não crescer indefinidamente.
+      const cutoff = Date.now() - DEDUP_TTL_MS;
+      for (const [k, t] of this.recentlySent) {
+        if (t < cutoff) this.recentlySent.delete(k);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
       job.lastError = msg;
@@ -249,6 +317,7 @@ export function enqueueWhatsappMessage(
   phone: string,
   message: string,
   options?: WhatsappJob['options'],
+  idempotencyKey?: string,
 ) {
-  return whatsappMessageQueue.enqueue({ phone, message, options });
+  return whatsappMessageQueue.enqueue({ phone, message, options, idempotencyKey });
 }

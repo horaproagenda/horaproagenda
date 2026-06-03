@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
+import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -309,6 +310,10 @@ export function WhatsappSettings() {
             )}
           </AlertDescription>
         </Alert>
+
+        <WhatsappQueueStatusPanel />
+
+
 
         {/* Credentials editor: only for a selected professional */}
         {selectedProfId && (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MessageSquare, Plus, Edit2, Trash2, Save, X, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { openWhatsappWithMessage, renderTemplate, adjustHourToQuietWindow } from '@/lib/whatsappLink';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const templateTypes = [
@@ -57,11 +58,38 @@ const initialForm: FormState = {
 };
 
 export function WhatsappTemplatesSettings() {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();
+  const { templates: allTemplates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();
   const { professionals } = useProfessionals();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<FormState>(initialForm);
+
+  // Current user context
+  const [isStaff, setIsStaff] = useState(false); // admin or receptionist
+  const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
+  const [ctxLoaded, setCtxLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setCtxLoaded(true); return; }
+      const { data: rolesRows } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const roles = (rolesRows ?? []).map((r: any) => r.role);
+      setIsStaff(roles.includes('admin') || roles.includes('receptionist'));
+      const { data: prof } = await supabase
+        .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+      setMyProfessionalId(prof?.id ?? null);
+      setCtxLoaded(true);
+    })();
+  }, []);
+
+  // Non-staff professionals see only their own templates.
+  const templates = useMemo(() => {
+    if (isStaff) return allTemplates;
+    if (!myProfessionalId) return [];
+    return allTemplates.filter(t => t.professional_id === myProfessionalId);
+  }, [allTemplates, isStaff, myProfessionalId]);
 
   const handleEdit = (template: WhatsappTemplate) => {
     setEditingId(template.id);
@@ -82,7 +110,14 @@ export function WhatsappTemplatesSettings() {
     templates.filter(t => (t.professional_id ?? null) === (profId ?? null) && t.id !== exceptId).length;
 
   const handleSave = () => {
-    const targetProfId = formData.professional_id || null;
+    // Non-staff professionals can only save templates tied to themselves.
+    const targetProfId = isStaff
+      ? (formData.professional_id || null)
+      : myProfessionalId;
+    if (!isStaff && !targetProfId) {
+      toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
+      return;
+    }
     const existingCount = countForProfessional(targetProfId, editingId ?? undefined);
     if (existingCount >= MAX_TEMPLATES_PER_PROFESSIONAL) {
       toast.error(
@@ -179,7 +214,17 @@ export function WhatsappTemplatesSettings() {
             </div>
           </div>
           {!isCreating && !editingId && (
-            <Button onClick={() => setIsCreating(true)} size="sm">
+            <Button
+              onClick={() => {
+                setFormData({
+                  ...initialForm,
+                  professional_id: isStaff ? '' : (myProfessionalId ?? ''),
+                });
+                setIsCreating(true);
+              }}
+              size="sm"
+              disabled={!ctxLoaded || (!isStaff && !myProfessionalId)}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nova Mensagem
             </Button>
@@ -225,20 +270,32 @@ export function WhatsappTemplatesSettings() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Profissional (opcional)</Label>
-              <Select
-                value={formData.professional_id || 'all'}
-                onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os profissionais</SelectItem>
-                  {professionals.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {isStaff ? (
+              <div className="space-y-2">
+                <Label>Profissional (opcional)</Label>
+                <Select
+                  value={formData.professional_id || 'all'}
+                  onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os profissionais</SelectItem>
+                    {professionals.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                Estas mensagens serão usadas apenas para os seus atendimentos.
+              </div>
+            )}
+            {isStaff && (
+              <></>
+            )}
+            {/* warning placeholder kept below */}
+            <div>
               {limitWarning && (
                 <p className="text-xs text-destructive">
                   Este profissional já possui {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens. Exclua uma antes de criar outra.

@@ -73,6 +73,8 @@ const BASE_BACKOFF_MS = 4_000;
 
 class WhatsappMessageQueue {
   private jobs: Map<string, WhatsappJob> = new Map();
+  /** idempotencyKey -> timestamp do último envio concluído (para dedup TTL). */
+  private recentlySent: Map<string, number> = new Map();
   private running = 0;
   private listeners = new Set<Listener>();
   private tickTimer: number | null = null;

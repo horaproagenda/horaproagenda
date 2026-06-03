@@ -40,6 +40,17 @@ const Configuracoes = () => {
   const [clinicEmail, setClinicEmail] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
 
+  // Edit-mode toggles (after first save, fields lock & button switches to "Editar")
+  const [clinicEditing, setClinicEditing] = useState(false);
+  const [hoursEditing, setHoursEditing] = useState(false);
+
+  const clinicSaved = !!((settings as any)?.clinic_name);
+  const hoursSaved = !!settings?.id;
+  const clinicLocked = clinicSaved && !clinicEditing;
+  const hoursLocked = hoursSaved && !hoursEditing;
+  const savedInputClass =
+    'h-8 text-sm border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium';
+
   useEffect(() => {
     if (settings) {
       setOpeningTime(settings.opening_time || '08:00');
@@ -62,27 +73,41 @@ const Configuracoes = () => {
   }, [settings]);
 
   const handleSaveClinic = () => {
-    updateSettings.mutate({
-      clinic_name: clinicName,
-      clinic_phone: clinicPhone,
-      clinic_email: clinicEmail,
-      clinic_address: clinicAddress,
-    } as any);
+    if (clinicLocked) {
+      setClinicEditing(true);
+      return;
+    }
+    updateSettings.mutate(
+      {
+        clinic_name: clinicName,
+        clinic_phone: clinicPhone,
+        clinic_email: clinicEmail,
+        clinic_address: clinicAddress,
+      } as any,
+      { onSuccess: () => setClinicEditing(false) }
+    );
   };
 
   const handleSaveHours = () => {
-    updateSettings.mutate({
-      opening_time: openingTime,
-      closing_time: closingTime,
-      slot_interval: slotInterval,
-      work_saturdays: workSaturdays,
-      work_sundays: workSundays,
-      saturday_opening_time: saturdayOpeningTime,
-      saturday_closing_time: saturdayClosingTime,
-      sunday_opening_time: sundayOpeningTime,
-      sunday_closing_time: sundayClosingTime,
-      timezone: timezone,
-    });
+    if (hoursLocked) {
+      setHoursEditing(true);
+      return;
+    }
+    updateSettings.mutate(
+      {
+        opening_time: openingTime,
+        closing_time: closingTime,
+        slot_interval: slotInterval,
+        work_saturdays: workSaturdays,
+        work_sundays: workSundays,
+        saturday_opening_time: saturdayOpeningTime,
+        saturday_closing_time: saturdayClosingTime,
+        sunday_opening_time: sundayOpeningTime,
+        sunday_closing_time: sundayClosingTime,
+        timezone: timezone,
+      },
+      { onSuccess: () => setHoursEditing(false) }
+    );
   };
 
   return (
@@ -110,51 +135,63 @@ const Configuracoes = () => {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome da Clínica</Label>
                   <Input
-                    className="h-8 text-sm"
+                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
                     placeholder="Nome do estabelecimento"
+                    readOnly={clinicLocked}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Telefone</Label>
                     <Input
-                      className="h-8 text-sm"
+                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                       value={clinicPhone}
                       onChange={(e) => setClinicPhone(e.target.value)}
                       placeholder="(11) 99999-9999"
+                      readOnly={clinicLocked}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Email</Label>
                     <Input
-                      className="h-8 text-sm"
+                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                       type="email"
                       value={clinicEmail}
                       onChange={(e) => setClinicEmail(e.target.value)}
                       placeholder="contato@clinica.com"
+                      readOnly={clinicLocked}
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Endereço</Label>
                   <Input
-                    className="h-8 text-sm"
+                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                     value={clinicAddress}
                     onChange={(e) => setClinicAddress(e.target.value)}
                     placeholder="Rua, número - Cidade, UF"
+                    readOnly={clinicLocked}
                   />
                 </div>
                 <Button
                   size="sm"
-                  className="w-full btn-vibrant"
+                  variant={clinicLocked ? 'outline' : 'default'}
+                  className={clinicLocked ? 'w-full' : 'w-full btn-vibrant'}
                   onClick={handleSaveClinic}
                   disabled={updateSettings.isPending}
                 >
-                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                  {updateSettings.isPending
+                    ? 'Salvando...'
+                    : clinicLocked
+                    ? 'Editar Informações'
+                    : clinicSaved
+                    ? 'Salvar Alterações'
+                    : 'Salvar Informações'}
                 </Button>
               </CardContent>
+
             </Card>
 
             <Card className="card-hover">
@@ -175,8 +212,8 @@ const Configuracoes = () => {
                     <Globe className="h-3 w-3" />
                     Fuso Horário
                   </Label>
-                  <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger className="h-8 text-sm">
+                  <Select value={timezone} onValueChange={setTimezone} disabled={hoursLocked}>
+                    <SelectTrigger className={hoursLocked ? savedInputClass : 'h-8 text-sm'}>
                       <SelectValue placeholder="Selecione o fuso horário" />
                     </SelectTrigger>
                     <SelectContent>
@@ -196,18 +233,20 @@ const Configuracoes = () => {
                     <Label className="text-xs">Abertura</Label>
                     <Input
                       type="time"
-                      className="h-8 text-sm"
+                      className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                       value={openingTime}
                       onChange={(e) => setOpeningTime(e.target.value)}
+                      readOnly={hoursLocked}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Fechamento</Label>
                     <Input
                       type="time"
-                      className="h-8 text-sm"
+                      className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                       value={closingTime}
                       onChange={(e) => setClosingTime(e.target.value)}
+                      readOnly={hoursLocked}
                     />
                   </div>
                 </div>
@@ -215,17 +254,18 @@ const Configuracoes = () => {
                   <Label className="text-xs">Intervalo entre agendamentos (min)</Label>
                   <Input
                     type="number"
-                    className="h-8 text-sm"
+                    className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                     value={slotInterval}
                     onChange={(e) => setSlotInterval(Number(e.target.value))}
                     min={15}
                     max={120}
                     step={15}
+                    readOnly={hoursLocked}
                   />
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos sábados</Label>
-                  <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} />
+                  <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} disabled={hoursLocked} />
                 </div>
                 {workSaturdays && (
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
@@ -233,25 +273,27 @@ const Configuracoes = () => {
                       <Label className="text-xs">Abertura (Sáb)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={saturdayOpeningTime}
                         onChange={(e) => setSaturdayOpeningTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Sáb)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={saturdayClosingTime}
                         onChange={(e) => setSaturdayClosingTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos domingos</Label>
-                  <Switch checked={workSundays} onCheckedChange={setWorkSundays} />
+                  <Switch checked={workSundays} onCheckedChange={setWorkSundays} disabled={hoursLocked} />
                 </div>
                 {workSundays && (
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
@@ -259,31 +301,41 @@ const Configuracoes = () => {
                       <Label className="text-xs">Abertura (Dom)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={sundayOpeningTime}
                         onChange={(e) => setSundayOpeningTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Dom)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={sundayClosingTime}
                         onChange={(e) => setSundayClosingTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                   </div>
                 )}
                 <Button
                   size="sm"
-                  className="w-full btn-vibrant"
+                  variant={hoursLocked ? 'outline' : 'default'}
+                  className={hoursLocked ? 'w-full' : 'w-full btn-vibrant'}
                   onClick={handleSaveHours}
                   disabled={updateSettings.isPending}
                 >
-                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Horários'}
+                  {updateSettings.isPending
+                    ? 'Salvando...'
+                    : hoursLocked
+                    ? 'Editar Horários'
+                    : hoursSaved
+                    ? 'Salvar Alterações'
+                    : 'Salvar Horários'}
                 </Button>
               </CardContent>
+
             </Card>
           </div>
 

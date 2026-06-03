@@ -270,20 +270,38 @@ export function WhatsappTemplatesSettings() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Profissional (opcional)</Label>
-              <Select
-                value={formData.professional_id || 'all'}
-                onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os profissionais</SelectItem>
-                  {professionals.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {isStaff ? (
+              <div className="space-y-2">
+                <Label>Profissional (opcional)</Label>
+                <Select
+                  value={formData.professional_id || 'all'}
+                  onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os profissionais</SelectItem>
+                    {professionals.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                Estas mensagens serão usadas apenas para os seus atendimentos.
+              </div>
+            )}
+            {isStaff && (
+              <></>
+            )}
+            {/* warning placeholder kept below */}
+            <div>
+              {limitWarning && (
+                <p className="text-xs text-destructive">
+                  Este profissional já possui {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens. Exclua uma antes de criar outra.
+                </p>
+              )}
+            </div>
               {limitWarning && (
                 <p className="text-xs text-destructive">
                   Este profissional já possui {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens. Exclua uma antes de criar outra.

@@ -101,10 +101,10 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
   const parseCSVContent = (content: string): ParsedService[] | ParsedClient[] | ParsedPackageTemplate[] => {
     // Parser CSV robusto: respeita aspas, separadores embutidos e quebras
     // de linha. Detecta automaticamente `;`, `,` ou `\t`.
-    // Import dinâmico para manter este arquivo isolado de dependências cruzadas.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { parseCsv } = require('@/lib/exportUtils');
     const rows: string[][] = parseCsv(content);
+    if (rows.length < 2) {
+      throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
+    }
     if (rows.length < 2) {
       throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
     }

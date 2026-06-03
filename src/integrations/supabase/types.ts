@@ -2778,6 +2778,8 @@ export type Database = {
           name: string
           permissions: Json | null
           phone: string | null
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
           specialties: string[] | null
           updated_at: string
           updated_by: string | null
@@ -2810,6 +2812,8 @@ export type Database = {
           name: string
           permissions?: Json | null
           phone?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           specialties?: string[] | null
           updated_at?: string
           updated_by?: string | null
@@ -2842,6 +2846,8 @@ export type Database = {
           name?: string
           permissions?: Json | null
           phone?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           specialties?: string[] | null
           updated_at?: string
           updated_by?: string | null
@@ -3905,6 +3911,81 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      whatsapp_send_queue: {
+        Row: {
+          appointment_id: string | null
+          attempts: number
+          body: string
+          created_at: string
+          dedup_key: string | null
+          hours_before: number | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          professional_id: string | null
+          provider: string | null
+          reason: string | null
+          status: string
+          template_type: string | null
+          to_phone: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          attempts?: number
+          body: string
+          created_at?: string
+          dedup_key?: string | null
+          hours_before?: number | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          professional_id?: string | null
+          provider?: string | null
+          reason?: string | null
+          status?: string
+          template_type?: string | null
+          to_phone: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          attempts?: number
+          body?: string
+          created_at?: string
+          dedup_key?: string | null
+          hours_before?: number | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          professional_id?: string | null
+          provider?: string | null
+          reason?: string | null
+          status?: string
+          template_type?: string | null
+          to_phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_send_queue_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_queue_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_templates: {
         Row: {

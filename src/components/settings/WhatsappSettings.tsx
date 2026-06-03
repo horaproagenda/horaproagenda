@@ -39,6 +39,8 @@ export function WhatsappSettings() {
   const [form, setForm] = useState<{ api_url: string; instance_id: string; token: string }>({
     api_url: '', instance_id: '', token: '',
   });
+  const [quietHours, setQuietHours] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [savingQuiet, setSavingQuiet] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Bootstrap: roles, my professional, list of professionals (admin only).

@@ -1,0 +1,91 @@
+// Shared UltraMsg client used by all WhatsApp edge functions.
+// Docs: https://docs.ultramsg.com/
+
+const DEFAULT_BASE = 'https://api.ultramsg.com';
+
+export function getUltramsgConfig() {
+  const base = (Deno.env.get('ULTRAMSG_API_URL') || DEFAULT_BASE).replace(/\/+$/, '');
+  const instance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
+  const token = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
+  return { base, instance, token, configured: Boolean(base && instance && token) };
+}
+
+export function normalizeBrPhone(phone: string): string {
+  let digits = (phone || '').replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = digits.substring(1);
+  if (!digits.startsWith('55') && digits.length <= 11) digits = '55' + digits;
+  return digits;
+}
+
+export async function ultramsgStatus() {
+  const { base, instance, token, configured } = getUltramsgConfig();
+  if (!configured) {
+    return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
+  }
+  const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/status?token=${encodeURIComponent(token)}`);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    return { configured: true, connected: false, instance, error: data?.error || `UltraMsg HTTP ${r.status}` };
+  }
+  const status = data?.accountStatus?.status || data?.status || null;
+  const substatus = data?.accountStatus?.substatus || null;
+  const connected = status === 'authenticated';
+  return {
+    configured: true,
+    connected,
+    instance,
+    state: status,
+    substatus,
+    raw: data,
+    error: connected ? null : `WhatsApp não conectado (${status || 'desconhecido'})`,
+  };
+}
+
+export async function ultramsgGetQrCode() {
+  const { base, instance, token, configured } = getUltramsgConfig();
+  if (!configured) throw new Error('UltraMsg não configurado.');
+
+  // Check if already connected first
+  const st = await ultramsgStatus();
+  if (st.connected) {
+    return { connected: true, instance, qrcode: null };
+  }
+
+  // /instance/qrCode returns { qrCode: "data:image/png;base64,..." }
+  const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
+  }
+  let qrcode: string | null = data?.qrCode || data?.qrcode || null;
+  if (qrcode && !qrcode.startsWith('data:image')) {
+    qrcode = `data:image/png;base64,${qrcode}`;
+  }
+  return { connected: false, instance, qrcode };
+}
+
+export async function ultramsgSendText(opts: { to: string; body: string }) {
+  const { base, instance, token, configured } = getUltramsgConfig();
+  if (!configured) throw new Error('UltraMsg não configurado.');
+
+  const st = await ultramsgStatus();
+  if (!st.connected) {
+    throw new Error(`WhatsApp não conectado no UltraMsg (estado: ${st.state || 'desconhecido'}). Conecte por QR Code em Configurações → WhatsApp.`);
+  }
+
+  const form = new URLSearchParams();
+  form.set('token', token);
+  form.set('to', normalizeBrPhone(opts.to));
+  form.set('body', opts.body);
+
+  const r = await fetch(`${base}/${encodeURIComponent(instance)}/messages/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+  });
+  const data = await r.json().catch(async () => ({ raw: await r.text().catch(() => '') }));
+  if (!r.ok || data?.error) {
+    throw new Error(`UltraMsg ${r.status}: ${JSON.stringify(data).slice(0, 500)}`);
+  }
+  return data;
+}

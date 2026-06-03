@@ -28,9 +28,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
+    const ultramsgBase = (Deno.env.get('ULTRAMSG_API_URL') || 'https://api.ultramsg.com').replace(/\/+$/, '');
+    const ultramsgInstance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
+    const ultramsgToken = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
 
     // --- AuthN/AuthZ: require valid JWT and admin/receptionist role ---
     const authHeader = req.headers.get('Authorization');
@@ -175,31 +175,22 @@ serve(async (req) => {
       minute: '2-digit'
     })}`;
 
-    // Send WhatsApp notification if configured
-    if (evolutionApiUrl && evolutionApiKey && notifyPhone) {
+    // Send WhatsApp notification via UltraMsg if configured
+    if (ultramsgInstance && ultramsgToken && notifyPhone) {
       try {
-        // Validate URL format
-        new URL(evolutionApiUrl);
-        
-        // Clean phone number
         let cleanPhone = notifyPhone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0')) {
-          cleanPhone = '55' + cleanPhone.substring(1);
-        }
-        if (!cleanPhone.startsWith('55')) {
-          cleanPhone = '55' + cleanPhone;
-        }
+        if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+        if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
 
-        const response = await fetch(`${evolutionApiUrl}/message/sendText/${encodeURIComponent(evolutionInstance)}`, {
+        const form = new URLSearchParams();
+        form.set('token', ultramsgToken);
+        form.set('to', cleanPhone);
+        form.set('body', message);
+
+        const response = await fetch(`${ultramsgBase}/${encodeURIComponent(ultramsgInstance)}/messages/chat`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': evolutionApiKey,
-          },
-          body: JSON.stringify({
-            number: cleanPhone,
-            text: message,
-          }),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: form.toString(),
         });
 
         if (response.ok) {

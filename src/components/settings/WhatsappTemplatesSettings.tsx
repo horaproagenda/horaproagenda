@@ -110,7 +110,14 @@ export function WhatsappTemplatesSettings() {
     templates.filter(t => (t.professional_id ?? null) === (profId ?? null) && t.id !== exceptId).length;
 
   const handleSave = () => {
-    const targetProfId = formData.professional_id || null;
+    // Non-staff professionals can only save templates tied to themselves.
+    const targetProfId = isStaff
+      ? (formData.professional_id || null)
+      : myProfessionalId;
+    if (!isStaff && !targetProfId) {
+      toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
+      return;
+    }
     const existingCount = countForProfessional(targetProfId, editingId ?? undefined);
     if (existingCount >= MAX_TEMPLATES_PER_PROFESSIONAL) {
       toast.error(

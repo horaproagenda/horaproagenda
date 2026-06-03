@@ -33,6 +33,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 
 interface ImportAppointmentsDialogProps {
   open: boolean;
@@ -100,18 +101,17 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
 
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
+      const rows = parseCsv(text);
+
+      if (rows.length < 2) {
         toast.error('Arquivo CSV vazio ou sem dados');
         setIsProcessing(false);
         return;
       }
 
-      // Parse header
-      const headerLine = lines[0];
-      const headers = headerLine.split(/[,;]/).map(h => normalizeString(h));
-      
+      // Parse header (já vem separado corretamente pelo parseCsv)
+      const headers = rows[0].map((h) => normalizeString(h));
+
       // Map column indices
       const colMap = {
         date: headers.findIndex(h => h.includes('data')),
@@ -134,10 +134,9 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
 
       const parsed: ParsedAppointment[] = [];
 
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        const cols = line.split(/[,;]/).map(c => c.trim().replace(/^"|"$/g, ''));
-        
+      for (let i = 1; i < rows.length; i++) {
+        const cols = rows[i].map((c) => (c ?? '').trim());
+
         const row: ParsedAppointment = {
           rowIndex: i + 1,
           date: cols[colMap.date] || '',
@@ -157,10 +156,10 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
         // Skip empty rows
         if (!row.date && !row.clientName) continue;
 
-        // Validate and resolve
         validateAndResolve(row);
         parsed.push(row);
       }
+
 
       setParsedData(parsed);
       setImportStatus('idle');

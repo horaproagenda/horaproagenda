@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -133,10 +134,39 @@ export function WhatsappSettings() {
   const configured = connectionStatus?.configured !== false;
   const usingFallback = !!selectedProfId && connectionStatus?.source === 'global';
 
+  // Keep-alive: faz ping silencioso a cada 60s para manter a sessão saudável
+  // e detectar quedas cedo, evitando que o profissional ache que precisa
+  // criar uma nova instância.
+  useWhatsappConnectionKeepAlive(selectedProfId || null, {
+    enabled: !!selectedProfId && !!credsMap[selectedProfId],
+  });
+
+  // Quando o ping confirma conexão, re-carrega last_connected_at da tabela
+  // (o edge function atualizou esse timestamp) para refletir na UI.
+  useEffect(() => {
+    if (!selectedProfId || !connected) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('professional_whatsapp_credentials')
+        .select('professional_id, api_url, instance_id, token, is_active, last_connected_at')
+        .eq('professional_id', selectedProfId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setCredsMap(prev => ({ ...prev, [selectedProfId]: data as Creds }));
+    })();
+    return () => { cancelled = true; };
+  }, [connected, selectedProfId, connectionStatus?.state]);
+
   const selectedName = useMemo(() => {
     if (!selectedProfId) return 'Conta do salão (global)';
     return professionals.find(p => p.id === selectedProfId)?.name || 'Profissional';
   }, [selectedProfId, professionals]);
+
+  const selectedCreds = selectedProfId ? credsMap[selectedProfId] : null;
+  const lastConnectedAt = selectedCreds?.last_connected_at
+    ? new Date(selectedCreds.last_connected_at).toLocaleString('pt-BR')
+    : null;
 
   const handleGenerateQr = async () => {
     if (!selectedProfId) {
@@ -146,6 +176,14 @@ export function WhatsappSettings() {
     if (!credsMap[selectedProfId]) {
       toast.error('Salve o instance_id e token do profissional antes de gerar o QR Code.');
       return;
+    }
+    // Proteção: se já está conectado, gerar novo QR pode invalidar a sessão atual.
+    // Só prossegue após confirmação explícita do usuário.
+    if (connected) {
+      const ok = window.confirm(
+        'O WhatsApp deste profissional já está conectado. Gerar um novo QR Code irá desconectar a sessão atual e exigir nova leitura no celular. Deseja continuar?',
+      );
+      if (!ok) return;
     }
     await getQRCode(selectedProfId);
   };
@@ -158,6 +196,16 @@ export function WhatsappSettings() {
     if (!form.instance_id.trim() || !form.token.trim()) {
       toast.error('Informe instance_id e token.');
       return;
+    }
+    // Proteção: trocar o instance_id quando já existe uma instância conectada
+    // significa abandonar a sessão antiga. Confirma antes para evitar criar
+    // instâncias novas por engano.
+    const existing = credsMap[selectedProfId];
+    if (existing && existing.instance_id && existing.instance_id !== form.instance_id.trim()) {
+      const ok = window.confirm(
+        `Você está mudando o Instance ID de "${existing.instance_id}" para "${form.instance_id.trim()}". A sessão WhatsApp atual será abandonada. Confirma a troca?`,
+      );
+      if (!ok) return;
     }
     setSaving(true);
     const payload = {
@@ -179,6 +227,7 @@ export function WhatsappSettings() {
     setCredsMap(prev => ({ ...prev, [selectedProfId]: { ...(prev[selectedProfId] || {} as Creds), ...payload } as Creds }));
     void checkConnection(selectedProfId);
   };
+
 
   const handleDisable = async () => {
     if (!selectedProfId) return;
@@ -251,6 +300,12 @@ export function WhatsappSettings() {
                 : `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários, cobranças e alertas) saem desta conta respeitando a janela de horário configurada.`
             ) : (
               connectionStatus?.message || connectionStatus?.error || 'Salve as credenciais UltraMsg e gere o QR Code para conectar.'
+            )}
+            {connected && lastConnectedAt && (
+              <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
+              </div>
             )}
           </AlertDescription>
         </Alert>

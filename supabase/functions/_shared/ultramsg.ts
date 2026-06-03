@@ -22,8 +22,12 @@ export async function ultramsgStatus() {
   if (!configured) {
     return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
   }
-  const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/status?token=${encodeURIComponent(token)}`);
-  const data = await r.json().catch(() => ({}));
+  const url = `${base}/${encodeURIComponent(instance)}/instance/status?token=${encodeURIComponent(token)}`;
+  const r = await fetch(url);
+  const text = await r.text();
+  console.log('[ultramsg.status] HTTP', r.status, 'body:', text.slice(0, 500));
+  let data: any = {};
+  try { data = JSON.parse(text); } catch { /* ignore */ }
   if (!r.ok) {
     return { configured: true, connected: false, instance, error: data?.error || `UltraMsg HTTP ${r.status}` };
   }

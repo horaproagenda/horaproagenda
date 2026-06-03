@@ -4,12 +4,6 @@ const appUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
 const PROJECT_REF = 'nsgcllrbswodjoadybsj';
 const authStorageKey = `sb-${PROJECT_REF}-auth-token`;
 
-function fakeJwt() {
-  const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
-  const payload = btoa(JSON.stringify({ sub: 'visual-user', exp: Math.floor(Date.now() / 1000) + 3600 }));
-  return `${header}.${payload}.signature`;
-}
-
 async function mockAgendaData(page: import('@playwright/test').Page) {
   await page.addInitScript(({ key }) => {
     const token = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' })) + '.' + btoa(JSON.stringify({ sub: 'visual-user', exp: Math.floor(Date.now() / 1000) + 3600 })) + '.signature';

@@ -310,6 +310,45 @@ export function WhatsappSettings() {
           </div>
         )}
 
+        {/* Per-professional quiet hours (each pro manages only their own here) */}
+        {selectedProfId && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <p className="text-xs font-medium">Janela de envio das mensagens automáticas</p>
+            <p className="text-[11px] text-muted-foreground">
+              Horário permitido para lembretes, confirmações, pós-atendimento e aniversário deste profissional.
+              Fora da janela, as mensagens ficam enfileiradas e saem assim que a janela abrir. Deixe vazio para usar o padrão do template.
+            </p>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-5">
+                <Label className="text-[11px] uppercase text-muted-foreground">Início (0–23)</Label>
+                <Input
+                  type="number" min={0} max={23}
+                  value={quietHours.start}
+                  onChange={(e) => setQuietHours(q => ({ ...q, start: e.target.value }))}
+                  placeholder="—"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="col-span-5">
+                <Label className="text-[11px] uppercase text-muted-foreground">Fim (exclusivo)</Label>
+                <Input
+                  type="number" min={0} max={23}
+                  value={quietHours.end}
+                  onChange={(e) => setQuietHours(q => ({ ...q, end: e.target.value }))}
+                  placeholder="—"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="col-span-2">
+                <Button size="sm" variant="outline" onClick={handleSaveQuietHours} disabled={savingQuiet} className="h-8 w-full px-2">
+                  {savingQuiet ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => checkConnection(selectedProfId || undefined)} disabled={isLoading}>
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}

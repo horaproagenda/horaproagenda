@@ -40,6 +40,17 @@ const Configuracoes = () => {
   const [clinicEmail, setClinicEmail] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
 
+  // Edit-mode toggles (after first save, fields lock & button switches to "Editar")
+  const [clinicEditing, setClinicEditing] = useState(false);
+  const [hoursEditing, setHoursEditing] = useState(false);
+
+  const clinicSaved = !!((settings as any)?.clinic_name);
+  const hoursSaved = !!settings?.id;
+  const clinicLocked = clinicSaved && !clinicEditing;
+  const hoursLocked = hoursSaved && !hoursEditing;
+  const savedInputClass =
+    'h-8 text-sm border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium';
+
   useEffect(() => {
     if (settings) {
       setOpeningTime(settings.opening_time || '08:00');
@@ -62,27 +73,41 @@ const Configuracoes = () => {
   }, [settings]);
 
   const handleSaveClinic = () => {
-    updateSettings.mutate({
-      clinic_name: clinicName,
-      clinic_phone: clinicPhone,
-      clinic_email: clinicEmail,
-      clinic_address: clinicAddress,
-    } as any);
+    if (clinicLocked) {
+      setClinicEditing(true);
+      return;
+    }
+    updateSettings.mutate(
+      {
+        clinic_name: clinicName,
+        clinic_phone: clinicPhone,
+        clinic_email: clinicEmail,
+        clinic_address: clinicAddress,
+      } as any,
+      { onSuccess: () => setClinicEditing(false) }
+    );
   };
 
   const handleSaveHours = () => {
-    updateSettings.mutate({
-      opening_time: openingTime,
-      closing_time: closingTime,
-      slot_interval: slotInterval,
-      work_saturdays: workSaturdays,
-      work_sundays: workSundays,
-      saturday_opening_time: saturdayOpeningTime,
-      saturday_closing_time: saturdayClosingTime,
-      sunday_opening_time: sundayOpeningTime,
-      sunday_closing_time: sundayClosingTime,
-      timezone: timezone,
-    });
+    if (hoursLocked) {
+      setHoursEditing(true);
+      return;
+    }
+    updateSettings.mutate(
+      {
+        opening_time: openingTime,
+        closing_time: closingTime,
+        slot_interval: slotInterval,
+        work_saturdays: workSaturdays,
+        work_sundays: workSundays,
+        saturday_opening_time: saturdayOpeningTime,
+        saturday_closing_time: saturdayClosingTime,
+        sunday_opening_time: sundayOpeningTime,
+        sunday_closing_time: sundayClosingTime,
+        timezone: timezone,
+      },
+      { onSuccess: () => setHoursEditing(false) }
+    );
   };
 
   return (

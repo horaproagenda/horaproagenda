@@ -145,6 +145,43 @@ export function MobileAgendaHeader({
             <Plus className="h-3.5 w-3.5" />
             Novo
           </Button>
+
+          {(onNewAbsence || onManageAbsences || onToday) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  aria-label="Mais ações da agenda"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+                <DropdownMenuLabel className="text-[11px]">Ações</DropdownMenuLabel>
+                {onToday && (
+                  <DropdownMenuItem onClick={onToday} className="text-xs gap-2">
+                    <ChevronLeft className="h-3.5 w-3.5 opacity-0" />
+                    Ir para hoje
+                  </DropdownMenuItem>
+                )}
+                {(onNewAbsence || onManageAbsences) && <DropdownMenuSeparator />}
+                {onNewAbsence && (
+                  <DropdownMenuItem onClick={onNewAbsence} className="text-xs gap-2">
+                    <Plus className="h-3.5 w-3.5" />
+                    Registrar ausência
+                  </DropdownMenuItem>
+                )}
+                {onManageAbsences && (
+                  <DropdownMenuItem onClick={onManageAbsences} className="text-xs gap-2">
+                    <List className="h-3.5 w-3.5" />
+                    Ausências registradas
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

@@ -41,6 +41,9 @@ interface MobileAgendaHeaderProps {
   };
   mobileView: MobileViewType;
   onMobileViewChange: (view: MobileViewType) => void;
+  onNewAbsence?: () => void;
+  onManageAbsences?: () => void;
+  onToday?: () => void;
 }
 
 export function MobileAgendaHeader({
@@ -54,6 +57,9 @@ export function MobileAgendaHeader({
   dayStats,
   mobileView,
   onMobileViewChange,
+  onNewAbsence,
+  onManageAbsences,
+  onToday,
 }: MobileAgendaHeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   

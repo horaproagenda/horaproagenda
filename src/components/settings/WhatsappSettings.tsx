@@ -160,6 +160,14 @@ export function WhatsappSettings() {
       toast.error('Salve o instance_id e token do profissional antes de gerar o QR Code.');
       return;
     }
+    // Proteção: se já está conectado, gerar novo QR pode invalidar a sessão atual.
+    // Só prossegue após confirmação explícita do usuário.
+    if (connected) {
+      const ok = window.confirm(
+        'O WhatsApp deste profissional já está conectado. Gerar um novo QR Code irá desconectar a sessão atual e exigir nova leitura no celular. Deseja continuar?',
+      );
+      if (!ok) return;
+    }
     await getQRCode(selectedProfId);
   };
 
@@ -171,6 +179,16 @@ export function WhatsappSettings() {
     if (!form.instance_id.trim() || !form.token.trim()) {
       toast.error('Informe instance_id e token.');
       return;
+    }
+    // Proteção: trocar o instance_id quando já existe uma instância conectada
+    // significa abandonar a sessão antiga. Confirma antes para evitar criar
+    // instâncias novas por engano.
+    const existing = credsMap[selectedProfId];
+    if (existing && existing.instance_id && existing.instance_id !== form.instance_id.trim()) {
+      const ok = window.confirm(
+        `Você está mudando o Instance ID de "${existing.instance_id}" para "${form.instance_id.trim()}". A sessão WhatsApp atual será abandonada. Confirma a troca?`,
+      );
+      if (!ok) return;
     }
     setSaving(true);
     const payload = {
@@ -192,6 +210,7 @@ export function WhatsappSettings() {
     setCredsMap(prev => ({ ...prev, [selectedProfId]: { ...(prev[selectedProfId] || {} as Creds), ...payload } as Creds }));
     void checkConnection(selectedProfId);
   };
+
 
   const handleDisable = async () => {
     if (!selectedProfId) return;

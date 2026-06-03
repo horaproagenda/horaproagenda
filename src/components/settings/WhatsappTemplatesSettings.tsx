@@ -90,6 +90,8 @@ export function WhatsappTemplatesSettings() {
     if (!myProfessionalId) return [];
     return allTemplates.filter(t => t.professional_id === myProfessionalId);
   }, [allTemplates, isStaff, myProfessionalId]);
+
+  const handleEdit = (template: WhatsappTemplate) => {
     setEditingId(template.id);
     setFormData({
       name: template.name,

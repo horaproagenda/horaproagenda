@@ -58,13 +58,38 @@ const initialForm: FormState = {
 };
 
 export function WhatsappTemplatesSettings() {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();
+  const { templates: allTemplates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();
   const { professionals } = useProfessionals();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<FormState>(initialForm);
 
-  const handleEdit = (template: WhatsappTemplate) => {
+  // Current user context
+  const [isStaff, setIsStaff] = useState(false); // admin or receptionist
+  const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
+  const [ctxLoaded, setCtxLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setCtxLoaded(true); return; }
+      const { data: rolesRows } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const roles = (rolesRows ?? []).map((r: any) => r.role);
+      setIsStaff(roles.includes('admin') || roles.includes('receptionist'));
+      const { data: prof } = await supabase
+        .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+      setMyProfessionalId(prof?.id ?? null);
+      setCtxLoaded(true);
+    })();
+  }, []);
+
+  // Non-staff professionals see only their own templates.
+  const templates = useMemo(() => {
+    if (isStaff) return allTemplates;
+    if (!myProfessionalId) return [];
+    return allTemplates.filter(t => t.professional_id === myProfessionalId);
+  }, [allTemplates, isStaff, myProfessionalId]);
     setEditingId(template.id);
     setFormData({
       name: template.name,

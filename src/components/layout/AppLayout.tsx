@@ -40,7 +40,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="h-screen overflow-hidden bg-background" data-fonts-gate>
+    <div className="h-[100dvh] overflow-hidden bg-background">
       <Sidebar 
         onNewAppointment={() => {
           setIsNewAppointmentOpen(true);
@@ -52,7 +52,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
       <div className={cn(
-        "h-screen flex flex-col transition-all duration-300 ease-in-out",
+        "h-[100dvh] flex flex-col transition-all duration-300 ease-in-out",
         // Mobile: sem padding (sidebar é drawer). Desktop: respeita largura da sidebar.
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
@@ -64,7 +64,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             onMenuClick={() => setIsMobileSidebarOpen(true)}
           />
         </div>
-        <main className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 pb-20 md:pb-24 pb-safe overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 pb-4 md:pb-6 pb-safe overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

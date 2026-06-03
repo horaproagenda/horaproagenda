@@ -214,7 +214,17 @@ export function WhatsappTemplatesSettings() {
             </div>
           </div>
           {!isCreating && !editingId && (
-            <Button onClick={() => setIsCreating(true)} size="sm">
+            <Button
+              onClick={() => {
+                setFormData({
+                  ...initialForm,
+                  professional_id: isStaff ? '' : (myProfessionalId ?? ''),
+                });
+                setIsCreating(true);
+              }}
+              size="sm"
+              disabled={!ctxLoaded || (!isStaff && !myProfessionalId)}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nova Mensagem
             </Button>

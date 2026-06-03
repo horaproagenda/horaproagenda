@@ -196,65 +196,68 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       reader.onload = (e) => {
         try {
           const text = e.target?.result as string;
-          const lines = text.split('\n').filter(line => line.trim());
-          
-          if (lines.length === 0) {
+          const rows = parseCsv(text);
+
+          if (rows.length === 0) {
             reject(new Error('Arquivo vazio'));
             return;
           }
-          
-          // Try to detect delimiter - prioritize semicolon (common in BR Excel exports)
-          const firstLine = lines[0];
-          let delimiter = ',';
-          if (firstLine.includes(';')) {
-            delimiter = ';';
-          } else if (firstLine.includes('\t')) {
-            delimiter = '\t';
-          }
-          
-          const clients: ParsedClient[] = [];
-          
-          // Check if first line is header
-          const firstLineLower = firstLine.toLowerCase();
-          const hasHeader = firstLineLower.includes('nome') || 
-                           firstLineLower.includes('name') || 
-                           firstLineLower.includes('telefone') ||
-                           firstLineLower.includes('phone');
-          
-          const startIndex = hasHeader ? 1 : 0;
-          
-          // Parse header to find column indices
-          let nameIdx = 0, phoneIdx = 1, emailIdx = 2, cpfIdx = 3, birthdateIdx = 4, notesIdx = 5, referralIdx = 6;
-          
+
+          // Detecta se a primeira linha é cabeçalho
+          const firstLineLower = rows[0].join(' ').toLowerCase();
+          const hasHeader =
+            firstLineLower.includes('nome') ||
+            firstLineLower.includes('name') ||
+            firstLineLower.includes('telefone') ||
+            firstLineLower.includes('phone');
+
+          let nameIdx = 0,
+            phoneIdx = 1,
+            emailIdx = 2,
+            cpfIdx = 3,
+            birthdateIdx = 4,
+            notesIdx = 5,
+            referralIdx = 6;
+
           if (hasHeader) {
-            const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
-            nameIdx = headers.findIndex(h => h.includes('nome') || h === 'name');
-            phoneIdx = headers.findIndex(h => h.includes('telefone') || h === 'phone' || h.includes('celular'));
-            emailIdx = headers.findIndex(h => h.includes('email') || h.includes('e-mail'));
-            cpfIdx = headers.findIndex(h => h.includes('cpf'));
-            birthdateIdx = headers.findIndex(h => h.includes('nascimento') || h.includes('birthdate') || h.includes('data'));
-            notesIdx = headers.findIndex(h => h.includes('obs') || h.includes('notes') || h.includes('observa'));
-            referralIdx = headers.findIndex(h => h.includes('indica') || h.includes('referral') || h.includes('origem'));
-            
-            // Set defaults for required fields
+            const headers = rows[0].map((h) => h.trim().toLowerCase());
+            nameIdx = headers.findIndex((h) => h.includes('nome') || h === 'name');
+            phoneIdx = headers.findIndex(
+              (h) => h.includes('telefone') || h === 'phone' || h.includes('celular'),
+            );
+            emailIdx = headers.findIndex((h) => h.includes('email') || h.includes('e-mail'));
+            cpfIdx = headers.findIndex((h) => h.includes('cpf'));
+            birthdateIdx = headers.findIndex(
+              (h) => h.includes('nascimento') || h.includes('birthdate') || h.includes('data'),
+            );
+            notesIdx = headers.findIndex(
+              (h) => h.includes('obs') || h.includes('notes') || h.includes('observa'),
+            );
+            referralIdx = headers.findIndex(
+              (h) => h.includes('indica') || h.includes('referral') || h.includes('origem'),
+            );
             if (nameIdx === -1) nameIdx = 0;
             if (phoneIdx === -1) phoneIdx = 1;
           }
-          
-          for (let i = startIndex; i < lines.length; i++) {
-            const parts = lines[i].split(delimiter).map(p => p.trim().replace(/^["']|["']$/g, ''));
-            
-            if (parts.length >= 1 && parts[nameIdx]?.trim()) {
-              clients.push(validateClient({
+
+          const startIndex = hasHeader ? 1 : 0;
+          const clients: ParsedClient[] = [];
+
+          for (let i = startIndex; i < rows.length; i++) {
+            const parts = rows[i];
+            if (parts.length === 0 || !parts[nameIdx]?.trim()) continue;
+            clients.push(
+              validateClient({
                 name: parts[nameIdx] || '',
                 phone: phoneIdx >= 0 ? parts[phoneIdx] || '' : '',
                 email: emailIdx >= 0 ? parts[emailIdx] || undefined : undefined,
                 cpf: cpfIdx >= 0 ? parts[cpfIdx] || undefined : undefined,
                 birthdate: birthdateIdx >= 0 ? parts[birthdateIdx] || undefined : undefined,
                 notes: notesIdx >= 0 ? parts[notesIdx] || undefined : undefined,
-                referral_source: referralIdx >= 0 ? parts[referralIdx] || undefined : undefined,
-              }));
-            }
+                referral_source:
+                  referralIdx >= 0 ? parts[referralIdx] || undefined : undefined,
+              }),
+            );
           }
 
           if (clients.length === 0) {
@@ -271,6 +274,18 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       reader.readAsText(file);
     });
   };
+
+  const handleDownloadTemplate = () => {
+    downloadCsvTemplate({
+      filename: 'modelo_importacao_clientes',
+      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações', 'Indicação'],
+      sampleRows: [
+        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP', 'Instagram'],
+        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere horário pela manhã', 'Amigo'],
+      ],
+    });
+  };
+
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

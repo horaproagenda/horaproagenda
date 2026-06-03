@@ -1280,7 +1280,7 @@ const Agenda = () => {
       </div>
 
       {/* Time slots grid - Scrollable on mobile */}
-      <ScrollArea className="h-[calc(100vh-360px)] sm:h-[500px]">
+      <ScrollArea className="h-[calc(100dvh-340px)] min-h-[260px] sm:h-[calc(100dvh-280px)] sm:min-h-[320px]">
         <div className="space-y-0.5 min-w-[600px] sm:min-w-0">
           {timeSlots.map(time => (
             <div key={time} className={cn("grid gap-0.5 min-h-[26px]", hideSunday ? "grid-cols-7" : "grid-cols-8")}>

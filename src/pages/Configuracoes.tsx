@@ -135,51 +135,63 @@ const Configuracoes = () => {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome da Clínica</Label>
                   <Input
-                    className="h-8 text-sm"
+                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
                     placeholder="Nome do estabelecimento"
+                    readOnly={clinicLocked}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Telefone</Label>
                     <Input
-                      className="h-8 text-sm"
+                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                       value={clinicPhone}
                       onChange={(e) => setClinicPhone(e.target.value)}
                       placeholder="(11) 99999-9999"
+                      readOnly={clinicLocked}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Email</Label>
                     <Input
-                      className="h-8 text-sm"
+                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                       type="email"
                       value={clinicEmail}
                       onChange={(e) => setClinicEmail(e.target.value)}
                       placeholder="contato@clinica.com"
+                      readOnly={clinicLocked}
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Endereço</Label>
                   <Input
-                    className="h-8 text-sm"
+                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
                     value={clinicAddress}
                     onChange={(e) => setClinicAddress(e.target.value)}
                     placeholder="Rua, número - Cidade, UF"
+                    readOnly={clinicLocked}
                   />
                 </div>
                 <Button
                   size="sm"
-                  className="w-full btn-vibrant"
+                  variant={clinicLocked ? 'outline' : 'default'}
+                  className={clinicLocked ? 'w-full' : 'w-full btn-vibrant'}
                   onClick={handleSaveClinic}
                   disabled={updateSettings.isPending}
                 >
-                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                  {updateSettings.isPending
+                    ? 'Salvando...'
+                    : clinicLocked
+                    ? 'Editar Informações'
+                    : clinicSaved
+                    ? 'Salvar Alterações'
+                    : 'Salvar Informações'}
                 </Button>
               </CardContent>
+
             </Card>
 
             <Card className="card-hover">

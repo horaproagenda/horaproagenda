@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 
 interface ParsedService {
   name: string;

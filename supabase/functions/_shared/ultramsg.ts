@@ -51,17 +51,40 @@ export async function ultramsgGetQrCode() {
     return { connected: true, instance, qrcode: null };
   }
 
-  // /instance/qrCode returns { qrCode: "data:image/png;base64,..." }
-  const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
+  // Try JSON endpoint: /instance/qrCode -> { qrCode: "data:image/png;base64,..." }
+  const tryJson = async () => {
+    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
+    let q: string | null = data?.qrCode || data?.qrcode || null;
+    if (q && typeof q === 'string' && !q.startsWith('data:image')) {
+      q = `data:image/png;base64,${q}`;
+    }
+    return q;
+  };
+
+  // Fallback: /instance/qrImage returns the PNG image bytes directly
+  const tryImage = async () => {
+    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrImage?token=${encodeURIComponent(token)}`);
+    if (!r.ok) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.byteLength < 100) return null; // too small to be a QR image
+    let bin = '';
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return `data:image/png;base64,${btoa(bin)}`;
+  };
+
+  let qrcode: string | null = null;
+  try {
+    qrcode = await tryJson();
+  } catch (e) {
+    console.warn('UltraMsg qrCode JSON failed, trying qrImage:', e);
   }
-  let qrcode: string | null = data?.qrCode || data?.qrcode || null;
-  if (qrcode && !qrcode.startsWith('data:image')) {
-    qrcode = `data:image/png;base64,${qrcode}`;
+  if (!qrcode) {
+    qrcode = await tryImage();
   }
-  return { connected: false, instance, qrcode };
+
+  return { connected: false, instance, qrcode, state: st.state, substatus: st.substatus };
 }
 
 export async function ultramsgSendText(opts: { to: string; body: string }) {

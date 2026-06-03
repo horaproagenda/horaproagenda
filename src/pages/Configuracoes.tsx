@@ -106,6 +106,9 @@ const Configuracoes = () => {
           {/* WhatsApp Templates */}
           <WhatsappTemplatesSettings />
 
+          {/* Per-professional WhatsApp send window */}
+          <ProfessionalQuietHours />
+
           {/* Automation Settings */}
           <AutomationSettings />
 

@@ -301,6 +301,12 @@ export function WhatsappSettings() {
             ) : (
               connectionStatus?.message || connectionStatus?.error || 'Salve as credenciais UltraMsg e gere o QR Code para conectar.'
             )}
+            {connected && lastConnectedAt && (
+              <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
+              </div>
+            )}
           </AlertDescription>
         </Alert>
 

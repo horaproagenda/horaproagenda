@@ -96,6 +96,7 @@ const App = () => {
   useWheelScrollFix();
   useAppUpdater();
   useVersionWatcher();
+  useLayoutWatchdog();
 
   return (
     <QueryClientProvider client={queryClient}>

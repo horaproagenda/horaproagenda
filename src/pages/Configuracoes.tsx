@@ -94,55 +94,7 @@ const Configuracoes = () => {
           {/* Gestão de usuários movida para o Painel do Administrador (/admin) */}
           {/* Diagnóstico do sistema e integridade da agenda/pacotes rodam automaticamente em background (useAgendaIntegrityAutoCheck + usePostUpdateDataHeal). */}
 
-          {/* WhatsApp Connection Status */}
-          <WhatsappSettings />
-
-          {/* WhatsApp Templates */}
-          <WhatsappTemplatesSettings />
-
-          {/* Automation Settings */}
-          <AutomationSettings />
-
-
-          {/* Financial Settings */}
-          <Card className="card-hover">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <DollarSign className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Configurações Financeiras</CardTitle>
-                  <CardDescription className="text-xs">Regras de atraso e contas a pagar</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm">Dias de tolerância para marcar como atrasada</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Quantos dias após o vencimento uma conta é marcada como "Atrasada". 0 = no dia do vencimento.
-                </p>
-                <Input
-                  type="number"
-                  min="0"
-                  max="90"
-                  value={overdueDaysThreshold}
-                  onChange={(e) => setOverdueDaysThreshold(parseInt(e.target.value) || 0)}
-                  className="w-24"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={() => {
-                  updateSettings.mutate({ overdue_days_threshold: overdueDaysThreshold } as any);
-                }}
-              >
-                Salvar
-              </Button>
-            </CardContent>
-          </Card>
-
+          {/* 1. Informações da Clínica + Horários */}
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">
               <CardHeader className="pb-3">
@@ -207,7 +159,6 @@ const Configuracoes = () => {
               </CardContent>
             </Card>
 
-
             <Card className="card-hover">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
@@ -245,8 +196,8 @@ const Configuracoes = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Abertura</Label>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       className="h-8 text-sm"
                       value={openingTime}
                       onChange={(e) => setOpeningTime(e.target.value)}
@@ -254,8 +205,8 @@ const Configuracoes = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Fechamento</Label>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       className="h-8 text-sm"
                       value={closingTime}
                       onChange={(e) => setClosingTime(e.target.value)}
@@ -264,8 +215,8 @@ const Configuracoes = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Intervalo entre agendamentos (min)</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     className="h-8 text-sm"
                     value={slotInterval}
                     onChange={(e) => setSlotInterval(Number(e.target.value))}
@@ -282,8 +233,8 @@ const Configuracoes = () => {
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Abertura (Sáb)</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         className="h-8 text-sm"
                         value={saturdayOpeningTime}
                         onChange={(e) => setSaturdayOpeningTime(e.target.value)}
@@ -291,8 +242,8 @@ const Configuracoes = () => {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Sáb)</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         className="h-8 text-sm"
                         value={saturdayClosingTime}
                         onChange={(e) => setSaturdayClosingTime(e.target.value)}
@@ -308,8 +259,8 @@ const Configuracoes = () => {
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Abertura (Dom)</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         className="h-8 text-sm"
                         value={sundayOpeningTime}
                         onChange={(e) => setSundayOpeningTime(e.target.value)}
@@ -317,8 +268,8 @@ const Configuracoes = () => {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Dom)</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         className="h-8 text-sm"
                         value={sundayClosingTime}
                         onChange={(e) => setSundayClosingTime(e.target.value)}
@@ -326,9 +277,9 @@ const Configuracoes = () => {
                     </div>
                   </div>
                 )}
-                <Button 
+                <Button
                   size="sm"
-                  className="w-full btn-vibrant" 
+                  className="w-full btn-vibrant"
                   onClick={handleSaveHours}
                   disabled={updateSettings.isPending}
                 >
@@ -336,41 +287,57 @@ const Configuracoes = () => {
                 </Button>
               </CardContent>
             </Card>
+          </div>
 
-            <Card className="card-hover">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Bell className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-medium">Notificações</CardTitle>
-                    <CardDescription className="text-xs">Configure lembretes e alertas</CardDescription>
-                  </div>
+          {/* 2. Conexão com o WhatsApp */}
+          <WhatsappSettings />
+
+          {/* 3. Mensagens de WhatsApp */}
+          <WhatsappTemplatesSettings />
+
+          {/* 4. Configurações Financeiras */}
+          <Card className="card-hover">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <DollarSign className="h-5 w-5 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <Label className="text-xs">Lembrete por email</Label>
-                    <p className="text-[10px] text-muted-foreground">Enviar email para clientes</p>
-                  </div>
-                  <Switch defaultChecked />
+                <div>
+                  <CardTitle className="text-base">Configurações Financeiras</CardTitle>
+                  <CardDescription className="text-xs">Regras de atraso e contas a pagar</CardDescription>
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <Label className="text-xs">Lembrete por SMS</Label>
-                    <p className="text-[10px] text-muted-foreground">Enviar SMS para clientes</p>
-                  </div>
-                  <Switch />
-                </div>
-                <p className="text-[10px] text-muted-foreground pt-2">
-                  Configure os templates e horários de envio do WhatsApp em{' '}
-                  <strong>Templates de WhatsApp</strong> acima.
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm">Dias de tolerância para marcar como atrasada</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Quantos dias após o vencimento uma conta é marcada como "Atrasada". 0 = no dia do vencimento.
                 </p>
-              </CardContent>
-            </Card>
+                <Input
+                  type="number"
+                  min="0"
+                  max="90"
+                  value={overdueDaysThreshold}
+                  onChange={(e) => setOverdueDaysThreshold(parseInt(e.target.value) || 0)}
+                  className="w-24"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  updateSettings.mutate({ overdue_days_threshold: overdueDaysThreshold } as any);
+                }}
+              >
+                Salvar
+              </Button>
+            </CardContent>
+          </Card>
 
+          {/* Automações + Agenda + Aparência */}
+          <AutomationSettings />
+
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
@@ -389,8 +356,8 @@ const Configuracoes = () => {
                     <Label className="text-xs">Arrastar e soltar</Label>
                     <p className="text-[10px] text-muted-foreground">Mover agendamentos arrastando</p>
                   </div>
-                  <Switch 
-                    checked={dragAndDropEnabled} 
+                  <Switch
+                    checked={dragAndDropEnabled}
                     onCheckedChange={(checked) => {
                       setDragAndDropEnabled(checked);
                       updateSettings.mutate({ drag_and_drop_enabled: checked });
@@ -405,8 +372,8 @@ const Configuracoes = () => {
                     </Label>
                     <p className="text-[10px] text-muted-foreground">Mudar automaticamente para "Atendido"</p>
                   </div>
-                  <Switch 
-                    checked={autoCompleteAppointments} 
+                  <Switch
+                    checked={autoCompleteAppointments}
                     onCheckedChange={(checked) => {
                       setAutoCompleteAppointments(checked);
                       updateSettings.mutate({ auto_complete_appointments: checked });
@@ -489,6 +456,7 @@ const Configuracoes = () => {
               </CardContent>
             </Card>
           </div>
+
 
           {/* Bulk Delete */}
           <BulkDeleteDialog />

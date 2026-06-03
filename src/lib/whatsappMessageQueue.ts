@@ -25,6 +25,7 @@ export interface WhatsappJob {
     professional_id?: string;
     test?: boolean;
   };
+  idempotencyKey: string;
   attempts: number;
   maxAttempts: number;
   nextRunAt: number; // epoch ms
@@ -34,6 +35,29 @@ export interface WhatsappJob {
 }
 
 type Listener = (snapshot: QueueSnapshot) => void;
+
+/** Janela de deduplicação para jobs já concluídos (ms). */
+const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutos
+
+function normalizePhoneForKey(phone: string): string {
+  return (phone || '').replace(/\D/g, '');
+}
+
+function defaultIdempotencyKey(input: {
+  phone: string;
+  message: string;
+  options?: WhatsappJob['options'];
+}): string {
+  const phone = normalizePhoneForKey(input.phone);
+  const msg = (input.message || '').trim();
+  const client = input.options?.client_id ?? '';
+  const prof = input.options?.professional_id ?? '';
+  // Hash leve (djb2) — suficiente para deduplicação local.
+  const raw = `${phone}|${client}|${prof}|${msg}`;
+  let h = 5381;
+  for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) | 0;
+  return `wa_${phone}_${(h >>> 0).toString(36)}`;
+}
 
 export interface QueueSnapshot {
   pending: number;

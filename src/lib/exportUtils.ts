@@ -42,10 +42,14 @@ export function escapeCsvCell(value: unknown, separator: string = CSV_SEPARATOR)
   if (str === '') return '';
   const mustQuote =
     str.includes(separator) ||
+    // Defensivo: sempre quote vírgula também, mesmo quando o separador é `;`.
+    // Garante segurança caso o arquivo seja reaberto com vírgula como separador
+    // (Excel en-US, Google Sheets, etc.).
+    str.includes(',') ||
     str.includes('"') ||
     str.includes('\n') ||
     str.includes('\r') ||
-    // Sempre quote se começar com espaço, para preservar formatação
+    // Sempre quote se começar/terminar com espaço, para preservar formatação
     /^\s|\s$/.test(str);
   if (!mustQuote) return str;
   return `"${str.replace(/"/g, '""')}"`;

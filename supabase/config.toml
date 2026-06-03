@@ -21,6 +21,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.send-appointment-reminders]
     verify_jwt = false
+  [functions.test-reminder-triggers]
+    verify_jwt = false
   [functions.whatsapp-check-connection]
     verify_jwt = false
   [functions.whatsapp-send]

@@ -22,6 +22,8 @@ const SERVICE_ROLE =
   Deno.env.get("SERVICE_ROLE_KEY") ??
   "";
 
+const skip = !SUPABASE_URL || !SERVICE_ROLE;
+
 if (skip) {
   console.warn(
     "[triggers.test] SUPABASE_URL/SERVICE_ROLE_KEY ausentes; testes serão pulados.",

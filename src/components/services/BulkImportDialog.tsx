@@ -98,28 +98,26 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
   };
 
   const parseCSVContent = (content: string): ParsedService[] | ParsedClient[] | ParsedPackageTemplate[] => {
-    const lines = content.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) {
+    // Parser CSV robusto: respeita aspas, separadores embutidos e quebras
+    // de linha. Detecta automaticamente `;`, `,` ou `\t`.
+    // Import dinâmico para manter este arquivo isolado de dependências cruzadas.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { parseCsv } = require('@/lib/exportUtils');
+    const rows: string[][] = parseCsv(content);
+    if (rows.length < 2) {
       throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
     }
 
-    // Detect delimiter (prioritize semicolon for BR Excel exports)
-    const firstLine = lines[0];
-    let delimiter = ',';
-    if (firstLine.includes(';')) delimiter = ';';
-    else if (firstLine.includes('\t')) delimiter = '\t';
-
-    const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+    const headers = rows[0].map((h) => h.trim().toLowerCase());
     const data: any[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
       const row: any = {};
-      
       headers.forEach((header, idx) => {
-        row[header] = values[idx] || '';
+        row[header] = (values[idx] ?? '').trim();
       });
-      
+
       if (type === 'services') {
         const name = row.nome || row.name || '';
         if (!name) continue;
@@ -158,6 +156,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
 
     return data;
   };
+
 
   const parseTextContent = (content: string): ParsedService[] | ParsedClient[] | ParsedPackageTemplate[] => {
     // Try to detect if it's a structured table

@@ -22,7 +22,6 @@ const SERVICE_ROLE =
   Deno.env.get("SERVICE_ROLE_KEY") ??
   "";
 
-const skip = !SUPABASE_URL || !SERVICE_ROLE;
 if (skip) {
   console.warn(
     "[triggers.test] SUPABASE_URL/SERVICE_ROLE_KEY ausentes; testes serão pulados.",
@@ -122,7 +121,6 @@ async function cleanup(ids: { client?: string; appointment?: string }) {
   if (ids.client) await admin.from("clients").delete().eq("id", ids.client);
 }
 
-const skip = !SUPABASE_URL || !SERVICE_ROLE;
 
 Deno.test({
   name: "DELETE agendamento → remove lembrete pendente da fila",

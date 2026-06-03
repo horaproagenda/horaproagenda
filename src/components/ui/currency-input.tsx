@@ -61,7 +61,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
             setDisplayValue(formatCurrencyInput(normalizedValue));
             setIsEditing(false);
           }}
-          className={className ? `pl-10 ${className}` : 'pl-10'}
+          className={className ? `pl-11 ${className}` : 'pl-11'}
           {...props}
         />
       </div>

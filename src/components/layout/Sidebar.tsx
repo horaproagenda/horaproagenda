@@ -107,7 +107,9 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
       )}
       <aside 
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
+          // Safe-area: respeita notch/status bar/home indicator (iOS) e display cutout (Android).
+          // Sem isto, em PWA o menu mobile cobre o relógio/bateria do sistema.
+          "fixed left-0 top-0 z-40 h-[100dvh] border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out pt-safe pb-safe pl-safe",
           isCollapsed ? "w-[72px]" : "w-64",
           // Mobile: oculta por padrão, abre como drawer
           "md:translate-x-0",

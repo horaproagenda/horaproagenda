@@ -539,10 +539,15 @@ input[type="number"] {
     font-size: 0.75rem !important;
   }
 
-  /* Inputs, selects */
+  /* Inputs, selects — APENAS densidade vertical.
+     NÃO sobrescrever padding horizontal aqui: quebra os ícones internos
+     (Search, Clock, R$) que dependem das classes pl-9 / pl-10 / pl-12.
+     Regressão histórica: usar shorthand `padding` com !important fazia o
+     ícone ficar em cima do texto digitado em <480px. NÃO REINTRODUZIR. */
   input, select, textarea {
     font-size: 0.8rem !important;
-    padding: 0.35rem 0.5rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
   }
 
   /* Tabs */

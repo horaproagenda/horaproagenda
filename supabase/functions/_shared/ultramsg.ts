@@ -30,6 +30,7 @@ export async function ultramsgStatus() {
   const acct = data?.accountStatus || data?.status?.accountStatus || data?.status || {};
   const status = (typeof acct === 'string' ? acct : acct?.status) || null;
   const substatus = (typeof acct === 'object' ? acct?.substatus : null) || null;
+  const connected = status === 'authenticated' || substatus === 'connected';
   return {
     configured: true,
     connected,

@@ -1,20 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Send, ShieldCheck } from 'lucide-react';
-import { useProfessionals } from '@/hooks/useProfessionals';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export function WhatsappSettings() {
-  const { professionals } = useProfessionals();
   const {
     connectionStatus,
     checkConnection,
@@ -25,52 +17,16 @@ export function WhatsappSettings() {
     isLoadingQR,
   } = useWhatsapp();
 
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState('');
-  const [testPhone, setTestPhone] = useState('');
-  const [testMessage, setTestMessage] = useState('Teste do AgendaLume ✅ — se você recebeu, o WhatsApp conectado está funcionando.');
-  const [isSending, setIsSending] = useState(false);
-
   useEffect(() => {
-    void checkConnection(selectedProfessionalId || undefined);
-  }, [checkConnection, selectedProfessionalId]);
+    void checkConnection();
+  }, [checkConnection]);
 
   const handleGenerateQr = async () => {
-    await getQRCode(selectedProfessionalId || undefined);
-  };
-
-  const handleSendTest = async () => {
-    if (!testPhone.trim()) {
-      toast.error('Informe um número para teste');
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-send', {
-        body: {
-          phone: testPhone.trim(),
-          message: testMessage,
-          professional_id: selectedProfessionalId || undefined,
-          test: true,
-        },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Falha no envio');
-      toast.success(data?.instance ? `Mensagem enviada pela instância ${data.instance}` : 'Mensagem de teste enviada!');
-      await checkConnection(selectedProfessionalId || undefined);
-    } catch (e: any) {
-      toast.error('Erro ao enviar: ' + e.message);
-    } finally {
-      setIsSending(false);
-    }
+    await getQRCode();
   };
 
   const connected = connectionStatus?.connected === true;
   const configured = connectionStatus?.configured !== false;
-  const selectedProfessional = professionals.find((p) => p.id === selectedProfessionalId);
-  const selectedInstance = selectedProfessionalId
-    ? ((selectedProfessional as any)?.whatsapp_from_number || selectedProfessional?.name || selectedProfessionalId)
-    : (connectionStatus?.instance || 'padrão da clínica');
 
   return (
     <Card>
@@ -81,9 +37,9 @@ export function WhatsappSettings() {
               <MessageSquare className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <CardTitle>WhatsApp conectado</CardTitle>
+              <CardTitle>WhatsApp (UltraMsg)</CardTitle>
               <CardDescription>
-                Envio direto pelo WhatsApp conectado via QR Code, sem abrir api.whatsapp.com, wa.me ou WhatsApp Web.
+                Envio direto pelo WhatsApp conectado via UltraMsg, sem abrir api.whatsapp.com, wa.me ou WhatsApp Web.
               </CardDescription>
             </div>
           </div>
@@ -98,41 +54,23 @@ export function WhatsappSettings() {
       </CardHeader>
 
       <CardContent className="space-y-5">
-        <Alert variant={connected ? 'default' : configured ? 'default' : 'destructive'}>
+        <Alert variant={connected || configured ? 'default' : 'destructive'}>
           {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
           <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
-          <AlertDescription className="text-xs space-y-1">
-            <p>{connectionStatus?.message || connectionStatus?.error || 'Gere o QR Code e leia com o WhatsApp do aparelho que enviará as mensagens.'}</p>
-            <p>Instância atual: <span className="font-medium">{selectedInstance}</span></p>
+          <AlertDescription className="text-xs">
+            {connectionStatus?.message || connectionStatus?.error || 'Gere o QR Code e leia com o WhatsApp do aparelho que enviará as mensagens.'}
           </AlertDescription>
         </Alert>
 
-        <div className="space-y-2">
-          <Label htmlFor="whatsapp-professional">Profissional / instância</Label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
-            <Select value={selectedProfessionalId || 'default'} onValueChange={(value) => setSelectedProfessionalId(value === 'default' ? '' : value)}>
-              <SelectTrigger id="whatsapp-professional" className="h-9 text-sm">
-                <SelectValue placeholder="Padrão da clínica" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Padrão da clínica</SelectItem>
-                {professionals.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={() => checkConnection(selectedProfessionalId || undefined)} disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Verificar
-            </Button>
-            <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
-              {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
-              Gerar QR Code
-            </Button>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Para instância por profissional, preencha o nome da instância no campo WhatsApp do cadastro do profissional.
-          </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => checkConnection()} disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Verificar conexão
+          </Button>
+          <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
+            {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
+            Gerar QR Code
+          </Button>
         </div>
 
         {(qrCode || pairingCode) && (
@@ -151,50 +89,6 @@ export function WhatsappSettings() {
             </div>
           </div>
         )}
-
-        <Separator />
-
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Enviar mensagem de teste</h4>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
-            <Input
-              placeholder="+5511988887777"
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-              autoComplete="off"
-            />
-            <Button onClick={handleSendTest} disabled={isSending || !connected}>
-              {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Enviar teste
-            </Button>
-          </div>
-          <Input value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
-          {!connected && (
-            <p className="text-[11px] text-destructive">Conecte o WhatsApp por QR Code antes de testar.</p>
-          )}
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Instâncias por profissional</h4>
-          <div className="rounded-lg border divide-y">
-            {professionals.length === 0 && (
-              <div className="p-3 text-xs text-muted-foreground">Nenhum profissional cadastrado.</div>
-            )}
-            {professionals.map((p) => {
-              const instance = ((p as any).whatsapp_from_number || '').trim();
-              return (
-                <div key={p.id} className="flex items-center justify-between p-3">
-                  <div className="text-sm font-medium">{p.name}</div>
-                  {instance
-                    ? <Badge variant="secondary" className="font-mono text-[11px]">{instance}</Badge>
-                    : <Badge variant="outline" className="text-[11px]">usa padrão</Badge>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

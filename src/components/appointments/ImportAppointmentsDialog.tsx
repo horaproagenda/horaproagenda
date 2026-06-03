@@ -33,6 +33,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 
 interface ImportAppointmentsDialogProps {
   open: boolean;

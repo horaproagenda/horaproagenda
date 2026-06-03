@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgGetQrCode } from "../_shared/ultramsg.ts";
+import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +22,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
+    const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -29,36 +30,48 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { data: roleRows } = await supabase
+    const body = await req.json().catch(() => ({}));
+    const professional_id: string | undefined = body?.professional_id;
+
+    const { data: roleRows } = await supabaseService
       .from('user_roles').select('role').eq('user_id', user.id);
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
-    if (!roles.includes('admin')) {
-      return new Response(JSON.stringify({ success: false, error: 'Forbidden - admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const isAdmin = roles.includes('admin');
+
+    // Authorization: admins always allowed. Professionals only for their own row.
+    if (!isAdmin) {
+      const { data: prof } = await supabaseService
+        .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+      const myId = prof?.id ?? null;
+      if (!myId || (professional_id && professional_id !== myId)) {
+        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
-    const result = await ultramsgGetQrCode();
+    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    if (!creds) {
+      return new Response(JSON.stringify({ success: false, error: 'UltraMsg não configurado para este profissional nem globalmente.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const result = await ultramsgGetQrCode(creds);
     if (result.connected) {
       return new Response(JSON.stringify({
-        success: true,
-        connected: true,
-        instance: result.instance,
+        success: true, connected: true, instance: result.instance, source,
         message: 'WhatsApp já está conectado',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!result.qrcode) {
       return new Response(JSON.stringify({
-        success: false,
+        success: false, source,
         error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({
-      success: true,
-      qrcode: result.qrcode,
-      instance: result.instance,
-      pairingCode: null,
+      success: true, qrcode: result.qrcode, instance: result.instance, pairingCode: null, source,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

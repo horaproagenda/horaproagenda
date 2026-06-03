@@ -156,7 +156,8 @@ async function trySend(
   summary: any,
 ): Promise<boolean> {
   try {
-    await ultramsgSendText({ to: payload.to, body: payload.body });
+    const { creds } = await resolveProfessionalCreds(supabase, payload.professional_id ?? null);
+    await ultramsgSendText({ to: payload.to, body: payload.body }, creds);
     return true;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

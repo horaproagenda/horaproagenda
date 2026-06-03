@@ -9,6 +9,7 @@ interface WhatsAppConnectionStatus {
   instance?: string;
   message?: string;
   provider?: string;
+  source?: 'professional' | 'global' | 'none';
   error?: string;
 }
 

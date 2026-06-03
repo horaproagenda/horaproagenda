@@ -116,7 +116,8 @@ async function processQueue(supabase: any, summary: any) {
       continue;
     }
     try {
-      await ultramsgSendText({ to: row.to_phone, body: row.body });
+      const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
+      await ultramsgSendText({ to: row.to_phone, body: row.body }, creds);
       await supabase.from('whatsapp_send_queue').update({
         status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);

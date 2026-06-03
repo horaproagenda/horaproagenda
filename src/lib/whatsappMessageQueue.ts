@@ -279,6 +279,13 @@ class WhatsappMessageQueue {
       }
       job.status = 'done';
       job.lastError = undefined;
+      // Marca como recém-enviado para deduplicar reenfileiramentos próximos.
+      this.recentlySent.set(job.idempotencyKey, Date.now());
+      // Limpa entradas antigas para não crescer indefinidamente.
+      const cutoff = Date.now() - DEDUP_TTL_MS;
+      for (const [k, t] of this.recentlySent) {
+        if (t < cutoff) this.recentlySent.delete(k);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
       job.lastError = msg;

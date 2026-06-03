@@ -25,6 +25,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.whatsapp-send]
     verify_jwt = false
+  [functions.whatsapp-webhook]
+    verify_jwt = false
   [functions.send-transactional-email]
     verify_jwt = true
   [functions.preview-transactional-email]

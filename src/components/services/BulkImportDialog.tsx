@@ -422,7 +422,7 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
             </Alert>
 
             {/* File upload */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -430,18 +430,53 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const templates = {
+                    services: {
+                      filename: 'modelo_importacao_servicos',
+                      headers: ['Nome', 'Categoria', 'Preço', 'Duração', 'Descrição', 'Retorno'],
+                      sampleRows: [
+                        ['Limpeza de Pele', 'Estética Facial', '120,00', '60', 'Limpeza profunda', '30'],
+                        ['Massagem; Relaxante', 'Bem-estar', '150,00', '50', 'Inclui aromaterapia', ''],
+                      ],
+                    },
+                    clients: {
+                      filename: 'modelo_importacao_clientes',
+                      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações'],
+                      sampleRows: [
+                        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP'],
+                        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere manhã'],
+                      ],
+                    },
+                    package_templates: {
+                      filename: 'modelo_importacao_pacotes',
+                      headers: ['Nome', 'Sessões', 'Preço', 'Duração', 'Intervalo', 'Descrição'],
+                      sampleRows: [
+                        ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa'],
+                      ],
+                    },
+                  } as const;
+                  downloadCsvTemplate(templates[type]);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Baixar modelo CSV
+              </Button>
               <span className="text-sm text-muted-foreground">
                 CSV, TXT, Word ou PDF
               </span>
             </div>
+
 
             {/* Parse error */}
             {parseError && (

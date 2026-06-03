@@ -202,6 +202,20 @@ class WhatsappMessageQueue {
       arr.forEach((j) => {
         // Jobs que estavam "running" antes do reload voltam para pending.
         if (j.status === 'running') j.status = 'pending';
+        // Backfill idempotencyKey para jobs persistidos antes da feature.
+        if (!j.idempotencyKey) {
+          j.idempotencyKey = defaultIdempotencyKey({
+            phone: j.phone,
+            message: j.message,
+            options: j.options,
+          });
+        }
+        // Dedup na restauração: se já existe um job ativo com a mesma chave, descarta o duplicado.
+        const dup = Array.from(this.jobs.values()).find(
+          (x) => x.idempotencyKey === j.idempotencyKey &&
+            (x.status === 'pending' || x.status === 'running'),
+        );
+        if (dup) return;
         this.jobs.set(j.id, j);
       });
     } catch { /* ignore */ }

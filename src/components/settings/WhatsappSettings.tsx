@@ -311,7 +311,7 @@ export function WhatsappSettings() {
           </AlertDescription>
         </Alert>
 
-        <QueueStatusPanel />
+        <WhatsappQueueStatusPanel />
 
 
 

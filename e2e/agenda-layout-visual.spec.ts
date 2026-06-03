@@ -88,7 +88,9 @@ test('Agenda não exibe faixa branca bloqueante em viewport de notebook', async 
 
   const main = page.getByTestId('app-main-scroll');
   await expect(main).toBeVisible();
-  await expect.poll(async () => main.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  const calendarScroller = page.locator('[data-radix-scroll-area-viewport]').first();
+  await expect(calendarScroller).toBeVisible();
+  await expect.poll(async () => calendarScroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
 
   const blockingWhiteBand = await page.evaluate(() => {
     const el = document.elementFromPoint(Math.floor(window.innerWidth / 2), Math.floor(window.innerHeight * 0.72));

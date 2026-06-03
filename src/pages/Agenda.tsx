@@ -1657,6 +1657,14 @@ const Agenda = () => {
           dayStats={mobileDayStats}
           mobileView={mobileView}
           onMobileViewChange={setMobileView}
+          onNewAbsence={handleOpenNewAbsence}
+          onManageAbsences={() => setShowMobileAbsencePanel(true)}
+          onToday={() => {
+            const today = new Date();
+            setSelectedDate(today);
+            setWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
+            setMonthStart(startOfMonth(today));
+          }}
         />
         
         {/* Mobile Appointment List */}
@@ -1741,6 +1749,44 @@ const Agenda = () => {
           prefilledDate={prefilledDate}
           prefilledTime={prefilledTime}
         />
+
+        {/* Professional Absence Dialog (mobile) */}
+        <ProfessionalAbsenceDialog
+          professionals={professionals}
+          open={absenceDialogOpen}
+          onOpenChange={(open) => {
+            setAbsenceDialogOpen(open);
+            if (!open) setEditingAbsence(null);
+          }}
+          prefilledDate={selectedDate}
+          editingAbsence={editingAbsence}
+        />
+
+        {/* Mobile Absence Management Sheet */}
+        <Sheet open={showMobileAbsencePanel} onOpenChange={setShowMobileAbsencePanel}>
+          <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+            <SheetHeader className="pb-3">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <UserX className="h-4 w-4 text-amber-600" />
+                Ausências Registradas
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-hidden">
+              <AbsenceManagementPanel
+                professionals={professionals}
+                onEditAbsence={(absence) => {
+                  setEditingAbsence(absence);
+                  setShowMobileAbsencePanel(false);
+                  setAbsenceDialogOpen(true);
+                }}
+                onNewAbsence={() => {
+                  setShowMobileAbsencePanel(false);
+                  handleOpenNewAbsence();
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </AppLayout>
     );
   }

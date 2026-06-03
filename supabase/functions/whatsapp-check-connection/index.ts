@@ -10,6 +10,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    // v2: fix status path parsing
     const st = await ultramsgStatus();
     return new Response(JSON.stringify({
       configured: st.configured,

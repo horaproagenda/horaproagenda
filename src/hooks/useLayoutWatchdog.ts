@@ -31,7 +31,7 @@ export function useLayoutWatchdog() {
         const now = Date.now();
         if (now - lastReport < THROTTLE_MS) return;
         lastReport = now;
-        logSyncEvent('layout-watchdog:dead-space', 'warning', {
+        logSyncEvent('layout-watchdog:dead-space', 'skipped', {
           trigger,
           deadPx: Math.round(dead),
           mainHeight: Math.round(visible),

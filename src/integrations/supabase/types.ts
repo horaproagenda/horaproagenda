@@ -2751,6 +2751,53 @@ export type Database = {
           },
         ]
       }
+      professional_whatsapp_credentials: {
+        Row: {
+          api_url: string | null
+          created_at: string
+          id: string
+          instance_id: string
+          is_active: boolean
+          last_checked_at: string | null
+          last_connected_at: string | null
+          professional_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          api_url?: string | null
+          created_at?: string
+          id?: string
+          instance_id: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_connected_at?: string | null
+          professional_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          api_url?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_connected_at?: string | null
+          professional_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_whatsapp_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           agenda_color: string | null

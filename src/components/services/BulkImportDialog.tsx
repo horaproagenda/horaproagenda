@@ -465,8 +465,8 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
                         ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa'],
                       ],
                     },
-                  } as const;
-                  downloadCsvTemplate(templates[type]);
+                  };
+                  downloadCsvTemplate(templates[type] as any);
                 }}
               >
                 <FileText className="h-4 w-4 mr-2" />

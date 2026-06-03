@@ -1102,7 +1102,7 @@ const Agenda = () => {
         </Button>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-320px)] sm:h-[520px]">
+      <ScrollArea className="h-[calc(100dvh-300px)] min-h-[280px] sm:h-[calc(100dvh-260px)] sm:min-h-[320px]">
         <div className="space-y-0.5">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);

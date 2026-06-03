@@ -302,12 +302,6 @@ export function WhatsappTemplatesSettings() {
                 </p>
               )}
             </div>
-              {limitWarning && (
-                <p className="text-xs text-destructive">
-                  Este profissional já possui {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens. Exclua uma antes de criar outra.
-                </p>
-              )}
-            </div>
 
             {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="space-y-2">

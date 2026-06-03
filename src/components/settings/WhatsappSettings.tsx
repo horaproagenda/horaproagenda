@@ -141,6 +141,23 @@ export function WhatsappSettings() {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],
   });
 
+  // Quando o ping confirma conexão, re-carrega last_connected_at da tabela
+  // (o edge function atualizou esse timestamp) para refletir na UI.
+  useEffect(() => {
+    if (!selectedProfId || !connected) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('professional_whatsapp_credentials')
+        .select('professional_id, api_url, instance_id, token, is_active, last_connected_at')
+        .eq('professional_id', selectedProfId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setCredsMap(prev => ({ ...prev, [selectedProfId]: data as Creds }));
+    })();
+    return () => { cancelled = true; };
+  }, [connected, selectedProfId, connectionStatus?.state]);
+
   const selectedName = useMemo(() => {
     if (!selectedProfId) return 'Conta do salão (global)';
     return professionals.find(p => p.id === selectedProfId)?.name || 'Profissional';

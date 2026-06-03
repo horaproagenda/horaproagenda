@@ -43,7 +43,7 @@ async function setupScenario(admin: any) {
     .insert({
       name: `E2E Reminder ${tag}`,
       phone: "5511900000000",
-      professional_id: profId,
+      assigned_professional_id: profId,
     })
     .select("id")
     .single();

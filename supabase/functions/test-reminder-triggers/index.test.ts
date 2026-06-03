@@ -46,9 +46,14 @@ async function runScenarios(): Promise<{ ok: boolean; scenarios: ScenarioResult[
       "x-e2e-secret": E2E_SECRET,
     },
   });
-  const body = await r.json();
+  const text = await r.text();
+  let body: any;
+  try { body = JSON.parse(text); } catch { body = { raw: text }; }
   if (![200, 500].includes(r.status)) {
-    throw new Error(`HTTP ${r.status}: ${JSON.stringify(body)}`);
+    throw new Error(`HTTP ${r.status}: ${text}`);
+  }
+  if (!body.scenarios) {
+    throw new Error(`Resposta inesperada (status ${r.status}): ${text}`);
   }
   return body;
 }

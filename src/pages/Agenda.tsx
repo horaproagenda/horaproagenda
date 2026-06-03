@@ -1508,7 +1508,7 @@ const Agenda = () => {
         </div>
 
         {/* Time slots grid */}
-        <ScrollArea className="h-[500px]">
+        <ScrollArea className="h-[calc(100dvh-340px)] min-h-[260px] sm:h-[calc(100dvh-280px)] sm:min-h-[320px]">
           <div className="space-y-0.5">
             {timeSlots.map(time => (
               <div 

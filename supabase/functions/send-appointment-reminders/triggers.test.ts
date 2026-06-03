@@ -16,19 +16,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL =
-  Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL")!;
+  Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL") ?? "";
 const SERVICE_ROLE =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY")!;
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+  Deno.env.get("SERVICE_ROLE_KEY") ??
+  "";
 
-if (!SUPABASE_URL || !SERVICE_ROLE) {
+const skip = !SUPABASE_URL || !SERVICE_ROLE;
+if (skip) {
   console.warn(
-    "[triggers.test] SUPABASE_URL/SERVICE_ROLE_KEY ausentes; teste será pulado.",
+    "[triggers.test] SUPABASE_URL/SERVICE_ROLE_KEY ausentes; testes serão pulados.",
   );
 }
 
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
-  auth: { persistSession: false },
-});
+const admin = skip
+  ? (null as unknown as ReturnType<typeof createClient>)
+  : createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { persistSession: false },
+    });
 
 async function pickProfessional(): Promise<string> {
   const { data, error } = await admin

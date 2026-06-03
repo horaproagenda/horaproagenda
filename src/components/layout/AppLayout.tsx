@@ -64,7 +64,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             onMenuClick={() => setIsMobileSidebarOpen(true)}
           />
         </div>
-        <main className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 pb-4 md:pb-6 pb-safe overflow-y-auto overflow-x-hidden">
+        <main data-testid="app-main-scroll" className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 pb-4 md:pb-6 pb-safe overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

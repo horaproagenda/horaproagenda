@@ -212,8 +212,8 @@ const Configuracoes = () => {
                     <Globe className="h-3 w-3" />
                     Fuso Horário
                   </Label>
-                  <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger className="h-8 text-sm">
+                  <Select value={timezone} onValueChange={setTimezone} disabled={hoursLocked}>
+                    <SelectTrigger className={hoursLocked ? savedInputClass : 'h-8 text-sm'}>
                       <SelectValue placeholder="Selecione o fuso horário" />
                     </SelectTrigger>
                     <SelectContent>
@@ -233,18 +233,20 @@ const Configuracoes = () => {
                     <Label className="text-xs">Abertura</Label>
                     <Input
                       type="time"
-                      className="h-8 text-sm"
+                      className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                       value={openingTime}
                       onChange={(e) => setOpeningTime(e.target.value)}
+                      readOnly={hoursLocked}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Fechamento</Label>
                     <Input
                       type="time"
-                      className="h-8 text-sm"
+                      className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                       value={closingTime}
                       onChange={(e) => setClosingTime(e.target.value)}
+                      readOnly={hoursLocked}
                     />
                   </div>
                 </div>
@@ -252,17 +254,18 @@ const Configuracoes = () => {
                   <Label className="text-xs">Intervalo entre agendamentos (min)</Label>
                   <Input
                     type="number"
-                    className="h-8 text-sm"
+                    className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                     value={slotInterval}
                     onChange={(e) => setSlotInterval(Number(e.target.value))}
                     min={15}
                     max={120}
                     step={15}
+                    readOnly={hoursLocked}
                   />
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos sábados</Label>
-                  <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} />
+                  <Switch checked={workSaturdays} onCheckedChange={setWorkSaturdays} disabled={hoursLocked} />
                 </div>
                 {workSaturdays && (
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
@@ -270,25 +273,27 @@ const Configuracoes = () => {
                       <Label className="text-xs">Abertura (Sáb)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={saturdayOpeningTime}
                         onChange={(e) => setSaturdayOpeningTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Sáb)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={saturdayClosingTime}
                         onChange={(e) => setSaturdayClosingTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between py-1">
                   <Label className="text-xs">Trabalhar aos domingos</Label>
-                  <Switch checked={workSundays} onCheckedChange={setWorkSundays} />
+                  <Switch checked={workSundays} onCheckedChange={setWorkSundays} disabled={hoursLocked} />
                 </div>
                 {workSundays && (
                   <div className="grid grid-cols-2 gap-3 pl-4 border-l-2 border-primary/20">
@@ -296,31 +301,41 @@ const Configuracoes = () => {
                       <Label className="text-xs">Abertura (Dom)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={sundayOpeningTime}
                         onChange={(e) => setSundayOpeningTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Fechamento (Dom)</Label>
                       <Input
                         type="time"
-                        className="h-8 text-sm"
+                        className={hoursLocked ? savedInputClass : 'h-8 text-sm'}
                         value={sundayClosingTime}
                         onChange={(e) => setSundayClosingTime(e.target.value)}
+                        readOnly={hoursLocked}
                       />
                     </div>
                   </div>
                 )}
                 <Button
                   size="sm"
-                  className="w-full btn-vibrant"
+                  variant={hoursLocked ? 'outline' : 'default'}
+                  className={hoursLocked ? 'w-full' : 'w-full btn-vibrant'}
                   onClick={handleSaveHours}
                   disabled={updateSettings.isPending}
                 >
-                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Horários'}
+                  {updateSettings.isPending
+                    ? 'Salvando...'
+                    : hoursLocked
+                    ? 'Editar Horários'
+                    : hoursSaved
+                    ? 'Salvar Alterações'
+                    : 'Salvar Horários'}
                 </Button>
               </CardContent>
+
             </Card>
           </div>
 

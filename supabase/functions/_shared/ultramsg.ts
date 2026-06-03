@@ -27,9 +27,9 @@ export async function ultramsgStatus() {
   if (!r.ok) {
     return { configured: true, connected: false, instance, error: data?.error || `UltraMsg HTTP ${r.status}` };
   }
-  const status = data?.accountStatus?.status || data?.status || null;
-  const substatus = data?.accountStatus?.substatus || null;
-  const connected = status === 'authenticated';
+  const acct = data?.accountStatus || data?.status?.accountStatus || data?.status || {};
+  const status = (typeof acct === 'string' ? acct : acct?.status) || null;
+  const substatus = (typeof acct === 'object' ? acct?.substatus : null) || null;
   return {
     configured: true,
     connected,

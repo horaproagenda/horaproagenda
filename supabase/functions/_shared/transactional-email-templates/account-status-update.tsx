@@ -23,6 +23,8 @@ type Kind =
   | 'subscription_activated'
   | 'payment_failed'
   | 'past_due'
+  | 'seats_near_limit'
+  | 'seats_blocked'
 
 interface Props {
   kind?: Kind
@@ -35,6 +37,10 @@ interface Props {
   months?: number
   /** for subscription_activated */
   planLabel?: string
+  /** for seat-related notifications */
+  used?: number
+  seatLimit?: number
+  attemptedEmail?: string
 }
 
 const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: (p: Props) => string }> = {
@@ -67,6 +73,16 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
     title: 'Sua assinatura está em atraso',
     intro: () => 'O pagamento da sua assinatura ficou pendente. Regularize para manter seu acesso ativo.',
     detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
+  },
+  seats_near_limit: {
+    title: 'Você está perto do limite de usuários',
+    intro: (p) => `Sua conta está usando ${p.used ?? 0} de ${p.seatLimit ?? 0} assentos disponíveis no seu plano.`,
+    detail: () => 'Considere fazer upgrade em Assinatura para evitar bloqueios ao adicionar novos colaboradores.',
+  },
+  seats_blocked: {
+    title: 'Não foi possível adicionar um novo colaborador',
+    intro: (p) => `Uma tentativa de cadastro${p.attemptedEmail ? ` (${p.attemptedEmail})` : ''} foi bloqueada porque sua conta atingiu o limite de ${p.seatLimit ?? 0} usuário(s).`,
+    detail: () => 'Faça upgrade do seu plano em Assinatura para liberar mais assentos e tentar novamente.',
   },
 }
 

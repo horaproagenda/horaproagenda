@@ -71,6 +71,28 @@ serve(async (req) => {
     const { data: seatsUsed } = await supaAdmin.rpc("count_account_seats", { _owner: callerId });
     if (!sub.is_grandfathered && sub.status !== "grandfathered") {
       if ((seatsUsed as number) >= sub.seat_limit) {
+        // Notifica o titular da conta por e-mail (best-effort)
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: ownerData } = await (supaAdmin.auth as any).admin.getUserById(callerId);
+          const ownerEmail = ownerData?.user?.email;
+          if (ownerEmail) {
+            await supaAdmin.functions.invoke('send-transactional-email', {
+              body: {
+                templateName: 'account-status-update',
+                recipientEmail: ownerEmail,
+                idempotencyKey: `seats-blocked-${callerId}-${sub.seat_limit}-${Date.now()}`,
+                templateData: {
+                  kind: 'seats_blocked',
+                  name: ownerData?.user?.user_metadata?.full_name,
+                  used: seatsUsed,
+                  seatLimit: sub.seat_limit,
+                  attemptedEmail: email,
+                },
+              },
+            });
+          }
+        } catch (_) { /* silencioso */ }
         return new Response(JSON.stringify({
           error: `Limite de ${sub.seat_limit} usuário(s) atingido. Faça upgrade do plano para adicionar mais.`,
           code: "seat_limit_reached",

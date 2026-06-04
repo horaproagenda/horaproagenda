@@ -4520,6 +4520,20 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       link_current_user_professional: { Args: never; Returns: string }
+      list_account_seat_usage_admin: {
+        Args: never
+        Returns: {
+          available: number
+          current_period_end: string
+          email: string
+          is_grandfathered: boolean
+          owner_user_id: string
+          seat_limit: number
+          status: string
+          trial_ends_at: string
+          used: number
+        }[]
+      }
       list_all_accounts_admin: {
         Args: never
         Returns: {

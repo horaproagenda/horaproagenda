@@ -14,6 +14,8 @@ interface CompleteSignupRequest {
   cpf?: string;
   companyName?: string;
   cnpj?: string;
+  city?: string;
+  state?: string;
   selectedPlan?: string;
 }
 
@@ -53,7 +55,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, phone, cpf, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
+    const { email, password, fullName, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
     const normalizedEmail = email?.trim().toLowerCase();
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
@@ -70,9 +72,9 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
     }
 
-    // Phone mandatory + normalized
-    const phoneE164 = normalizePhone(phone || "");
-    if (!phoneE164) {
+    // Phone is optional
+    const phoneE164 = phone ? normalizePhone(phone) : null;
+    if (phone && !phoneE164) {
       return jsonResponse({ success: false, error: "Número de celular inválido." }, 400);
     }
 
@@ -102,17 +104,19 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
     }
 
-    // Phone code must be verified within last 10 min
-    const { data: usedPhoneCode } = await supabaseAdmin
-      .from("phone_verification_codes")
-      .select("id")
-      .eq("phone", phoneE164)
-      .not("used_at", "is", null)
-      .gte("used_at", tenMinutesAgo)
-      .limit(1)
-      .maybeSingle();
-    if (!usedPhoneCode) {
-      return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+    // Phone code is optional — only verified when phone is provided
+    if (phoneE164) {
+      const { data: usedPhoneCode } = await supabaseAdmin
+        .from("phone_verification_codes")
+        .select("id")
+        .eq("phone", phoneE164)
+        .not("used_at", "is", null)
+        .gte("used_at", tenMinutesAgo)
+        .limit(1)
+        .maybeSingle();
+      if (!usedPhoneCode) {
+        return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+      }
     }
 
     // Block duplicate CPF across registrations
@@ -131,6 +135,8 @@ serve(async (req) => {
       cpf: cpfDigits,
       company_name: companyName || null,
       cnpj: cnpj || null,
+      city: city || null,
+      state: state || null,
       selected_plan: selectedPlan || null,
     };
 
@@ -207,16 +213,20 @@ serve(async (req) => {
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,
+      city: city || null,
+      state: state || null,
       user_id: userId,
       subscription_status: "trial",
       trial_started_at: nowIso,
       trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       email_verified_at: nowIso,
-      phone_verified_at: nowIso,
+      phone_verified_at: phoneE164 ? nowIso : null,
     }, { onConflict: "email" });
 
     await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
-    await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
+    if (phoneE164) {
+      await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
+    }
 
     return jsonResponse({ success: true, user_id: userId });
   } catch (error: unknown) {

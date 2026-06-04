@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
+import { isValidCPF } from '@/lib/cpfValidator';
 
 const AuthSeo = () => (
   <Helmet>
@@ -25,24 +28,30 @@ const AuthSeo = () => (
 );
 
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
-type SignupStep = 'identify' | 'code';
+type SignupStep = 'form' | 'terms' | 'code';
 
-/** Aplica máscara brasileira (XX) XXXXX-XXXX enquanto o usuário digita. */
-function maskBrazilianPhone(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+function maskCPF(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-function generate6DigitCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+function maskCNPJ(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
 }
+
+const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, loading: authLoading } = useAuth();
+  const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -53,12 +62,18 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Signup form — fluxo WhatsApp (Nome + Telefone → Código)
-  const [signupStep, setSignupStep] = useState<SignupStep>('identify');
+  // Signup form (email-only flow)
+  const [signupStep, setSignupStep] = useState<SignupStep>('form');
   const [signupName, setSignupName] = useState('');
-  const [signupPhoneMasked, setSignupPhoneMasked] = useState('');
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [whatsappCode, setWhatsappCode] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupCnpj, setSignupCnpj] = useState('');
+  const [signupCity, setSignupCity] = useState('');
+  const [signupState, setSignupState] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
 
   // Forgot password
@@ -74,122 +89,104 @@ export default function Auth() {
   }, [user, navigate]);
 
   const resetSignupFlow = () => {
-    setSignupStep('identify');
-    setVerificationId(null);
-    setWhatsappCode('');
+    setSignupStep('form');
+    setAcceptedTerms(false);
+    setSignupCode('');
   };
 
-  /**
-   * Etapa 1 → gera código de 6 dígitos e grava em `verificacoes_whatsapp`.
-   * O envio real do código pelo WhatsApp será feito por uma API externa,
-   * que lê esta tabela. Aqui apenas preparamos o registro.
-   */
-  const handleSendWhatsappCode = async () => {
-    if (!signupName.trim()) {
-      toast({ title: 'Informe seu nome', variant: 'destructive' });
-      return;
-    }
-    const digits = signupPhoneMasked.replace(/\D/g, '');
-    if (digits.length !== 11) {
-      toast({
-        title: 'Telefone inválido',
-        description: 'Use DDD + 9 dígitos. Ex.: (11) 91234-5678',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const validateSignupForm = (): string | null => {
+    if (!signupName.trim()) return 'Informe seu nome completo.';
+    if (signupName.trim().split(/\s+/).length < 2) return 'Informe nome e sobrenome.';
+    if (!isValidCPF(signupCpf)) return 'CPF inválido.';
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim());
+    if (!emailOk) return 'E-mail inválido.';
+    if (signupPassword.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
+    const cnpjDigits = signupCnpj.replace(/\D/g, '');
+    if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
+    if (signupState && !BR_STATES.includes(signupState.toUpperCase())) return 'UF inválida.';
+    return null;
+  };
 
+  const handleAdvanceToTerms = () => {
+    const err = validateSignupForm();
+    if (err) {
+      toast({ title: 'Verifique os dados', description: err, variant: 'destructive' });
+      return;
+    }
+    setSignupStep('terms');
+  };
+
+  const handleSendSignupEmailCode = async () => {
+    if (!acceptedTerms) {
+      toast({ title: 'Aceite os termos', description: 'Marque o aceite dos Termos e da Política de Privacidade para continuar.', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
-      const code = generate6DigitCode();
-      const telefone = `+55${digits}`;
-
-      const { data, error } = await supabase
-        .from('verificacoes_whatsapp')
-        .insert({ telefone, codigo_verificacao: code, verificado: false })
-        .select('id')
-        .single();
-
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+      });
       if (error) throw error;
-
-      setVerificationId(data.id);
+      if (data?.error) throw new Error(data.error);
       setSignupStep('code');
-      toast({
-        title: 'Código gerado!',
-        description: 'Em instantes você receberá o código no WhatsApp.',
-      });
+      toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao gerar código';
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Etapa 2 → valida o código informado contra a tabela e marca como verificado.
-   */
-  const handleConfirmCode = async () => {
-    if (whatsappCode.length !== 6) {
-      toast({ title: 'Digite o código de 6 dígitos', variant: 'destructive' });
-      return;
-    }
-    if (!verificationId) {
-      toast({ title: 'Sessão expirada', description: 'Solicite um novo código.', variant: 'destructive' });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data: ok, error: rpcErr } = await supabase.rpc('confirmar_codigo_whatsapp', {
-        p_id: verificationId,
-        p_codigo: whatsappCode,
-      });
-
-      if (rpcErr) throw rpcErr;
-
-      if (!ok) {
-        toast({
-          title: 'Código incorreto ou expirado',
-          description: 'Confira os 6 dígitos ou solicite um novo código.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'WhatsApp confirmado!',
-        description: 'Telefone validado com sucesso. Em breve você poderá agendar.',
-      });
-      // Próximo passo (criação de conta / agendamento) será conectado à API externa.
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao confirmar código';
-      toast({ title: 'Erro', description: msg, variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendCode = async () => {
+  const handleResendSignupCode = async () => {
     setResending(true);
-    setWhatsappCode('');
+    setSignupCode('');
     try {
-      const digits = signupPhoneMasked.replace(/\D/g, '');
-      const code = generate6DigitCode();
-      const telefone = `+55${digits}`;
-      const { data, error } = await supabase
-        .from('verificacoes_whatsapp')
-        .insert({ telefone, codigo_verificacao: code, verificado: false })
-        .select('id')
-        .single();
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+      });
       if (error) throw error;
-      setVerificationId(data.id);
-      toast({ title: 'Novo código gerado', description: 'Verifique seu WhatsApp.' });
+      if (data?.error) throw new Error(data.error);
+      toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleConfirmSignupCode = async () => {
+    if (signupCode.length !== 6) {
+      toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const email = signupEmail.trim().toLowerCase();
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
+        body: { email, code: signupCode },
+      });
+      if (verifyError) throw verifyError;
+      if (!verifyData?.valid) {
+        toast({ title: 'Código inválido', description: verifyData?.error || 'Confira ou solicite novo código.', variant: 'destructive' });
+        return;
+      }
+
+      const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
+        cpf: signupCpf.replace(/\D/g, ''),
+        cnpj: signupCnpj.replace(/\D/g, '') || undefined,
+        city: signupCity.trim() || undefined,
+        state: signupState.trim().toUpperCase() || undefined,
+      });
+      if (signUpError) throw signUpError;
+      toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -419,57 +416,100 @@ export default function Auth() {
             </TabsContent>
 
             <TabsContent value="signup">
-              {/* Etapa 1: Nome + Telefone */}
-              {signupStep === 'identify' && (
+              {/* Etapa 1: Dados do cadastro */}
+              {signupStep === 'form' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Nome</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                      autoComplete="name"
-                    />
+                    <Label htmlFor="signup-name">Nome completo *</Label>
+                    <Input id="signup-name" type="text" placeholder="Nome e sobrenome" value={signupName} onChange={(e) => setSignupName(e.target.value)} autoComplete="name" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Telefone (WhatsApp)</Label>
-                    <Input
-                      id="signup-phone"
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="(11) 91234-5678"
-                      value={signupPhoneMasked}
-                      onChange={(e) => setSignupPhoneMasked(maskBrazilianPhone(e.target.value))}
-                      autoComplete="tel-national"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Use DDD + 9 dígitos. Enviaremos o código pelo WhatsApp.
-                    </p>
+                    <Label htmlFor="signup-cpf">CPF *</Label>
+                    <Input id="signup-cpf" type="text" inputMode="numeric" placeholder="000.000.000-00" value={signupCpf} onChange={(e) => setSignupCpf(maskCPF(e.target.value))} />
                   </div>
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleSendWhatsappCode}
-                    disabled={loading}
-                  >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageCircle className="h-4 w-4 mr-2" />}
-                    Receber Código por WhatsApp
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">E-mail *</Label>
+                    <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} autoComplete="email" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha *</Label>
+                    <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} autoComplete="new-password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">Confirmar senha *</Label>
+                    <Input id="signup-confirm-password" type="password" placeholder="Repita a senha" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} autoComplete="new-password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-cnpj">CNPJ <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input id="signup-cnpj" type="text" inputMode="numeric" placeholder="00.000.000/0000-00" value={signupCnpj} onChange={(e) => setSignupCnpj(maskCNPJ(e.target.value))} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="signup-city">Cidade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                      <Input id="signup-city" type="text" placeholder="Sua cidade" value={signupCity} onChange={(e) => setSignupCity(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-state">UF</Label>
+                      <Input id="signup-state" type="text" maxLength={2} placeholder="SP" value={signupState} onChange={(e) => setSignupState(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+                    </div>
+                  </div>
+                  <Button type="button" size="lg" className="w-full" onClick={handleAdvanceToTerms} disabled={loading}>
+                    Cadastrar
                   </Button>
                 </div>
               )}
 
-              {/* Etapa 2: Código de 6 dígitos */}
+              {/* Etapa 2: Termos + aceite */}
+              {signupStep === 'terms' && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold mb-2">Termos e Política</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Para concluir o cadastro, leia e aceite os documentos abaixo.
+                    </p>
+                  </div>
+
+                  <ScrollArea className="h-56 rounded-md border p-3 text-sm leading-relaxed">
+                    <h4 className="font-semibold mb-1">Termos de Serviço</h4>
+                    <p className="text-muted-foreground mb-3">
+                      Ao utilizar o Lume Agenda você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança após o período de teste gratuito e demais condições descritas integralmente em nossa página oficial.{" "}
+                      <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
+                    </p>
+
+                    <h4 className="font-semibold mb-1 mt-3">Política de Privacidade</h4>
+                    <p className="text-muted-foreground">
+                      Tratamos seus dados em conformidade com a LGPD. Coletamos apenas o necessário para operar a agenda, jamais comercializamos seus dados e você pode solicitar exclusão a qualquer momento.{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
+                    </p>
+                  </ScrollArea>
+
+                  <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                    <Checkbox checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
+                    <span>
+                      Li e concordo com os <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Termos de Serviço</Link> e com a{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">Política de Privacidade</Link>.
+                    </span>
+                  </label>
+
+                  <Button type="button" size="lg" className="w-full" onClick={handleSendSignupEmailCode} disabled={loading || !acceptedTerms}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                    Receber código por e-mail
+                  </Button>
+
+                  <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1" onClick={() => setSignupStep('form')}>
+                    <ArrowLeft className="h-4 w-4" /> Voltar
+                  </button>
+                </div>
+              )}
+
+              {/* Etapa 3: Código de e-mail */}
               {signupStep === 'code' && (
                 <div className="space-y-6">
                   <Alert className="border-primary/30 bg-primary/5">
                     <AlertDescription className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                       <span>
-                        Código enviado para o WhatsApp <span className="font-medium">{signupPhoneMasked}</span>.
-                        Pode levar alguns segundos para chegar.
+                        Código enviado para <span className="font-medium">{signupEmail}</span>. Confira sua caixa de entrada e o spam.
                       </span>
                     </AlertDescription>
                   </Alert>
@@ -477,7 +517,7 @@ export default function Auth() {
                   <div className="space-y-2 text-center">
                     <Label className="block">Digite o código de 6 dígitos</Label>
                     <div className="flex justify-center">
-                      <InputOTP maxLength={6} value={whatsappCode} onChange={setWhatsappCode}>
+                      <InputOTP maxLength={6} value={signupCode} onChange={setSignupCode}>
                         <InputOTPGroup>
                           <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
                           <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
@@ -486,31 +526,16 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleConfirmCode}
-                    disabled={loading || whatsappCode.length !== 6}
-                  >
+                  <Button type="button" size="lg" className="w-full" onClick={handleConfirmSignupCode} disabled={loading || signupCode.length !== 6}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Confirmar e Agendar
+                    Confirmar e criar conta
                   </Button>
 
                   <div className="flex items-center justify-between text-sm">
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-                      onClick={resetSignupFlow}
-                    >
+                    <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setSignupStep('terms')}>
                       <ArrowLeft className="h-4 w-4" /> Voltar
                     </button>
-                    <button
-                      type="button"
-                      className="text-primary hover:underline disabled:opacity-50"
-                      onClick={handleResendCode}
-                      disabled={resending}
-                    >
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending}>
                       {resending ? 'Reenviando...' : 'Reenviar código'}
                     </button>
                   </div>

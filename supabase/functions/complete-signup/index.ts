@@ -213,16 +213,20 @@ serve(async (req) => {
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,
+      city: city || null,
+      state: state || null,
       user_id: userId,
       subscription_status: "trial",
       trial_started_at: nowIso,
       trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       email_verified_at: nowIso,
-      phone_verified_at: nowIso,
+      phone_verified_at: phoneE164 ? nowIso : null,
     }, { onConflict: "email" });
 
     await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
-    await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
+    if (phoneE164) {
+      await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
+    }
 
     return jsonResponse({ success: true, user_id: userId });
   } catch (error: unknown) {

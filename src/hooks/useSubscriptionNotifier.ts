@@ -5,22 +5,27 @@ import { toast } from 'sonner';
 import type { AccountSubscription } from './useAccountSubscription';
 
 /**
- * Escuta mudanças na assinatura da própria conta e dispara toasts contextuais
- * quando o status/trial/grandfathered muda — cobre:
- *  - Baixa manual de pagamento feita pelo Super Admin (status -> active)
- *  - Extensão de trial (trial_ends_at cresce)
- *  - Acesso vitalício concedido (is_grandfathered -> true)
- *  - Pagamento confirmado via Stripe webhook (status trial/past_due/canceled -> active)
+ * Escuta mudanças na assinatura da própria conta e dispara toasts contextuais.
+ * Inclui deduplicação por chave-de-evento para evitar toasts repetidos quando
+ * múltiplos eventos do Supabase chegarem em sequência.
  */
 export function useSubscriptionNotifier() {
   const { user } = useAuth();
   const previous = useRef<Partial<AccountSubscription> | null>(null);
   const initialized = useRef(false);
+  const firedKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user?.id) return;
 
-    // Load current snapshot first to avoid firing on initial mount
+    const fireOnce = (key: string, fn: () => void) => {
+      if (firedKeys.current.has(key)) return;
+      firedKeys.current.add(key);
+      fn();
+      // expira a chave após 1 minuto para permitir notificações futuras legítimas
+      setTimeout(() => firedKeys.current.delete(key), 60_000);
+    };
+
     (async () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,14 +63,27 @@ export function useSubscriptionNotifier() {
 
           // Acesso vitalício
           if (!prev.is_grandfathered && next.is_grandfathered) {
-            toast.success('Acesso vitalício concedido', {
-              description: 'Sua conta está liberada permanentemente. Aproveite!',
-              duration: 8000,
-            });
+            fireOnce(`lifetime-${next.id}`, () =>
+              toast.success('Acesso vitalício concedido', {
+                description: 'Sua conta está liberada permanentemente. Aproveite!',
+                duration: 8000,
+              }),
+            );
             return;
           }
 
-          // Pagamento (manual ou Stripe) — status virou active OU período pago aumentou
+          // Falha de pagamento / past_due
+          if (prevStatus !== 'past_due' && next.status === 'past_due') {
+            fireOnce(`past_due-${next.id}-${nextPeriodEnd}`, () =>
+              toast.error('Pagamento não processado', {
+                description: 'Sua assinatura ficou em atraso. Atualize sua forma de pagamento em Assinatura.',
+                duration: 10000,
+              }),
+            );
+            return;
+          }
+
+          // Pagamento confirmado
           if (
             (prevStatus !== 'active' && next.status === 'active') ||
             (next.status === 'active' && nextPeriodEnd > prevPeriodEnd && prevPeriodEnd > 0)
@@ -73,10 +91,12 @@ export function useSubscriptionNotifier() {
             const dt = next.current_period_end
               ? new Date(next.current_period_end).toLocaleDateString('pt-BR')
               : null;
-            toast.success('Pagamento confirmado', {
-              description: dt ? `Sua assinatura está ativa até ${dt}.` : 'Sua assinatura está ativa.',
-              duration: 8000,
-            });
+            fireOnce(`active-${next.id}-${nextPeriodEnd}`, () =>
+              toast.success('Pagamento confirmado', {
+                description: dt ? `Sua assinatura está ativa até ${dt}.` : 'Sua assinatura está ativa.',
+                duration: 8000,
+              }),
+            );
             return;
           }
 
@@ -84,10 +104,12 @@ export function useSubscriptionNotifier() {
           if (next.status === 'trial' && nextTrial > prevTrial && prevTrial > 0) {
             const extraDays = Math.round((nextTrial - prevTrial) / 86400000);
             const dt = new Date(nextTrial).toLocaleDateString('pt-BR');
-            toast.success('Período de teste estendido', {
-              description: `+${extraDays} dia(s). Novo término em ${dt}.`,
-              duration: 8000,
-            });
+            fireOnce(`trial-${next.id}-${nextTrial}`, () =>
+              toast.success('Período de teste estendido', {
+                description: `+${extraDays} dia(s). Novo término em ${dt}.`,
+                duration: 8000,
+              }),
+            );
             return;
           }
         },

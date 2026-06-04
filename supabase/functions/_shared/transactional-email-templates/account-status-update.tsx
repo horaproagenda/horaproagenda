@@ -21,6 +21,8 @@ type Kind =
   | 'trial_extended'
   | 'lifetime_granted'
   | 'subscription_activated'
+  | 'payment_failed'
+  | 'past_due'
 
 interface Props {
   kind?: Kind
@@ -55,6 +57,16 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
     title: 'Assinatura ativada',
     intro: () => 'Recebemos seu pagamento e sua assinatura está ativa.',
     detail: (p) => `${p.planLabel ? `Plano: ${p.planLabel}. ` : ''}${p.validUntil ? `Próxima renovação em ${p.validUntil}.` : ''}`,
+  },
+  payment_failed: {
+    title: 'Falha no pagamento da sua assinatura',
+    intro: () => 'Não conseguimos processar o pagamento da sua assinatura. Por favor, verifique seu meio de pagamento para evitar a suspensão do acesso.',
+    detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
+  },
+  past_due: {
+    title: 'Sua assinatura está em atraso',
+    intro: () => 'O pagamento da sua assinatura ficou pendente. Regularize para manter seu acesso ativo.',
+    detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
   },
 }
 

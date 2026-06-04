@@ -78,21 +78,50 @@ export default function Auth() {
   const [signupCnpj, setSignupCnpj] = useState('');
   const [signupCity, setSignupCity] = useState('');
   const [signupState, setSignupState] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState<boolean>(() => {
+    try { return localStorage.getItem(TERMS_ACCEPT_KEY) === '1'; } catch { return false; }
+  });
   const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
+  const [signupResendIn, setSignupResendIn] = useState(0);
+  const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
+  const [signupLockUntil, setSignupLockUntil] = useState(0);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetCode, setResetCode] = useState('');
+  const [resetResendIn, setResetResendIn] = useState(0);
+  const [resetCodeAttempts, setResetCodeAttempts] = useState(0);
+  const [resetLockUntil, setResetLockUntil] = useState(0);
 
   useEffect(() => {
     if (user) {
       navigate('/agenda', { replace: true });
     }
   }, [user, navigate]);
+
+  // Persist terms acceptance
+  useEffect(() => {
+    try {
+      if (acceptedTerms) localStorage.setItem(TERMS_ACCEPT_KEY, '1');
+      else localStorage.removeItem(TERMS_ACCEPT_KEY);
+    } catch { /* ignore */ }
+  }, [acceptedTerms]);
+
+  // Countdown timers for OTP resend
+  useEffect(() => {
+    if (signupResendIn <= 0) return;
+    const t = setTimeout(() => setSignupResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [signupResendIn]);
+
+  useEffect(() => {
+    if (resetResendIn <= 0) return;
+    const t = setTimeout(() => setResetResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resetResendIn]);
 
   const resetSignupFlow = () => {
     setSignupStep('form');

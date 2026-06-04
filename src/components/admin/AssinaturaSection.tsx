@@ -228,33 +228,39 @@ export function AssinaturaSection() {
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold border-t pt-3">
-                    <span>{isMonthly ? 'Total mensal' : `Total (${billingMonths} meses)`}</span>
+                    <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
                     <span>{formatBRL(total)}</span>
                   </div>
                   {!isMonthly && saved > 0 && (
                     <div className="text-xs text-emerald-600 text-right">
-                      Você economiza {formatBRL(saved)}
+                      Você economiza {formatBRL(saved)} por ciclo
                     </div>
                   )}
+                  <div className="text-xs text-muted-foreground text-center border-t pt-2">
+                    Renovação automática a cada {billingMonths === 1 ? 'mês' : `${billingMonths} meses`}.
+                    Cancele a qualquer momento em "Gerenciar assinatura".
+                  </div>
                 </>
               );
             })()}
             <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
-              {billingMonths === 1 ? (
-                <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão (recorrente mensal)</span>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1"><QrCode className="h-3.5 w-3.5" /> Pix</span>
-                  <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão</span>
-                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> Boleto</span>
-                </>
-              )}
+              <span className="flex items-center gap-1">
+                <CreditCard className="h-3.5 w-3.5" />
+                Cartão (cobrança recorrente)
+              </span>
             </div>
             <Button className="w-full" size="lg" onClick={handleCheckout} disabled={isLoading}>
               {isLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
               ) : (
-                <><CreditCard className="mr-2 h-4 w-4" />{isActive ? 'Trocar de plano' : (billingMonths === 1 ? 'Assinar agora' : `Pagar ${billingMonths} meses`)}</>
+                <>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {isActive
+                    ? 'Trocar de plano'
+                    : billingMonths === 1
+                      ? 'Assinar agora'
+                      : `Assinar (a cada ${billingMonths} meses)`}
+                </>
               )}
             </Button>
           </CardContent>

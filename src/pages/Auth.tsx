@@ -134,6 +134,7 @@ function AuthInner() {
   const [signupResendIn, setSignupResendIn] = useState(0);
   const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
   const [signupLockUntil, setSignupLockUntil] = useState(0);
+  const [signupCodeSentAt, setSignupCodeSentAt] = useState(0);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -143,6 +144,14 @@ function AuthInner() {
   const [resetResendIn, setResetResendIn] = useState(0);
   const [resetCodeAttempts, setResetCodeAttempts] = useState(0);
   const [resetLockUntil, setResetLockUntil] = useState(0);
+  const [resetCodeSentAt, setResetCodeSentAt] = useState(0);
+
+  // Tick a "now" value once per second so status alerts stay current
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (user) {

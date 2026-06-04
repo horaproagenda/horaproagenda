@@ -87,7 +87,7 @@ export function useProducts() {
   const me = useMemo(() => professionals.find(
     (p) => (p as unknown as { user_id?: string | null }).user_id === user?.id
   ), [professionals, user?.id]);
-  const perms = (me?.permissions ?? {}) as Record<string, boolean>;
+  const perms = ((me as unknown as { permissions?: Record<string, boolean> })?.permissions ?? {}) as Record<string, boolean>;
   const isPrivileged = hasRole('admin') || hasRole('receptionist');
   const onlyOwn = !isPrivileged && perms.can_view_only_own_products === true && perms.can_view_other_products !== true;
 

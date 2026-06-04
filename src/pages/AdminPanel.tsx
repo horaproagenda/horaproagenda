@@ -17,10 +17,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import UserManagement from '@/components/settings/UserManagement';
 import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { UsuariosContaSection } from '@/components/admin/UsuariosContaSection';
 import { AssinaturaSection } from '@/components/admin/AssinaturaSection';
 import { exportToCSV } from '@/lib/exportUtils';
 import {

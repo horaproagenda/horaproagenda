@@ -641,8 +641,8 @@ export default function Auth() {
                     <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setSignupStep('terms')}>
                       <ArrowLeft className="h-4 w-4" /> Voltar
                     </button>
-                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending}>
-                      {resending ? 'Reenviando...' : 'Reenviar código'}
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending || signupResendIn > 0}>
+                      {resending ? 'Reenviando...' : signupResendIn > 0 ? `Reenviar em ${signupResendIn}s` : 'Reenviar código'}
                     </button>
                   </div>
                 </div>

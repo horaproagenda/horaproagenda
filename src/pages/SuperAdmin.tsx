@@ -94,6 +94,54 @@ export default function SuperAdmin() {
     staleTime: 15_000,
   });
 
+  // Uso de assentos por conta (atualiza em tempo real)
+  const { data: seatsData, isLoading: seatsLoading } = useQuery({
+    queryKey: ['super-admin-seat-usage'],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc('list_account_seat_usage_admin');
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        owner_user_id: string;
+        email: string | null;
+        status: string;
+        is_grandfathered: boolean;
+        seat_limit: number;
+        used: number;
+        available: number;
+        current_period_end: string | null;
+        trial_ends_at: string | null;
+      }>;
+    },
+    enabled: !!user && hasRole('super_admin'),
+    staleTime: 10_000,
+  });
+
+  // Realtime: invalida quando profiles ou assinaturas mudam
+  useEffect(() => {
+    if (!user || !hasRole('super_admin')) return;
+    const ch = supabase
+      .channel('super-admin-seat-realtime')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' } as any,
+        () => qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'account_subscriptions' } as any,
+        () => {
+          qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
+          qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, hasRole, qc]);
+
+  const seatRows = useMemo(() => {
+    if (!seatsData) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return seatsData;
+    return seatsData.filter(r => (r.email ?? '').toLowerCase().includes(q));
+  }, [seatsData, search]);
+
   const rows = useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase();

@@ -153,7 +153,8 @@ export function summarizeLog(log: {
   metadata?: Record<string, unknown> | null;
   module: string;
 }): string {
-  const target = describeTarget(log);
+  // No resumo, para agendamentos preferimos o nome do serviço (em vez do código).
+  const target = describeTarget(log, { preferService: true });
   const viewed = summarizeFields(log.fields_viewed);
   const changed = summarizeFields(log.fields_changed);
 

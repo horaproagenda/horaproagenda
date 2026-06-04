@@ -304,7 +304,6 @@ export default function SuperAdmin() {
                 <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
               )}
               {seatRows.map((r) => {
-                const limit = r.is_grandfathered ? Infinity : r.seat_limit;
                 const pct = r.is_grandfathered ? 0 : (r.seat_limit > 0 ? Math.min(100, Math.round((r.used / r.seat_limit) * 100)) : 0);
                 const near = !r.is_grandfathered && r.seat_limit > 0 && r.available <= 1 && r.used < r.seat_limit;
                 const reached = !r.is_grandfathered && r.seat_limit > 0 && r.used >= r.seat_limit;

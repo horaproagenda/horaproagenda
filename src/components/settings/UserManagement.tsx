@@ -19,6 +19,7 @@ const roleLabels: Record<AppRole, { label: string; description: string; variant:
   admin: { label: 'Administrador', description: 'Acesso total ao sistema', variant: 'default' },
   receptionist: { label: 'Recepcionista', description: 'Gerencia agendamentos e clientes', variant: 'secondary' },
   professional: { label: 'Profissional', description: 'Vê apenas seus próprios dados', variant: 'outline' },
+  super_admin: { label: 'Super Admin', description: 'Criadora da plataforma (interno)', variant: 'default' },
 };
 
 export default function UserManagement() {

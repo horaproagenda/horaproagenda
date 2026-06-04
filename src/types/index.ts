@@ -8,7 +8,7 @@ export interface Profile {
   updated_at: string;
 }
 
-export type AppRole = 'admin' | 'receptionist' | 'professional';
+export type AppRole = 'admin' | 'receptionist' | 'professional' | 'super_admin';
 
 export interface UserRole {
   id: string;

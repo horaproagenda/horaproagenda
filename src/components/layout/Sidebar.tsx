@@ -22,6 +22,7 @@ import {
   Bell,
   FileSignature,
   CreditCard,
+  Crown,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,10 +48,11 @@ const navigation = [
   { name: 'Usuários', href: '/usuarios-conta', icon: UserCog, adminOnly: true },
   { name: 'Assinatura', href: '/assinatura', icon: CreditCard, adminOnly: true },
   { name: 'Painel Admin', href: '/admin', icon: ShieldCheck, adminOnly: true },
+  { name: 'Super Admin', href: '/super-admin', icon: Crown, superAdminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },
   { name: 'Suporte', href: '/suporte', icon: MessageSquare },
-] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean }>;
+] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean; superAdminOnly?: boolean }>;
 
 interface SidebarProps {
   onNewAppointment: () => void;
@@ -62,7 +64,11 @@ interface SidebarProps {
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile, hasRole } = useAuth();
-  const visibleNavigation = navigation.filter(item => !item.adminOnly || hasRole('admin'));
+  const visibleNavigation = navigation.filter(item => {
+    if (item.superAdminOnly && !hasRole('super_admin')) return false;
+    if (item.adminOnly && !hasRole('admin')) return false;
+    return true;
+  });
   const location = useLocation();
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';

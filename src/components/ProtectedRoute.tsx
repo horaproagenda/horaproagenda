@@ -7,20 +7,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { revalidateVersionAfterAuth } from '@/lib/bootVersionGuard';
+import { useAccountSubscription } from '@/hooks/useAccountSubscription';
+import { useActiveAccountGuard } from '@/hooks/useActiveAccountGuard';
+import { TrialBanner } from '@/components/TrialBanner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, hasRole } = useAuth();
   const [resending, setResending] = useState(false);
   const location = useLocation();
   const checkedRef = useRef(false);
+  const { subscription, trialExpired, hasAccess } = useAccountSubscription();
 
-  // Revalida versão antes de renderizar qualquer rota protegida.
-  // Garante que mesmo navegação direta (deep link) por bundle antigo
-  // seja interceptada antes da agenda aparecer.
+  // Realtime guard: desloga imediatamente se admin inativar este usuário.
+  useActiveAccountGuard();
+
   useEffect(() => {
     if (!user || checkedRef.current) return;
     checkedRef.current = true;
@@ -39,24 +43,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Check if email is confirmed
+  // Email não confirmado
   if (!user.email_confirmed_at) {
     const handleResendEmail = async () => {
       if (!user.email) return;
-      
       setResending(true);
       try {
-        const { error } = await supabase.auth.resend({
-          type: 'signup',
-          email: user.email,
-        });
-        
-        if (error) {
-          toast.error('Erro ao reenviar email: ' + error.message);
-        } else {
-          toast.success('Email de verificação reenviado!');
-        }
-      } catch (err) {
+        const { error } = await supabase.auth.resend({ type: 'signup', email: user.email });
+        if (error) toast.error('Erro ao reenviar email: ' + error.message);
+        else toast.success('Email de verificação reenviado!');
+      } catch {
         toast.error('Erro ao reenviar email');
       } finally {
         setResending(false);
@@ -76,33 +72,44 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={handleResendEmail}
-              disabled={resending}
-            >
-              {resending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Reenviando...
-                </>
-              ) : (
-                'Reenviar email de verificação'
-              )}
+            <Button variant="outline" className="w-full" onClick={handleResendEmail} disabled={resending}>
+              {resending ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reenviando...</>) : 'Reenviar email de verificação'}
             </Button>
-            <Button 
-              variant="secondary" 
-              className="w-full"
-              onClick={() => signOut()}
-            >
-              Voltar para login
-            </Button>
+            <Button variant="secondary" className="w-full" onClick={() => signOut()}>Voltar para login</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  return <>{children}</>;
+  // Trial expirado → redireciona para tela de planos (somente admin paga).
+  // Permite acesso às próprias páginas de assinatura.
+  const isOnSubscriptionPage = location.pathname.startsWith('/assinatura');
+  if (subscription && !hasAccess && trialExpired && !isOnSubscriptionPage) {
+    if (hasRole('admin')) {
+      return <Navigate to="/assinatura" replace />;
+    }
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle>Conta com pagamento pendente</CardTitle>
+            <CardDescription>
+              O período de teste desta conta terminou. Peça ao administrador para ativar a assinatura.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="secondary" className="w-full" onClick={() => signOut()}>Sair</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <TrialBanner />
+      {children}
+    </>
+  );
 }

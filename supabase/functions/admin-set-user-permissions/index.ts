@@ -42,6 +42,18 @@ serve(async (req) => {
       });
     }
 
+    // Tenant isolation
+    const { data: callerProfile } = await supaAdmin
+      .from("profiles").select("account_owner_id").eq("id", callerId).maybeSingle();
+    const ownerId = callerProfile?.account_owner_id ?? callerId;
+    const { data: targetProfile } = await supaAdmin
+      .from("profiles").select("account_owner_id").eq("id", user_id).maybeSingle();
+    if (!targetProfile || (targetProfile.account_owner_id ?? user_id) !== ownerId) {
+      return new Response(JSON.stringify({ error: "Acesso negado" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const rows = permissions.map((p: { module: string; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }) => ({
       user_id,
       module: p.module,

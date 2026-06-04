@@ -34,6 +34,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
+import { mapHeaders } from '@/lib/importMapping';
 
 interface ImportAppointmentsDialogProps {
   open: boolean;
@@ -109,28 +110,31 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
         return;
       }
 
-      // Parse header (já vem separado corretamente pelo parseCsv)
-      const headers = rows[0].map((h) => normalizeString(h));
+      // Mapeamento de colunas centralizado e com validação de obrigatórias
+      const mapping = mapHeaders('appointments', rows[0]);
 
-      // Map column indices
-      const colMap = {
-        date: headers.findIndex(h => h.includes('data')),
-        startTime: headers.findIndex(h => h.includes('inicio') || h.includes('horario')),
-        endTime: headers.findIndex(h => h.includes('fim') || h.includes('termino')),
-        clientName: headers.findIndex(h => h.includes('cliente') || h.includes('nome')),
-        clientPhone: headers.findIndex(h => h.includes('telefone') || h.includes('celular') || h.includes('fone')),
-        serviceName: headers.findIndex(h => h.includes('servico')),
-        professionalName: headers.findIndex(h => h.includes('profissional')),
-        roomName: headers.findIndex(h => h.includes('sala')),
-        notes: headers.findIndex(h => h.includes('observ') || h.includes('nota')),
-      };
-
-      // Validate required columns
-      if (colMap.date === -1 || colMap.startTime === -1 || colMap.clientName === -1) {
-        toast.error('Colunas obrigatórias não encontradas: Data, Horário Início, Cliente');
+      if (mapping.missingRequired.length > 0) {
+        toast.error(
+          `Coluna${mapping.missingRequired.length > 1 ? 's' : ''} obrigatória${
+            mapping.missingRequired.length > 1 ? 's' : ''
+          } ausente${mapping.missingRequired.length > 1 ? 's' : ''}: ${mapping.missingRequired.join(', ')}`,
+          { description: 'Baixe o modelo CSV para ver o formato esperado.' },
+        );
         setIsProcessing(false);
         return;
       }
+
+      const colMap = {
+        date: mapping.indices.date,
+        startTime: mapping.indices.startTime,
+        endTime: mapping.indices.endTime,
+        clientName: mapping.indices.clientName,
+        clientPhone: mapping.indices.clientPhone,
+        serviceName: mapping.indices.serviceName,
+        professionalName: mapping.indices.professionalName,
+        roomName: mapping.indices.roomName,
+        notes: mapping.indices.notes,
+      };
 
       const parsed: ParsedAppointment[] = [];
 

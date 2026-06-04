@@ -350,6 +350,12 @@ export default function Auth() {
       toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
       return;
     }
+    const now = Date.now();
+    if (resetLockUntil && now < resetLockUntil) {
+      const secs = Math.ceil((resetLockUntil - now) / 1000);
+      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
@@ -357,7 +363,15 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
       if (!verifyData?.valid) {
-        toast({ title: 'Erro', description: verifyData?.error || 'Código inválido', variant: 'destructive' });
+        const next = resetCodeAttempts + 1;
+        setResetCodeAttempts(next);
+        const remaining = OTP_MAX_ATTEMPTS - next;
+        if (remaining <= 0) {
+          setResetLockUntil(Date.now() + OTP_LOCKOUT_MS);
+          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+        }
         return;
       }
       const { data, error } = await supabase.functions.invoke('reset-password', {

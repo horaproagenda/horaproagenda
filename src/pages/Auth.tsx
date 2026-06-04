@@ -667,3 +667,11 @@ function AuthInner() {
     </main>
   );
 }
+
+export default function Auth() {
+  return (
+    <AuthErrorBoundary>
+      <AuthInner />
+    </AuthErrorBoundary>
+  );
+}

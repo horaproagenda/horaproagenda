@@ -226,10 +226,24 @@ serve(async (req) => {
     };
 
     // Load all professionals' quiet hours into a map
-    const { data: profsRaw } = await supabase.from('professionals').select('id, quiet_hours_start, quiet_hours_end');
+    const { data: profsRaw } = await supabase.from('professionals').select('id, user_id, quiet_hours_start, quiet_hours_end');
     const profMap = new Map<string, any>();
     for (const p of profsRaw || []) profMap.set(p.id, p);
     const getProf = (id: string | null) => (id ? profMap.get(id) || null : null);
+
+    // Per-professional automation overrides (NULL = inherit global=on)
+    const { data: prefsRaw } = await supabase
+      .from('professional_preferences')
+      .select('user_id, automation_whatsapp_reminders');
+    const prefsByUser = new Map<string, any>();
+    for (const p of prefsRaw || []) prefsByUser.set(p.user_id, p);
+    const remindersDisabledForPro = (profId: string | null) => {
+      if (!profId) return false;
+      const prof = profMap.get(profId);
+      if (!prof?.user_id) return false;
+      const pref = prefsByUser.get(prof.user_id);
+      return pref?.automation_whatsapp_reminders === false;
+    };
 
     const now = Date.now();
     const hourSP = currentHourSP();

@@ -180,6 +180,7 @@ serve(async (req) => {
               .update({ status: 'past_due' })
               .eq('owner_user_id', ownerId);
             log("Marked past_due", { ownerId });
+            await sendAccountEmail(ownerId, 'payment_failed', {}, `stripe-invoice-failed-${invoice.id}`);
           }
         }
         break;
@@ -190,6 +191,8 @@ serve(async (req) => {
         if (session.mode === 'subscription' && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           await syncSubscription(sub);
+        } else if (session.mode === 'payment' && session.metadata?.kind === 'prepay') {
+          await handlePrepaySession(session);
         }
         break;
       }

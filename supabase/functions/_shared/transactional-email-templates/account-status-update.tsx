@@ -23,6 +23,8 @@ type Kind =
   | 'subscription_activated'
   | 'payment_failed'
   | 'past_due'
+  | 'seats_near_limit'
+  | 'seats_blocked'
 
 interface Props {
   kind?: Kind
@@ -35,6 +37,10 @@ interface Props {
   months?: number
   /** for subscription_activated */
   planLabel?: string
+  /** for seat-related notifications */
+  used?: number
+  seatLimit?: number
+  attemptedEmail?: string
 }
 
 const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: (p: Props) => string }> = {

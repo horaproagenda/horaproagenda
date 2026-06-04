@@ -22,8 +22,11 @@ import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferen
 import { useAuth } from '@/contexts/AuthContext';
 
 const Configuracoes = () => {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const { settings, updateSettings, isLoading } = useBusinessSettings();
   const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
+
   
   const [openingTime, setOpeningTime] = useState('08:00');
   const [closingTime, setClosingTime] = useState('20:00');

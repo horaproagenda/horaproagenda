@@ -16,6 +16,7 @@ import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplat
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
+import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();

@@ -42,3 +42,6 @@ project_id = "nsgcllrbswodjoadybsj"
 
   [functions.submit-client-registration]
     verify_jwt = false
+
+  [functions.stripe-webhook]
+    verify_jwt = false

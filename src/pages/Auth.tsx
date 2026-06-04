@@ -373,7 +373,7 @@ function AuthInner() {
       const uid = sessionData?.user?.id ?? null;
       if (uid) await recordTermsAcceptance(email, uid);
 
-      toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
+      toast({ title: 'Bem-vindo(a) ao Agendalume!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
 
       // Navegação explícita — não dependemos apenas do useEffect.
       navigate('/agenda', { replace: true });

@@ -455,6 +455,7 @@ serve(async (req) => {
         const bd = String(c.birthdate);
         if (bd.substring(5, 7) !== mm || bd.substring(8, 10) !== dd) continue;
         const profId = (c as any).assigned_professional_id ?? null;
+        if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
         const tpl = pickTpl('birthday', profId);
         if (!tpl) continue;
         const sendHour = Number(tpl.send_offset_hours ?? 9);

@@ -18,10 +18,15 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
+import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferenciasSettings';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Configuracoes = () => {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const { settings, updateSettings, isLoading } = useBusinessSettings();
   const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
+
   
   const [openingTime, setOpeningTime] = useState('08:00');
   const [closingTime, setClosingTime] = useState('20:00');
@@ -117,8 +122,13 @@ const Configuracoes = () => {
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           {/* Gestão de usuários movida para o Painel do Administrador (/admin) */}
-          {/* Diagnóstico do sistema e integridade da agenda/pacotes rodam automaticamente em background (useAgendaIntegrityAutoCheck + usePostUpdateDataHeal). */}
 
+          {/* Configurações pessoais (cada profissional) */}
+          <MinhasPreferenciasSettings />
+
+          {/* Seções globais (somente administradores) */}
+          {isAdmin && (
+          <>
           {/* 1. Informações da Clínica + Horários */}
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">
@@ -340,9 +350,12 @@ const Configuracoes = () => {
 
             </Card>
           </div>
+          </>
+          )}
 
-          {/* 2. Conexão com o WhatsApp */}
+          {/* 2. Conexão com o WhatsApp (cada profissional conecta o próprio número) */}
           <WhatsappSettings />
+
 
           {/* 3. Mensagens de WhatsApp */}
           <WhatsappTemplatesSettings />
@@ -471,8 +484,10 @@ const Configuracoes = () => {
           </div>
 
 
-          {/* Bulk Delete */}
-          <BulkDeleteDialog />
+          {/* Bulk Delete (apenas administradores) */}
+          {isAdmin && <BulkDeleteDialog />}
+
+
 
           {/* Sua Conta - Exclusão definitiva */}
           <Card className="card-hover border-destructive/30">

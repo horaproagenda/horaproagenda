@@ -489,6 +489,22 @@ function AuthInner() {
     }
   };
 
+  const signupOtpStatus: OtpStatus = signupLockUntil > now
+    ? { kind: 'blocked', until: signupLockUntil }
+    : signupCodeSentAt && now - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000
+      ? { kind: 'expired' }
+      : signupCodeSentAt
+        ? { kind: 'sent', at: signupCodeSentAt }
+        : { kind: 'idle' };
+
+  const resetOtpStatus: OtpStatus = resetLockUntil > now
+    ? { kind: 'blocked', until: resetLockUntil }
+    : resetCodeSentAt && now - resetCodeSentAt > OTP_EXPIRY_SECONDS * 1000
+      ? { kind: 'expired' }
+      : resetCodeSentAt
+        ? { kind: 'sent', at: resetCodeSentAt }
+        : { kind: 'idle' };
+
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero">

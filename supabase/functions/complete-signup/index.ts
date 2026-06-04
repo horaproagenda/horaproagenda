@@ -151,38 +151,26 @@ serve(async (req) => {
 
     if (createError) {
       const message = createError.message?.toLowerCase() || "";
-      if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-        let existingUser = null;
-        for (let page = 1; page <= 20 && !existingUser; page += 1) {
-          const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-          if (listError) {
-            console.error("complete-signup list users error:", listError);
-            return jsonResponse({ success: false, error: "Erro ao localizar usuário existente." }, 500);
-          }
-          existingUser = users.users.find((user) => user.email?.toLowerCase() === normalizedEmail) ?? null;
-          if (users.users.length < 1000) break;
-        }
-
-        if (!existingUser) {
-          return jsonResponse({ success: false, error: "Este e-mail já está cadastrado. Use sua senha original para entrar." }, 409);
-        }
-
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-          password,
-          email_confirm: true,
-          user_metadata: userMetadata,
-        });
-
-        if (updateError) {
-          console.error("complete-signup update existing user error:", updateError);
-          return jsonResponse({ success: false, error: "Erro ao ativar usuário existente." }, 500);
-        }
-
-        userId = existingUser.id;
-      } else {
-        console.error("complete-signup create user error:", createError);
-        return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
+      if (
+        message.includes("already") ||
+        message.includes("registered") ||
+        message.includes("exists") ||
+        (createError as any)?.code === "email_exists"
+      ) {
+        // SECURITY: never overwrite an existing account's password during signup.
+        // Direct the user to login or password recovery instead.
+        return jsonResponse(
+          {
+            success: false,
+            code: "email_exists",
+            error:
+              "Este e-mail já está cadastrado. Faça login com sua senha ou use a opção 'Esqueci minha senha' para recuperá-la.",
+          },
+          409,
+        );
       }
+      console.error("complete-signup create user error:", createError);
+      return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
     }
 
     if (!userId) {

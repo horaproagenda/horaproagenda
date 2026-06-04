@@ -94,6 +94,8 @@ const defaultPermissions = {
   can_view_only_own_agenda: true,
   can_modify_agenda: false,
   can_manage_products: false,
+  can_view_other_products: false,
+  can_view_only_own_products: true,
   can_view_other_reports: false,
   can_view_only_own_reports: true,
   can_access_audit: false,

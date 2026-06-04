@@ -392,6 +392,7 @@ function AuthInner() {
       setResetResendIn(OTP_RESEND_SECONDS);
       setResetCodeAttempts(0);
       setResetLockUntil(0);
+      setResetCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Verifique seu email.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';

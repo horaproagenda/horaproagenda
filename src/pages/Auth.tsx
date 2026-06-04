@@ -263,6 +263,21 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email, type: 'signup' },
       });
+      // Detecta e-mail já cadastrado (status 409) — não avança para o passo do código.
+      let payload: any = data;
+      if (error && (error as any)?.context?.json) {
+        try { payload = await (error as any).context.json(); } catch { /* ignore */ }
+      }
+      if (payload?.code === 'email_exists') {
+        toast({
+          title: 'E-mail já cadastrado',
+          description: "Faça login com sua senha ou use 'Esqueci minha senha' para recuperá-la.",
+          variant: 'destructive',
+        });
+        setAuthView('login');
+        setEmail(email);
+        return;
+      }
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');

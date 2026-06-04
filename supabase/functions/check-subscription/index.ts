@@ -7,6 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Mapa de productId -> seats (mantém sincronizado com src/lib/plans.ts)
+const PRODUCT_TO_SEATS: Record<string, number> = {
+  'prod_UdyKWqSfnyVzne': 1,
+  'prod_UdyLMg0kyRjuD4': 3,
+  'prod_UdyLfa56HjYEki': 6,
+  'prod_UdyLncotTRCD59': 10,
+  'prod_UdyNFZJ4PBvLLT': 15,
+  'prod_UdyO4ihw5Sa6Nf': 20,
+  'prod_UdyPoKIa4khU4r': 25,
+  'prod_UdyPbVSxOACQ61': 30,
+};
+
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -17,7 +29,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
+  const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } }
@@ -28,149 +40,85 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
     const token = authHeader.replace("Bearer ", "");
-    logStep("Authenticating user with token");
-    
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    
-    // Check for customers
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
+
     if (customers.data.length === 0) {
-      logStep("No customer found");
-      return new Response(JSON.stringify({ 
+      logStep("No Stripe customer");
+      return new Response(JSON.stringify({
         subscribed: false,
         product_id: null,
+        price_id: null,
         seats: 0,
-        expires_at: null
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+        current_period_end: null,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
     const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
 
-    // Check for successful payments (one-time purchases)
-    const paymentIntents = await stripe.paymentIntents.list({
+    const subs = await stripe.subscriptions.list({
       customer: customerId,
-      limit: 10,
+      status: "active",
+      limit: 1,
     });
 
-    let activeSubscription = null;
-    let productId = null;
-    let seats = 0;
-    let expiresAt = null;
-
-    // Find the most recent successful payment with valid subscription
-    for (const payment of paymentIntents.data) {
-      if (payment.status === 'succeeded' && payment.metadata) {
-        const months = parseInt(payment.metadata.months || '0');
-        const paymentDate = new Date(payment.created * 1000);
-        const expirationDate = new Date(paymentDate);
-        expirationDate.setMonth(expirationDate.getMonth() + months);
-        
-        if (expirationDate > new Date()) {
-          activeSubscription = payment;
-          productId = payment.metadata.product_id;
-          expiresAt = expirationDate.toISOString();
-          
-          // Determine seats based on product
-          const seatsMap: Record<string, number> = {
-            'prod_Tm5HqJDUmZsz91': 1,
-            'prod_Tm5Hq1fvr7du6d': 3,
-            'prod_Tm5ZVK0PgVfaAe': 5,
-            'prod_Tm5ZZS8wW3u9gI': 8,
-            'prod_Tm5axgFjRbD1FH': 10,
-            'prod_Tm5aG2Nvd6hKqK': 12,
-            'prod_Tm5bGNPJxKccy9': 15,
-            'prod_Tm5bwjw2rdYpkc': 20,
-          };
-          seats = seatsMap[productId] || 0;
-          break;
-        }
-      }
+    if (subs.data.length === 0) {
+      logStep("No active subscription");
+      // Atualiza account_subscriptions: se trial expirou e não há sub, status fica como está
+      return new Response(JSON.stringify({
+        subscribed: false,
+        product_id: null,
+        price_id: null,
+        seats: 0,
+        current_period_end: null,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
-    // Also check checkout sessions for metadata
-    if (!activeSubscription) {
-      const sessions = await stripe.checkout.sessions.list({
-        customer: customerId,
-        limit: 10,
-      });
+    const sub = subs.data[0];
+    const item = sub.items.data[0];
+    const productId = item.price.product as string;
+    const priceId = item.price.id;
+    const seats = PRODUCT_TO_SEATS[productId] ?? 0;
+    const currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
 
-      for (const session of sessions.data) {
-        if (session.payment_status === 'paid' && session.metadata) {
-          const months = parseInt(session.metadata.months || '0');
-          const paymentDate = new Date(session.created * 1000);
-          const expirationDate = new Date(paymentDate);
-          expirationDate.setMonth(expirationDate.getMonth() + months);
-          
-          if (expirationDate > new Date()) {
-            productId = session.metadata.price_id;
-            expiresAt = expirationDate.toISOString();
-            
-            // Get product from price
-            try {
-              const price = await stripe.prices.retrieve(productId);
-              const actualProductId = price.product as string;
-              
-              const seatsMap: Record<string, number> = {
-                'prod_Tm5HqJDUmZsz91': 1,
-                'prod_Tm5Hq1fvr7du6d': 3,
-                'prod_Tm5ZVK0PgVfaAe': 5,
-                'prod_Tm5ZZS8wW3u9gI': 8,
-                'prod_Tm5axgFjRbD1FH': 10,
-                'prod_Tm5aG2Nvd6hKqK': 12,
-                'prod_Tm5bGNPJxKccy9': 15,
-                'prod_Tm5bwjw2rdYpkc': 20,
-              };
-              seats = seatsMap[actualProductId] || 0;
-              productId = actualProductId;
-            } catch (e) {
-              console.error("Error getting price:", e);
-            }
-            
-            activeSubscription = session;
-            break;
-          }
-        }
-      }
-    }
+    logStep("Active subscription found", { productId, priceId, seats });
 
-    logStep("Subscription check complete", { 
-      hasSubscription: !!activeSubscription, 
-      productId, 
-      seats, 
-      expiresAt 
-    });
+    // Sincroniza account_subscriptions
+    const { error: upErr } = await supabaseAdmin
+      .from('account_subscriptions')
+      .update({
+        status: 'active',
+        stripe_customer_id: customerId,
+        stripe_subscription_id: sub.id,
+        stripe_price_id: priceId,
+        plan_tier: seats,
+        seat_limit: seats,
+        current_period_end: currentPeriodEnd,
+      })
+      .eq('owner_user_id', user.id);
+    if (upErr) logStep("Failed to sync account_subscriptions", upErr);
 
     return new Response(JSON.stringify({
-      subscribed: !!activeSubscription,
+      subscribed: true,
       product_id: productId,
+      price_id: priceId,
       seats,
-      expires_at: expiresAt
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      current_period_end: currentPeriodEnd,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in check-subscription", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const message = error instanceof Error ? error.message : String(error);
+    logStep("ERROR", { message });
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

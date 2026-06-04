@@ -7,18 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface CheckoutRequest {
-  priceId: string;
-  billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual';
-}
-
-// Pricing configuration with discounts
-const BILLING_MULTIPLIERS = {
-  monthly: { months: 1, discount: 0 },
-  quarterly: { months: 3, discount: 0.10 },
-  semiannual: { months: 6, discount: 0.12 },
-  annual: { months: 12, discount: 0.15 },
-};
+// Lista permitida de priceIds (mantém sincronizado com src/lib/plans.ts)
+const ALLOWED_PRICE_IDS = new Set<string>([
+  'price_1TegO6DgjrAVrKo6qmm4QTAq',
+  'price_1TegOYDgjrAVrKo6SWKhm34E',
+  'price_1TegOrDgjrAVrKo6Fvsq1Vku',
+  'price_1TegPCDgjrAVrKo6a1AsVWED',
+  'price_1TegQXDgjrAVrKo68iqKHYkx',
+  'price_1TegRlDgjrAVrKo6pgIqgceO',
+  'price_1TegSSDgjrAVrKo60IQOSOMn',
+  'price_1TegSvDgjrAVrKo6d1LDLKgI',
+]);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,81 +30,50 @@ serve(async (req) => {
   );
 
   try {
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
-    const { priceId, billingCycle } = await req.json() as CheckoutRequest;
-    
+    const body = await req.json().catch(() => ({}));
+    const priceId = body?.priceId as string | undefined;
     if (!priceId) throw new Error("Price ID is required");
-    if (!billingCycle || !BILLING_MULTIPLIERS[billingCycle]) {
-      throw new Error("Invalid billing cycle");
-    }
+    if (!ALLOWED_PRICE_IDS.has(priceId)) throw new Error("Price ID not allowed");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Check if customer exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-    }
+    const customerId = customers.data[0]?.id;
 
-    // Get the price to calculate discount
-    const price = await stripe.prices.retrieve(priceId);
-    const monthlyAmount = price.unit_amount || 0;
-    
-    const billing = BILLING_MULTIPLIERS[billingCycle];
-    const totalBeforeDiscount = monthlyAmount * billing.months;
-    const discountAmount = Math.round(totalBeforeDiscount * billing.discount);
-    const finalAmount = totalBeforeDiscount - discountAmount;
+    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://agendalume.app";
 
-    // Create a checkout session
-    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
+      mode: 'subscription',
       payment_method_types: ['card', 'boleto'],
-      mode: 'payment',
-      success_url: `${Deno.env.get("APP_URL") ?? "https://agendalume.app"}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("APP_URL") ?? "https://agendalume.app"}/assinatura/cancelado`,
-      metadata: {
-        user_id: user.id,
-        price_id: priceId,
-        billing_cycle: billingCycle,
-        months: billing.months.toString(),
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/assinatura/cancelado`,
+      subscription_data: {
+        metadata: { user_id: user.id },
       },
-      line_items: [
-        {
-          price_data: {
-            currency: 'brl',
-            product: price.product as string,
-            unit_amount: finalAmount,
-          },
-          quantity: 1,
-        },
-      ],
-    };
-
-    // Add discount info to metadata
-    if (discountAmount > 0) {
-      sessionConfig.metadata!.discount_percentage = (billing.discount * 100).toString();
-      sessionConfig.metadata!.discount_amount = discountAmount.toString();
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+      metadata: { user_id: user.id, price_id: priceId },
+      allow_promotion_codes: true,
+    });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Checkout error:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[create-checkout] error:", message);
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

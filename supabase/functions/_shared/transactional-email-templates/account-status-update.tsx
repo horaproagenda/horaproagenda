@@ -74,6 +74,16 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
     intro: () => 'O pagamento da sua assinatura ficou pendente. Regularize para manter seu acesso ativo.',
     detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
   },
+  seats_near_limit: {
+    title: 'Você está perto do limite de usuários',
+    intro: (p) => `Sua conta está usando ${p.used ?? 0} de ${p.seatLimit ?? 0} assentos disponíveis no seu plano.`,
+    detail: () => 'Considere fazer upgrade em Assinatura para evitar bloqueios ao adicionar novos colaboradores.',
+  },
+  seats_blocked: {
+    title: 'Não foi possível adicionar um novo colaborador',
+    intro: (p) => `Uma tentativa de cadastro${p.attemptedEmail ? ` (${p.attemptedEmail})` : ''} foi bloqueada porque sua conta atingiu o limite de ${p.seatLimit ?? 0} usuário(s).`,
+    detail: () => 'Faça upgrade do seu plano em Assinatura para liberar mais assentos e tentar novamente.',
+  },
 }
 
 const Email = ({ kind = 'payment_recorded', name, ...rest }: Props) => {

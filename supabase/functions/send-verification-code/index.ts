@@ -55,6 +55,31 @@ serve(async (req) => {
       throw new Error("Email é obrigatório");
     }
 
+    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+
+    // SECURITY: para signup, bloqueia se já existir conta com este e-mail.
+    if (type === 'signup') {
+      const normalized = email.toLowerCase().trim();
+      let exists = false;
+      for (let page = 1; page <= 20 && !exists; page += 1) {
+        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listErr) break;
+        exists = list.users.some((u) => u.email?.toLowerCase() === normalized);
+        if (list.users.length < 1000) break;
+      }
+      if (exists) {
+        return new Response(
+          JSON.stringify({
+            code: 'email_exists',
+            error: "Este e-mail já está cadastrado. Faça login ou use 'Esqueci minha senha' para recuperá-la.",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 

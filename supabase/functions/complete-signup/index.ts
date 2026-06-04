@@ -104,17 +104,19 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
     }
 
-    // Phone code must be verified within last 10 min
-    const { data: usedPhoneCode } = await supabaseAdmin
-      .from("phone_verification_codes")
-      .select("id")
-      .eq("phone", phoneE164)
-      .not("used_at", "is", null)
-      .gte("used_at", tenMinutesAgo)
-      .limit(1)
-      .maybeSingle();
-    if (!usedPhoneCode) {
-      return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+    // Phone code is optional — only verified when phone is provided
+    if (phoneE164) {
+      const { data: usedPhoneCode } = await supabaseAdmin
+        .from("phone_verification_codes")
+        .select("id")
+        .eq("phone", phoneE164)
+        .not("used_at", "is", null)
+        .gte("used_at", tenMinutesAgo)
+        .limit(1)
+        .maybeSingle();
+      if (!usedPhoneCode) {
+        return jsonResponse({ success: false, error: "Celular não verificado. Solicite um novo código por SMS." }, 400);
+      }
     }
 
     // Block duplicate CPF across registrations

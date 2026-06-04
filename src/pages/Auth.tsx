@@ -165,6 +165,9 @@ export default function Auth() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
+      setSignupResendIn(OTP_RESEND_SECONDS);
+      setSignupCodeAttempts(0);
+      setSignupLockUntil(0);
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
@@ -175,6 +178,10 @@ export default function Auth() {
   };
 
   const handleResendSignupCode = async () => {
+    if (signupResendIn > 0) {
+      toast({ title: 'Aguarde', description: `Você poderá reenviar em ${signupResendIn}s.`, variant: 'destructive' });
+      return;
+    }
     setResending(true);
     setSignupCode('');
     try {
@@ -183,6 +190,9 @@ export default function Auth() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      setSignupResendIn(OTP_RESEND_SECONDS);
+      setSignupCodeAttempts(0);
+      setSignupLockUntil(0);
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
@@ -197,6 +207,12 @@ export default function Auth() {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
       return;
     }
+    const now = Date.now();
+    if (signupLockUntil && now < signupLockUntil) {
+      const secs = Math.ceil((signupLockUntil - now) / 1000);
+      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const email = signupEmail.trim().toLowerCase();
@@ -205,7 +221,15 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
       if (!verifyData?.valid) {
-        toast({ title: 'Código inválido', description: verifyData?.error || 'Confira ou solicite novo código.', variant: 'destructive' });
+        const next = signupCodeAttempts + 1;
+        setSignupCodeAttempts(next);
+        const remaining = OTP_MAX_ATTEMPTS - next;
+        if (remaining <= 0) {
+          setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
+          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+        }
         return;
       }
 

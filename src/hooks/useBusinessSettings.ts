@@ -68,7 +68,33 @@ export function useBusinessSettings() {
         (data as any).clinic_cnpj = row?.clinic_cnpj ?? null;
         (data as any).twilio_from_number = row?.twilio_from_number ?? null;
       }
-      
+
+      // Overlay per-user effective settings (global + professional_preferences)
+      if (data) {
+        try {
+          const { data: eff } = await supabase.rpc('get_effective_business_settings');
+          if (eff && typeof eff === 'object') {
+            const e = eff as Record<string, any>;
+            const overlayKeys = [
+              'opening_time','closing_time','slot_interval',
+              'work_saturdays','work_sundays',
+              'saturday_opening_time','saturday_closing_time',
+              'sunday_opening_time','sunday_closing_time',
+              'timezone','drag_and_drop_enabled','auto_complete_appointments',
+              'automation_whatsapp_reminders','automation_waitlist',
+              'automation_gap_finder','automation_occupancy_dashboard',
+              'automation_smart_recurrence','reminder_hours_before',
+            ];
+            overlayKeys.forEach((k) => {
+              if (e[k] !== undefined && e[k] !== null) (data as any)[k] = e[k];
+            });
+            (data as any).has_override = !!e.has_override;
+          }
+        } catch {
+          // If RPC fails, fall back to global settings silently
+        }
+      }
+
       // Format time fields to ensure they're in HH:mm format
       if (data) {
         data.opening_time = data.opening_time?.substring(0, 5) || '08:00';

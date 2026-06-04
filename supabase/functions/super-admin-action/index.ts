@@ -196,3 +196,54 @@ async function logAudit(
     // Don't fail the action because of audit logging
   }
 }
+
+function fmtDate(d: Date) {
+  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
+
+interface TargetInfo { email: string | null; name: string | null; }
+
+async function getTargetUserInfo(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<TargetInfo> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (admin.auth as any).admin.getUserById(userId);
+    const u = data?.user;
+    const name = (u?.user_metadata?.full_name as string | undefined)
+      ?? (u?.user_metadata?.name as string | undefined)
+      ?? (u?.email ? String(u.email).split("@")[0] : null);
+    return { email: u?.email ?? null, name: name ?? null };
+  } catch {
+    return { email: null, name: null };
+  }
+}
+
+async function sendNotificationEmail(
+  target: TargetInfo,
+  templateData: Record<string, unknown>,
+  idempotencyKey: string,
+) {
+  if (!target.email) {
+    console.warn("[super-admin-action] no email for user, skipping notification");
+    return;
+  }
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    const { error } = await client.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "account-status-update",
+        recipientEmail: target.email,
+        idempotencyKey,
+        templateData: { name: target.name, ...templateData },
+      },
+    });
+    if (error) console.warn("[super-admin-action] email send error:", error.message);
+  } catch (e) {
+    console.warn("[super-admin-action] email send threw:", e instanceof Error ? e.message : e);
+  }
+}
+

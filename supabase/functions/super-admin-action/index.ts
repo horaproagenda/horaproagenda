@@ -83,6 +83,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Pre-fetch target user (email + display name) for notification
+    const targetInfo = await getTargetUserInfo(admin, body.owner_user_id);
+
     if (body.action === "mark_paid") {
       const months = Math.max(1, Math.min(60, body.months ?? 1));
       const base = existing?.current_period_end
@@ -107,6 +110,11 @@ Deno.serve(async (req) => {
         months,
         new_period_end: end.toISOString(),
       });
+      await sendNotificationEmail(targetInfo, {
+        kind: "payment_recorded",
+        months,
+        validUntil: fmtDate(end),
+      }, `super-admin-mark-paid-${body.owner_user_id}-${end.toISOString()}`);
       return json({ ok: true, current_period_end: end.toISOString() });
     }
 
@@ -126,6 +134,11 @@ Deno.serve(async (req) => {
         extra_days: extra,
         new_trial_ends_at: newEnd.toISOString(),
       });
+      await sendNotificationEmail(targetInfo, {
+        kind: "trial_extended",
+        extraDays: extra,
+        validUntil: fmtDate(newEnd),
+      }, `super-admin-extend-trial-${body.owner_user_id}-${newEnd.toISOString()}`);
       return json({ ok: true, trial_ends_at: newEnd.toISOString() });
     }
 
@@ -141,8 +154,14 @@ Deno.serve(async (req) => {
       await logAudit(admin, callerId, "super_admin.set_grandfathered", body.owner_user_id, {
         value: !!body.value,
       });
+      if (body.value) {
+        await sendNotificationEmail(targetInfo, {
+          kind: "lifetime_granted",
+        }, `super-admin-lifetime-${body.owner_user_id}-${Date.now()}`);
+      }
       return json({ ok: true });
     }
+
 
     return json({ error: "unknown action" }, 400);
   } catch (e) {

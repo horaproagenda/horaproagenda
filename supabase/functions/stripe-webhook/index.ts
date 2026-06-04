@@ -213,3 +213,35 @@ serve(async (req) => {
     });
   }
 });
+
+async function sendSubscriptionActivatedEmail(
+  ownerUserId: string,
+  data: { planLabel?: string; validUntil?: string },
+  idempotencyKey: string,
+) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: u } = await (supabase.auth as any).admin.getUserById(ownerUserId);
+    const email = u?.user?.email as string | undefined;
+    if (!email) {
+      log('No email for owner, skipping activation notification', { ownerUserId });
+      return;
+    }
+    const name = (u?.user?.user_metadata?.full_name as string | undefined)
+      ?? (u?.user?.user_metadata?.name as string | undefined)
+      ?? email.split('@')[0];
+    const { error } = await supabase.functions.invoke('send-transactional-email', {
+      body: {
+        templateName: 'account-status-update',
+        recipientEmail: email,
+        idempotencyKey,
+        templateData: { kind: 'subscription_activated', name, ...data },
+      },
+    });
+    if (error) log('Activation email send failed', { error: error.message });
+    else log('Activation email enqueued', { ownerUserId });
+  } catch (e) {
+    log('Activation email threw', { e: e instanceof Error ? e.message : String(e) });
+  }
+}
+

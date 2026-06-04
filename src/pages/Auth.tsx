@@ -558,6 +558,7 @@ function AuthInner() {
             <CardDescription>Digite o código enviado para <span className="font-medium">{forgotEmail}</span></CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <OtpStatusAlert status={resetOtpStatus} email={forgotEmail} now={now} />
             <div className="flex justify-center">
               <InputOTP maxLength={6} value={resetCode} onChange={setResetCode}>
                 <InputOTPGroup>

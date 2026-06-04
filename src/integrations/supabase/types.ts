@@ -3645,6 +3645,7 @@ export type Database = {
       }
       trial_registrations: {
         Row: {
+          city: string | null
           cnpj: string | null
           company_name: string | null
           cpf: string | null
@@ -3656,6 +3657,7 @@ export type Database = {
           id: string
           phone: string | null
           phone_verified_at: string | null
+          state: string | null
           subscription_status: string | null
           trial_days: number | null
           trial_ended_at: string | null
@@ -3664,6 +3666,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          city?: string | null
           cnpj?: string | null
           company_name?: string | null
           cpf?: string | null
@@ -3675,6 +3678,7 @@ export type Database = {
           id?: string
           phone?: string | null
           phone_verified_at?: string | null
+          state?: string | null
           subscription_status?: string | null
           trial_days?: number | null
           trial_ended_at?: string | null
@@ -3683,6 +3687,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          city?: string | null
           cnpj?: string | null
           company_name?: string | null
           cpf?: string | null
@@ -3694,6 +3699,7 @@ export type Database = {
           id?: string
           phone?: string | null
           phone_verified_at?: string | null
+          state?: string | null
           subscription_status?: string | null
           trial_days?: number | null
           trial_ended_at?: string | null

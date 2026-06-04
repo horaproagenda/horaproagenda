@@ -49,8 +49,10 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
               onClick={refreshAll}
               disabled={isRefreshing}
               className="relative h-9 w-9"
+              aria-label="Sincronizar todos os dados"
             >
               <RefreshCw className={`h-4 w-4 md:h-5 md:w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Sincronizar todos os dados</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>

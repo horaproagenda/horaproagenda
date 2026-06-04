@@ -148,9 +148,26 @@ serve(async (req) => {
         if (invoice.subscription) {
           const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
           await syncSubscription(sub);
+          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+          const ownerId = await findOwnerByCustomer(customerId);
+          if (ownerId) {
+            const periodEnd = new Date(sub.current_period_end * 1000);
+            const item = sub.items.data[0];
+            const productId = item?.price?.product as string | undefined;
+            const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+            await sendSubscriptionActivatedEmail(
+              ownerId,
+              {
+                planLabel: seats ? `${seats} usuário${seats > 1 ? 's' : ''}` : undefined,
+                validUntil: periodEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+              },
+              `stripe-invoice-paid-${invoice.id}`,
+            );
+          }
         }
         break;
       }
+
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;

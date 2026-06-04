@@ -416,57 +416,100 @@ export default function Auth() {
             </TabsContent>
 
             <TabsContent value="signup">
-              {/* Etapa 1: Nome + Telefone */}
-              {signupStep === 'identify' && (
+              {/* Etapa 1: Dados do cadastro */}
+              {signupStep === 'form' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Nome</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                      autoComplete="name"
-                    />
+                    <Label htmlFor="signup-name">Nome completo *</Label>
+                    <Input id="signup-name" type="text" placeholder="Nome e sobrenome" value={signupName} onChange={(e) => setSignupName(e.target.value)} autoComplete="name" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Telefone (WhatsApp)</Label>
-                    <Input
-                      id="signup-phone"
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="(11) 91234-5678"
-                      value={signupPhoneMasked}
-                      onChange={(e) => setSignupPhoneMasked(maskBrazilianPhone(e.target.value))}
-                      autoComplete="tel-national"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Use DDD + 9 dígitos. Enviaremos o código pelo WhatsApp.
-                    </p>
+                    <Label htmlFor="signup-cpf">CPF *</Label>
+                    <Input id="signup-cpf" type="text" inputMode="numeric" placeholder="000.000.000-00" value={signupCpf} onChange={(e) => setSignupCpf(maskCPF(e.target.value))} />
                   </div>
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleSendWhatsappCode}
-                    disabled={loading}
-                  >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageCircle className="h-4 w-4 mr-2" />}
-                    Receber Código por WhatsApp
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">E-mail *</Label>
+                    <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} autoComplete="email" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha *</Label>
+                    <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} autoComplete="new-password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">Confirmar senha *</Label>
+                    <Input id="signup-confirm-password" type="password" placeholder="Repita a senha" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} autoComplete="new-password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-cnpj">CNPJ <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input id="signup-cnpj" type="text" inputMode="numeric" placeholder="00.000.000/0000-00" value={signupCnpj} onChange={(e) => setSignupCnpj(maskCNPJ(e.target.value))} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="signup-city">Cidade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                      <Input id="signup-city" type="text" placeholder="Sua cidade" value={signupCity} onChange={(e) => setSignupCity(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-state">UF</Label>
+                      <Input id="signup-state" type="text" maxLength={2} placeholder="SP" value={signupState} onChange={(e) => setSignupState(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+                    </div>
+                  </div>
+                  <Button type="button" size="lg" className="w-full" onClick={handleAdvanceToTerms} disabled={loading}>
+                    Cadastrar
                   </Button>
                 </div>
               )}
 
-              {/* Etapa 2: Código de 6 dígitos */}
+              {/* Etapa 2: Termos + aceite */}
+              {signupStep === 'terms' && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold mb-2">Termos e Política</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Para concluir o cadastro, leia e aceite os documentos abaixo.
+                    </p>
+                  </div>
+
+                  <ScrollArea className="h-56 rounded-md border p-3 text-sm leading-relaxed">
+                    <h4 className="font-semibold mb-1">Termos de Serviço</h4>
+                    <p className="text-muted-foreground mb-3">
+                      Ao utilizar o Lume Agenda você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança após o período de teste gratuito e demais condições descritas integralmente em nossa página oficial.{" "}
+                      <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
+                    </p>
+
+                    <h4 className="font-semibold mb-1 mt-3">Política de Privacidade</h4>
+                    <p className="text-muted-foreground">
+                      Tratamos seus dados em conformidade com a LGPD. Coletamos apenas o necessário para operar a agenda, jamais comercializamos seus dados e você pode solicitar exclusão a qualquer momento.{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
+                    </p>
+                  </ScrollArea>
+
+                  <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                    <Checkbox checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
+                    <span>
+                      Li e concordo com os <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Termos de Serviço</Link> e com a{" "}
+                      <Link to="/politica-de-privacidade" target="_blank" className="text-primary hover:underline">Política de Privacidade</Link>.
+                    </span>
+                  </label>
+
+                  <Button type="button" size="lg" className="w-full" onClick={handleSendSignupEmailCode} disabled={loading || !acceptedTerms}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                    Receber código por e-mail
+                  </Button>
+
+                  <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1" onClick={() => setSignupStep('form')}>
+                    <ArrowLeft className="h-4 w-4" /> Voltar
+                  </button>
+                </div>
+              )}
+
+              {/* Etapa 3: Código de e-mail */}
               {signupStep === 'code' && (
                 <div className="space-y-6">
                   <Alert className="border-primary/30 bg-primary/5">
                     <AlertDescription className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                       <span>
-                        Código enviado para o WhatsApp <span className="font-medium">{signupPhoneMasked}</span>.
-                        Pode levar alguns segundos para chegar.
+                        Código enviado para <span className="font-medium">{signupEmail}</span>. Confira sua caixa de entrada e o spam.
                       </span>
                     </AlertDescription>
                   </Alert>
@@ -474,7 +517,7 @@ export default function Auth() {
                   <div className="space-y-2 text-center">
                     <Label className="block">Digite o código de 6 dígitos</Label>
                     <div className="flex justify-center">
-                      <InputOTP maxLength={6} value={whatsappCode} onChange={setWhatsappCode}>
+                      <InputOTP maxLength={6} value={signupCode} onChange={setSignupCode}>
                         <InputOTPGroup>
                           <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
                           <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
@@ -483,31 +526,16 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleConfirmCode}
-                    disabled={loading || whatsappCode.length !== 6}
-                  >
+                  <Button type="button" size="lg" className="w-full" onClick={handleConfirmSignupCode} disabled={loading || signupCode.length !== 6}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Confirmar e Agendar
+                    Confirmar e criar conta
                   </Button>
 
                   <div className="flex items-center justify-between text-sm">
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-                      onClick={resetSignupFlow}
-                    >
+                    <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setSignupStep('terms')}>
                       <ArrowLeft className="h-4 w-4" /> Voltar
                     </button>
-                    <button
-                      type="button"
-                      className="text-primary hover:underline disabled:opacity-50"
-                      onClick={handleResendCode}
-                      disabled={resending}
-                    >
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending}>
                       {resending ? 'Reenviando...' : 'Reenviar código'}
                     </button>
                   </div>

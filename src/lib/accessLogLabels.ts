@@ -105,7 +105,39 @@ export function labelTargetType(t?: string | null): string {
  * "Alvo" = sobre qual registro a ação aconteceu.
  * Ex.: ao abrir o perfil de um cliente, o alvo é "Cliente — João Silva".
  * Quando não há alvo específico (ex.: abrir a página /agenda), retornamos o módulo.
+ *
+ * IMPORTANTE: nunca exibimos o hash/ID do registro. Para agendamentos, montamos a
+ * descrição a partir do `metadata` do log (client_name, service_name, scheduled_date,
+ * scheduled_time). Quando o metadata está parcial, exibimos apenas as partes
+ * disponíveis; quando está totalmente vazio, mostramos "Agendamento".
  */
+function pickStr(meta: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = meta[k];
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+  }
+  return '';
+}
+
+function appointmentLabel(meta: Record<string, unknown>, opts: { preferService?: boolean } = {}): string {
+  const clientName = pickStr(meta, 'client_name', 'client', 'patient_name');
+  const serviceName = pickStr(meta, 'service_name', 'service', 'package_name');
+  const date = pickStr(meta, 'scheduled_date', 'date');
+  const time = pickStr(meta, 'scheduled_time', 'start_time', 'time');
+
+  const parts: string[] = [];
+  if (opts.preferService) {
+    if (serviceName) parts.push(`Serviço: ${serviceName}`);
+    if (clientName) parts.push(`Cliente: ${clientName}`);
+  } else {
+    if (clientName) parts.push(`Cliente: ${clientName}`);
+    if (serviceName) parts.push(`Serviço: ${serviceName}`);
+  }
+  if (date || time) parts.push([date, time].filter(Boolean).join(' '));
+
+  return parts.length > 0 ? `Agendamento — ${parts.join(' • ')}` : 'Agendamento';
+}
+
 export function describeTarget(log: {
   target_type?: string | null;
   target_id?: string | null;
@@ -113,23 +145,19 @@ export function describeTarget(log: {
   module: string;
 }, opts: { preferService?: boolean } = {}): string {
   const meta = (log.metadata ?? {}) as Record<string, unknown>;
-  const clientName = (meta.client_name as string) || '';
-  const serviceName = (meta.service_name as string) || '';
-  const professionalName = (meta.professional_name as string) || '';
-  const generic = (meta.target_name as string) || (meta.name as string) || '';
+  const generic = pickStr(meta, 'target_name', 'name');
 
   if (log.target_type === 'appointment') {
-    // Para "Alvo": mostra o nome do cliente do agendamento (ou serviço, se preferir).
-    // Sem fallback de hash/código — apenas "Agendamento" quando não há nome.
-    const primary = opts.preferService
-      ? (serviceName || clientName)
-      : (clientName || serviceName);
-    return primary ? `Agendamento — ${primary}` : 'Agendamento';
+    return appointmentLabel(meta, opts);
   }
 
   if (log.target_type) {
     const base = labelTargetType(log.target_type);
-    const name = generic || clientName || serviceName || professionalName;
+    const name =
+      generic ||
+      pickStr(meta, 'client_name') ||
+      pickStr(meta, 'service_name') ||
+      pickStr(meta, 'professional_name');
     return name ? `${base} — ${name}` : base;
   }
   // Sem alvo específico: a ação foi feita na página/listagem do módulo
@@ -153,8 +181,8 @@ export function summarizeLog(log: {
   metadata?: Record<string, unknown> | null;
   module: string;
 }): string {
-  // No resumo, para agendamentos preferimos o nome do serviço (em vez do código).
-  const target = describeTarget(log, { preferService: true });
+  // Para agendamentos, no resumo mostramos cliente + serviço (+ data/horário, se houver).
+  const target = describeTarget(log);
   const viewed = summarizeFields(log.fields_viewed);
   const changed = summarizeFields(log.fields_changed);
 
@@ -177,3 +205,4 @@ export function summarizeLog(log: {
   if (log.action === 'export') return `Exportou ${target}.`;
   return `${log.action} em ${target}.`;
 }
+

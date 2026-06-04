@@ -4475,6 +4475,15 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
+      get_seat_usage: {
+        Args: { _owner?: string }
+        Returns: {
+          available: number
+          is_grandfathered: boolean
+          seat_limit: number
+          used: number
+        }[]
+      }
       get_sensitive_business_settings: {
         Args: never
         Returns: {

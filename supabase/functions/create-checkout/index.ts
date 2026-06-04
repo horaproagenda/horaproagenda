@@ -70,7 +70,7 @@ serve(async (req) => {
     let session: Stripe.Checkout.Session;
 
     if (billingMonths === 1) {
-      // Assinatura recorrente mensal (somente cartão é suportado para recorrência no BR)
+      // Assinatura recorrente mensal (cartão).
       session = await stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
@@ -84,8 +84,9 @@ serve(async (req) => {
         allow_promotion_codes: true,
       });
     } else {
-      // Pagamento antecipado (3/6/12 meses) com desconto — one-time payment.
-      // Aceita Pix, Cartão (crédito/débito) e Boleto.
+      // Assinatura recorrente trimestral/semestral/anual com desconto aplicado
+      // ao valor da cobrança recorrente (cobra automaticamente a cada N meses).
+      // Apenas cartão é suportado pelo Stripe para subscriptions no BR.
       const info = PRICE_INFO[priceId];
       if (!info) throw new Error("Plano não encontrado");
       const discount = DISCOUNT[billingMonths];
@@ -96,27 +97,37 @@ serve(async (req) => {
       session = await stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
-        mode: 'payment',
-        payment_method_types: ['card', 'pix', 'boleto'],
+        mode: 'subscription',
+        payment_method_types: ['card'],
         line_items: [{
           quantity: 1,
           price_data: {
             currency: 'brl',
             unit_amount: unitAmountCents,
+            recurring: { interval: 'month', interval_count: billingMonths },
+            product: PRICE_INFO[priceId] ? undefined : undefined,
             product_data: {
               name: `Agendalume — ${label}`,
-              description: `Acesso ao Agendalume por ${billingMonths} meses para ${info.seats} usuário(s).`,
             },
-          },
+          } as Stripe.Checkout.SessionCreateParams.LineItem.PriceData,
         }],
         success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/assinatura/cancelado`,
+        subscription_data: {
+          metadata: {
+            user_id: user.id,
+            price_id: priceId,
+            billing_months: String(billingMonths),
+            seats: String(info.seats),
+            kind: 'recurring_multi_month',
+          },
+        },
         metadata: {
           user_id: user.id,
           price_id: priceId,
           billing_months: String(billingMonths),
           seats: String(info.seats),
-          kind: 'prepay',
+          kind: 'recurring_multi_month',
         },
         allow_promotion_codes: true,
       });

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, QrCode, FileText } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
 
 export function AssinaturaSection() {
   const { user } = useAuth();
@@ -118,7 +118,8 @@ export function AssinaturaSection() {
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-1">Escolha seu plano</h2>
         <p className="text-muted-foreground text-sm">
-          Pague mensalmente ou antecipe 3, 6 ou 12 meses com desconto. Aceitamos Pix, cartão de crédito/débito e boleto.
+          Cobrança recorrente automática: escolha mensal, trimestral, semestral ou anual.
+          Períodos mais longos têm desconto. Cobrado no cartão a cada ciclo.
         </p>
       </div>
 
@@ -149,6 +150,9 @@ export function AssinaturaSection() {
         {PLANS.map((plan) => {
           const isCurrent = currentPriceId === plan.priceId;
           const isSelected = selectedPriceId === plan.priceId;
+          const isMonthly = billingMonths === 1;
+          const totalCycle = periodTotal(plan.priceBRL, billingMonths);
+          const effectiveMonthly = totalCycle / billingMonths;
           return (
             <Card
               key={plan.priceId}
@@ -174,13 +178,24 @@ export function AssinaturaSection() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold">{formatBRL(plan.priceBRL)}</span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
                     <span className="text-sm text-muted-foreground">/mês</span>
+                    {!isMonthly && (
+                      <span className="text-xs text-muted-foreground line-through">
+                        {formatBRL(plan.priceBRL)}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatBRL(plan.priceBRL / plan.seats)} por usuário/mês
-                  </div>
+                  {!isMonthly ? (
+                    <div className="text-xs text-muted-foreground">
+                      {formatBRL(totalCycle)} a cada {billingMonths} meses (renovação automática)
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      {formatBRL(plan.priceBRL / plan.seats)} por usuário/mês
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -213,33 +228,39 @@ export function AssinaturaSection() {
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold border-t pt-3">
-                    <span>{isMonthly ? 'Total mensal' : `Total (${billingMonths} meses)`}</span>
+                    <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
                     <span>{formatBRL(total)}</span>
                   </div>
                   {!isMonthly && saved > 0 && (
                     <div className="text-xs text-emerald-600 text-right">
-                      Você economiza {formatBRL(saved)}
+                      Você economiza {formatBRL(saved)} por ciclo
                     </div>
                   )}
+                  <div className="text-xs text-muted-foreground text-center border-t pt-2">
+                    Renovação automática a cada {billingMonths === 1 ? 'mês' : `${billingMonths} meses`}.
+                    Cancele a qualquer momento em "Gerenciar assinatura".
+                  </div>
                 </>
               );
             })()}
             <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
-              {billingMonths === 1 ? (
-                <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão (recorrente mensal)</span>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1"><QrCode className="h-3.5 w-3.5" /> Pix</span>
-                  <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão</span>
-                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> Boleto</span>
-                </>
-              )}
+              <span className="flex items-center gap-1">
+                <CreditCard className="h-3.5 w-3.5" />
+                Cartão (cobrança recorrente)
+              </span>
             </div>
             <Button className="w-full" size="lg" onClick={handleCheckout} disabled={isLoading}>
               {isLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
               ) : (
-                <><CreditCard className="mr-2 h-4 w-4" />{isActive ? 'Trocar de plano' : (billingMonths === 1 ? 'Assinar agora' : `Pagar ${billingMonths} meses`)}</>
+                <>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {isActive
+                    ? 'Trocar de plano'
+                    : billingMonths === 1
+                      ? 'Assinar agora'
+                      : `Assinar (a cada ${billingMonths} meses)`}
+                </>
               )}
             </Button>
           </CardContent>

@@ -723,14 +723,7 @@ function AuthInner() {
               {/* Etapa 3: Código de e-mail */}
               {signupStep === 'code' && (
                 <div className="space-y-6">
-                  <Alert className="border-primary/30 bg-primary/5">
-                    <AlertDescription className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>
-                        Código enviado para <span className="font-medium">{signupEmail}</span>. Confira sua caixa de entrada e o spam.
-                      </span>
-                    </AlertDescription>
-                  </Alert>
+                  <OtpStatusAlert status={signupOtpStatus} email={signupEmail} now={now} />
 
                   <div className="space-y-2 text-center">
                     <Label className="block">Digite o código de 6 dígitos</Label>

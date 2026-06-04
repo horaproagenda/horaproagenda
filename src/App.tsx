@@ -39,6 +39,7 @@ const Documentos = lazy(() => import("./pages/Documentos"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Auditoria = lazy(() => import("./pages/Auditoria"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const UsuariosConta = lazy(() => import("./pages/UsuariosConta"));
 const Ajuda = lazy(() => import("./pages/Ajuda"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const Assinatura = lazy(() => import("./pages/Assinatura"));

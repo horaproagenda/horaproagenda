@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, QrCode, FileText } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
 
 export function AssinaturaSection() {
   const { user } = useAuth();

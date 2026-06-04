@@ -300,12 +300,40 @@ export default function Auth() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setAuthView('reset-code');
+      setResetResendIn(OTP_RESEND_SECONDS);
+      setResetCodeAttempts(0);
+      setResetLockUntil(0);
       toast({ title: 'Código enviado!', description: 'Verifique seu email.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendResetCode = async () => {
+    if (resetResendIn > 0) {
+      toast({ title: 'Aguarde', description: `Você poderá reenviar em ${resetResendIn}s.`, variant: 'destructive' });
+      return;
+    }
+    setResending(true);
+    setResetCode('');
+    try {
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: forgotEmail, type: 'login' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setResetResendIn(OTP_RESEND_SECONDS);
+      setResetCodeAttempts(0);
+      setResetLockUntil(0);
+      toast({ title: 'Novo código enviado', description: 'Verifique seu email.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setResending(false);
     }
   };
 

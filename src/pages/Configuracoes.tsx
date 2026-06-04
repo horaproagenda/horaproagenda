@@ -122,8 +122,13 @@ const Configuracoes = () => {
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           {/* Gestão de usuários movida para o Painel do Administrador (/admin) */}
-          {/* Diagnóstico do sistema e integridade da agenda/pacotes rodam automaticamente em background (useAgendaIntegrityAutoCheck + usePostUpdateDataHeal). */}
 
+          {/* Configurações pessoais (cada profissional) */}
+          <MinhasPreferenciasSettings />
+
+          {/* Seções globais (somente administradores) */}
+          {isAdmin && (
+          <>
           {/* 1. Informações da Clínica + Horários */}
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="card-hover">

@@ -9,18 +9,66 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2, AlertTriangle, Ban, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 
 const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
+const TERMS_VERSION = 'v1';
 const OTP_RESEND_SECONDS = 60;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_LOCKOUT_MS = 60_000;
+const OTP_EXPIRY_SECONDS = 600; // 10 minutos
+
+type OtpStatus =
+  | { kind: 'idle' }
+  | { kind: 'sent'; at: number }
+  | { kind: 'expired' }
+  | { kind: 'blocked'; until: number };
+
+function OtpStatusAlert({ status, email, now }: { status: OtpStatus; email: string; now: number }) {
+  if (status.kind === 'idle') return null;
+  if (status.kind === 'blocked') {
+    const secs = Math.max(0, Math.ceil((status.until - now) / 1000));
+    return (
+      <Alert variant="destructive">
+        <Ban className="h-4 w-4" />
+        <AlertTitle>Acesso bloqueado por tentativas</AlertTitle>
+        <AlertDescription>
+          Muitos códigos incorretos foram digitados. Aguarde <span className="font-medium">{secs}s</span> e solicite um novo código por segurança.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  if (status.kind === 'expired') {
+    return (
+      <Alert variant="destructive">
+        <Clock className="h-4 w-4" />
+        <AlertTitle>Código expirado</AlertTitle>
+        <AlertDescription>
+          O código enviado para <span className="font-medium">{email}</span> expirou. Clique em <span className="font-medium">Reenviar código</span> para receber um novo.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  // sent
+  const remaining = Math.max(0, Math.ceil((status.at + OTP_EXPIRY_SECONDS * 1000 - now) / 1000));
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+  return (
+    <Alert className="border-primary/30 bg-primary/5">
+      <CheckCircle2 className="h-4 w-4 text-primary" />
+      <AlertTitle>Código enviado</AlertTitle>
+      <AlertDescription>
+        Enviado para <span className="font-medium">{email}</span>. Válido por <span className="font-medium tabular-nums">{mm}:{ss}</span>. Confira também o spam.
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 const AuthSeo = () => (
   <Helmet>

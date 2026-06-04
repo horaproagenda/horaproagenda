@@ -505,6 +505,27 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
+      // Idempotent recovery: a parallel duplicate request (double-click / retry)
+      // already inserted this exact appointment. Return the existing active row
+      // instead of failing the user-facing call.
+      if ((insertError as any).code === '23505' && body.professional_id) {
+        const { data: existing } = await supabase
+          .from('appointments')
+          .select()
+          .eq('professional_id', body.professional_id)
+          .eq('start_time', body.start_time)
+          .not('status', 'in', '(cancelled,rescheduled)')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          console.log('Idempotent return of existing appointment:', existing.id);
+          return new Response(
+            JSON.stringify({ success: true, data: existing, idempotent: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
       console.error('Insert error:', insertError);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to create appointment', details: insertError.message }),

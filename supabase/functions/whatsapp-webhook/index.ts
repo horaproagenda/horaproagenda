@@ -15,6 +15,24 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    // Validate token/signature when configured. If ULTRAMSG_WEBHOOK_TOKEN is set,
+    // require the request to include a matching token via query (?token=...) or
+    // X-Webhook-Token header. This blocks unauthenticated/forged payloads.
+    const expectedToken = Deno.env.get('ULTRAMSG_WEBHOOK_TOKEN');
+    if (expectedToken) {
+      const url = new URL(req.url);
+      const incoming =
+        url.searchParams.get('token') ||
+        req.headers.get('x-webhook-token') ||
+        req.headers.get('x-ultramsg-token') ||
+        '';
+      if (incoming !== expectedToken) {
+        return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const payload = await req.json().catch(() => ({}));
     console.log('[ultramsg-webhook] event:', JSON.stringify(payload).slice(0, 1000));
 

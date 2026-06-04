@@ -53,6 +53,17 @@ serve(async (req) => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
+    // Tenant isolation: ensure target belongs to caller's account
+    const { data: callerProfile } = await admin
+      .from("profiles").select("account_owner_id").eq("id", callerId).maybeSingle();
+    const ownerId = callerProfile?.account_owner_id ?? callerId;
+    const { data: targetProfile } = await admin
+      .from("profiles").select("account_owner_id").eq("id", user_id).maybeSingle();
+    if (!targetProfile || (targetProfile.account_owner_id ?? user_id) !== ownerId) {
+      return new Response(JSON.stringify({ error: "Acesso negado" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
     // Audit
     await admin.rpc("log_access", {
       p_module: "admin_users",

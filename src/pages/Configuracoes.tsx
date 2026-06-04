@@ -502,6 +502,8 @@ const Configuracoes = () => {
               </div>
             </CardContent>
           </Card>
+
+          <ChangeMyPasswordCard />
         </div>
       </PageTransition>
     </AppLayout>

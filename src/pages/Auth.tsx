@@ -275,7 +275,7 @@ function AuthInner() {
           variant: 'destructive',
         });
         setAuthView('login');
-        setEmail(email);
+        setLoginEmail(email);
         return;
       }
       if (error) throw error;

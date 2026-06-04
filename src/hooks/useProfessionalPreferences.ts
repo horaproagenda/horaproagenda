@@ -99,6 +99,7 @@ export function useProfessionalPreferences() {
         () => {
           qc.invalidateQueries({ queryKey: ['professional-preferences', user.id] });
           qc.invalidateQueries({ queryKey: ['effective-business-settings', user.id] });
+          qc.invalidateQueries({ queryKey: ['business-settings'] });
         }
       )
       .subscribe();

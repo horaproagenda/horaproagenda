@@ -28,24 +28,30 @@ const AuthSeo = () => (
 );
 
 type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-code';
-type SignupStep = 'identify' | 'code';
+type SignupStep = 'form' | 'terms' | 'code';
 
-/** Aplica máscara brasileira (XX) XXXXX-XXXX enquanto o usuário digita. */
-function maskBrazilianPhone(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+function maskCPF(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-function generate6DigitCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+function maskCNPJ(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
 }
+
+const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, loading: authLoading } = useAuth();
+  const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -56,12 +62,18 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Signup form — fluxo WhatsApp (Nome + Telefone → Código)
-  const [signupStep, setSignupStep] = useState<SignupStep>('identify');
+  // Signup form (email-only flow)
+  const [signupStep, setSignupStep] = useState<SignupStep>('form');
   const [signupName, setSignupName] = useState('');
-  const [signupPhoneMasked, setSignupPhoneMasked] = useState('');
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [whatsappCode, setWhatsappCode] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupCnpj, setSignupCnpj] = useState('');
+  const [signupCity, setSignupCity] = useState('');
+  const [signupState, setSignupState] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
 
   // Forgot password
@@ -77,122 +89,104 @@ export default function Auth() {
   }, [user, navigate]);
 
   const resetSignupFlow = () => {
-    setSignupStep('identify');
-    setVerificationId(null);
-    setWhatsappCode('');
+    setSignupStep('form');
+    setAcceptedTerms(false);
+    setSignupCode('');
   };
 
-  /**
-   * Etapa 1 → gera código de 6 dígitos e grava em `verificacoes_whatsapp`.
-   * O envio real do código pelo WhatsApp será feito por uma API externa,
-   * que lê esta tabela. Aqui apenas preparamos o registro.
-   */
-  const handleSendWhatsappCode = async () => {
-    if (!signupName.trim()) {
-      toast({ title: 'Informe seu nome', variant: 'destructive' });
-      return;
-    }
-    const digits = signupPhoneMasked.replace(/\D/g, '');
-    if (digits.length !== 11) {
-      toast({
-        title: 'Telefone inválido',
-        description: 'Use DDD + 9 dígitos. Ex.: (11) 91234-5678',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const validateSignupForm = (): string | null => {
+    if (!signupName.trim()) return 'Informe seu nome completo.';
+    if (signupName.trim().split(/\s+/).length < 2) return 'Informe nome e sobrenome.';
+    if (!isValidCPF(signupCpf)) return 'CPF inválido.';
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim());
+    if (!emailOk) return 'E-mail inválido.';
+    if (signupPassword.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
+    const cnpjDigits = signupCnpj.replace(/\D/g, '');
+    if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
+    if (signupState && !BR_STATES.includes(signupState.toUpperCase())) return 'UF inválida.';
+    return null;
+  };
 
+  const handleAdvanceToTerms = () => {
+    const err = validateSignupForm();
+    if (err) {
+      toast({ title: 'Verifique os dados', description: err, variant: 'destructive' });
+      return;
+    }
+    setSignupStep('terms');
+  };
+
+  const handleSendSignupEmailCode = async () => {
+    if (!acceptedTerms) {
+      toast({ title: 'Aceite os termos', description: 'Marque o aceite dos Termos e da Política de Privacidade para continuar.', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
-      const code = generate6DigitCode();
-      const telefone = `+55${digits}`;
-
-      const { data, error } = await supabase
-        .from('verificacoes_whatsapp')
-        .insert({ telefone, codigo_verificacao: code, verificado: false })
-        .select('id')
-        .single();
-
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+      });
       if (error) throw error;
-
-      setVerificationId(data.id);
+      if (data?.error) throw new Error(data.error);
       setSignupStep('code');
-      toast({
-        title: 'Código gerado!',
-        description: 'Em instantes você receberá o código no WhatsApp.',
-      });
+      toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao gerar código';
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Etapa 2 → valida o código informado contra a tabela e marca como verificado.
-   */
-  const handleConfirmCode = async () => {
-    if (whatsappCode.length !== 6) {
-      toast({ title: 'Digite o código de 6 dígitos', variant: 'destructive' });
-      return;
-    }
-    if (!verificationId) {
-      toast({ title: 'Sessão expirada', description: 'Solicite um novo código.', variant: 'destructive' });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data: ok, error: rpcErr } = await supabase.rpc('confirmar_codigo_whatsapp', {
-        p_id: verificationId,
-        p_codigo: whatsappCode,
-      });
-
-      if (rpcErr) throw rpcErr;
-
-      if (!ok) {
-        toast({
-          title: 'Código incorreto ou expirado',
-          description: 'Confira os 6 dígitos ou solicite um novo código.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'WhatsApp confirmado!',
-        description: 'Telefone validado com sucesso. Em breve você poderá agendar.',
-      });
-      // Próximo passo (criação de conta / agendamento) será conectado à API externa.
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao confirmar código';
-      toast({ title: 'Erro', description: msg, variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendCode = async () => {
+  const handleResendSignupCode = async () => {
     setResending(true);
-    setWhatsappCode('');
+    setSignupCode('');
     try {
-      const digits = signupPhoneMasked.replace(/\D/g, '');
-      const code = generate6DigitCode();
-      const telefone = `+55${digits}`;
-      const { data, error } = await supabase
-        .from('verificacoes_whatsapp')
-        .insert({ telefone, codigo_verificacao: code, verificado: false })
-        .select('id')
-        .single();
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+      });
       if (error) throw error;
-      setVerificationId(data.id);
-      toast({ title: 'Novo código gerado', description: 'Verifique seu WhatsApp.' });
+      if (data?.error) throw new Error(data.error);
+      toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleConfirmSignupCode = async () => {
+    if (signupCode.length !== 6) {
+      toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const email = signupEmail.trim().toLowerCase();
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
+        body: { email, code: signupCode },
+      });
+      if (verifyError) throw verifyError;
+      if (!verifyData?.valid) {
+        toast({ title: 'Código inválido', description: verifyData?.error || 'Confira ou solicite novo código.', variant: 'destructive' });
+        return;
+      }
+
+      const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
+        cpf: signupCpf.replace(/\D/g, ''),
+        cnpj: signupCnpj.replace(/\D/g, '') || undefined,
+        city: signupCity.trim() || undefined,
+        state: signupState.trim().toUpperCase() || undefined,
+      });
+      if (signUpError) throw signUpError;
+      toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 

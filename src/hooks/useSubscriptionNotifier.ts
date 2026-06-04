@@ -61,6 +61,25 @@ export function useSubscriptionNotifier() {
           const prevPeriodEnd = prev.current_period_end ? new Date(prev.current_period_end).getTime() : 0;
           const nextPeriodEnd = next.current_period_end ? new Date(next.current_period_end).getTime() : 0;
 
+          // Mudança de assentos (upgrade/downgrade vindo do Stripe)
+          const prevSeats = prev.seat_limit ?? 0;
+          const nextSeats = next.seat_limit ?? 0;
+          if (prevSeats > 0 && nextSeats !== prevSeats) {
+            const upgrade = nextSeats > prevSeats;
+            fireOnce(`seats-${next.id}-${nextSeats}`, () =>
+              (upgrade ? toast.success : toast.info)(
+                upgrade ? 'Plano expandido' : 'Plano reduzido',
+                {
+                  description: upgrade
+                    ? `Seu plano agora permite ${nextSeats} usuário(s) (antes ${prevSeats}).`
+                    : `Seu plano agora permite ${nextSeats} usuário(s). Se você tiver mais ativos, será necessário desativar alguns.`,
+                  duration: 10000,
+                },
+              ),
+            );
+          }
+
+
           // Acesso vitalício
           if (!prev.is_grandfathered && next.is_grandfathered) {
             fireOnce(`lifetime-${next.id}`, () =>

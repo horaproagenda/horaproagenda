@@ -39,6 +39,7 @@ const Documentos = lazy(() => import("./pages/Documentos"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Auditoria = lazy(() => import("./pages/Auditoria"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const UsuariosConta = lazy(() => import("./pages/UsuariosConta"));
 const Ajuda = lazy(() => import("./pages/Ajuda"));
 const Suporte = lazy(() => import("./pages/Suporte"));
@@ -136,6 +137,7 @@ const App = () => {
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<ProtectedRoute><Auditoria /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+                <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
                 <Route path="/usuarios-conta" element={<ProtectedRoute><UsuariosConta /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />

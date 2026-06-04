@@ -484,10 +484,9 @@ const Configuracoes = () => {
           </div>
 
 
-          {/* Bulk Delete */}
-          <BulkDeleteDialog />
-          </>
-          )}
+          {/* Bulk Delete (apenas administradores) */}
+          {isAdmin && <BulkDeleteDialog />}
+
 
 
           {/* Sua Conta - Exclusão definitiva */}

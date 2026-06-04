@@ -55,7 +55,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, phone, cpf, companyName, cnpj, selectedPlan }: CompleteSignupRequest = await req.json();
+    const { email, password, fullName, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
     const normalizedEmail = email?.trim().toLowerCase();
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
@@ -72,9 +72,9 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
     }
 
-    // Phone mandatory + normalized
-    const phoneE164 = normalizePhone(phone || "");
-    if (!phoneE164) {
+    // Phone is optional
+    const phoneE164 = phone ? normalizePhone(phone) : null;
+    if (phone && !phoneE164) {
       return jsonResponse({ success: false, error: "Número de celular inválido." }, 400);
     }
 

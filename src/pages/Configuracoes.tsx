@@ -17,6 +17,7 @@ import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
+import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();
@@ -501,6 +502,8 @@ const Configuracoes = () => {
               </div>
             </CardContent>
           </Card>
+
+          <ChangeMyPasswordCard />
         </div>
       </PageTransition>
     </AppLayout>

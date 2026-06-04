@@ -39,6 +39,7 @@ const Documentos = lazy(() => import("./pages/Documentos"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Auditoria = lazy(() => import("./pages/Auditoria"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const UsuariosConta = lazy(() => import("./pages/UsuariosConta"));
 const Ajuda = lazy(() => import("./pages/Ajuda"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const Assinatura = lazy(() => import("./pages/Assinatura"));
@@ -49,6 +50,7 @@ const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
 const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
+const ContaInativa = lazy(() => import("./pages/ContaInativa"));
 
 // Fallback minimalista enquanto o chunk da rota carrega.
 function RouteFallback() {
@@ -117,6 +119,7 @@ const App = () => {
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+                <Route path="/conta-inativa" element={<ContaInativa />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
@@ -133,6 +136,7 @@ const App = () => {
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<ProtectedRoute><Auditoria /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+                <Route path="/usuarios-conta" element={<ProtectedRoute><UsuariosConta /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />
                 <Route path="/assinatura" element={<ProtectedRoute><Assinatura /></ProtectedRoute>} />

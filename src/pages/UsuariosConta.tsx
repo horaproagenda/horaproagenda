@@ -64,7 +64,7 @@ export default function UsuariosConta() {
 
   if (!isAdmin) {
     return (
-      <AppLayout>
+      <AppLayout title="Usuários">
         <PageTransition>
           <div className="p-6"><p className="text-sm">Apenas administradores podem gerenciar usuários.</p></div>
         </PageTransition>
@@ -77,7 +77,7 @@ export default function UsuariosConta() {
   const limitLabel = subscription?.is_grandfathered ? 'ilimitado' : String(limit);
 
   return (
-    <AppLayout>
+    <AppLayout title="Usuários">
       <PageTransition>
         <div className="p-6 max-w-5xl mx-auto space-y-6">
           <div className="flex items-center justify-between">

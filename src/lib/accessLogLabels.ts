@@ -111,20 +111,26 @@ export function describeTarget(log: {
   target_id?: string | null;
   metadata?: Record<string, unknown> | null;
   module: string;
-}): string {
+}, opts: { preferService?: boolean } = {}): string {
   const meta = (log.metadata ?? {}) as Record<string, unknown>;
-  const name =
-    (meta.target_name as string) ||
-    (meta.client_name as string) ||
-    (meta.professional_name as string) ||
-    (meta.name as string) ||
-    '';
+  const clientName = (meta.client_name as string) || '';
+  const serviceName = (meta.service_name as string) || '';
+  const professionalName = (meta.professional_name as string) || '';
+  const generic = (meta.target_name as string) || (meta.name as string) || '';
+
+  if (log.target_type === 'appointment') {
+    // Para "Alvo": mostra o nome do cliente do agendamento (ou serviço, se preferir).
+    // Sem fallback de hash/código — apenas "Agendamento" quando não há nome.
+    const primary = opts.preferService
+      ? (serviceName || clientName)
+      : (clientName || serviceName);
+    return primary ? `Agendamento — ${primary}` : 'Agendamento';
+  }
 
   if (log.target_type) {
     const base = labelTargetType(log.target_type);
-    if (name) return `${base} — ${name}`;
-    if (log.target_id) return `${base} #${String(log.target_id).slice(0, 8)}`;
-    return base;
+    const name = generic || clientName || serviceName || professionalName;
+    return name ? `${base} — ${name}` : base;
   }
   // Sem alvo específico: a ação foi feita na página/listagem do módulo
   return `Listagem de ${moduleLabels[log.module] ?? log.module}`;

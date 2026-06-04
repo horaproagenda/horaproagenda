@@ -346,14 +346,22 @@ function AuthInner() {
         city: signupCity.trim() || undefined,
         state: signupState.trim().toUpperCase() || undefined,
       });
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // A conta pode ter sido criada mas o login automático falhou.
+        // Tentamos mais uma vez antes de desistir.
+        const { error: retryError } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
+        if (retryError) throw signUpError;
+      }
 
-      // Persiste aceite definitivo já vinculado ao usuário autenticado.
+      // Garante que existe uma sessão antes de prosseguir
       const { data: sessionData } = await supabase.auth.getUser();
       const uid = sessionData?.user?.id ?? null;
       if (uid) await recordTermsAcceptance(email, uid);
 
       toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
+
+      // Navegação explícita — não dependemos apenas do useEffect.
+      navigate('/agenda', { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });

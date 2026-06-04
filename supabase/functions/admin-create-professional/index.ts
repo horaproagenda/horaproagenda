@@ -63,7 +63,20 @@ serve(async (req) => {
         const existing = list?.users?.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
         if (!existing) throw createErr;
         userId = existing.id;
-        // Update password for existing user
+
+        // Tenant isolation: only allow password reset if the existing user belongs to caller's account
+        const { data: callerProfile } = await supaAdmin
+          .from('profiles').select('account_owner_id').eq('id', callerId).maybeSingle();
+        const ownerId = (callerProfile as any)?.account_owner_id ?? callerId;
+        const { data: targetProfile } = await supaAdmin
+          .from('profiles').select('account_owner_id').eq('id', userId).maybeSingle();
+        const targetOwner = (targetProfile as any)?.account_owner_id ?? userId;
+        if (!targetProfile || targetOwner !== ownerId) {
+          return new Response(JSON.stringify({ success: false, error: 'E-mail já está em uso em outra conta.' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // Update password for existing user (same tenant only)
         await supaAdmin.auth.admin.updateUserById(userId, { password });
       } else { throw createErr; }
     } else {

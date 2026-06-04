@@ -18,6 +18,8 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import AutomationSettings from '@/components/settings/AutomationSettings';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
+import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferenciasSettings';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Configuracoes = () => {
   const { settings, updateSettings, isLoading } = useBusinessSettings();

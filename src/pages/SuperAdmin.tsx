@@ -278,6 +278,69 @@ export default function SuperAdmin() {
             </TableBody>
           </Table>
         </Card>
+
+        <Card className="overflow-x-auto">
+          <div className="flex items-center gap-2 px-3 pt-3">
+            <Users className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Uso de assentos por conta</h2>
+            <span className="text-[11px] text-muted-foreground">(atualiza em tempo real)</span>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-[11px]">Conta</TableHead>
+                <TableHead className="text-[11px]">Status</TableHead>
+                <TableHead className="text-[11px]">Usados</TableHead>
+                <TableHead className="text-[11px]">Limite</TableHead>
+                <TableHead className="text-[11px]">Disponíveis</TableHead>
+                <TableHead className="text-[11px] min-w-[140px]">Ocupação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {seatsLoading && (
+                <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Carregando uso de assentos...</TableCell></TableRow>
+              )}
+              {!seatsLoading && seatRows.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
+              )}
+              {seatRows.map((r) => {
+                const limit = r.is_grandfathered ? Infinity : r.seat_limit;
+                const pct = r.is_grandfathered ? 0 : (r.seat_limit > 0 ? Math.min(100, Math.round((r.used / r.seat_limit) * 100)) : 0);
+                const near = !r.is_grandfathered && r.seat_limit > 0 && r.available <= 1 && r.used < r.seat_limit;
+                const reached = !r.is_grandfathered && r.seat_limit > 0 && r.used >= r.seat_limit;
+                return (
+                  <TableRow key={r.owner_user_id}>
+                    <TableCell className="text-xs py-2">
+                      <div className="font-medium">{r.email ?? '—'}</div>
+                      <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
+                    </TableCell>
+                    <TableCell className="text-xs py-2">
+                      <div className="flex items-center gap-1">
+                        {statusBadge(r.status)}
+                        {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs py-2 tabular-nums">{r.used}</TableCell>
+                    <TableCell className="text-xs py-2 tabular-nums">{r.is_grandfathered ? '∞' : r.seat_limit}</TableCell>
+                    <TableCell className={`text-xs py-2 tabular-nums ${reached ? 'text-red-700 font-semibold' : near ? 'text-amber-700 font-semibold' : ''}`}>
+                      {r.is_grandfathered ? '∞' : r.available}
+                    </TableCell>
+                    <TableCell className="text-xs py-2">
+                      {r.is_grandfathered ? (
+                        <span className="text-[11px] text-purple-700">Ilimitado</span>
+                      ) : r.seat_limit > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="h-1.5" />
+                          <span className="text-[10px] tabular-nums w-8 text-right">{pct}%</span>
+                        </div>
+                      ) : <span className="text-[11px] text-muted-foreground">—</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
       </div>
 
       <Dialog open={!!target && !!mode} onOpenChange={(o) => { if (!o) closeDialog(); }}>

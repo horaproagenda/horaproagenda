@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
+import { isValidCPF } from '@/lib/cpfValidator';
 
 const AuthSeo = () => (
   <Helmet>

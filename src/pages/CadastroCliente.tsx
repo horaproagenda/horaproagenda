@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -487,6 +488,15 @@ export default function CadastroCliente() {
   // ---------- FORM STEP ----------
   return (
     <div className="min-h-screen bg-background py-6 px-4">
+      <Helmet>
+        <title>Cadastro do Cliente — Lume Agenda</title>
+        <meta name="description" content="Preencha seus dados para iniciar o atendimento com seu profissional no Lume Agenda." />
+        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/cadastro-cliente'} />
+        <meta property="og:title" content="Cadastro do Cliente — Lume Agenda" />
+        <meta property="og:description" content="Cadastro seguro de cliente para clínicas de estética via Lume Agenda." />
+        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/cadastro-cliente'} />
+        <meta name="robots" content="noindex,follow" />
+      </Helmet>
       <div className="max-w-2xl mx-auto space-y-4">
         <Card>
           <CardHeader>

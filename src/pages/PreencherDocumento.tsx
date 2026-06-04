@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { differenceInYears, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -689,6 +690,16 @@ export default function PreencherDocumento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8 px-4">
+      <Helmet>
+        <title>{`${template.title} — Preencher documento`}</title>
+        <meta name="description" content={`Preencha o documento "${template.title}" do Lume Agenda online de forma segura.`} />
+        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/preencher-documento'} />
+        <meta property="og:title" content={`${template.title} — Lume Agenda`} />
+        <meta property="og:description" content="Preenchimento online de documentos do Lume Agenda." />
+        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/preencher-documento'} />
+        <meta name="robots" content="noindex,follow" />
+      </Helmet>
+      <h1 className="sr-only">{template.title}</h1>
       <div className="max-w-3xl mx-auto">
         <Card className="shadow-xl">
           <CardHeader className="border-b bg-muted/30">

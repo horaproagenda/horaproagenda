@@ -9,18 +9,66 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2, AlertTriangle, Ban, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 
 const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
+const TERMS_VERSION = 'v1';
 const OTP_RESEND_SECONDS = 60;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_LOCKOUT_MS = 60_000;
+const OTP_EXPIRY_SECONDS = 600; // 10 minutos
+
+type OtpStatus =
+  | { kind: 'idle' }
+  | { kind: 'sent'; at: number }
+  | { kind: 'expired' }
+  | { kind: 'blocked'; until: number };
+
+function OtpStatusAlert({ status, email, now }: { status: OtpStatus; email: string; now: number }) {
+  if (status.kind === 'idle') return null;
+  if (status.kind === 'blocked') {
+    const secs = Math.max(0, Math.ceil((status.until - now) / 1000));
+    return (
+      <Alert variant="destructive">
+        <Ban className="h-4 w-4" />
+        <AlertTitle>Acesso bloqueado por tentativas</AlertTitle>
+        <AlertDescription>
+          Muitos códigos incorretos foram digitados. Aguarde <span className="font-medium">{secs}s</span> e solicite um novo código por segurança.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  if (status.kind === 'expired') {
+    return (
+      <Alert variant="destructive">
+        <Clock className="h-4 w-4" />
+        <AlertTitle>Código expirado</AlertTitle>
+        <AlertDescription>
+          O código enviado para <span className="font-medium">{email}</span> expirou. Clique em <span className="font-medium">Reenviar código</span> para receber um novo.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  // sent
+  const remaining = Math.max(0, Math.ceil((status.at + OTP_EXPIRY_SECONDS * 1000 - now) / 1000));
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+  return (
+    <Alert className="border-primary/30 bg-primary/5">
+      <CheckCircle2 className="h-4 w-4 text-primary" />
+      <AlertTitle>Código enviado</AlertTitle>
+      <AlertDescription>
+        Enviado para <span className="font-medium">{email}</span>. Válido por <span className="font-medium tabular-nums">{mm}:{ss}</span>. Confira também o spam.
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 const AuthSeo = () => (
   <Helmet>
@@ -86,6 +134,7 @@ function AuthInner() {
   const [signupResendIn, setSignupResendIn] = useState(0);
   const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
   const [signupLockUntil, setSignupLockUntil] = useState(0);
+  const [signupCodeSentAt, setSignupCodeSentAt] = useState(0);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -95,6 +144,14 @@ function AuthInner() {
   const [resetResendIn, setResetResendIn] = useState(0);
   const [resetCodeAttempts, setResetCodeAttempts] = useState(0);
   const [resetLockUntil, setResetLockUntil] = useState(0);
+  const [resetCodeSentAt, setResetCodeSentAt] = useState(0);
+
+  // Tick a "now" value once per second so status alerts stay current
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -152,6 +209,23 @@ function AuthInner() {
     setSignupStep('terms');
   };
 
+  const recordTermsAcceptance = async (email: string, userId?: string | null) => {
+    try {
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+      const rows = ['terms_of_service', 'privacy_policy'].map((document) => ({
+        user_id: userId ?? null,
+        email,
+        document,
+        version: TERMS_VERSION,
+        user_agent: ua,
+        context: userId ? 'post_signup' : 'pre_signup',
+      }));
+      await supabase.from('terms_acceptances').insert(rows);
+    } catch (e) {
+      console.warn('[terms_acceptances] falha ao registrar aceite:', e);
+    }
+  };
+
   const handleSendSignupEmailCode = async () => {
     if (!acceptedTerms) {
       toast({ title: 'Aceite os termos', description: 'Marque o aceite dos Termos e da Política de Privacidade para continuar.', variant: 'destructive' });
@@ -159,8 +233,11 @@ function AuthInner() {
     }
     setLoading(true);
     try {
+      const email = signupEmail.trim().toLowerCase();
+      // Registra aceite (auditável) já no envio do código, antes mesmo da criação da conta.
+      await recordTermsAcceptance(email, null);
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
-        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+        body: { email, type: 'signup' },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -168,6 +245,7 @@ function AuthInner() {
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
       setSignupLockUntil(0);
+      setSignupCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
@@ -193,6 +271,7 @@ function AuthInner() {
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
       setSignupLockUntil(0);
+      setSignupCodeSentAt(Date.now());
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
@@ -207,10 +286,14 @@ function AuthInner() {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
       return;
     }
-    const now = Date.now();
-    if (signupLockUntil && now < signupLockUntil) {
-      const secs = Math.ceil((signupLockUntil - now) / 1000);
+    const tNow = Date.now();
+    if (signupLockUntil && tNow < signupLockUntil) {
+      const secs = Math.ceil((signupLockUntil - tNow) / 1000);
       toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
+    if (signupCodeSentAt && tNow - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
+      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -240,6 +323,12 @@ function AuthInner() {
         state: signupState.trim().toUpperCase() || undefined,
       });
       if (signUpError) throw signUpError;
+
+      // Persiste aceite definitivo já vinculado ao usuário autenticado.
+      const { data: sessionData } = await supabase.auth.getUser();
+      const uid = sessionData?.user?.id ?? null;
+      if (uid) await recordTermsAcceptance(email, uid);
+
       toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
@@ -303,6 +392,7 @@ function AuthInner() {
       setResetResendIn(OTP_RESEND_SECONDS);
       setResetCodeAttempts(0);
       setResetLockUntil(0);
+      setResetCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Verifique seu email.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
@@ -328,6 +418,7 @@ function AuthInner() {
       setResetResendIn(OTP_RESEND_SECONDS);
       setResetCodeAttempts(0);
       setResetLockUntil(0);
+      setResetCodeSentAt(Date.now());
       toast({ title: 'Novo código enviado', description: 'Verifique seu email.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
@@ -350,10 +441,14 @@ function AuthInner() {
       toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
       return;
     }
-    const now = Date.now();
-    if (resetLockUntil && now < resetLockUntil) {
-      const secs = Math.ceil((resetLockUntil - now) / 1000);
+    const tNow = Date.now();
+    if (resetLockUntil && tNow < resetLockUntil) {
+      const secs = Math.ceil((resetLockUntil - tNow) / 1000);
       toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
+    if (resetCodeSentAt && tNow - resetCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
+      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -393,6 +488,22 @@ function AuthInner() {
       setLoading(false);
     }
   };
+
+  const signupOtpStatus: OtpStatus = signupLockUntil > now
+    ? { kind: 'blocked', until: signupLockUntil }
+    : signupCodeSentAt && now - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000
+      ? { kind: 'expired' }
+      : signupCodeSentAt
+        ? { kind: 'sent', at: signupCodeSentAt }
+        : { kind: 'idle' };
+
+  const resetOtpStatus: OtpStatus = resetLockUntil > now
+    ? { kind: 'blocked', until: resetLockUntil }
+    : resetCodeSentAt && now - resetCodeSentAt > OTP_EXPIRY_SECONDS * 1000
+      ? { kind: 'expired' }
+      : resetCodeSentAt
+        ? { kind: 'sent', at: resetCodeSentAt }
+        : { kind: 'idle' };
 
   if (authLoading) {
     return (
@@ -447,6 +558,7 @@ function AuthInner() {
             <CardDescription>Digite o código enviado para <span className="font-medium">{forgotEmail}</span></CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <OtpStatusAlert status={resetOtpStatus} email={forgotEmail} now={now} />
             <div className="flex justify-center">
               <InputOTP maxLength={6} value={resetCode} onChange={setResetCode}>
                 <InputOTPGroup>
@@ -611,14 +723,7 @@ function AuthInner() {
               {/* Etapa 3: Código de e-mail */}
               {signupStep === 'code' && (
                 <div className="space-y-6">
-                  <Alert className="border-primary/30 bg-primary/5">
-                    <AlertDescription className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>
-                        Código enviado para <span className="font-medium">{signupEmail}</span>. Confira sua caixa de entrada e o spam.
-                      </span>
-                    </AlertDescription>
-                  </Alert>
+                  <OtpStatusAlert status={signupOtpStatus} email={signupEmail} now={now} />
 
                   <div className="space-y-2 text-center">
                     <Label className="block">Digite o código de 6 dígitos</Label>

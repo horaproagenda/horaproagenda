@@ -3592,6 +3592,45 @@ export type Database = {
         }
         Relationships: []
       }
+      terms_acceptances: {
+        Row: {
+          accepted_at: string
+          context: string | null
+          created_at: string
+          document: string
+          email: string
+          id: string
+          ip: string | null
+          user_agent: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          context?: string | null
+          created_at?: string
+          document: string
+          email: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Update: {
+          accepted_at?: string
+          context?: string | null
+          created_at?: string
+          document?: string
+          email?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       treatment_photos: {
         Row: {
           appointment_id: string | null

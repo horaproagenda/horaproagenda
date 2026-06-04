@@ -467,9 +467,14 @@ export default function Auth() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Alterar senha
             </Button>
-            <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setNewPassword(''); setConfirmNewPassword(''); }}>
-              <ArrowLeft className="h-4 w-4" /> Voltar
-            </button>
+            <div className="flex items-center justify-between text-sm">
+              <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setNewPassword(''); setConfirmNewPassword(''); }}>
+                <ArrowLeft className="h-4 w-4" /> Voltar
+              </button>
+              <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendResetCode} disabled={resending || resetResendIn > 0}>
+                {resending ? 'Reenviando...' : resetResendIn > 0 ? `Reenviar em ${resetResendIn}s` : 'Reenviar código'}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>

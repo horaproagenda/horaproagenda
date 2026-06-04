@@ -15,6 +15,12 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
+import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
+
+const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
+const OTP_RESEND_SECONDS = 60;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 60_000;
 
 const AuthSeo = () => (
   <Helmet>

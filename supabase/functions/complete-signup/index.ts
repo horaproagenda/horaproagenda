@@ -14,6 +14,8 @@ interface CompleteSignupRequest {
   cpf?: string;
   companyName?: string;
   cnpj?: string;
+  city?: string;
+  state?: string;
   selectedPlan?: string;
 }
 

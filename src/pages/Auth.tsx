@@ -643,6 +643,7 @@ function AuthInner() {
   return (
     <main className="flex min-h-screen items-center justify-center gradient-hero p-4">
       <AuthSeo />
+      <h1 className="sr-only">Entrar no Lume Agenda</h1>
       <Card className="w-full max-w-md shadow-lg animate-scale-in">
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">

@@ -147,7 +147,7 @@ serve(async (req) => {
       user_metadata: userMetadata,
     });
 
-    let userId = created.user?.id ?? null;
+    let userId: string | null = created?.user?.id ?? null;
 
     if (createError) {
       const message = createError.message?.toLowerCase() || "";

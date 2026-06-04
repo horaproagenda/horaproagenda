@@ -121,6 +121,7 @@ export function useProfessionalPreferences() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['professional-preferences', user?.id] });
       qc.invalidateQueries({ queryKey: ['effective-business-settings', user?.id] });
+      qc.invalidateQueries({ queryKey: ['business-settings'] });
       toast.success('Suas preferências foram salvas!');
     },
     onError: (e: Error) => toast.error('Erro ao salvar: ' + e.message),

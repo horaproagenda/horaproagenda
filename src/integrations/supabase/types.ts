@@ -65,6 +65,54 @@ export type Database = {
         }
         Relationships: []
       }
+      account_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          is_grandfathered: boolean
+          owner_user_id: string
+          plan_tier: number | null
+          seat_limit: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          is_grandfathered?: boolean
+          owner_user_id: string
+          plan_tier?: number | null
+          seat_limit?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          is_grandfathered?: boolean
+          owner_user_id?: string
+          plan_tier?: number | null
+          seat_limit?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_data_migrations: {
         Row: {
           details: Json | null
@@ -2944,29 +2992,44 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_owner_id: string | null
           avatar_url: string | null
           created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
           email: string
           full_name: string
           id: string
+          is_active: boolean
+          must_change_password: boolean
           phone: string | null
           updated_at: string
         }
         Insert: {
+          account_owner_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email: string
           full_name: string
           id: string
+          is_active?: boolean
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email?: string
           full_name?: string
           id?: string
+          is_active?: boolean
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
         }
@@ -3790,6 +3853,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          module: Database["public"]["Enums"]["app_module"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          module: Database["public"]["Enums"]["app_module"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          module?: Database["public"]["Enums"]["app_module"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -4250,6 +4349,7 @@ export type Database = {
           old_start: string
         }[]
       }
+      count_account_seats: { Args: { _owner: string }; Returns: number }
       create_client_document: {
         Args: {
           _client_id: string
@@ -4324,6 +4424,7 @@ export type Database = {
         Returns: undefined
       }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
+      get_account_owner: { Args: { _user_id: string }; Returns: string }
       get_agenda_package_integrity_report: { Args: never; Returns: Json }
       get_client_outstanding_balance: {
         Args: { _client_id: string }
@@ -4338,6 +4439,30 @@ export type Database = {
         Returns: Json
       }
       get_financial_entry_root: { Args: { _entry_id: string }; Returns: string }
+      get_my_subscription: {
+        Args: never
+        Returns: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          is_grandfathered: boolean
+          owner_user_id: string
+          plan_tier: number | null
+          seat_limit: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "account_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_professional_id_by_user_or_email: {
         Args: { _user_id: string }
         Returns: string
@@ -4357,6 +4482,14 @@ export type Database = {
           twilio_from_number: string
         }[]
       }
+      has_permission: {
+        Args: {
+          _action: string
+          _module: Database["public"]["Enums"]["app_module"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4366,6 +4499,7 @@ export type Database = {
       }
       hash_identifier: { Args: { _value: string }; Returns: string }
       heal_legacy_data: { Args: never; Returns: Json }
+      is_account_active: { Args: { _user_id: string }; Returns: boolean }
       is_identifier_blocked: {
         Args: {
           p_cnpj?: string
@@ -4451,6 +4585,20 @@ export type Database = {
       }
     }
     Enums: {
+      app_module:
+        | "agenda"
+        | "clientes"
+        | "financeiro"
+        | "caixa"
+        | "produtos"
+        | "servicos"
+        | "cadastros"
+        | "relatorios"
+        | "documentos"
+        | "lembretes"
+        | "configuracoes"
+        | "auditoria"
+        | "assinatura"
       app_role: "admin" | "receptionist" | "professional"
       appointment_status:
         | "scheduled"
@@ -4589,6 +4737,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_module: [
+        "agenda",
+        "clientes",
+        "financeiro",
+        "caixa",
+        "produtos",
+        "servicos",
+        "cadastros",
+        "relatorios",
+        "documentos",
+        "lembretes",
+        "configuracoes",
+        "auditoria",
+        "assinatura",
+      ],
       app_role: ["admin", "receptionist", "professional"],
       appointment_status: [
         "scheduled",

@@ -226,10 +226,24 @@ serve(async (req) => {
     };
 
     // Load all professionals' quiet hours into a map
-    const { data: profsRaw } = await supabase.from('professionals').select('id, quiet_hours_start, quiet_hours_end');
+    const { data: profsRaw } = await supabase.from('professionals').select('id, user_id, quiet_hours_start, quiet_hours_end');
     const profMap = new Map<string, any>();
     for (const p of profsRaw || []) profMap.set(p.id, p);
     const getProf = (id: string | null) => (id ? profMap.get(id) || null : null);
+
+    // Per-professional automation overrides (NULL = inherit global=on)
+    const { data: prefsRaw } = await supabase
+      .from('professional_preferences')
+      .select('user_id, automation_whatsapp_reminders');
+    const prefsByUser = new Map<string, any>();
+    for (const p of prefsRaw || []) prefsByUser.set(p.user_id, p);
+    const remindersDisabledForPro = (profId: string | null) => {
+      if (!profId) return false;
+      const prof = profMap.get(profId);
+      if (!prof?.user_id) return false;
+      const pref = prefsByUser.get(prof.user_id);
+      return pref?.automation_whatsapp_reminders === false;
+    };
 
     const now = Date.now();
     const hourSP = currentHourSP();
@@ -285,6 +299,7 @@ serve(async (req) => {
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
+          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('reminder', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
@@ -338,6 +353,7 @@ serve(async (req) => {
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
+          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
@@ -390,6 +406,7 @@ serve(async (req) => {
           const end = new Date((apt as any).end_time || apt.start_time);
           const hoursAfter = (now - end.getTime()) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
+          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('follow_up', profId);
           if (!tpl) continue;
           const off = Number(tpl.send_offset_hours);
@@ -438,6 +455,7 @@ serve(async (req) => {
         const bd = String(c.birthdate);
         if (bd.substring(5, 7) !== mm || bd.substring(8, 10) !== dd) continue;
         const profId = (c as any).assigned_professional_id ?? null;
+        if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
         const tpl = pickTpl('birthday', profId);
         if (!tpl) continue;
         const sendHour = Number(tpl.send_offset_hours ?? 9);

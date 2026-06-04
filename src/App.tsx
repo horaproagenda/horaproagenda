@@ -37,7 +37,7 @@ const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Lembretes = lazy(() => import("./pages/Lembretes"));
 const Documentos = lazy(() => import("./pages/Documentos"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
-const Auditoria = lazy(() => import("./pages/Auditoria"));
+// Auditoria removido — informações agora no Painel Admin
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const UsuariosConta = lazy(() => import("./pages/UsuariosConta"));

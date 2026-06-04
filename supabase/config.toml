@@ -13,6 +13,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.admin-delete-user]
     verify_jwt = true
+  [functions.delete-my-account]
+    verify_jwt = true
   [functions.notify-overdue-bills]
     verify_jwt = false
   [functions.notify-stock-alerts]

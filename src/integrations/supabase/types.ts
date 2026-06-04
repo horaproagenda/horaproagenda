@@ -1378,6 +1378,45 @@ export type Database = {
           },
         ]
       }
+      deleted_account_blocklist: {
+        Row: {
+          blocked_until: string
+          cnpj_hash: string | null
+          cpf_hash: string | null
+          created_at: string
+          deleted_at: string
+          email_hash: string | null
+          had_paid: boolean
+          id: string
+          phone_hash: string | null
+          reason: string | null
+        }
+        Insert: {
+          blocked_until?: string
+          cnpj_hash?: string | null
+          cpf_hash?: string | null
+          created_at?: string
+          deleted_at?: string
+          email_hash?: string | null
+          had_paid?: boolean
+          id?: string
+          phone_hash?: string | null
+          reason?: string | null
+        }
+        Update: {
+          blocked_until?: string
+          cnpj_hash?: string | null
+          cpf_hash?: string | null
+          created_at?: string
+          deleted_at?: string
+          email_hash?: string | null
+          had_paid?: boolean
+          id?: string
+          phone_hash?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       dismissed_notifications: {
         Row: {
           dismissed_at: string
@@ -4280,7 +4319,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_identifier: { Args: { _value: string }; Returns: string }
       heal_legacy_data: { Args: never; Returns: Json }
+      is_identifier_blocked: {
+        Args: {
+          p_cnpj?: string
+          p_cpf?: string
+          p_email?: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
       link_current_user_professional: { Args: never; Returns: string }
       log_access: {
         Args: {

@@ -135,6 +135,8 @@ serve(async (req) => {
       cpf: cpfDigits,
       company_name: companyName || null,
       cnpj: cnpj || null,
+      city: city || null,
+      state: state || null,
       selected_plan: selectedPlan || null,
     };
 

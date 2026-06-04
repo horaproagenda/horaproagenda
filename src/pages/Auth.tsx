@@ -15,6 +15,12 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
+import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
+
+const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
+const OTP_RESEND_SECONDS = 60;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 60_000;
 
 const AuthSeo = () => (
   <Helmet>
@@ -49,7 +55,7 @@ function maskCNPJ(value: string): string {
 
 const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
-export default function Auth() {
+function AuthInner() {
   const navigate = useNavigate();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -72,21 +78,50 @@ export default function Auth() {
   const [signupCnpj, setSignupCnpj] = useState('');
   const [signupCity, setSignupCity] = useState('');
   const [signupState, setSignupState] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState<boolean>(() => {
+    try { return localStorage.getItem(TERMS_ACCEPT_KEY) === '1'; } catch { return false; }
+  });
   const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
+  const [signupResendIn, setSignupResendIn] = useState(0);
+  const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
+  const [signupLockUntil, setSignupLockUntil] = useState(0);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetCode, setResetCode] = useState('');
+  const [resetResendIn, setResetResendIn] = useState(0);
+  const [resetCodeAttempts, setResetCodeAttempts] = useState(0);
+  const [resetLockUntil, setResetLockUntil] = useState(0);
 
   useEffect(() => {
     if (user) {
       navigate('/agenda', { replace: true });
     }
   }, [user, navigate]);
+
+  // Persist terms acceptance
+  useEffect(() => {
+    try {
+      if (acceptedTerms) localStorage.setItem(TERMS_ACCEPT_KEY, '1');
+      else localStorage.removeItem(TERMS_ACCEPT_KEY);
+    } catch { /* ignore */ }
+  }, [acceptedTerms]);
+
+  // Countdown timers for OTP resend
+  useEffect(() => {
+    if (signupResendIn <= 0) return;
+    const t = setTimeout(() => setSignupResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [signupResendIn]);
+
+  useEffect(() => {
+    if (resetResendIn <= 0) return;
+    const t = setTimeout(() => setResetResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resetResendIn]);
 
   const resetSignupFlow = () => {
     setSignupStep('form');
@@ -130,6 +165,9 @@ export default function Auth() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
+      setSignupResendIn(OTP_RESEND_SECONDS);
+      setSignupCodeAttempts(0);
+      setSignupLockUntil(0);
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
@@ -140,6 +178,10 @@ export default function Auth() {
   };
 
   const handleResendSignupCode = async () => {
+    if (signupResendIn > 0) {
+      toast({ title: 'Aguarde', description: `Você poderá reenviar em ${signupResendIn}s.`, variant: 'destructive' });
+      return;
+    }
     setResending(true);
     setSignupCode('');
     try {
@@ -148,6 +190,9 @@ export default function Auth() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      setSignupResendIn(OTP_RESEND_SECONDS);
+      setSignupCodeAttempts(0);
+      setSignupLockUntil(0);
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
@@ -162,6 +207,12 @@ export default function Auth() {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
       return;
     }
+    const now = Date.now();
+    if (signupLockUntil && now < signupLockUntil) {
+      const secs = Math.ceil((signupLockUntil - now) / 1000);
+      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const email = signupEmail.trim().toLowerCase();
@@ -170,7 +221,15 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
       if (!verifyData?.valid) {
-        toast({ title: 'Código inválido', description: verifyData?.error || 'Confira ou solicite novo código.', variant: 'destructive' });
+        const next = signupCodeAttempts + 1;
+        setSignupCodeAttempts(next);
+        const remaining = OTP_MAX_ATTEMPTS - next;
+        if (remaining <= 0) {
+          setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
+          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+        }
         return;
       }
 
@@ -241,12 +300,40 @@ export default function Auth() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setAuthView('reset-code');
+      setResetResendIn(OTP_RESEND_SECONDS);
+      setResetCodeAttempts(0);
+      setResetLockUntil(0);
       toast({ title: 'Código enviado!', description: 'Verifique seu email.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendResetCode = async () => {
+    if (resetResendIn > 0) {
+      toast({ title: 'Aguarde', description: `Você poderá reenviar em ${resetResendIn}s.`, variant: 'destructive' });
+      return;
+    }
+    setResending(true);
+    setResetCode('');
+    try {
+      const { data, error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: forgotEmail, type: 'login' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setResetResendIn(OTP_RESEND_SECONDS);
+      setResetCodeAttempts(0);
+      setResetLockUntil(0);
+      toast({ title: 'Novo código enviado', description: 'Verifique seu email.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -263,6 +350,12 @@ export default function Auth() {
       toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
       return;
     }
+    const now = Date.now();
+    if (resetLockUntil && now < resetLockUntil) {
+      const secs = Math.ceil((resetLockUntil - now) / 1000);
+      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
@@ -270,7 +363,15 @@ export default function Auth() {
       });
       if (verifyError) throw verifyError;
       if (!verifyData?.valid) {
-        toast({ title: 'Erro', description: verifyData?.error || 'Código inválido', variant: 'destructive' });
+        const next = resetCodeAttempts + 1;
+        setResetCodeAttempts(next);
+        const remaining = OTP_MAX_ATTEMPTS - next;
+        if (remaining <= 0) {
+          setResetLockUntil(Date.now() + OTP_LOCKOUT_MS);
+          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+        }
         return;
       }
       const { data, error } = await supabase.functions.invoke('reset-password', {
@@ -366,9 +467,14 @@ export default function Auth() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Alterar senha
             </Button>
-            <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setNewPassword(''); setConfirmNewPassword(''); }}>
-              <ArrowLeft className="h-4 w-4" /> Voltar
-            </button>
+            <div className="flex items-center justify-between text-sm">
+              <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setNewPassword(''); setConfirmNewPassword(''); }}>
+                <ArrowLeft className="h-4 w-4" /> Voltar
+              </button>
+              <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendResetCode} disabled={resending || resetResendIn > 0}>
+                {resending ? 'Reenviando...' : resetResendIn > 0 ? `Reenviar em ${resetResendIn}s` : 'Reenviar código'}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -535,8 +641,8 @@ export default function Auth() {
                     <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setSignupStep('terms')}>
                       <ArrowLeft className="h-4 w-4" /> Voltar
                     </button>
-                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending}>
-                      {resending ? 'Reenviando...' : 'Reenviar código'}
+                    <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendSignupCode} disabled={resending || signupResendIn > 0}>
+                      {resending ? 'Reenviando...' : signupResendIn > 0 ? `Reenviar em ${signupResendIn}s` : 'Reenviar código'}
                     </button>
                   </div>
                 </div>
@@ -559,5 +665,13 @@ export default function Auth() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function Auth() {
+  return (
+    <AuthErrorBoundary>
+      <AuthInner />
+    </AuthErrorBoundary>
   );
 }

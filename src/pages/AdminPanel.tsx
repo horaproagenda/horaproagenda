@@ -208,7 +208,6 @@ export default function AdminPanel() {
         <Tabs defaultValue="access" className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1 flex-wrap">
             <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">Logs de Acesso</TabsTrigger>
-            <TabsTrigger value="users" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Usuários e Permissões</TabsTrigger>
             <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Profissionais</TabsTrigger>
             <TabsTrigger value="assinatura" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40 gap-1"><CreditCard className="h-3 w-3" />Assinatura</TabsTrigger>
           </TabsList>
@@ -402,18 +401,16 @@ export default function AdminPanel() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="mt-4">
-            <UserManagement />
-          </TabsContent>
-
           <TabsContent value="professionals" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-5 w-5" /> Profissionais
+                  <Users className="h-5 w-5" /> Profissionais e Usuários
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Cadastro, edição e gestão de profissionais. Apenas administradores têm acesso.
+                  Cadastro único: nome, CPF, data de nascimento, e-mail e senha de acesso, WhatsApp,
+                  função no sistema, cor na agenda, especialidades, comissão, status e permissões
+                  (financeiro, clientes, agenda, produtos, relatórios, sistema). Apenas administradores têm acesso.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -428,21 +425,9 @@ export default function AdminPanel() {
                 </div>
                 <ManageProfessionalsDialog>
                   <button className="w-full py-2.5 px-4 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-all duration-300 text-sm font-medium tracking-wide">
-                    Gerenciar Profissionais
+                    Adicionar / Gerenciar Profissionais
                   </button>
                 </ManageProfessionalsDialog>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Usuários da conta</CardTitle>
-                <CardDescription className="text-xs">
-                  Gerencie os colaboradores que têm acesso ao aplicativo, suas permissões e status.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <UsuariosContaSection />
               </CardContent>
             </Card>
           </TabsContent>

@@ -133,7 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error(data?.error || 'Erro ao cadastrar') };
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    // Tenta o login automático. Em casos raros (replicação de auth) o primeiro
+    // signIn pode falhar — tentamos uma segunda vez após uma breve espera.
+    let { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      await new Promise((r) => setTimeout(r, 600));
+      const retry = await supabase.auth.signInWithPassword({ email, password });
+      signInError = retry.error;
+    }
     return { error: signInError as Error | null };
   };
 

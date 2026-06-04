@@ -4509,7 +4509,24 @@ export type Database = {
         }
         Returns: Json
       }
+      is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       link_current_user_professional: { Args: never; Returns: string }
+      list_all_accounts_admin: {
+        Args: never
+        Returns: {
+          created_at: string
+          current_period_end: string
+          email: string
+          is_grandfathered: boolean
+          owner_user_id: string
+          plan_tier: number
+          seat_limit: number
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          trial_ends_at: string
+        }[]
+      }
       log_access: {
         Args: {
           p_action: string
@@ -4599,7 +4616,7 @@ export type Database = {
         | "configuracoes"
         | "auditoria"
         | "assinatura"
-      app_role: "admin" | "receptionist" | "professional"
+      app_role: "admin" | "receptionist" | "professional" | "super_admin"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -4752,7 +4769,7 @@ export const Constants = {
         "auditoria",
         "assinatura",
       ],
-      app_role: ["admin", "receptionist", "professional"],
+      app_role: ["admin", "receptionist", "professional", "super_admin"],
       appointment_status: [
         "scheduled",
         "confirmed",

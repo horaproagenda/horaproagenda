@@ -441,10 +441,14 @@ function AuthInner() {
       toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
       return;
     }
-    const now = Date.now();
-    if (resetLockUntil && now < resetLockUntil) {
-      const secs = Math.ceil((resetLockUntil - now) / 1000);
+    const tNow = Date.now();
+    if (resetLockUntil && tNow < resetLockUntil) {
+      const secs = Math.ceil((resetLockUntil - tNow) / 1000);
       toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
+    if (resetCodeSentAt && tNow - resetCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
+      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);

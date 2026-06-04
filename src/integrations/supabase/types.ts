@@ -2790,6 +2790,84 @@ export type Database = {
           },
         ]
       }
+      professional_preferences: {
+        Row: {
+          auto_complete_appointments: boolean | null
+          automation_gap_finder: boolean | null
+          automation_occupancy_dashboard: boolean | null
+          automation_smart_recurrence: boolean | null
+          automation_waitlist: boolean | null
+          automation_whatsapp_reminders: boolean | null
+          closing_time: string | null
+          created_at: string
+          drag_and_drop_enabled: boolean | null
+          opening_time: string | null
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
+          reminder_hours_before: number[] | null
+          saturday_closing_time: string | null
+          saturday_opening_time: string | null
+          slot_interval: number | null
+          sunday_closing_time: string | null
+          sunday_opening_time: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          work_saturdays: boolean | null
+          work_sundays: boolean | null
+        }
+        Insert: {
+          auto_complete_appointments?: boolean | null
+          automation_gap_finder?: boolean | null
+          automation_occupancy_dashboard?: boolean | null
+          automation_smart_recurrence?: boolean | null
+          automation_waitlist?: boolean | null
+          automation_whatsapp_reminders?: boolean | null
+          closing_time?: string | null
+          created_at?: string
+          drag_and_drop_enabled?: boolean | null
+          opening_time?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          reminder_hours_before?: number[] | null
+          saturday_closing_time?: string | null
+          saturday_opening_time?: string | null
+          slot_interval?: number | null
+          sunday_closing_time?: string | null
+          sunday_opening_time?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          work_saturdays?: boolean | null
+          work_sundays?: boolean | null
+        }
+        Update: {
+          auto_complete_appointments?: boolean | null
+          automation_gap_finder?: boolean | null
+          automation_occupancy_dashboard?: boolean | null
+          automation_smart_recurrence?: boolean | null
+          automation_waitlist?: boolean | null
+          automation_whatsapp_reminders?: boolean | null
+          closing_time?: string | null
+          created_at?: string
+          drag_and_drop_enabled?: boolean | null
+          opening_time?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          reminder_hours_before?: number[] | null
+          saturday_closing_time?: string | null
+          saturday_opening_time?: string | null
+          slot_interval?: number | null
+          sunday_closing_time?: string | null
+          sunday_opening_time?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          work_saturdays?: boolean | null
+          work_sundays?: boolean | null
+        }
+        Relationships: []
+      }
       professional_service_commissions: {
         Row: {
           commission_fixed_value: number | null
@@ -4436,6 +4514,10 @@ export type Database = {
       }
       get_document_fill_link_by_token: {
         Args: { p_token: string }
+        Returns: Json
+      }
+      get_effective_business_settings: {
+        Args: { _user_id?: string }
         Returns: Json
       }
       get_financial_entry_root: { Args: { _entry_id: string }; Returns: string }

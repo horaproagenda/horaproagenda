@@ -483,6 +483,9 @@ const Configuracoes = () => {
 
           {/* Bulk Delete */}
           <BulkDeleteDialog />
+          </>
+          )}
+
 
           {/* Sua Conta - Exclusão definitiva */}
           <Card className="card-hover border-destructive/30">

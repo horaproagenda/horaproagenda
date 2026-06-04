@@ -353,6 +353,7 @@ serve(async (req) => {
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
+          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);

@@ -25,7 +25,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface AdminAccountRow {
   owner_user_id: string;

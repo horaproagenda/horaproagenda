@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, Filter, X, Eye, Edit3, Plus, Trash2, FileDown, RefreshCw, Search, Users } from 'lucide-react';
+import { ShieldCheck, Filter, X, Eye, Edit3, Plus, Trash2, FileDown, RefreshCw, Search, Users, CreditCard } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import UserManagement from '@/components/settings/UserManagement';
 import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { UsuariosContaSection } from '@/components/admin/UsuariosContaSection';
+import { AssinaturaSection } from '@/components/admin/AssinaturaSection';
 import { exportToCSV } from '@/lib/exportUtils';
 import {
   moduleLabels,
@@ -204,10 +206,11 @@ export default function AdminPanel() {
         </div>
 
         <Tabs defaultValue="access" className="w-full">
-          <TabsList className="h-8 bg-muted/50 p-1 gap-1">
+          <TabsList className="h-8 bg-muted/50 p-1 gap-1 flex-wrap">
             <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">Logs de Acesso</TabsTrigger>
             <TabsTrigger value="users" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Usuários e Permissões</TabsTrigger>
             <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Profissionais</TabsTrigger>
+            <TabsTrigger value="assinatura" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40 gap-1"><CreditCard className="h-3 w-3" />Assinatura</TabsTrigger>
           </TabsList>
 
 
@@ -403,7 +406,7 @@ export default function AdminPanel() {
             <UserManagement />
           </TabsContent>
 
-          <TabsContent value="professionals" className="mt-4">
+          <TabsContent value="professionals" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -430,6 +433,22 @@ export default function AdminPanel() {
                 </ManageProfessionalsDialog>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Usuários da conta</CardTitle>
+                <CardDescription className="text-xs">
+                  Gerencie os colaboradores que têm acesso ao aplicativo, suas permissões e status.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UsuariosContaSection />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="assinatura" className="mt-4">
+            <AssinaturaSection />
           </TabsContent>
         </Tabs>
 

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
+import { mapHeaders } from '@/lib/importMapping';
 
 interface ParsedService {
   name: string;
@@ -103,56 +104,67 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
     // de linha. Detecta automaticamente `;`, `,` ou `\t`.
     const rows: string[][] = parseCsv(content);
     if (rows.length < 2) {
-      throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
-    }
-    if (rows.length < 2) {
-      throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados');
+      throw new Error('O arquivo deve ter pelo menos um cabeçalho e uma linha de dados.');
     }
 
-    const headers = rows[0].map((h) => h.trim().toLowerCase());
+    // Mapeamento de colunas com validação clara de obrigatórias
+    const mapping = mapHeaders(type, rows[0]);
+    if (mapping.missingRequired.length > 0) {
+      throw new Error(
+        `Coluna${mapping.missingRequired.length > 1 ? 's' : ''} obrigatória${
+          mapping.missingRequired.length > 1 ? 's' : ''
+        } ausente${mapping.missingRequired.length > 1 ? 's' : ''}: ${mapping.missingRequired.join(', ')}. ` +
+          'Verifique o cabeçalho do arquivo ou baixe o modelo CSV.',
+      );
+    }
+
+    const idx = mapping.indices;
+    const cell = (row: string[], i: number) => (i >= 0 && i < row.length ? (row[i] ?? '').trim() : '');
     const data: any[] = [];
 
     for (let i = 1; i < rows.length; i++) {
       const values = rows[i];
-      const row: any = {};
-      headers.forEach((header, idx) => {
-        row[header] = (values[idx] ?? '').trim();
-      });
+      if (!values || values.every((v) => !v || !v.trim())) continue;
 
       if (type === 'services') {
-        const name = row.nome || row.name || '';
+        const name = cell(values, idx.name);
         if (!name) continue;
+        const retorno = cell(values, idx.return_days);
         data.push({
-          name: name,
-          category: row.categoria || row.category || 'Outros',
-          price: parseFloat((row.preco || row.price || '0').replace(',', '.')) || 0,
-          duration: parseInt(row.duracao || row.duration || '60') || 60,
-          description: row.descricao || row.description || undefined,
-          return_days: row.retorno || row.return_days ? parseInt(row.retorno || row.return_days) : undefined,
+          name,
+          category: cell(values, idx.category) || 'Outros',
+          price: parseFloat((cell(values, idx.price) || '0').replace(',', '.')) || 0,
+          duration: parseInt(cell(values, idx.duration) || '60') || 60,
+          description: cell(values, idx.description) || undefined,
+          return_days: retorno ? parseInt(retorno) || undefined : undefined,
         } as ParsedService);
       } else if (type === 'clients') {
-        const name = row.nome || row.name || '';
+        const name = cell(values, idx.name);
         if (!name) continue;
         data.push({
-          name: name,
-          phone: normalizePhone(row.telefone || row.phone || row.celular || ''),
-          email: row.email || row['e-mail'] || undefined,
-          cpf: row.cpf ? row.cpf.replace(/\D/g, '') : undefined,
-          birthdate: parseBirthdate(row.nascimento || row.birthdate || row['data_nascimento'] || ''),
-          notes: row.observacoes || row.obs || row.notes || undefined,
+          name,
+          phone: normalizePhone(cell(values, idx.phone)),
+          email: cell(values, idx.email) || undefined,
+          cpf: cell(values, idx.cpf) ? cell(values, idx.cpf).replace(/\D/g, '') : undefined,
+          birthdate: parseBirthdate(cell(values, idx.birthdate)),
+          notes: cell(values, idx.notes) || undefined,
         } as ParsedClient);
       } else if (type === 'package_templates') {
-        const name = row.nome || row.name || '';
+        const name = cell(values, idx.name);
         if (!name) continue;
         data.push({
-          name: name,
-          description: row.descricao || row.description || undefined,
-          total_sessions: parseInt(row.sessoes || row.total_sessions || row.sessions || '10') || 10,
-          price: parseFloat((row.preco || row.price || row.valor || '0').replace(',', '.')) || 0,
-          duration: parseInt(row.duracao || row.duration || '60') || 60,
-          interval_days: parseInt(row.intervalo || row.interval_days || row.intervalo_dias || '7') || 7,
+          name,
+          description: cell(values, idx.description) || undefined,
+          total_sessions: parseInt(cell(values, idx.total_sessions) || '10') || 10,
+          price: parseFloat((cell(values, idx.price) || '0').replace(',', '.')) || 0,
+          duration: parseInt(cell(values, idx.duration) || '60') || 60,
+          interval_days: parseInt(cell(values, idx.interval_days) || '7') || 7,
         } as ParsedPackageTemplate);
       }
+    }
+
+    if (data.length === 0) {
+      throw new Error('Nenhuma linha válida encontrada. Verifique se o arquivo tem dados além do cabeçalho.');
     }
 
     return data;

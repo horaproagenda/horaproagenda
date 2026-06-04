@@ -118,7 +118,8 @@ export function AssinaturaSection() {
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-1">Escolha seu plano</h2>
         <p className="text-muted-foreground text-sm">
-          Pague mensalmente ou antecipe 3, 6 ou 12 meses com desconto. Aceitamos Pix, cartão de crédito/débito e boleto.
+          Cobrança recorrente automática: escolha mensal, trimestral, semestral ou anual.
+          Períodos mais longos têm desconto. Cobrado no cartão a cada ciclo.
         </p>
       </div>
 
@@ -149,6 +150,9 @@ export function AssinaturaSection() {
         {PLANS.map((plan) => {
           const isCurrent = currentPriceId === plan.priceId;
           const isSelected = selectedPriceId === plan.priceId;
+          const isMonthly = billingMonths === 1;
+          const totalCycle = periodTotal(plan.priceBRL, billingMonths);
+          const effectiveMonthly = totalCycle / billingMonths;
           return (
             <Card
               key={plan.priceId}
@@ -174,13 +178,24 @@ export function AssinaturaSection() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold">{formatBRL(plan.priceBRL)}</span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
                     <span className="text-sm text-muted-foreground">/mês</span>
+                    {!isMonthly && (
+                      <span className="text-xs text-muted-foreground line-through">
+                        {formatBRL(plan.priceBRL)}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatBRL(plan.priceBRL / plan.seats)} por usuário/mês
-                  </div>
+                  {!isMonthly ? (
+                    <div className="text-xs text-muted-foreground">
+                      {formatBRL(totalCycle)} a cada {billingMonths} meses (renovação automática)
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      {formatBRL(plan.priceBRL / plan.seats)} por usuário/mês
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

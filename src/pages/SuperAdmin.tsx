@@ -156,7 +156,7 @@ export default function SuperAdmin() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">

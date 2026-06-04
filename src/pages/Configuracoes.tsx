@@ -472,6 +472,35 @@ const Configuracoes = () => {
 
           {/* Bulk Delete */}
           <BulkDeleteDialog />
+
+          {/* Sua Conta - Exclusão definitiva */}
+          <Card className="card-hover border-destructive/30">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-destructive/10 p-2">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-medium">Sua Conta</CardTitle>
+                  <CardDescription className="text-xs">
+                    Excluir permanentemente seu cadastro e todos os dados associados
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Ao excluir sua conta, todos os clientes, agendamentos, pacotes, registros financeiros e
+                configurações serão apagados de forma <strong>irreversível</strong>. Por questões de
+                segurança, o e-mail, CPF, CNPJ e telefone usados ficarão bloqueados para reutilização
+                do <strong>período gratuito de 7 dias</strong> por <strong>6 meses</strong> após a
+                exclusão — para voltar antes desse prazo será necessário contratar um plano pago.
+              </p>
+              <div className="flex justify-end">
+                <DeleteMyAccountDialog />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </PageTransition>
     </AppLayout>

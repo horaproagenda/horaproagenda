@@ -12,7 +12,6 @@ import {
   ClipboardList,
   Package,
   Landmark,
-  Shield,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,

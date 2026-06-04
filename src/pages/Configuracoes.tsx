@@ -350,9 +350,12 @@ const Configuracoes = () => {
 
             </Card>
           </div>
+          </>
+          )}
 
-          {/* 2. Conexão com o WhatsApp */}
+          {/* 2. Conexão com o WhatsApp (cada profissional conecta o próprio número) */}
           <WhatsappSettings />
+
 
           {/* 3. Mensagens de WhatsApp */}
           <WhatsappTemplatesSettings />

@@ -148,9 +148,26 @@ serve(async (req) => {
         if (invoice.subscription) {
           const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
           await syncSubscription(sub);
+          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+          const ownerId = await findOwnerByCustomer(customerId);
+          if (ownerId) {
+            const periodEnd = new Date(sub.current_period_end * 1000);
+            const item = sub.items.data[0];
+            const productId = item?.price?.product as string | undefined;
+            const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+            await sendSubscriptionActivatedEmail(
+              ownerId,
+              {
+                planLabel: seats ? `${seats} usuário${seats > 1 ? 's' : ''}` : undefined,
+                validUntil: periodEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+              },
+              `stripe-invoice-paid-${invoice.id}`,
+            );
+          }
         }
         break;
       }
+
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
@@ -196,3 +213,35 @@ serve(async (req) => {
     });
   }
 });
+
+async function sendSubscriptionActivatedEmail(
+  ownerUserId: string,
+  data: { planLabel?: string; validUntil?: string },
+  idempotencyKey: string,
+) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: u } = await (supabase.auth as any).admin.getUserById(ownerUserId);
+    const email = u?.user?.email as string | undefined;
+    if (!email) {
+      log('No email for owner, skipping activation notification', { ownerUserId });
+      return;
+    }
+    const name = (u?.user?.user_metadata?.full_name as string | undefined)
+      ?? (u?.user?.user_metadata?.name as string | undefined)
+      ?? email.split('@')[0];
+    const { error } = await supabase.functions.invoke('send-transactional-email', {
+      body: {
+        templateName: 'account-status-update',
+        recipientEmail: email,
+        idempotencyKey,
+        templateData: { kind: 'subscription_activated', name, ...data },
+      },
+    });
+    if (error) log('Activation email send failed', { error: error.message });
+    else log('Activation email enqueued', { ownerUserId });
+  } catch (e) {
+    log('Activation email threw', { e: e instanceof Error ? e.message : String(e) });
+  }
+}
+

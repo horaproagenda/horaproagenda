@@ -164,8 +164,9 @@ serve(async (req) => {
             const item = sub.items.data[0];
             const productId = item?.price?.product as string | undefined;
             const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
-            await sendSubscriptionActivatedEmail(
+            await sendAccountEmail(
               ownerId,
+              'subscription_activated',
               {
                 planLabel: seats ? `${seats} usuário${seats > 1 ? 's' : ''}` : undefined,
                 validUntil: periodEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),

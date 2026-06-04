@@ -14,12 +14,14 @@ import {
   Landmark,
   Shield,
   ShieldCheck,
+  UserCog,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
   MessageSquare,
   Bell,
   FileSignature,
+  CreditCard,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,6 +44,8 @@ const navigation = [
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
   { name: 'Auditoria', href: '/auditoria', icon: Shield },
+  { name: 'Usuários', href: '/usuarios-conta', icon: UserCog, adminOnly: true },
+  { name: 'Assinatura', href: '/assinatura', icon: CreditCard, adminOnly: true },
   { name: 'Painel Admin', href: '/admin', icon: ShieldCheck, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },

@@ -2,18 +2,20 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
-import { PLANS, formatBRL } from "@/lib/plans";
+import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, QrCode, FileText } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+
 
 export default function Assinatura() {
   const { user } = useAuth();
   const { subscription, trialDaysLeft } = useAccountSubscription();
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
+  const [billingMonths, setBillingMonths] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export default function Assinatura() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: selectedPriceId },
+        body: { priceId: selectedPriceId, billingMonths },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');

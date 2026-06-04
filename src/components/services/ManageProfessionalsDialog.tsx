@@ -73,6 +73,8 @@ const PERMISSIONS_CONFIG = [
   { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
   { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
   { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos', category: 'products' },
+  { key: 'can_view_other_products', label: 'Ver produtos de todos', description: 'Acesso a todos os produtos da agenda', category: 'products' },
+  { key: 'can_view_only_own_products', label: 'Ver somente próprios produtos', description: 'Vê apenas os produtos que cadastrou', category: 'products' },
   { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Acessar relatórios de outros profissionais', category: 'reports' },
   { key: 'can_view_only_own_reports', label: 'Ver somente próprios relatórios', description: 'Acesso restrito aos seus relatórios', category: 'reports' },
   { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Ver logs de ações do sistema', category: 'system' },

@@ -209,6 +209,23 @@ function AuthInner() {
     setSignupStep('terms');
   };
 
+  const recordTermsAcceptance = async (email: string, userId?: string | null) => {
+    try {
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+      const rows = ['terms_of_service', 'privacy_policy'].map((document) => ({
+        user_id: userId ?? null,
+        email,
+        document,
+        version: TERMS_VERSION,
+        user_agent: ua,
+        context: userId ? 'post_signup' : 'pre_signup',
+      }));
+      await supabase.from('terms_acceptances').insert(rows);
+    } catch (e) {
+      console.warn('[terms_acceptances] falha ao registrar aceite:', e);
+    }
+  };
+
   const handleSendSignupEmailCode = async () => {
     if (!acceptedTerms) {
       toast({ title: 'Aceite os termos', description: 'Marque o aceite dos Termos e da Política de Privacidade para continuar.', variant: 'destructive' });
@@ -216,8 +233,11 @@ function AuthInner() {
     }
     setLoading(true);
     try {
+      const email = signupEmail.trim().toLowerCase();
+      // Registra aceite (auditável) já no envio do código, antes mesmo da criação da conta.
+      await recordTermsAcceptance(email, null);
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
-        body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
+        body: { email, type: 'signup' },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -225,6 +245,7 @@ function AuthInner() {
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
       setSignupLockUntil(0);
+      setSignupCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
@@ -250,6 +271,7 @@ function AuthInner() {
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
       setSignupLockUntil(0);
+      setSignupCodeSentAt(Date.now());
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao reenviar';
@@ -264,10 +286,14 @@ function AuthInner() {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
       return;
     }
-    const now = Date.now();
-    if (signupLockUntil && now < signupLockUntil) {
-      const secs = Math.ceil((signupLockUntil - now) / 1000);
+    const tNow = Date.now();
+    if (signupLockUntil && tNow < signupLockUntil) {
+      const secs = Math.ceil((signupLockUntil - tNow) / 1000);
       toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
+      return;
+    }
+    if (signupCodeSentAt && tNow - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
+      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -297,6 +323,12 @@ function AuthInner() {
         state: signupState.trim().toUpperCase() || undefined,
       });
       if (signUpError) throw signUpError;
+
+      // Persiste aceite definitivo já vinculado ao usuário autenticado.
+      const { data: sessionData } = await supabase.auth.getUser();
+      const uid = sessionData?.user?.id ?? null;
+      if (uid) await recordTermsAcceptance(email, uid);
+
       toast({ title: 'Conta criada!', description: 'Bem-vindo(a) ao Lume Agenda.' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';

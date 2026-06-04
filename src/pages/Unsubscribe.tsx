@@ -81,6 +81,6 @@ export default function Unsubscribe() {
           {state === 'error' && <div className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" /> Erro ao processar. Tente novamente.</div>}
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

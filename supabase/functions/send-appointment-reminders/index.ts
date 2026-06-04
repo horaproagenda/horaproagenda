@@ -406,6 +406,7 @@ serve(async (req) => {
           const end = new Date((apt as any).end_time || apt.start_time);
           const hoursAfter = (now - end.getTime()) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
+          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('follow_up', profId);
           if (!tpl) continue;
           const off = Number(tpl.send_offset_hours);

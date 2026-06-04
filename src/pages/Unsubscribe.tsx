@@ -50,7 +50,17 @@ export default function Unsubscribe() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Helmet>
+        <title>Cancelar inscrição — Lume Agenda</title>
+        <meta name="description" content="Cancele o envio de e-mails do Lume Agenda em poucos segundos." />
+        <link rel="canonical" href="https://agendalume.app/unsubscribe" />
+        <meta property="og:title" content="Cancelar inscrição — Lume Agenda" />
+        <meta property="og:description" content="Cancele o envio de e-mails do Lume Agenda em poucos segundos." />
+        <meta property="og:url" content="https://agendalume.app/unsubscribe" />
+        <meta name="robots" content="noindex,follow" />
+      </Helmet>
+      <h1 className="sr-only">Cancelar inscrição de e-mails do Lume Agenda</h1>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Cancelar inscrição</CardTitle>

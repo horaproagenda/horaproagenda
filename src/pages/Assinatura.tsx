@@ -2,18 +2,20 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
-import { PLANS, formatBRL } from "@/lib/plans";
+import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, QrCode, FileText } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+
 
 export default function Assinatura() {
   const { user } = useAuth();
   const { subscription, trialDaysLeft } = useAccountSubscription();
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
+  const [billingMonths, setBillingMonths] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export default function Assinatura() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: selectedPriceId },
+        body: { priceId: selectedPriceId, billingMonths },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');
@@ -118,8 +120,34 @@ export default function Assinatura() {
         )}
 
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-1">Planos mensais</h2>
-          <p className="text-muted-foreground text-sm">Cobrança recorrente em BRL. Cancele quando quiser pelo portal.</p>
+          <h2 className="text-2xl font-bold mb-1">Escolha seu plano</h2>
+          <p className="text-muted-foreground text-sm">
+            Pague mensalmente ou antecipe 3, 6 ou 12 meses com desconto. Aceitamos Pix, cartão de crédito/débito e boleto.
+          </p>
+        </div>
+
+        {/* Seletor de período */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {BILLING_PERIODS.map((p) => {
+            const active = billingMonths === p.months;
+            return (
+              <button
+                key={p.months}
+                type="button"
+                onClick={() => setBillingMonths(p.months)}
+                className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${
+                  active
+                    ? 'bg-primary text-primary-foreground border-primary shadow'
+                    : 'bg-background border-border hover:border-primary/40'
+                }`}
+              >
+                {p.label}
+                {p.badge && (
+                  <span className={`ml-2 text-xs ${active ? 'opacity-90' : 'text-primary'}`}>{p.badge}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -173,25 +201,50 @@ export default function Assinatura() {
             <CardContent className="space-y-3">
               {(() => {
                 const plan = PLANS.find(p => p.priceId === selectedPriceId)!;
+                const period = BILLING_PERIODS.find(b => b.months === billingMonths)!;
+                const total = periodTotal(plan.priceBRL, billingMonths);
+                const fullPrice = plan.priceBRL * billingMonths;
+                const saved = fullPrice - total;
+                const isMonthly = billingMonths === 1;
                 return (
                   <>
                     <div className="flex justify-between"><span>Plano</span><span className="font-medium">{plan.name}</span></div>
                     <div className="flex justify-between"><span>Usuários</span><span className="font-medium">{plan.seats}</span></div>
+                    <div className="flex justify-between"><span>Período</span><span className="font-medium">{period.label}{period.badge ? ` ${period.badge}` : ''}</span></div>
+                    {!isMonthly && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Sem desconto</span>
+                        <span className="line-through">{formatBRL(fullPrice)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold border-t pt-3">
-                      <span>Total mensal</span>
-                      <span>{formatBRL(plan.priceBRL)}</span>
+                      <span>{isMonthly ? 'Total mensal' : `Total (${billingMonths} meses)`}</span>
+                      <span>{formatBRL(total)}</span>
                     </div>
+                    {!isMonthly && saved > 0 && (
+                      <div className="text-xs text-emerald-600 text-right">
+                        Você economiza {formatBRL(saved)}
+                      </div>
+                    )}
                   </>
                 );
               })()}
-              <p className="text-xs text-muted-foreground text-center">
-                Cartão de Crédito ou Boleto · Cobrança recorrente mensal
-              </p>
+              <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
+                {billingMonths === 1 ? (
+                  <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão (recorrente mensal)</span>
+                ) : (
+                  <>
+                    <span className="flex items-center gap-1"><QrCode className="h-3.5 w-3.5" /> Pix</span>
+                    <span className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Cartão</span>
+                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> Boleto</span>
+                  </>
+                )}
+              </div>
               <Button className="w-full" size="lg" onClick={handleCheckout} disabled={isLoading}>
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
                 ) : (
-                  <><CreditCard className="mr-2 h-4 w-4" />{isActive ? 'Trocar de plano' : 'Assinar agora'}</>
+                  <><CreditCard className="mr-2 h-4 w-4" />{isActive ? 'Trocar de plano' : (billingMonths === 1 ? 'Assinar agora' : `Pagar ${billingMonths} meses`)}</>
                 )}
               </Button>
             </CardContent>

@@ -87,6 +87,15 @@ async function syncSubscription(sub: Stripe.Subscription) {
 
   if (error) log("Update failed", { error: error.message, ownerId });
   else log("Synced subscription", { ownerId, status, seats, priceId });
+
+  if (status === 'past_due') {
+    await sendAccountEmail(
+      ownerId,
+      'past_due',
+      {},
+      `stripe-sub-past-due-${sub.id}-${sub.current_period_end}`,
+    );
+  }
 }
 
 serve(async (req) => {
@@ -155,8 +164,9 @@ serve(async (req) => {
             const item = sub.items.data[0];
             const productId = item?.price?.product as string | undefined;
             const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
-            await sendSubscriptionActivatedEmail(
+            await sendAccountEmail(
               ownerId,
+              'subscription_activated',
               {
                 planLabel: seats ? `${seats} usuário${seats > 1 ? 's' : ''}` : undefined,
                 validUntil: periodEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
@@ -180,16 +190,33 @@ serve(async (req) => {
               .update({ status: 'past_due' })
               .eq('owner_user_id', ownerId);
             log("Marked past_due", { ownerId });
+            await sendAccountEmail(ownerId, 'payment_failed', {}, `stripe-invoice-failed-${invoice.id}`);
           }
         }
         break;
       }
 
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.mode === 'subscription' && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           await syncSubscription(sub);
+        } else if (session.mode === 'payment' && session.metadata?.kind === 'prepay' && session.payment_status === 'paid') {
+          await handlePrepaySession(session);
+        }
+        break;
+      }
+
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+        const email = session.customer_details?.email ?? null;
+        if (customerId || email) {
+          const ownerId = await findOwnerByCustomer(customerId ?? '', email);
+          if (ownerId) {
+            await sendAccountEmail(ownerId, 'payment_failed', {}, `stripe-async-failed-${session.id}`);
+          }
         }
         break;
       }
@@ -214,9 +241,10 @@ serve(async (req) => {
   }
 });
 
-async function sendSubscriptionActivatedEmail(
+async function sendAccountEmail(
   ownerUserId: string,
-  data: { planLabel?: string; validUntil?: string },
+  kind: 'subscription_activated' | 'payment_failed' | 'past_due' | 'payment_recorded' | 'trial_extended' | 'lifetime_granted',
+  data: Record<string, unknown>,
   idempotencyKey: string,
 ) {
   try {
@@ -224,7 +252,7 @@ async function sendSubscriptionActivatedEmail(
     const { data: u } = await (supabase.auth as any).admin.getUserById(ownerUserId);
     const email = u?.user?.email as string | undefined;
     if (!email) {
-      log('No email for owner, skipping activation notification', { ownerUserId });
+      log('No email for owner, skipping notification', { ownerUserId, kind });
       return;
     }
     const name = (u?.user?.user_metadata?.full_name as string | undefined)
@@ -235,13 +263,84 @@ async function sendSubscriptionActivatedEmail(
         templateName: 'account-status-update',
         recipientEmail: email,
         idempotencyKey,
-        templateData: { kind: 'subscription_activated', name, ...data },
+        templateData: { kind, name, ...data },
       },
     });
-    if (error) log('Activation email send failed', { error: error.message });
-    else log('Activation email enqueued', { ownerUserId });
+    if (error) log('Email send failed', { error: error.message, kind });
+    else log('Email enqueued', { ownerUserId, kind });
   } catch (e) {
-    log('Activation email threw', { e: e instanceof Error ? e.message : String(e) });
+    log('Email threw', { kind, e: e instanceof Error ? e.message : String(e) });
   }
+}
+
+/** Pagamento antecipado (3/6/12 meses) via Pix/Cartão/Boleto — estende current_period_end. */
+async function handlePrepaySession(session: Stripe.Checkout.Session) {
+  const months = Number(session.metadata?.billing_months ?? 0);
+  const seats = Number(session.metadata?.seats ?? 0);
+  const priceId = session.metadata?.price_id ?? null;
+  const userId = session.metadata?.user_id ?? null;
+  if (!months || !userId) {
+    log('Prepay session missing metadata', { sessionId: session.id });
+    return;
+  }
+  const customerId = typeof session.customer === 'string'
+    ? session.customer
+    : session.customer?.id ?? null;
+
+  // resolve owner: prefer metadata user_id
+  let ownerId: string | null = userId;
+  if (!ownerId && customerId) {
+    ownerId = await findOwnerByCustomer(customerId, session.customer_details?.email ?? null);
+  }
+  if (!ownerId) {
+    log('Prepay: owner not found', { sessionId: session.id });
+    return;
+  }
+
+  // lê current_period_end atual para estender a partir do maior entre now e ele
+  const { data: current } = await supabase
+    .from('account_subscriptions')
+    .select('current_period_end')
+    .eq('owner_user_id', ownerId)
+    .maybeSingle();
+
+  const baseMs = Math.max(
+    Date.now(),
+    current?.current_period_end ? new Date(current.current_period_end).getTime() : 0,
+  );
+  // adiciona N meses (≈ months * 30.44 dias) — usar setMonth para respeitar calendário
+  const newDate = new Date(baseMs);
+  newDate.setMonth(newDate.getMonth() + months);
+
+  const update: Record<string, unknown> = {
+    status: 'active',
+    current_period_end: newDate.toISOString(),
+  };
+  if (seats > 0) {
+    update.plan_tier = seats;
+    update.seat_limit = seats;
+  }
+  if (priceId) update.stripe_price_id = priceId;
+  if (customerId) update.stripe_customer_id = customerId;
+
+  const { error } = await supabase
+    .from('account_subscriptions')
+    .update(update)
+    .eq('owner_user_id', ownerId);
+  if (error) {
+    log('Prepay update failed', { error: error.message, ownerId });
+    return;
+  }
+  log('Prepay applied', { ownerId, months, newPeriodEnd: newDate.toISOString() });
+
+  await sendAccountEmail(
+    ownerId,
+    'subscription_activated',
+    {
+      planLabel: seats ? `${seats} usuário${seats > 1 ? 's' : ''} · ${months} meses` : `${months} meses`,
+      validUntil: newDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    },
+    `stripe-prepay-${session.id}`,
+  );
 }
 

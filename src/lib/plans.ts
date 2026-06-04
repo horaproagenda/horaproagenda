@@ -26,6 +26,28 @@ export const PRODUCT_TO_SEATS: Record<string, number> = Object.fromEntries(
 export const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Períodos de pagamento antecipado e respectivos descontos.
+export interface BillingPeriod {
+  months: number;
+  discount: number; // 0..1
+  label: string;
+  badge?: string;
+}
+
+export const BILLING_PERIODS: BillingPeriod[] = [
+  { months: 1,  discount: 0,    label: 'Mensal' },
+  { months: 3,  discount: 0.02, label: 'Trimestral', badge: '-2%' },
+  { months: 6,  discount: 0.03, label: 'Semestral',  badge: '-3%' },
+  { months: 12, discount: 0.05, label: 'Anual',      badge: '-5%' },
+];
+
+/** Calcula total para N meses aplicando o desconto correspondente. */
+export function periodTotal(monthlyPriceBRL: number, months: number): number {
+  const p = BILLING_PERIODS.find(b => b.months === months) ?? BILLING_PERIODS[0];
+  return Math.round(monthlyPriceBRL * months * (1 - p.discount) * 100) / 100;
+}
+
+
 export function suggestPlan(seatsNeeded: number): Plan {
   return PLANS.find(p => p.seats >= seatsNeeded) ?? PLANS[PLANS.length - 1];
 }

@@ -19,6 +19,20 @@ const ALLOWED_PRICE_IDS = new Set<string>([
   'price_1TegSvDgjrAVrKo6d1LDLKgI',
 ]);
 
+// Mapa priceId -> seats / nome (espelha src/lib/plans.ts)
+const PRICE_INFO: Record<string, { seats: number; monthly: number; name: string }> = {
+  'price_1TegO6DgjrAVrKo6qmm4QTAq': { seats: 1,  monthly: 59.90,   name: '1 usuário' },
+  'price_1TegOYDgjrAVrKo6SWKhm34E': { seats: 3,  monthly: 129.90,  name: '3 usuários' },
+  'price_1TegOrDgjrAVrKo6Fvsq1Vku': { seats: 6,  monthly: 259.80,  name: '6 usuários' },
+  'price_1TegPCDgjrAVrKo6a1AsVWED': { seats: 10, monthly: 433.30,  name: '10 usuários' },
+  'price_1TegQXDgjrAVrKo68iqKHYkx': { seats: 15, monthly: 649.50,  name: '15 usuários' },
+  'price_1TegRlDgjrAVrKo6pgIqgceO': { seats: 20, monthly: 866.00,  name: '20 usuários' },
+  'price_1TegSSDgjrAVrKo60IQOSOMn': { seats: 25, monthly: 1082.50, name: '25 usuários' },
+  'price_1TegSvDgjrAVrKo6d1LDLKgI': { seats: 30, monthly: 1299.00, name: '30 usuários' },
+};
+
+const DISCOUNT: Record<number, number> = { 1: 0, 3: 0.02, 6: 0.03, 12: 0.05 };
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -39,8 +53,10 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const priceId = body?.priceId as string | undefined;
+    const billingMonths = Number(body?.billingMonths ?? 1);
     if (!priceId) throw new Error("Price ID is required");
     if (!ALLOWED_PRICE_IDS.has(priceId)) throw new Error("Price ID not allowed");
+    if (!(billingMonths in DISCOUNT)) throw new Error("billingMonths inválido");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -51,20 +67,60 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://agendalume.app";
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      mode: 'subscription',
-      payment_method_types: ['card', 'boleto'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/assinatura/cancelado`,
-      subscription_data: {
-        metadata: { user_id: user.id },
-      },
-      metadata: { user_id: user.id, price_id: priceId },
-      allow_promotion_codes: true,
-    });
+    let session: Stripe.Checkout.Session;
+
+    if (billingMonths === 1) {
+      // Assinatura recorrente mensal (somente cartão é suportado para recorrência no BR)
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/assinatura/cancelado`,
+        subscription_data: { metadata: { user_id: user.id } },
+        metadata: { user_id: user.id, price_id: priceId, billing_months: '1' },
+        allow_promotion_codes: true,
+      });
+    } else {
+      // Pagamento antecipado (3/6/12 meses) com desconto — one-time payment.
+      // Aceita Pix, Cartão (crédito/débito) e Boleto.
+      const info = PRICE_INFO[priceId];
+      if (!info) throw new Error("Plano não encontrado");
+      const discount = DISCOUNT[billingMonths];
+      const totalBRL = Math.round(info.monthly * billingMonths * (1 - discount) * 100) / 100;
+      const unitAmountCents = Math.round(totalBRL * 100);
+      const label = `${info.name} · ${billingMonths} meses${discount ? ` (-${Math.round(discount * 100)}%)` : ''}`;
+
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        mode: 'payment',
+        payment_method_types: ['card', 'pix', 'boleto'],
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'brl',
+            unit_amount: unitAmountCents,
+            product_data: {
+              name: `Agendalume — ${label}`,
+              description: `Acesso ao Agendalume por ${billingMonths} meses para ${info.seats} usuário(s).`,
+            },
+          },
+        }],
+        success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/assinatura/cancelado`,
+        metadata: {
+          user_id: user.id,
+          price_id: priceId,
+          billing_months: String(billingMonths),
+          seats: String(info.seats),
+          kind: 'prepay',
+        },
+        allow_promotion_codes: true,
+      });
+    }
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

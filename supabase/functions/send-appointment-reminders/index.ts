@@ -173,10 +173,15 @@ serve(async (req) => {
 
   const cronSecret = Deno.env.get('CRON_SECRET');
   const providedCron = req.headers.get('x-cron-secret');
+  const apikeyHeader = req.headers.get('apikey');
   const authHeader = req.headers.get('Authorization');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   let authorized = false;
 
   if (cronSecret && providedCron && providedCron === cronSecret) {
+    authorized = true;
+  } else if (anonKey && apikeyHeader && apikeyHeader === anonKey) {
+    // Internal cron call (pg_cron -> net.http_post with anon apikey). Trusted server-to-server.
     authorized = true;
   } else if (authHeader?.startsWith('Bearer ')) {
     try {
@@ -203,7 +208,17 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const summary: any = { sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  let catchup = false;
+  try {
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      catchup = body?.catchup === true;
+    } else {
+      const url = new URL(req.url);
+      catchup = url.searchParams.get('catchup') === 'true';
+    }
+  } catch (_) { /* ignore */ }
+  const summary: any = { catchup, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
     const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
@@ -285,7 +300,7 @@ serve(async (req) => {
       const allHours = reminderTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (allHours.length > 0) {
         const minH = Math.min(...allHours); const maxH = Math.max(...allHours);
-        const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
+        const fromIso = new Date(now + (catchup ? 0 : (minH - 1) * 3600_000)).toISOString();
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
@@ -303,7 +318,7 @@ serve(async (req) => {
           const tpl = pickTpl('reminder', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -339,7 +354,7 @@ serve(async (req) => {
       const allHours = confirmTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (allHours.length > 0) {
         const minH = Math.min(...allHours); const maxH = Math.max(...allHours);
-        const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
+        const fromIso = new Date(now + (catchup ? 0 : (minH - 1) * 3600_000)).toISOString();
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
@@ -357,7 +372,7 @@ serve(async (req) => {
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')

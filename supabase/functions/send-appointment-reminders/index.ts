@@ -14,16 +14,29 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
-  return tpl
-    .replace(/\{\{\s*cliente\s*\}\}/g, vars.cliente || '')
-    .replace(/\{\{\s*data\s*\}\}/g, vars.data || '')
-    .replace(/\{\{\s*horario\s*\}\}/g, vars.horario || '')
-    .replace(/\{\{\s*servico\s*\}\}/g, vars.servico || '')
-    .replace(/\{\{\s*profissional\s*\}\}/g, vars.profissional || '')
-    .replace(/\{nome\}/g, vars.cliente || '')
-    .replace(/\{servico\}/g, vars.servico || '')
-    .replace(/\{data\}/g, vars.data || '')
-    .replace(/\{horario\}/g, vars.horario || '');
+  // Aceita {{var}}, {var} e variações em maiúsculas/acentos comuns.
+  const map: Record<string, string> = {
+    cliente: vars.cliente || '',
+    nome: vars.cliente || '',
+    name: vars.cliente || '',
+    client: vars.cliente || '',
+    data: vars.data || '',
+    date: vars.data || '',
+    horario: vars.horario || '',
+    horário: vars.horario || '',
+    hora: vars.horario || '',
+    time: vars.horario || '',
+    servico: vars.servico || '',
+    serviço: vars.servico || '',
+    service: vars.servico || '',
+    profissional: vars.profissional || '',
+    professional: vars.profissional || '',
+  };
+  // Substitui {{var}} e {var} (case-insensitive, com ou sem espaços)
+  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_]+)\s*\}?\}/g, (full, key) => {
+    const k = String(key).toLowerCase();
+    return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : full;
+  });
 }
 
 function currentHourSP(): number {
@@ -114,6 +127,22 @@ async function processQueue(supabase: any, summary: any) {
     if ((row.attempts ?? 0) >= (row.max_attempts ?? 8)) {
       await supabase.from('whatsapp_send_queue').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', row.id);
       continue;
+    }
+    // Dedup: se já existe registro de envio para esse appointment+provider+hours, marca como sent e segue.
+    if (row.appointment_id && row.provider) {
+      const { data: alreadyLogged } = await supabase
+        .from('appointment_reminder_log')
+        .select('id')
+        .eq('appointment_id', row.appointment_id)
+        .eq('hours_before', row.hours_before ?? 0)
+        .eq('provider', row.provider)
+        .maybeSingle();
+      if (alreadyLogged) {
+        await supabase.from('whatsapp_send_queue').update({
+          status: 'sent', updated_at: new Date().toISOString(),
+        }).eq('id', row.id);
+        continue;
+      }
     }
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
@@ -292,26 +321,58 @@ serve(async (req) => {
       prof: any,
       tpl: any,
       payload: Parameters<typeof trySend>[1],
+      appointmentStartMs?: number,
+      hoursBefore?: number,
     ): Promise<boolean> => {
       const w = resolveWindow(prof, tpl);
       if (withinWindow(w.start, w.end, hourSP)) return true;
-      // outside window → schedule retry at next open
+
+      // Quando o horário do disparo (apt - h) cai no silêncio, e o próximo
+      // abrir da janela seria APÓS o agendamento, enviar AGORA mesmo fora da janela
+      // — evita que mensagens de 21:00 sejam enviadas só no dia seguinte 08:00.
+      if (appointmentStartMs && Number.isFinite(hoursBefore)) {
+        const nextAt = (w.start != null && w.end != null) ? nextWindowOpenUtc(w.start, w.end) : new Date(now + 3600_000);
+        if (nextAt.getTime() >= appointmentStartMs) {
+          return true; // força envio imediato; do contrário chega tarde demais.
+        }
+      }
+
+      // outside window → schedule retry at next open (sem sobrescrever envios já feitos)
       const nextAt = (w.start != null && w.end != null) ? nextWindowOpenUtc(w.start, w.end) : new Date(now + 3600_000);
       try {
-        await supabase.from('whatsapp_send_queue').upsert({
-          to_phone: payload.to,
-          body: payload.body,
-          appointment_id: payload.appointment_id ?? null,
-          professional_id: payload.professional_id ?? null,
-          template_type: payload.template_type ?? null,
-          hours_before: payload.hours_before ?? null,
-          provider: payload.provider ?? 'whatsapp',
-          dedup_key: payload.dedup_key ?? null,
-          reason: 'outside_window',
-          next_attempt_at: nextAt.toISOString(),
-          status: 'pending',
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'dedup_key', ignoreDuplicates: false });
+        const { data: existingQ } = await supabase
+          .from('whatsapp_send_queue')
+          .select('id, status')
+          .eq('dedup_key', payload.dedup_key!)
+          .maybeSingle();
+        if (existingQ?.status === 'sent') {
+          // já enviado anteriormente; não reagendar.
+          summary.skipped++;
+          return false;
+        }
+        if (existingQ) {
+          await supabase.from('whatsapp_send_queue').update({
+            next_attempt_at: nextAt.toISOString(),
+            status: 'pending',
+            reason: 'outside_window',
+            updated_at: new Date().toISOString(),
+          }).eq('id', existingQ.id);
+        } else {
+          await supabase.from('whatsapp_send_queue').insert({
+            to_phone: payload.to,
+            body: payload.body,
+            appointment_id: payload.appointment_id ?? null,
+            professional_id: payload.professional_id ?? null,
+            template_type: payload.template_type ?? null,
+            hours_before: payload.hours_before ?? null,
+            provider: payload.provider ?? 'whatsapp',
+            dedup_key: payload.dedup_key ?? null,
+            reason: 'outside_window',
+            next_attempt_at: nextAt.toISOString(),
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          });
+        }
       } catch (_) { /* ignore */ }
       summary.skippedByWindow++;
       summary.queued++;
@@ -342,7 +403,21 @@ serve(async (req) => {
           const tpl = pickTpl('reminder', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
+
+          // Banda padrão: disparo dentro de ~30 min
+          const triggerMs = start.getTime() - h * 3600_000;
+          const hoursUntilTrigger = (triggerMs - now) / 3600_000;
+          const inBand = hoursUntilTrigger <= 0.5 && hoursUntilTrigger >= -0.5;
+          // Preemptivo: disparo cairia dentro da janela silenciosa e estamos abertos agora → enviar antes de fechar
+          const w = resolveWindow(getProf(profId), tpl);
+          const inOpenNow = withinWindow(w.start, w.end, hourSP);
+          let preemptive = false;
+          if (!inBand && inOpenNow && hoursUntilTrigger > 0 && hoursUntilTrigger <= 16 && w.start != null && w.end != null) {
+            const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+            if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
+          }
+          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -360,7 +435,7 @@ serve(async (req) => {
             template_type: 'reminder', hours_before: h, provider: 'whatsapp',
             dedup_key: `reminder-${apt.id}-${h}`,
           };
-          if (!(await guardWindow(getProf(profId), tpl, payload))) continue;
+          if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
             await supabase.from('appointment_reminder_log').insert({
@@ -396,7 +471,19 @@ serve(async (req) => {
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
+
+          const triggerMs = start.getTime() - h * 3600_000;
+          const hoursUntilTrigger = (triggerMs - now) / 3600_000;
+          const inBand = hoursUntilTrigger <= 0.5 && hoursUntilTrigger >= -0.5;
+          const w = resolveWindow(getProf(profId), tpl);
+          const inOpenNow = withinWindow(w.start, w.end, hourSP);
+          let preemptive = false;
+          if (!inBand && inOpenNow && hoursUntilTrigger > 0 && hoursUntilTrigger <= 16 && w.start != null && w.end != null) {
+            const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+            if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
+          }
+          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -414,7 +501,7 @@ serve(async (req) => {
             template_type: 'confirmation', hours_before: h, provider: 'whatsapp_confirmation',
             dedup_key: `confirmation-${apt.id}-${h}`,
           };
-          if (!(await guardWindow(getProf(profId), tpl, payload))) continue;
+          if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
             await supabase.from('appointment_reminder_log').insert({

@@ -455,7 +455,19 @@ serve(async (req) => {
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
+
+          const triggerMs = start.getTime() - h * 3600_000;
+          const hoursUntilTrigger = (triggerMs - now) / 3600_000;
+          const inBand = hoursUntilTrigger <= 0.5 && hoursUntilTrigger >= -0.5;
+          const w = resolveWindow(getProf(profId), tpl);
+          const inOpenNow = withinWindow(w.start, w.end, hourSP);
+          let preemptive = false;
+          if (!inBand && inOpenNow && hoursUntilTrigger > 0 && hoursUntilTrigger <= 16 && w.start != null && w.end != null) {
+            const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
+            if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
+          }
+          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -473,7 +485,7 @@ serve(async (req) => {
             template_type: 'confirmation', hours_before: h, provider: 'whatsapp_confirmation',
             dedup_key: `confirmation-${apt.id}-${h}`,
           };
-          if (!(await guardWindow(getProf(profId), tpl, payload))) continue;
+          if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
             await supabase.from('appointment_reminder_log').insert({

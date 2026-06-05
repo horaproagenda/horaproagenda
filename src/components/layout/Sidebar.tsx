@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
+import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -57,9 +58,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
-  const { signOut, profile, hasRole } = useAuth();
+  const { signOut, profile, hasRole, user } = useAuth();
+  const isPlatformOwner = isSuperAdminEmail(user?.email);
   const visibleNavigation = navigation.filter(item => {
-    if (item.superAdminOnly && !hasRole('super_admin')) return false;
+    if (item.superAdminOnly && !(hasRole('super_admin') && isPlatformOwner)) return false;
     if (item.adminOnly && !hasRole('admin')) return false;
     return true;
   });

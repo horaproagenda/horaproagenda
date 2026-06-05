@@ -247,56 +247,90 @@ export default function SuperAdmin() {
         </Card>
 
         <Card className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[11px]">E-mail</TableHead>
-                <TableHead className="text-[11px]">Situação</TableHead>
-                <TableHead className="text-[11px]">Plano / Vagas</TableHead>
-                <TableHead className="text-[11px]">Teste até</TableHead>
-                <TableHead className="text-[11px]">Pago até</TableHead>
-                <TableHead className="text-[11px]">Stripe</TableHead>
-                <TableHead className="text-[11px] text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
-                <TableRow><TableCell colSpan={7} className="text-xs py-6 text-center text-muted-foreground">Carregando contas...</TableCell></TableRow>
-              )}
-              {!isLoading && rows.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
-              )}
-              {rows.map((r) => (
-                <TableRow key={r.owner_user_id}>
-                  <TableCell className="text-xs py-2 tabular-nums">
-                    <div className="font-medium">{r.email ?? '—'}</div>
-                    <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
-                  </TableCell>
-                  <TableCell className="text-xs py-2">
-                    <div className="flex items-center gap-1">
-                      {statusBadge(r.status)}
-                      {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs py-2 tabular-nums">{r.plan_tier ?? '—'} / {r.seat_limit}</TableCell>
-                  <TableCell className="text-xs py-2 tabular-nums">{fmtDate(r.trial_ends_at)}</TableCell>
-                  <TableCell className="text-xs py-2 tabular-nums">{fmtDate(r.current_period_end)}</TableCell>
-                  <TableCell className="text-xs py-2 tabular-nums">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 12) + '…' : '—'}</TableCell>
-                  <TableCell className="text-xs py-2 text-right space-x-1 whitespace-nowrap">
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => { setTarget(r); setMode('mark_paid'); }}>
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> Pagamento
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => { setTarget(r); setMode('extend_trial'); }}>
-                      <CalendarPlus className="h-3 w-3 mr-1" /> Teste
-                    </Button>
-                    <Button size="sm" variant={r.is_grandfathered ? 'destructive' : 'secondary'} className="h-7 px-2 text-[11px]" onClick={() => toggleGrandfathered(r)}>
-                      <Crown className="h-3 w-3 mr-1" /> {r.is_grandfathered ? 'Retirar' : 'Vitalícia'}
-                    </Button>
-                  </TableCell>
+          <TooltipProvider delayDuration={150}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-[11px] w-[26%]">E-mail</TableHead>
+                  <TableHead className="text-[11px] w-[14%]">Situação</TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">Plano / Vagas</TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">Teste até</TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">Pago até</TableHead>
+                  <TableHead className="text-[11px] w-[14%]">Stripe</TableHead>
+                  <TableHead className="text-[11px] w-[16%] text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading && (
+                  <TableRow><TableCell colSpan={7} className="text-xs py-6 text-center text-muted-foreground">Carregando contas...</TableCell></TableRow>
+                )}
+                {!isLoading && rows.length === 0 && (
+                  <TableRow><TableCell colSpan={7} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
+                )}
+                {rows.map((r) => {
+                  const actionButton = (
+                    label: string,
+                    icon: React.ReactNode,
+                    onClick: () => void,
+                    variant: 'outline' | 'secondary' | 'destructive' = 'outline',
+                  ) => (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant={variant}
+                          className="h-6 w-6"
+                          aria-label={label}
+                          onClick={onClick}
+                        >
+                          {icon}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-[11px]">{label}</TooltipContent>
+                    </Tooltip>
+                  );
+                  return (
+                    <TableRow key={r.owner_user_id}>
+                      <TableCell className="text-xs py-2 truncate max-w-0">
+                        <div className="font-medium truncate">{r.email ?? '—'}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
+                      </TableCell>
+                      <TableCell className="text-xs py-2">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {statusBadge(r.status)}
+                          {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs py-2 tabular-nums text-center">{r.plan_tier ?? '—'} / {r.seat_limit}</TableCell>
+                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.trial_ends_at)}</TableCell>
+                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.current_period_end)}</TableCell>
+                      <TableCell className="text-xs py-2 tabular-nums truncate max-w-0">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 10) + '…' : '—'}</TableCell>
+                      <TableCell className="text-xs py-2 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1 justify-end">
+                          {actionButton(
+                            'Registrar pagamento manual',
+                            <CheckCircle2 className="h-3 w-3" />,
+                            () => { setTarget(r); setMode('mark_paid'); },
+                          )}
+                          {actionButton(
+                            'Estender período de teste',
+                            <CalendarPlus className="h-3 w-3" />,
+                            () => { setTarget(r); setMode('extend_trial'); },
+                          )}
+                          {actionButton(
+                            r.is_grandfathered ? 'Remover acesso vitalício' : 'Conceder acesso vitalício',
+                            <Crown className="h-3 w-3" />,
+                            () => setGrandfatherTarget(r),
+                            r.is_grandfathered ? 'destructive' : 'secondary',
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </Card>
 
         <Card className="overflow-x-auto">

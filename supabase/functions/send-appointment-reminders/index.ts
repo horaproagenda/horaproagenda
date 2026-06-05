@@ -176,7 +176,8 @@ serve(async (req) => {
   const apikeyHeader = req.headers.get('apikey');
   const authHeader = req.headers.get('Authorization');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  const publishableKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('VITE_SUPABASE_PUBLISHABLE_KEY');
+  const projectPublishableKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZ2NsbHJic3dvZGpvYWR5YnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTQ5NjcsImV4cCI6MjA4MDUzMDk2N30.i7myc9A0jsBRAf4ehukJoMgl-79_GJrklch3D5_prXE';
+  const publishableKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('VITE_SUPABASE_PUBLISHABLE_KEY') || projectPublishableKey;
   let authorized = false;
 
   if (cronSecret && providedCron && providedCron === cronSecret) {

@@ -26,6 +26,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users } from 'lucide-react';
+import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
 
 interface AdminAccountRow {
@@ -79,7 +80,11 @@ export default function SuperAdmin() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && !hasRole('super_admin')) navigate('/', { replace: true });
+    if (!user) return;
+    // Dupla checagem: papel super_admin + e-mail da criadora da plataforma.
+    if (!hasRole('super_admin') || !isSuperAdminEmail(user.email)) {
+      navigate('/', { replace: true });
+    }
   }, [user, hasRole, navigate]);
 
   const { data, isLoading, refetch } = useQuery({
@@ -231,9 +236,9 @@ export default function SuperAdmin() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-[11px]">E-mail</TableHead>
-                <TableHead className="text-[11px]">Status</TableHead>
-                <TableHead className="text-[11px]">Plano / Seats</TableHead>
-                <TableHead className="text-[11px]">Trial até</TableHead>
+                <TableHead className="text-[11px]">Situação</TableHead>
+                <TableHead className="text-[11px]">Plano / Vagas</TableHead>
+                <TableHead className="text-[11px]">Teste até</TableHead>
                 <TableHead className="text-[11px]">Pago até</TableHead>
                 <TableHead className="text-[11px]">Stripe</TableHead>
                 <TableHead className="text-[11px] text-right">Ações</TableHead>
@@ -262,15 +267,15 @@ export default function SuperAdmin() {
                   <TableCell className="text-xs py-2 tabular-nums">{fmtDate(r.trial_ends_at)}</TableCell>
                   <TableCell className="text-xs py-2 tabular-nums">{fmtDate(r.current_period_end)}</TableCell>
                   <TableCell className="text-xs py-2 tabular-nums">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 12) + '…' : '—'}</TableCell>
-                  <TableCell className="text-xs py-2 text-right space-x-1">
-                    <Button size="sm" variant="outline" onClick={() => { setTarget(r); setMode('mark_paid'); }}>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Baixa pagto
+                  <TableCell className="text-xs py-2 text-right space-x-1 whitespace-nowrap">
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => { setTarget(r); setMode('mark_paid'); }}>
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> Pagamento
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setTarget(r); setMode('extend_trial'); }}>
-                      <CalendarPlus className="h-3.5 w-3.5 mr-1" /> + Trial
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => { setTarget(r); setMode('extend_trial'); }}>
+                      <CalendarPlus className="h-3 w-3 mr-1" /> Teste
                     </Button>
-                    <Button size="sm" variant={r.is_grandfathered ? 'destructive' : 'secondary'} onClick={() => toggleGrandfathered(r)}>
-                      <Crown className="h-3.5 w-3.5 mr-1" /> {r.is_grandfathered ? 'Remover' : 'Vitalícia'}
+                    <Button size="sm" variant={r.is_grandfathered ? 'destructive' : 'secondary'} className="h-7 px-2 text-[11px]" onClick={() => toggleGrandfathered(r)}>
+                      <Crown className="h-3 w-3 mr-1" /> {r.is_grandfathered ? 'Retirar' : 'Vitalícia'}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -346,7 +351,7 @@ export default function SuperAdmin() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'mark_paid' ? 'Dar baixa em pagamento manual' : 'Estender período de teste'}
+              {mode === 'mark_paid' ? 'Registrar pagamento manual' : 'Estender período de teste'}
             </DialogTitle>
           </DialogHeader>
 
@@ -364,16 +369,18 @@ export default function SuperAdmin() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Plan tier (opcional)</Label>
-                  <Input type="number" value={planTier} onChange={(e) => setPlanTier(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Label className="text-xs">Nível do plano (opcional)</Label>
+                  <Input type="number" placeholder="Ex.: 1, 2, 3" value={planTier} onChange={(e) => setPlanTier(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <p className="text-[10px] text-muted-foreground">Identifica o pacote contratado. Deixe em branco para manter o atual.</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Seats (opcional)</Label>
-                  <Input type="number" value={seatLimit} onChange={(e) => setSeatLimit(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Label className="text-xs">Vagas de profissional (opcional)</Label>
+                  <Input type="number" placeholder="Ex.: 3" value={seatLimit} onChange={(e) => setSeatLimit(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <p className="text-[10px] text-muted-foreground">Quantos profissionais a conta pode cadastrar. Deixe em branco para manter o atual.</p>
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Marca status como <strong>active</strong> e estende o período pago a partir do final atual (ou de hoje, se já expirou).
+                Marca a conta como <strong>ativa</strong> e estende o período pago a partir do fim atual (ou de hoje, se já expirou).
               </p>
             </div>
           )}
@@ -381,11 +388,11 @@ export default function SuperAdmin() {
           {mode === 'extend_trial' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label className="text-xs">Dias extras de trial</Label>
+                <Label className="text-xs">Dias extras de teste</Label>
                 <Input type="number" min={1} max={365} value={extraDays} onChange={(e) => setExtraDays(Math.max(1, Number(e.target.value) || 1))} />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Adiciona dias ao trial atual (ou inicia novo trial a partir de hoje, se já expirou).
+                Adiciona dias ao período de teste atual (ou inicia um novo teste a partir de hoje, se já expirou).
               </p>
             </div>
           )}

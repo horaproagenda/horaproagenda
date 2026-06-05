@@ -176,11 +176,12 @@ serve(async (req) => {
   const apikeyHeader = req.headers.get('apikey');
   const authHeader = req.headers.get('Authorization');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const publishableKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('VITE_SUPABASE_PUBLISHABLE_KEY');
   let authorized = false;
 
   if (cronSecret && providedCron && providedCron === cronSecret) {
     authorized = true;
-  } else if (anonKey && apikeyHeader && apikeyHeader === anonKey) {
+  } else if (apikeyHeader && ((anonKey && apikeyHeader === anonKey) || (publishableKey && apikeyHeader === publishableKey))) {
     // Internal cron call (pg_cron -> net.http_post with anon apikey). Trusted server-to-server.
     authorized = true;
   } else if (authHeader?.startsWith('Bearer ')) {
@@ -207,7 +208,8 @@ serve(async (req) => {
       hasProvidedCron: Boolean(providedCron),
       hasApikeyHeader: Boolean(apikeyHeader),
       hasAnonKey: Boolean(anonKey),
-      apikeyMatchesAnon: Boolean(anonKey && apikeyHeader && apikeyHeader === anonKey),
+      hasPublishableKey: Boolean(publishableKey),
+      apikeyMatchesKnownPublicKey: Boolean(apikeyHeader && ((anonKey && apikeyHeader === anonKey) || (publishableKey && apikeyHeader === publishableKey))),
       hasAuthHeader: Boolean(authHeader),
     });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

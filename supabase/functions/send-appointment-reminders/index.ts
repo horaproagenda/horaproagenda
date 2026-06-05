@@ -128,6 +128,22 @@ async function processQueue(supabase: any, summary: any) {
       await supabase.from('whatsapp_send_queue').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', row.id);
       continue;
     }
+    // Dedup: se já existe registro de envio para esse appointment+provider+hours, marca como sent e segue.
+    if (row.appointment_id && row.provider) {
+      const { data: alreadyLogged } = await supabase
+        .from('appointment_reminder_log')
+        .select('id')
+        .eq('appointment_id', row.appointment_id)
+        .eq('hours_before', row.hours_before ?? 0)
+        .eq('provider', row.provider)
+        .maybeSingle();
+      if (alreadyLogged) {
+        await supabase.from('whatsapp_send_queue').update({
+          status: 'sent', updated_at: new Date().toISOString(),
+        }).eq('id', row.id);
+        continue;
+      }
+    }
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
       await ultramsgSendText({ to: row.to_phone, body: row.body }, creds);

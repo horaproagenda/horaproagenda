@@ -452,6 +452,25 @@ export default function SuperAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!grandfatherTarget} onOpenChange={(o) => { if (!o) setGrandfatherTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {grandfatherTarget?.is_grandfathered ? 'Remover acesso vitalício?' : 'Conceder acesso vitalício?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {grandfatherTarget?.is_grandfathered
+                ? `A conta ${grandfatherTarget?.email ?? ''} voltará ao fluxo normal de cobrança (teste/assinatura).`
+                : `A conta ${grandfatherTarget?.email ?? ''} terá acesso gratuito e ilimitado, sem cobranças.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggleGrandfathered}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

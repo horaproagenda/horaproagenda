@@ -202,6 +202,14 @@ serve(async (req) => {
   }
 
   if (!authorized) {
+    console.warn('send-appointment-reminders unauthorized', {
+      hasCronSecret: Boolean(cronSecret),
+      hasProvidedCron: Boolean(providedCron),
+      hasApikeyHeader: Boolean(apikeyHeader),
+      hasAnonKey: Boolean(anonKey),
+      apikeyMatchesAnon: Boolean(anonKey && apikeyHeader && apikeyHeader === anonKey),
+      hasAuthHeader: Boolean(authHeader),
+    });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

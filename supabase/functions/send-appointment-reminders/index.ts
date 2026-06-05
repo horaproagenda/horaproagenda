@@ -203,7 +203,17 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const summary: any = { sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  let catchup = false;
+  try {
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      catchup = body?.catchup === true;
+    } else {
+      const url = new URL(req.url);
+      catchup = url.searchParams.get('catchup') === 'true';
+    }
+  } catch (_) { /* ignore */ }
+  const summary: any = { catchup, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
     const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();

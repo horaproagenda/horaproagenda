@@ -89,6 +89,7 @@ export default function SuperAdmin() {
   const [seatLimit, setSeatLimit] = useState<number | ''>('');
   const [extraDays, setExtraDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
+  const [grandfatherTarget, setGrandfatherTarget] = useState<AdminAccountRow | null>(null);
 
   useEffect(() => {
     if (!user) return;

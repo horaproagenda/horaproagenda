@@ -305,26 +305,58 @@ serve(async (req) => {
       prof: any,
       tpl: any,
       payload: Parameters<typeof trySend>[1],
+      appointmentStartMs?: number,
+      hoursBefore?: number,
     ): Promise<boolean> => {
       const w = resolveWindow(prof, tpl);
       if (withinWindow(w.start, w.end, hourSP)) return true;
-      // outside window → schedule retry at next open
+
+      // Quando o horário do disparo (apt - h) cai no silêncio, e o próximo
+      // abrir da janela seria APÓS o agendamento, enviar AGORA mesmo fora da janela
+      // — evita que mensagens de 21:00 sejam enviadas só no dia seguinte 08:00.
+      if (appointmentStartMs && Number.isFinite(hoursBefore)) {
+        const nextAt = (w.start != null && w.end != null) ? nextWindowOpenUtc(w.start, w.end) : new Date(now + 3600_000);
+        if (nextAt.getTime() >= appointmentStartMs) {
+          return true; // força envio imediato; do contrário chega tarde demais.
+        }
+      }
+
+      // outside window → schedule retry at next open (sem sobrescrever envios já feitos)
       const nextAt = (w.start != null && w.end != null) ? nextWindowOpenUtc(w.start, w.end) : new Date(now + 3600_000);
       try {
-        await supabase.from('whatsapp_send_queue').upsert({
-          to_phone: payload.to,
-          body: payload.body,
-          appointment_id: payload.appointment_id ?? null,
-          professional_id: payload.professional_id ?? null,
-          template_type: payload.template_type ?? null,
-          hours_before: payload.hours_before ?? null,
-          provider: payload.provider ?? 'whatsapp',
-          dedup_key: payload.dedup_key ?? null,
-          reason: 'outside_window',
-          next_attempt_at: nextAt.toISOString(),
-          status: 'pending',
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'dedup_key', ignoreDuplicates: false });
+        const { data: existingQ } = await supabase
+          .from('whatsapp_send_queue')
+          .select('id, status')
+          .eq('dedup_key', payload.dedup_key!)
+          .maybeSingle();
+        if (existingQ?.status === 'sent') {
+          // já enviado anteriormente; não reagendar.
+          summary.skipped++;
+          return false;
+        }
+        if (existingQ) {
+          await supabase.from('whatsapp_send_queue').update({
+            next_attempt_at: nextAt.toISOString(),
+            status: 'pending',
+            reason: 'outside_window',
+            updated_at: new Date().toISOString(),
+          }).eq('id', existingQ.id);
+        } else {
+          await supabase.from('whatsapp_send_queue').insert({
+            to_phone: payload.to,
+            body: payload.body,
+            appointment_id: payload.appointment_id ?? null,
+            professional_id: payload.professional_id ?? null,
+            template_type: payload.template_type ?? null,
+            hours_before: payload.hours_before ?? null,
+            provider: payload.provider ?? 'whatsapp',
+            dedup_key: payload.dedup_key ?? null,
+            reason: 'outside_window',
+            next_attempt_at: nextAt.toISOString(),
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          });
+        }
       } catch (_) { /* ignore */ }
       summary.skippedByWindow++;
       summary.queued++;

@@ -207,8 +207,9 @@ export default function SuperAdmin() {
     }
   };
 
-  const toggleGrandfathered = async (row: AdminAccountRow) => {
-    if (!confirm(row.is_grandfathered ? 'Remover acesso vitalício desta conta?' : 'Conceder acesso vitalício (gratuito) a esta conta?')) return;
+  const confirmToggleGrandfathered = async () => {
+    const row = grandfatherTarget;
+    if (!row) return;
     try {
       const { error } = await supabase.functions.invoke('super-admin-action', {
         body: { action: 'set_grandfathered', owner_user_id: row.owner_user_id, value: !row.is_grandfathered },
@@ -218,6 +219,8 @@ export default function SuperAdmin() {
       qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao atualizar');
+    } finally {
+      setGrandfatherTarget(null);
     }
   };
 

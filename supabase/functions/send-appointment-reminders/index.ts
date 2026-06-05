@@ -367,7 +367,7 @@ serve(async (req) => {
           const tpl = pickTpl('confirmation', profId);
           if (!tpl) continue;
           const h = Number(tpl.hours_before);
-          if (!(hoursDiff <= h && hoursDiff >= h - 0.5)) continue;
+          if (!(catchup ? (hoursDiff > 0 && hoursDiff <= h) : (hoursDiff <= h && hoursDiff >= h - 0.5))) continue;
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')

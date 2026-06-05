@@ -14,16 +14,29 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
-  return tpl
-    .replace(/\{\{\s*cliente\s*\}\}/g, vars.cliente || '')
-    .replace(/\{\{\s*data\s*\}\}/g, vars.data || '')
-    .replace(/\{\{\s*horario\s*\}\}/g, vars.horario || '')
-    .replace(/\{\{\s*servico\s*\}\}/g, vars.servico || '')
-    .replace(/\{\{\s*profissional\s*\}\}/g, vars.profissional || '')
-    .replace(/\{nome\}/g, vars.cliente || '')
-    .replace(/\{servico\}/g, vars.servico || '')
-    .replace(/\{data\}/g, vars.data || '')
-    .replace(/\{horario\}/g, vars.horario || '');
+  // Aceita {{var}}, {var} e variações em maiúsculas/acentos comuns.
+  const map: Record<string, string> = {
+    cliente: vars.cliente || '',
+    nome: vars.cliente || '',
+    name: vars.cliente || '',
+    client: vars.cliente || '',
+    data: vars.data || '',
+    date: vars.data || '',
+    horario: vars.horario || '',
+    horário: vars.horario || '',
+    hora: vars.horario || '',
+    time: vars.horario || '',
+    servico: vars.servico || '',
+    serviço: vars.servico || '',
+    service: vars.servico || '',
+    profissional: vars.profissional || '',
+    professional: vars.profissional || '',
+  };
+  // Substitui {{var}} e {var} (case-insensitive, com ou sem espaços)
+  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_]+)\s*\}?\}/g, (full, key) => {
+    const k = String(key).toLowerCase();
+    return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : full;
+  });
 }
 
 function currentHourSP(): number {

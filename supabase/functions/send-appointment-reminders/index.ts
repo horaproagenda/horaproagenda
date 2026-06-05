@@ -349,7 +349,7 @@ serve(async (req) => {
       const allHours = confirmTpls.map((t: any) => Number(t.hours_before)).filter((n: number) => Number.isFinite(n) && n > 0);
       if (allHours.length > 0) {
         const minH = Math.min(...allHours); const maxH = Math.max(...allHours);
-        const fromIso = new Date(now + (minH - 1) * 3600_000).toISOString();
+        const fromIso = new Date(now + (catchup ? 0 : (minH - 1) * 3600_000)).toISOString();
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')

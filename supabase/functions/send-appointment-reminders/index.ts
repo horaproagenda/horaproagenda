@@ -173,10 +173,15 @@ serve(async (req) => {
 
   const cronSecret = Deno.env.get('CRON_SECRET');
   const providedCron = req.headers.get('x-cron-secret');
+  const apikeyHeader = req.headers.get('apikey');
   const authHeader = req.headers.get('Authorization');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   let authorized = false;
 
   if (cronSecret && providedCron && providedCron === cronSecret) {
+    authorized = true;
+  } else if (anonKey && apikeyHeader && apikeyHeader === anonKey) {
+    // Internal cron call (pg_cron -> net.http_post with anon apikey). Trusted server-to-server.
     authorized = true;
   } else if (authHeader?.startsWith('Bearer ')) {
     try {

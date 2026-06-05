@@ -184,6 +184,19 @@ serve(async (req) => {
   } else if (apikeyHeader && ((anonKey && apikeyHeader === anonKey) || (publishableKey && apikeyHeader === publishableKey))) {
     // Internal cron call (pg_cron -> net.http_post with anon apikey). Trusted server-to-server.
     authorized = true;
+  } else if (apikeyHeader) {
+    // Accept any valid Supabase-signed anon/publishable JWT for this project (handles new signing-keys system).
+    try {
+      const probe = createClient(Deno.env.get('SUPABASE_URL')!, anonKey || apikeyHeader);
+      const { data: claimsData } = await probe.auth.getClaims(apikeyHeader);
+      const claims: any = claimsData?.claims || {};
+      const role = claims.role;
+      const ref = claims.ref;
+      const expectedRef = (Deno.env.get('SUPABASE_URL') || '').match(/https?:\/\/([^.]+)\./)?.[1];
+      if ((role === 'anon' || role === 'service_role') && (!expectedRef || ref === expectedRef)) {
+        authorized = true;
+      }
+    } catch (_) { /* fall through */ }
   } else if (authHeader?.startsWith('Bearer ')) {
     try {
       const userClient = createClient(

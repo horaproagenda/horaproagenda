@@ -1085,13 +1085,18 @@ const Agenda = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
-                    <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current" />
+                  <Badge variant="secondary" className={cn(
+                    "gap-1 text-[10px] sm:text-xs border",
+                    holiday.type === 'commemorative'
+                      ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800"
+                  )}>
+                    <Umbrella className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     <span className="truncate max-w-[80px] sm:max-w-none">{holiday.name}</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Feriado Nacional</p>
+                  <p>{holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

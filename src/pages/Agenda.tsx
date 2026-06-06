@@ -39,7 +39,6 @@ import {
   Download,
   Upload,
   MoreHorizontal,
-  Star,
   Umbrella,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';

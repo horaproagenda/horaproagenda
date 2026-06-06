@@ -39,7 +39,7 @@ import {
   Download,
   Upload,
   MoreHorizontal,
-  Star,
+  Umbrella,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
@@ -1084,13 +1084,18 @@ const Agenda = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
-                    <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current" />
+                  <Badge variant="secondary" className={cn(
+                    "gap-1 text-[10px] sm:text-xs border",
+                    holiday.type === 'commemorative'
+                      ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800"
+                  )}>
+                    <Umbrella className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     <span className="truncate max-w-[80px] sm:max-w-none">{holiday.name}</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Feriado Nacional</p>
+                  <p>{holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1251,17 +1256,20 @@ const Agenda = () => {
                     )}
                   >
                     {holiday && !isSelected && (
-                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                      <Umbrella className={cn(
+                        "absolute top-1 right-1 h-2.5 w-2.5",
+                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                      )} />
                     )}
                     <span className={cn(
                       'text-[10px] sm:text-xs font-medium uppercase whitespace-nowrap tracking-tight',
-                      isSelected ? 'text-primary-foreground/80' : holiday ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                      isSelected ? 'text-primary-foreground/80' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400') : 'text-muted-foreground'
                     )}>
                       {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                     </span>
                     <span className={cn(
                       'text-lg font-semibold',
-                      isSelected ? 'text-primary-foreground' : holiday ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'
+                      isSelected ? 'text-primary-foreground' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300') : 'text-foreground'
                     )}>
                       {format(day, 'd')}
                     </span>
@@ -1270,7 +1278,9 @@ const Agenda = () => {
                 {holiday && (
                   <TooltipContent>
                     <p className="font-medium">{holiday.name}</p>
-                    <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                    <p className="text-xs text-muted-foreground">
+                      {holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}
+                    </p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -1394,7 +1404,9 @@ const Agenda = () => {
                       isSelected 
                         ? 'bg-primary text-primary-foreground shadow-glow' 
                         : holiday && isCurrentMonth
-                          ? 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                          ? (holiday.type === 'commemorative'
+                              ? 'bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30'
+                              : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30')
                           : hasAbsence && isCurrentMonth
                             ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800'
                             : 'hover:bg-secondary',
@@ -1404,7 +1416,10 @@ const Agenda = () => {
                   >
                     {/* Holiday indicator */}
                     {holiday && !isSelected && isCurrentMonth && (
-                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                      <Umbrella className={cn(
+                        "absolute top-1 right-1 h-2.5 w-2.5",
+                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                      )} />
                     )}
                     {/* Absence indicator */}
                     {hasAbsence && !holiday && !isSelected && isCurrentMonth && (
@@ -1415,7 +1430,7 @@ const Agenda = () => {
                       isSelected 
                         ? 'text-primary-foreground' 
                         : holiday && isCurrentMonth 
-                          ? 'text-amber-700 dark:text-amber-300' 
+                          ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300')
                           : hasAbsence && isCurrentMonth
                             ? 'text-orange-700 dark:text-orange-300'
                             : 'text-foreground'
@@ -1453,7 +1468,9 @@ const Agenda = () => {
                     {holiday && (
                       <>
                         <p className="font-medium">{holiday.name}</p>
-                        <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                        <p className="text-xs text-muted-foreground">
+                          {holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}
+                        </p>
                       </>
                     )}
                     {hasAbsence && !holiday && (

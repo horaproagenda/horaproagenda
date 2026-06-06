@@ -4,7 +4,17 @@ import { isSameDay, addDays } from 'date-fns';
 export interface Holiday {
   date: Date;
   name: string;
-  type: 'national' | 'state' | 'municipal';
+  type: 'national' | 'state' | 'municipal' | 'commemorative';
+}
+
+/**
+ * Returns the date of the Nth occurrence of a given weekday in a month.
+ * weekday: 0 = Sunday, 1 = Monday, ...
+ */
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: number): Date {
+  const firstDay = new Date(year, month, 1);
+  const offset = (weekday - firstDay.getDay() + 7) % 7;
+  return new Date(year, month, 1 + offset + (n - 1) * 7);
 }
 
 /**
@@ -58,8 +68,25 @@ export function getBrazilianHolidays(year: number): Holiday[] {
     { date: easter, name: 'Páscoa', type: 'national' },
     { date: addDays(easter, 60), name: 'Corpus Christi', type: 'national' },
   ];
-  
-  return [...fixedHolidays, ...moveableHolidays].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  // Datas comemorativas brasileiras (não são feriados oficiais, mas relevantes para agendamento)
+  const commemorativeDates: Holiday[] = [
+    { date: new Date(year, 2, 8), name: 'Dia Internacional da Mulher', type: 'commemorative' },
+    { date: new Date(year, 2, 15), name: 'Dia do Consumidor', type: 'commemorative' },
+    { date: new Date(year, 3, 22), name: 'Descobrimento do Brasil', type: 'commemorative' },
+    { date: nthWeekdayOfMonth(year, 4, 0, 2), name: 'Dia das Mães', type: 'commemorative' }, // 2º domingo de maio
+    { date: new Date(year, 5, 12), name: 'Dia dos Namorados', type: 'commemorative' },
+    { date: new Date(year, 6, 20), name: 'Dia do Amigo', type: 'commemorative' },
+    { date: new Date(year, 6, 26), name: 'Dia dos Avós', type: 'commemorative' },
+    { date: nthWeekdayOfMonth(year, 7, 0, 2), name: 'Dia dos Pais', type: 'commemorative' }, // 2º domingo de agosto
+    { date: new Date(year, 9, 12), name: 'Dia das Crianças', type: 'commemorative' },
+    { date: new Date(year, 9, 15), name: 'Dia do Professor', type: 'commemorative' },
+    { date: new Date(year, 10, 19), name: 'Black Friday (referência)', type: 'commemorative' },
+  ];
+
+  return [...fixedHolidays, ...moveableHolidays, ...commemorativeDates].sort(
+    (a, b) => a.date.getTime() - b.date.getTime(),
+  );
 }
 
 /**

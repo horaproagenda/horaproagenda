@@ -2132,9 +2132,11 @@ Até breve! ✨`;
     <AlertDialog open={showHolidayConfirm} onOpenChange={setShowHolidayConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Data em feriado</AlertDialogTitle>
+          <AlertDialogTitle>
+            {selectedHoliday?.type === 'commemorative' ? 'Data comemorativa' : 'Feriado nacional'}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            A data selecionada é feriado: {selectedHoliday?.name}. Deseja continuar com este agendamento?
+            A data selecionada é {selectedHoliday?.type === 'commemorative' ? 'uma data comemorativa' : 'um feriado'}: <strong>{selectedHoliday?.name}</strong>. Deseja realmente agendar nesta data?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -1257,17 +1257,20 @@ const Agenda = () => {
                     )}
                   >
                     {holiday && !isSelected && (
-                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                      <Umbrella className={cn(
+                        "absolute top-1 right-1 h-2.5 w-2.5",
+                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                      )} />
                     )}
                     <span className={cn(
                       'text-[10px] sm:text-xs font-medium uppercase whitespace-nowrap tracking-tight',
-                      isSelected ? 'text-primary-foreground/80' : holiday ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                      isSelected ? 'text-primary-foreground/80' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400') : 'text-muted-foreground'
                     )}>
                       {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                     </span>
                     <span className={cn(
                       'text-lg font-semibold',
-                      isSelected ? 'text-primary-foreground' : holiday ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'
+                      isSelected ? 'text-primary-foreground' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300') : 'text-foreground'
                     )}>
                       {format(day, 'd')}
                     </span>
@@ -1276,7 +1279,9 @@ const Agenda = () => {
                 {holiday && (
                   <TooltipContent>
                     <p className="font-medium">{holiday.name}</p>
-                    <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                    <p className="text-xs text-muted-foreground">
+                      {holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}
+                    </p>
                   </TooltipContent>
                 )}
               </Tooltip>

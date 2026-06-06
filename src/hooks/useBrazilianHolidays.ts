@@ -4,7 +4,17 @@ import { isSameDay, addDays } from 'date-fns';
 export interface Holiday {
   date: Date;
   name: string;
-  type: 'national' | 'state' | 'municipal';
+  type: 'national' | 'state' | 'municipal' | 'commemorative';
+}
+
+/**
+ * Returns the date of the Nth occurrence of a given weekday in a month.
+ * weekday: 0 = Sunday, 1 = Monday, ...
+ */
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: number): Date {
+  const firstDay = new Date(year, month, 1);
+  const offset = (weekday - firstDay.getDay() + 7) % 7;
+  return new Date(year, month, 1 + offset + (n - 1) * 7);
 }
 
 /**

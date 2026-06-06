@@ -1405,7 +1405,9 @@ const Agenda = () => {
                       isSelected 
                         ? 'bg-primary text-primary-foreground shadow-glow' 
                         : holiday && isCurrentMonth
-                          ? 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                          ? (holiday.type === 'commemorative'
+                              ? 'bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30'
+                              : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30')
                           : hasAbsence && isCurrentMonth
                             ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800'
                             : 'hover:bg-secondary',
@@ -1415,7 +1417,10 @@ const Agenda = () => {
                   >
                     {/* Holiday indicator */}
                     {holiday && !isSelected && isCurrentMonth && (
-                      <Star className="absolute top-1 right-1 h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                      <Umbrella className={cn(
+                        "absolute top-1 right-1 h-2.5 w-2.5",
+                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                      )} />
                     )}
                     {/* Absence indicator */}
                     {hasAbsence && !holiday && !isSelected && isCurrentMonth && (
@@ -1426,7 +1431,7 @@ const Agenda = () => {
                       isSelected 
                         ? 'text-primary-foreground' 
                         : holiday && isCurrentMonth 
-                          ? 'text-amber-700 dark:text-amber-300' 
+                          ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300')
                           : hasAbsence && isCurrentMonth
                             ? 'text-orange-700 dark:text-orange-300'
                             : 'text-foreground'
@@ -1464,7 +1469,9 @@ const Agenda = () => {
                     {holiday && (
                       <>
                         <p className="font-medium">{holiday.name}</p>
-                        <p className="text-xs text-muted-foreground">Feriado Nacional</p>
+                        <p className="text-xs text-muted-foreground">
+                          {holiday.type === 'commemorative' ? 'Data comemorativa' : 'Feriado Nacional'}
+                        </p>
                       </>
                     )}
                     {hasAbsence && !holiday && (

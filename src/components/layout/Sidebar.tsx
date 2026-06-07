@@ -103,7 +103,11 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     if (navRef.current) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
-    if (onMobileClose) onMobileClose();
+    // Fecha o drawer APÓS o React Router processar a navegação,
+    // evitando que a animação de translate cancele o toque no mobile.
+    if (onMobileClose) {
+      setTimeout(() => onMobileClose(), 0);
+    }
   };
 
   return (

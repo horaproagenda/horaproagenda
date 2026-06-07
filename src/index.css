@@ -86,6 +86,7 @@ textarea {
 /* Botões e elementos clicáveis: aparência consistente WebKit/Blink */
 button,
 [role="button"],
+a,
 input[type="button"],
 input[type="submit"] {
   -webkit-appearance: none;
@@ -93,6 +94,11 @@ input[type="submit"] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   font-family: inherit;
+}
+
+/* Reduz o atraso de 300ms em toques em qualquer elemento interativo */
+a, button, [role="button"], [role="menuitem"], [role="tab"], [role="option"] {
+  touch-action: manipulation;
 }
 
 /* ============================================================

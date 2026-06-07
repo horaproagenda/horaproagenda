@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { Navigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
+import { useIsSmartphone } from '@/hooks/use-mobile';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Users, Filter } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -19,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Index = () => {
+  const isSmartphone = useIsSmartphone();
   const today = new Date();
   const [selectedProfessional, setSelectedProfessional] = useLocalStorage<string | null>('dashboard-professional', null);
   
@@ -44,6 +47,8 @@ const Index = () => {
   }, [todayAppointments]);
 
   const { data: clientCreditsMap } = useClientsCredits(clientIds);
+
+  if (isSmartphone) return <Navigate to="/agenda" replace />;
 
   return (
     <AppLayout 

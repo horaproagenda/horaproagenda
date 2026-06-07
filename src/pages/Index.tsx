@@ -48,6 +48,8 @@ const Index = () => {
 
   const { data: clientCreditsMap } = useClientsCredits(clientIds);
 
+  if (isSmartphone) return <Navigate to="/agenda" replace />;
+
   return (
     <AppLayout 
       title="Dashboard" 

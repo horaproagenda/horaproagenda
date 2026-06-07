@@ -60,6 +60,10 @@ interface SidebarProps {
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile, hasRole, user } = useAuth();
+  const isMobile = useIsMobile();
+  // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
+  // evitando que o primeiro toque abra tooltip em vez de navegar.
+  const effectiveCollapsed = isCollapsed && !isMobile;
   const isPlatformOwner = isSuperAdminEmail(user?.email);
   const visibleNavigation = navigation.filter(item => {
     if (item.superAdminOnly && !(hasRole('super_admin') && isPlatformOwner)) return false;

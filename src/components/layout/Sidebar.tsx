@@ -193,7 +193,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                       onClick={handleNavClick}
                       className={({ isActive }) =>
                         cn(
-                          'flex items-center justify-center rounded-lg p-3 transition-all duration-200',
+                          'flex items-center justify-center rounded-lg p-3 transition-all duration-200 touch-manipulation select-none active:scale-[0.97]',
                           isActive
                             ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
                             : 'text-sidebar-foreground hover:bg-sidebar-accent/50'

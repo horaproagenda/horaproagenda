@@ -111,7 +111,7 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
+export function ClientReportTab({ appointments, clientName, clientId, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
   const queryClient = useQueryClient();
   const { equipment } = useEquipment();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);

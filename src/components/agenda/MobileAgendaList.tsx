@@ -228,7 +228,7 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
                   isToday && !isSelected && 'ring-1 ring-primary/40',
                 )}
               >
-                <span className={cn('text-[9px] font-medium uppercase', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                <span className={cn('text-[10px] font-medium uppercase', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                   {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                 </span>
                 <span className={cn('text-[13px] font-bold leading-tight', isSelected ? 'text-primary-foreground' : 'text-foreground')}>
@@ -236,7 +236,7 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
                 </span>
                 <div className="flex items-center gap-0.5 mt-0.5">
                   {count > 0 && (
-                    <span className={cn('text-[8px] font-semibold', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    <span className={cn('text-[10px] font-semibold', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                       {count}
                     </span>
                   )}
@@ -296,7 +296,7 @@ function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }:
       <div className="px-4 pl-safe pr-safe pb-4 pt-1">
         <div className="grid grid-cols-7 mb-1">
           {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
-            <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground uppercase py-1">
+            <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground uppercase py-1">
               {d}
             </div>
           ))}
@@ -340,7 +340,7 @@ function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }:
                         <div key={i} className={cn('h-1 w-1 rounded-full', isSelected ? 'bg-primary-foreground/70' : 'bg-primary/60')} />
                       ))
                     ) : (
-                      <span className={cn('text-[8px] font-bold', isSelected ? 'text-primary-foreground/80' : 'text-primary/70')}>
+                      <span className={cn('text-[10px] font-bold', isSelected ? 'text-primary-foreground/80' : 'text-primary/70')}>
                         {count}
                       </span>
                     )}
@@ -467,7 +467,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
     >
       <div className="flex-shrink-0 w-9 text-center">
         <span className="text-[11px] font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
-        <p className="text-[8px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
       </div>
 
       <div className="flex-1 min-w-0">
@@ -478,7 +478,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
           {displayName}
         </p>
         {applicationLabel && (
-          <p className="text-[9px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
         )}
         {prof && (
           <div className="flex items-center gap-1 mt-0.5 min-w-0">
@@ -486,7 +486,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
               className="h-1 w-1 rounded-full flex-shrink-0"
               style={{ backgroundColor: profColor, boxShadow: `0 0 0 1px ${profColor}40` }}
             />
-            <span className="text-[9px] font-medium truncate" style={{ color: profColor }}>
+            <span className="text-[10px] font-medium truncate" style={{ color: profColor }}>
               {prof.name.split(' ')[0]}
             </span>
           </div>

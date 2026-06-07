@@ -581,7 +581,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       <Card>
         <CardContent className="p-3">
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico Detalhado</h3>
-          {filteredAppointments.length === 0 ? (
+          {filteredAppointments.length === 0 && filteredPendingSessions.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-xs">Nenhum agendamento neste período</p>

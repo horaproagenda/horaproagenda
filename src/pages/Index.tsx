@@ -21,6 +21,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Index = () => {
+  const isSmartphone = useIsSmartphone();
+  if (isSmartphone) return <Navigate to="/agenda" replace />;
+
   const today = new Date();
   const [selectedProfessional, setSelectedProfessional] = useLocalStorage<string | null>('dashboard-professional', null);
   

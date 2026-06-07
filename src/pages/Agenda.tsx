@@ -1657,7 +1657,8 @@ const Agenda = () => {
   // Render mobile-optimized smartphone view
   const renderSmartphoneView = () => {
     return (
-      <div className="flex flex-col h-full -mx-2 -mt-2">
+      <div className="flex flex-col h-full -mx-4 -mt-3 -mb-4 pb-safe">
+
         {/* Mobile Header */}
         <MobileAgendaHeader
           selectedDate={selectedDate}

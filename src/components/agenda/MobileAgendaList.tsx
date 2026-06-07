@@ -161,8 +161,8 @@ function MobileDayView({ selectedDate, appointments, absences, professionals, on
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="space-y-0.5 px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="space-y-0.5 px-4 pl-safe pr-safe pb-4 pt-1">
         {Object.entries(grouped).map(([hour, items]) => (
           <div key={hour} className="space-y-0.5">
             <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-0.5 px-1">
@@ -210,8 +210,8 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="px-4 pl-safe pr-safe pb-4 pt-1">
         <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
           {weekDays.map((day) => {
             const isSelected = isSameDay(day, selectedDate);
@@ -292,8 +292,8 @@ function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }:
   const allDays = [...prevDays, ...days, ...nextDays];
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="px-4 pl-safe pr-safe pb-4 pt-1">
         <div className="grid grid-cols-7 mb-1">
           {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
             <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground uppercase py-1">

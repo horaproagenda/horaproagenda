@@ -62,8 +62,27 @@ interface PaymentHistoryItem {
 interface ClientReportTabProps {
   appointments: Appointment[];
   clientName: string;
+  clientId?: string;
   paymentHistory?: PaymentHistoryItem[];
   onEditAppointment?: (appointment: Appointment) => void;
+}
+
+interface PendingPackageSession {
+  id: string;
+  session_number: number | null;
+  sequence_order: number | null;
+  scheduled_date: string | null;
+  status: string | null;
+  package: {
+    id: string;
+    name: string | null;
+    total_sessions: number | null;
+    interval_days: number | null;
+    professional?: { name: string | null } | null;
+    room?: { name: string | null } | null;
+    service?: { name: string | null } | null;
+    equipment?: string[] | null;
+  } | null;
 }
 
 const statusOptions = [
@@ -92,7 +111,7 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientReportTab({ appointments, clientName, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
+export function ClientReportTab({ appointments, clientName, clientId, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
   const queryClient = useQueryClient();
   const { equipment } = useEquipment();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -145,7 +164,35 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     .filter(Boolean)
     .join(', ');
 
-  const filteredAppointments = useMemo(() => 
+  // Fetch package sessions that are still pending (not yet scheduled in agenda).
+  // These appear in package counters ("2 aplicações para concluir") but had no row here.
+  const resolvedClientId = clientId || appointments[0]?.client_id || '';
+  const { data: pendingPackageSessions = [] } = useQuery<PendingPackageSession[]>({
+    queryKey: ['client-pending-package-sessions', resolvedClientId],
+    enabled: !!resolvedClientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('package_appointments')
+        .select(`
+          id, session_number, sequence_order, scheduled_date, status, appointment_id,
+          package:service_packages!inner(
+            id, name, total_sessions, interval_days, client_id,
+            professional:professionals(name),
+            room:rooms(name),
+            service:services(name),
+            equipment
+          )
+        `)
+        .is('appointment_id', null)
+        .not('status', 'in', '(completed,missed)')
+        .eq('package.client_id', resolvedClientId);
+      if (error) throw error;
+      return (data || []) as unknown as PendingPackageSession[];
+    },
+    staleTime: 15_000,
+  });
+
+  const filteredAppointments = useMemo(() =>
     appointments.filter(a => {
       const matchesMonth = filterByMonth(a.start_time);
       const matchesStatus = selectedStatus === 'all' || a.status === selectedStatus;
@@ -153,6 +200,23 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
     }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
     [appointments, selectedMonth, selectedStatus]
   );
+
+  const filteredPendingSessions = useMemo(() => {
+    if (selectedStatus !== 'all' && selectedStatus !== 'scheduled') return [];
+    return pendingPackageSessions
+      .filter(s => !!s.package)
+      .filter(s => {
+        if (selectedMonth === 'all') return true;
+        if (!s.scheduled_date) return false;
+        return filterByMonth(s.scheduled_date);
+      })
+      .sort((a, b) => {
+        const da = a.scheduled_date ? new Date(a.scheduled_date).getTime() : Number.MAX_SAFE_INTEGER;
+        const db = b.scheduled_date ? new Date(b.scheduled_date).getTime() : Number.MAX_SAFE_INTEGER;
+        if (da !== db) return da - db;
+        return (a.session_number || 0) - (b.session_number || 0);
+      });
+  }, [pendingPackageSessions, selectedMonth, selectedStatus]);
 
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({
@@ -517,7 +581,7 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
       <Card>
         <CardContent className="p-3">
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico Detalhado</h3>
-          {filteredAppointments.length === 0 ? (
+          {filteredAppointments.length === 0 && filteredPendingSessions.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-xs">Nenhum agendamento neste período</p>
@@ -625,6 +689,47 @@ export function ClientReportTab({ appointments, clientName, paymentHistory = [],
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {filteredPendingSessions.map(session => {
+                    const pkg = session.package!;
+                    const equipmentNames = getEquipmentNames(pkg.equipment || []);
+                    const totalSessions = pkg.total_sessions || 0;
+                    const seqNumber = session.session_number || session.sequence_order || 0;
+                    const applicationLabel = totalSessions
+                      ? `Aplicação ${seqNumber}/${totalSessions}`
+                      : `Aplicação ${seqNumber}`;
+                    return (
+                      <TableRow key={`pending-${session.id}`} className="hover:bg-muted/30 align-top bg-amber-50/30 dark:bg-amber-950/10">
+                        <TableCell className="text-xs py-2">
+                          <div className="font-medium leading-tight">{pkg.service?.name || pkg.name || '-'}</div>
+                          {pkg.name && <div className="text-[10px] text-primary font-medium leading-tight mt-0.5">Pacote: {pkg.name}</div>}
+                        </TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums text-muted-foreground">
+                          {session.scheduled_date ? format(new Date(`${session.scheduled_date.split('T')[0]}T12:00:00`), 'dd/MM/yyyy') : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap text-muted-foreground">—</TableCell>
+                        <TableCell className="text-xs py-2 whitespace-nowrap text-muted-foreground">—</TableCell>
+                        <TableCell className="text-xs py-2">{pkg.professional?.name || '-'}</TableCell>
+                        <TableCell className="text-xs py-2">{pkg.room?.name || '-'}</TableCell>
+                        <TableCell className="text-xs py-2">{equipmentNames || '-'}</TableCell>
+                        <TableCell className="py-2">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">{applicationLabel}</Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap border-amber-400 text-amber-700 bg-amber-50">
+                            A agendar
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2 text-center">
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex justify-end items-center gap-1 whitespace-nowrap">
+                            <span className="text-[10px] text-muted-foreground">Agende pela Agenda</span>
                           </div>
                         </TableCell>
                       </TableRow>

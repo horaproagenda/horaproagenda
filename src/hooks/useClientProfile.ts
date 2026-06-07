@@ -223,6 +223,7 @@ export function useClientProfile(clientId: string) {
           queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
           queryClient.invalidateQueries({ queryKey: ['package_details'] });
           queryClient.invalidateQueries({ queryKey: ['client_credits', clientId] });
+          queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', clientId] });
         }
       )
       .subscribe();

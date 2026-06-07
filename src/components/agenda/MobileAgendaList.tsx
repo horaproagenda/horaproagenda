@@ -465,18 +465,19 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
         background: `linear-gradient(to right, ${profColor}10, transparent 30%)`,
       }}
     >
-      <div className="flex-shrink-0 w-9 text-center">
-        <span className="text-[11px] font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
+      <div className="flex-shrink-0 w-11 text-center">
+        <span className="text-xs font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
         <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
+        <p className="text-xs font-semibold text-foreground truncate leading-tight">
           {apt.client?.name || 'Cliente'}
         </p>
-        <p className="text-[10px] text-muted-foreground truncate leading-tight">
+        <p className="text-[11px] text-muted-foreground truncate leading-tight">
           {displayName}
         </p>
+
         {applicationLabel && (
           <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
         )}

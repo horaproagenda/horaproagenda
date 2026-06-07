@@ -121,7 +121,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           // Safe-area: respeita notch/status bar/home indicator (iOS) e display cutout (Android).
           // Sem isto, em PWA o menu mobile cobre o relógio/bateria do sistema.
           "fixed left-0 top-0 z-40 h-[100dvh] border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out pt-safe pb-safe pl-safe",
-          isCollapsed ? "w-[72px]" : "w-64",
+          effectiveCollapsed ? "w-[72px]" : "w-64",
           // Mobile: oculta por padrão, abre como drawer
           "md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -131,13 +131,13 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           {/* Logo */}
           <div className={cn(
             "flex h-20 items-center border-b border-sidebar-border transition-all duration-300",
-            isCollapsed ? "px-3 justify-center" : "px-6"
+            effectiveCollapsed ? "px-3 justify-center" : "px-6"
           )}>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-lg">
                 <Sparkles className="h-5 w-5 text-primary-foreground" />
               </div>
-              {!isCollapsed && (
+              {!effectiveCollapsed && (
                 <div className="overflow-hidden">
                   <h1 className="font-display text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
                     Lume Agenda
@@ -149,8 +149,8 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </div>
 
           {/* New Appointment Button */}
-          <div className={cn("p-3", isCollapsed && "px-2")}>
-            {isCollapsed ? (
+          <div className={cn("p-3", effectiveCollapsed && "px-2")}>
+            {effectiveCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
@@ -180,7 +180,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           {/* Navigation */}
           <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 space-y-1 px-2 py-2 overflow-y-auto overscroll-contain">
             {visibleNavigation.map((item) => (
-              isCollapsed ? (
+              effectiveCollapsed ? (
                 <Tooltip key={item.name}>
                   <TooltipTrigger asChild>
                     <NavLink
@@ -226,8 +226,8 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </nav>
 
           {/* Logout Button */}
-          <div className={cn("px-2 py-1", isCollapsed && "px-2")}>
-            {isCollapsed ? (
+          <div className={cn("px-2 py-1", effectiveCollapsed && "px-2")}>
+            {effectiveCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -260,10 +260,10 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
               onClick={onToggleCollapse}
               className={cn(
                 "w-full h-10 flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors",
-                isCollapsed && "p-0"
+                effectiveCollapsed && "p-0"
               )}
             >
-              {isCollapsed ? (
+              {effectiveCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
                 <>
@@ -275,7 +275,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           </div>
 
           {/* Footer */}
-          {!isCollapsed ? (
+          {!effectiveCollapsed ? (
             <div className="border-t border-sidebar-border p-4">
               <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-4">
                 <p className="text-xs font-medium text-foreground">

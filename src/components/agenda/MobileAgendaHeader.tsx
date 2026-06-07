@@ -92,7 +92,7 @@ export function MobileAgendaHeader({
   };
   
   return (
-    <div className="space-y-1.5 px-2 pt-1.5 pb-1 bg-card border-b border-border/50">
+    <div className="space-y-1.5 px-4 pl-safe pr-safe pt-1.5 pb-1 bg-card border-b border-border/50">
       {/* Row 1: View tabs */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex bg-muted/60 rounded-md p-0.5 gap-0.5">

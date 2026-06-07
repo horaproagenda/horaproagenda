@@ -161,8 +161,8 @@ function MobileDayView({ selectedDate, appointments, absences, professionals, on
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="space-y-0.5 px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="space-y-0.5 px-4 pl-safe pr-safe pb-4 pt-1">
         {Object.entries(grouped).map(([hour, items]) => (
           <div key={hour} className="space-y-0.5">
             <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-0.5 px-1">
@@ -210,8 +210,8 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="px-4 pl-safe pr-safe pb-4 pt-1">
         <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
           {weekDays.map((day) => {
             const isSelected = isSameDay(day, selectedDate);
@@ -228,7 +228,7 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
                   isToday && !isSelected && 'ring-1 ring-primary/40',
                 )}
               >
-                <span className={cn('text-[9px] font-medium uppercase', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                <span className={cn('text-[10px] font-medium uppercase', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                   {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                 </span>
                 <span className={cn('text-[13px] font-bold leading-tight', isSelected ? 'text-primary-foreground' : 'text-foreground')}>
@@ -236,7 +236,7 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
                 </span>
                 <div className="flex items-center gap-0.5 mt-0.5">
                   {count > 0 && (
-                    <span className={cn('text-[8px] font-semibold', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    <span className={cn('text-[10px] font-semibold', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                       {count}
                     </span>
                   )}
@@ -292,11 +292,11 @@ function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }:
   const allDays = [...prevDays, ...days, ...nextDays];
 
   return (
-    <ScrollArea className="h-[calc(100vh-210px)]">
-      <div className="px-2 pb-4 pt-1">
+    <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
+      <div className="px-4 pl-safe pr-safe pb-4 pt-1">
         <div className="grid grid-cols-7 mb-1">
           {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
-            <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground uppercase py-1">
+            <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground uppercase py-1">
               {d}
             </div>
           ))}
@@ -340,7 +340,7 @@ function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }:
                         <div key={i} className={cn('h-1 w-1 rounded-full', isSelected ? 'bg-primary-foreground/70' : 'bg-primary/60')} />
                       ))
                     ) : (
-                      <span className={cn('text-[8px] font-bold', isSelected ? 'text-primary-foreground/80' : 'text-primary/70')}>
+                      <span className={cn('text-[10px] font-bold', isSelected ? 'text-primary-foreground/80' : 'text-primary/70')}>
                         {count}
                       </span>
                     )}
@@ -465,20 +465,21 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
         background: `linear-gradient(to right, ${profColor}10, transparent 30%)`,
       }}
     >
-      <div className="flex-shrink-0 w-9 text-center">
-        <span className="text-[11px] font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
-        <p className="text-[8px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
+      <div className="flex-shrink-0 w-11 text-center">
+        <span className="text-xs font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
+        <p className="text-xs font-semibold text-foreground truncate leading-tight">
           {apt.client?.name || 'Cliente'}
         </p>
-        <p className="text-[10px] text-muted-foreground truncate leading-tight">
+        <p className="text-[11px] text-muted-foreground truncate leading-tight">
           {displayName}
         </p>
+
         {applicationLabel && (
-          <p className="text-[9px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
         )}
         {prof && (
           <div className="flex items-center gap-1 mt-0.5 min-w-0">
@@ -486,7 +487,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
               className="h-1 w-1 rounded-full flex-shrink-0"
               style={{ backgroundColor: profColor, boxShadow: `0 0 0 1px ${profColor}40` }}
             />
-            <span className="text-[9px] font-medium truncate" style={{ color: profColor }}>
+            <span className="text-[10px] font-medium truncate" style={{ color: profColor }}>
               {prof.name.split(' ')[0]}
             </span>
           </div>

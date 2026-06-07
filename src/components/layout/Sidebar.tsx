@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 

@@ -149,6 +149,7 @@ export default function ClienteDetalhes() {
             <ClientReportTab 
               appointments={appointments} 
               clientName={client.name} 
+              clientId={client.id}
               paymentHistory={paymentHistory}
               onEditAppointment={setEditingAppointment}
             />

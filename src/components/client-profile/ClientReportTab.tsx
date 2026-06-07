@@ -62,8 +62,27 @@ interface PaymentHistoryItem {
 interface ClientReportTabProps {
   appointments: Appointment[];
   clientName: string;
+  clientId?: string;
   paymentHistory?: PaymentHistoryItem[];
   onEditAppointment?: (appointment: Appointment) => void;
+}
+
+interface PendingPackageSession {
+  id: string;
+  session_number: number | null;
+  sequence_order: number | null;
+  scheduled_date: string | null;
+  status: string | null;
+  package: {
+    id: string;
+    name: string | null;
+    total_sessions: number | null;
+    interval_days: number | null;
+    professional?: { name: string | null } | null;
+    room?: { name: string | null } | null;
+    service?: { name: string | null } | null;
+    equipment?: string[] | null;
+  } | null;
 }
 
 const statusOptions = [

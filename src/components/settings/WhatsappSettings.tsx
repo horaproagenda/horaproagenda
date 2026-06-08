@@ -546,6 +546,90 @@ export function WhatsappSettings() {
             </div>
           </div>
         )}
+
+        {isAdmin && (
+          <div className="space-y-3 rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-medium">Pool de instâncias UltraMsg (pago pelo salão)</p>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span>Livres: <span className="font-medium text-foreground">{pool.filter(p => p.status === 'free').length}</span></span>
+                <span>·</span>
+                <span>Em uso: <span className="font-medium text-foreground">{pool.filter(p => p.status === 'assigned').length}</span></span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Compre instâncias em <code>user.ultramsg.com</code> com sua conta. Para cada instância paga, cole abaixo o Instance ID e o Token. Quando um profissional clicar em <em>Conectar ao WhatsApp (automático)</em>, o app pega a próxima instância livre desta lista.
+            </p>
+
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Input
+                value={newPool.instance_id}
+                onChange={(e) => setNewPool(p => ({ ...p, instance_id: e.target.value }))}
+                placeholder="instanceXXXXX"
+                className="h-8 text-xs"
+              />
+              <Input
+                value={newPool.token}
+                onChange={(e) => setNewPool(p => ({ ...p, token: e.target.value }))}
+                placeholder="token UltraMsg"
+                className="h-8 text-xs"
+                type="password"
+              />
+              <Input
+                value={newPool.notes}
+                onChange={(e) => setNewPool(p => ({ ...p, notes: e.target.value }))}
+                placeholder="anotação (opcional)"
+                className="h-8 text-xs"
+              />
+              <Button size="sm" onClick={handleAddPoolInstance} disabled={addingPool} className="h-8">
+                {addingPool ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                Adicionar
+              </Button>
+            </div>
+
+            {poolLoading ? (
+              <div className="flex items-center justify-center py-4 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> Carregando…
+              </div>
+            ) : pool.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic py-2">
+                Nenhuma instância no pool. Adicione a primeira acima.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {pool.map((row) => {
+                  const profName = row.assigned_professional_id
+                    ? professionals.find(p => p.id === row.assigned_professional_id)?.name ?? '—'
+                    : null;
+                  return (
+                    <div key={row.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <code className="text-foreground truncate">{row.instance_id}</code>
+                        {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre</Badge>}
+                        {row.status === 'assigned' && (
+                          <Badge className="bg-green-500 text-[10px]">em uso · {profName}</Badge>
+                        )}
+                        {row.status === 'disabled' && <Badge variant="destructive" className="text-[10px]">desabilitada</Badge>}
+                        {row.notes && <span className="text-muted-foreground truncate">· {row.notes}</span>}
+                      </div>
+                      <Button
+                        size="icon" variant="ghost"
+                        onClick={() => handleRemovePoolInstance(row)}
+                        className="h-7 w-7 text-destructive"
+                        title="Remover do pool"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

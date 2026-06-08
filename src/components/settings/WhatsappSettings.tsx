@@ -509,13 +509,24 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          {!connected && selectedProfId && (
+          {!connected && selectedProfId && !credsMap[selectedProfId] && (
+            <Button onClick={handleClaimFromPool} disabled={claiming} className="bg-green-600 hover:bg-green-700">
+              {claiming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+              Conectar ao WhatsApp (automático)
+            </Button>
+          )}
+          {!connected && selectedProfId && credsMap[selectedProfId] && (
             <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
               {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
               Gerar QR Code
             </Button>
           )}
         </div>
+        {!connected && selectedProfId && !credsMap[selectedProfId] && (
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            Ao clicar em <em>Conectar ao WhatsApp (automático)</em>, o app reserva uma instância já paga pelo salão e mostra o QR Code para o profissional escanear no celular dele. Sem precisar criar conta no UltraMsg.
+          </p>
+        )}
 
         {!connected && (qrCode || pairingCode) && (
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[180px_1fr]">

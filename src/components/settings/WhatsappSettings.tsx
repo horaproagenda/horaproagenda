@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock, Zap, Package, Plus, Trash2 } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
@@ -44,6 +44,18 @@ export function WhatsappSettings() {
   const [quietHours, setQuietHours] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  // Pool (admin-only)
+  type PoolRow = {
+    id: string; instance_id: string; token: string; api_url: string | null;
+    status: 'free' | 'assigned' | 'disabled';
+    assigned_professional_id: string | null; assigned_at: string | null; notes: string | null;
+  };
+  const [pool, setPool] = useState<PoolRow[]>([]);
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [newPool, setNewPool] = useState({ instance_id: '', token: '', api_url: '', notes: '' });
+  const [addingPool, setAddingPool] = useState(false);
 
   // Bootstrap: roles, my professional, list of professionals (admin only).
   useEffect(() => {
@@ -76,8 +88,91 @@ export function WhatsappSettings() {
       const map: Record<string, Creds> = {};
       (rows ?? []).forEach((r: any) => { map[r.professional_id] = r; });
       setCredsMap(map);
+
+      if (admin) await loadPool();
     })();
   }, []);
+
+  const loadPool = async () => {
+    setPoolLoading(true);
+    const { data } = await supabase
+      .from('ultramsg_instance_pool')
+      .select('id, instance_id, token, api_url, status, assigned_professional_id, assigned_at, notes')
+      .order('created_at', { ascending: true });
+    setPool((data as PoolRow[]) ?? []);
+    setPoolLoading(false);
+  };
+
+  const handleAddPoolInstance = async () => {
+    if (!newPool.instance_id.trim() || !newPool.token.trim()) {
+      toast.error('Informe instance_id e token.');
+      return;
+    }
+    setAddingPool(true);
+    const { error } = await supabase.from('ultramsg_instance_pool').insert({
+      instance_id: newPool.instance_id.trim(),
+      token: newPool.token.trim(),
+      api_url: newPool.api_url.trim() || null,
+      notes: newPool.notes.trim() || null,
+      status: 'free',
+    });
+    setAddingPool(false);
+    if (error) return toast.error('Erro ao adicionar: ' + error.message);
+    toast.success('Instância adicionada ao pool.');
+    setNewPool({ instance_id: '', token: '', api_url: '', notes: '' });
+    void loadPool();
+  };
+
+  const handleRemovePoolInstance = async (row: PoolRow) => {
+    if (row.status === 'assigned') {
+      const ok = window.confirm(`Esta instância está atribuída a um profissional. Remover vai desconectar o WhatsApp dele. Confirma?`);
+      if (!ok) return;
+      // Also remove from credentials so it stops being used.
+      if (row.assigned_professional_id) {
+        await supabase.from('professional_whatsapp_credentials')
+          .delete().eq('professional_id', row.assigned_professional_id);
+      }
+    }
+    const { error } = await supabase.from('ultramsg_instance_pool').delete().eq('id', row.id);
+    if (error) return toast.error('Erro ao remover: ' + error.message);
+    toast.success('Removida do pool.');
+    void loadPool();
+    // Refresh creds map
+    const { data: rows } = await supabase
+      .from('professional_whatsapp_credentials')
+      .select('professional_id, api_url, instance_id, token, is_active, last_connected_at');
+    const m: Record<string, Creds> = {};
+    (rows ?? []).forEach((r: any) => { m[r.professional_id] = r; });
+    setCredsMap(m);
+  };
+
+  const handleClaimFromPool = async () => {
+    if (!selectedProfId) {
+      toast.error('Selecione um profissional.');
+      return;
+    }
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-claim-pool-instance', {
+        body: { professional_id: selectedProfId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao reivindicar instância.');
+      toast.success(`Instância ${data.instance} vinculada. Gere o QR Code para conectar o celular.`);
+      // Refresh local state.
+      const { data: row } = await supabase
+        .from('professional_whatsapp_credentials')
+        .select('professional_id, api_url, instance_id, token, is_active, last_connected_at')
+        .eq('professional_id', selectedProfId).maybeSingle();
+      if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
+      if (isAdmin) void loadPool();
+      void checkConnection(selectedProfId);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao reivindicar instância.');
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   // When selected professional changes, populate the form and refresh status for that account.
   useEffect(() => {
@@ -414,13 +509,24 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          {!connected && selectedProfId && (
+          {!connected && selectedProfId && !credsMap[selectedProfId] && (
+            <Button onClick={handleClaimFromPool} disabled={claiming} className="bg-green-600 hover:bg-green-700">
+              {claiming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+              Conectar ao WhatsApp (automático)
+            </Button>
+          )}
+          {!connected && selectedProfId && credsMap[selectedProfId] && (
             <Button onClick={handleGenerateQr} disabled={isLoadingQR}>
               {isLoadingQR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
               Gerar QR Code
             </Button>
           )}
         </div>
+        {!connected && selectedProfId && !credsMap[selectedProfId] && (
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            Ao clicar em <em>Conectar ao WhatsApp (automático)</em>, o app reserva uma instância já paga pelo salão e mostra o QR Code para o profissional escanear no celular dele. Sem precisar criar conta no UltraMsg.
+          </p>
+        )}
 
         {!connected && (qrCode || pairingCode) && (
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[180px_1fr]">
@@ -438,6 +544,90 @@ export function WhatsappSettings() {
               <p>WhatsApp → Dispositivos conectados → Conectar dispositivo.</p>
               {pairingCode && <p>Código de pareamento: <span className="font-mono text-foreground">{pairingCode}</span></p>}
             </div>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="space-y-3 rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-medium">Pool de instâncias UltraMsg (pago pelo salão)</p>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span>Livres: <span className="font-medium text-foreground">{pool.filter(p => p.status === 'free').length}</span></span>
+                <span>·</span>
+                <span>Em uso: <span className="font-medium text-foreground">{pool.filter(p => p.status === 'assigned').length}</span></span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Compre instâncias em <code>user.ultramsg.com</code> com sua conta. Para cada instância paga, cole abaixo o Instance ID e o Token. Quando um profissional clicar em <em>Conectar ao WhatsApp (automático)</em>, o app pega a próxima instância livre desta lista.
+            </p>
+
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Input
+                value={newPool.instance_id}
+                onChange={(e) => setNewPool(p => ({ ...p, instance_id: e.target.value }))}
+                placeholder="instanceXXXXX"
+                className="h-8 text-xs"
+              />
+              <Input
+                value={newPool.token}
+                onChange={(e) => setNewPool(p => ({ ...p, token: e.target.value }))}
+                placeholder="token UltraMsg"
+                className="h-8 text-xs"
+                type="password"
+              />
+              <Input
+                value={newPool.notes}
+                onChange={(e) => setNewPool(p => ({ ...p, notes: e.target.value }))}
+                placeholder="anotação (opcional)"
+                className="h-8 text-xs"
+              />
+              <Button size="sm" onClick={handleAddPoolInstance} disabled={addingPool} className="h-8">
+                {addingPool ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                Adicionar
+              </Button>
+            </div>
+
+            {poolLoading ? (
+              <div className="flex items-center justify-center py-4 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> Carregando…
+              </div>
+            ) : pool.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic py-2">
+                Nenhuma instância no pool. Adicione a primeira acima.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {pool.map((row) => {
+                  const profName = row.assigned_professional_id
+                    ? professionals.find(p => p.id === row.assigned_professional_id)?.name ?? '—'
+                    : null;
+                  return (
+                    <div key={row.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <code className="text-foreground truncate">{row.instance_id}</code>
+                        {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre</Badge>}
+                        {row.status === 'assigned' && (
+                          <Badge className="bg-green-500 text-[10px]">em uso · {profName}</Badge>
+                        )}
+                        {row.status === 'disabled' && <Badge variant="destructive" className="text-[10px]">desabilitada</Badge>}
+                        {row.notes && <span className="text-muted-foreground truncate">· {row.notes}</span>}
+                      </div>
+                      <Button
+                        size="icon" variant="ghost"
+                        onClick={() => handleRemovePoolInstance(row)}
+                        className="h-7 w-7 text-destructive"
+                        title="Remover do pool"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

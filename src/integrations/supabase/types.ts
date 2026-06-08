@@ -3931,6 +3931,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ultramsg_instance_pool: {
+        Row: {
+          api_url: string | null
+          assigned_at: string | null
+          assigned_professional_id: string | null
+          created_at: string
+          id: string
+          instance_id: string
+          notes: string | null
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          api_url?: string | null
+          assigned_at?: string | null
+          assigned_professional_id?: string | null
+          created_at?: string
+          id?: string
+          instance_id: string
+          notes?: string | null
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          api_url?: string | null
+          assigned_at?: string | null
+          assigned_professional_id?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string
+          notes?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ultramsg_instance_pool_assigned_professional_id_fkey"
+            columns: ["assigned_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           can_create: boolean
@@ -4410,6 +4457,15 @@ export type Database = {
       check_trial_eligibility: {
         Args: { p_cnpj?: string; p_email: string; p_phone?: string }
         Returns: Json
+      }
+      claim_ultramsg_pool_instance: {
+        Args: { p_professional_id: string }
+        Returns: {
+          api_url: string
+          id: string
+          instance_id: string
+          token: string
+        }[]
       }
       close_cash_register: {
         Args: { p_cash_register_id: string; p_closed_by: string }

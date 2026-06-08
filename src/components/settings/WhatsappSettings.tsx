@@ -88,8 +88,91 @@ export function WhatsappSettings() {
       const map: Record<string, Creds> = {};
       (rows ?? []).forEach((r: any) => { map[r.professional_id] = r; });
       setCredsMap(map);
+
+      if (admin) await loadPool();
     })();
   }, []);
+
+  const loadPool = async () => {
+    setPoolLoading(true);
+    const { data } = await supabase
+      .from('ultramsg_instance_pool')
+      .select('id, instance_id, token, api_url, status, assigned_professional_id, assigned_at, notes')
+      .order('created_at', { ascending: true });
+    setPool((data as PoolRow[]) ?? []);
+    setPoolLoading(false);
+  };
+
+  const handleAddPoolInstance = async () => {
+    if (!newPool.instance_id.trim() || !newPool.token.trim()) {
+      toast.error('Informe instance_id e token.');
+      return;
+    }
+    setAddingPool(true);
+    const { error } = await supabase.from('ultramsg_instance_pool').insert({
+      instance_id: newPool.instance_id.trim(),
+      token: newPool.token.trim(),
+      api_url: newPool.api_url.trim() || null,
+      notes: newPool.notes.trim() || null,
+      status: 'free',
+    });
+    setAddingPool(false);
+    if (error) return toast.error('Erro ao adicionar: ' + error.message);
+    toast.success('Instância adicionada ao pool.');
+    setNewPool({ instance_id: '', token: '', api_url: '', notes: '' });
+    void loadPool();
+  };
+
+  const handleRemovePoolInstance = async (row: PoolRow) => {
+    if (row.status === 'assigned') {
+      const ok = window.confirm(`Esta instância está atribuída a um profissional. Remover vai desconectar o WhatsApp dele. Confirma?`);
+      if (!ok) return;
+      // Also remove from credentials so it stops being used.
+      if (row.assigned_professional_id) {
+        await supabase.from('professional_whatsapp_credentials')
+          .delete().eq('professional_id', row.assigned_professional_id);
+      }
+    }
+    const { error } = await supabase.from('ultramsg_instance_pool').delete().eq('id', row.id);
+    if (error) return toast.error('Erro ao remover: ' + error.message);
+    toast.success('Removida do pool.');
+    void loadPool();
+    // Refresh creds map
+    const { data: rows } = await supabase
+      .from('professional_whatsapp_credentials')
+      .select('professional_id, api_url, instance_id, token, is_active, last_connected_at');
+    const m: Record<string, Creds> = {};
+    (rows ?? []).forEach((r: any) => { m[r.professional_id] = r; });
+    setCredsMap(m);
+  };
+
+  const handleClaimFromPool = async () => {
+    if (!selectedProfId) {
+      toast.error('Selecione um profissional.');
+      return;
+    }
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-claim-pool-instance', {
+        body: { professional_id: selectedProfId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao reivindicar instância.');
+      toast.success(`Instância ${data.instance} vinculada. Gere o QR Code para conectar o celular.`);
+      // Refresh local state.
+      const { data: row } = await supabase
+        .from('professional_whatsapp_credentials')
+        .select('professional_id, api_url, instance_id, token, is_active, last_connected_at')
+        .eq('professional_id', selectedProfId).maybeSingle();
+      if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
+      if (isAdmin) void loadPool();
+      void checkConnection(selectedProfId);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao reivindicar instância.');
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   // When selected professional changes, populate the form and refresh status for that account.
   useEffect(() => {

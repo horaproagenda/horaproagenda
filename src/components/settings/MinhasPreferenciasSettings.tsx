@@ -124,20 +124,33 @@ export function MinhasPreferenciasSettings() {
               <Switch checked={workSun ?? global?.work_sundays ?? false} onCheckedChange={v => setWorkSun(v)} />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8" onClick={saveHours} disabled={update.isPending}>
-              {update.isPending ? 'Salvando…' : 'Salvar meus horários'}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" className="h-8" onClick={saveHours} disabled={update.isPending || !isDirty}>
+              {update.isPending ? 'Salvando…' : isDirty ? 'Salvar meus horários' : 'Salvo'}
             </Button>
             <Button size="sm" variant="ghost" className="h-8 text-xs gap-1"
               onClick={() => {
                 setOpening(''); setClosing(''); setSlot(''); setWorkSat(null); setWorkSun(null);
-                update.mutate({
-                  opening_time: null, closing_time: null, slot_interval: null,
-                  work_saturdays: null, work_sundays: null,
-                });
+                update.mutate(
+                  {
+                    opening_time: null, closing_time: null, slot_interval: null,
+                    work_saturdays: null, work_sundays: null,
+                  },
+                  { onSuccess: () => setLastSavedAt(new Date()) }
+                );
               }}>
               <RotateCcw className="h-3 w-3" /> Voltar ao padrão da conta
             </Button>
+            {isDirty && !update.isPending && (
+              <Badge variant="outline" className="h-5 text-[10px] px-1.5 border-amber-400 text-amber-700 bg-amber-50">
+                Alterações não salvas
+              </Badge>
+            )}
+            {!isDirty && lastSavedAt && !update.isPending && (
+              <span className="text-[10px] text-emerald-700">
+                ✓ Salvo às {lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
           {effective && (
             <p className="text-[10px] text-muted-foreground">

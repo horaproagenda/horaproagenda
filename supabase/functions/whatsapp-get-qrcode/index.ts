@@ -58,7 +58,7 @@ serve(async (req) => {
     const result = await ultramsgGetQrCode(creds);
     if (result.connected) {
       return new Response(JSON.stringify({
-        success: true, connected: true, instance: result.instance, source,
+        success: true, connected: true, source,
         message: 'WhatsApp já está conectado',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -70,8 +70,9 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Não retornamos `instance` ao cliente — é credencial sensível.
     return new Response(JSON.stringify({
-      success: true, qrcode: result.qrcode, instance: result.instance, pairingCode: null, source,
+      success: true, qrcode: result.qrcode, pairingCode: null, source,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

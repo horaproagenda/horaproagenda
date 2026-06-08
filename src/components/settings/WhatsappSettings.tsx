@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save, ShieldCheck, Users, Clock, Zap, Package, Plus, Trash2 } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';

@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users } from 'lucide-react';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
+import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';
 
 interface AdminAccountRow {
   owner_user_id: string;

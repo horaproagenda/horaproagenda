@@ -44,6 +44,18 @@ export function WhatsappSettings() {
   const [quietHours, setQuietHours] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  // Pool (admin-only)
+  type PoolRow = {
+    id: string; instance_id: string; token: string; api_url: string | null;
+    status: 'free' | 'assigned' | 'disabled';
+    assigned_professional_id: string | null; assigned_at: string | null; notes: string | null;
+  };
+  const [pool, setPool] = useState<PoolRow[]>([]);
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [newPool, setNewPool] = useState({ instance_id: '', token: '', api_url: '', notes: '' });
+  const [addingPool, setAddingPool] = useState(false);
 
   // Bootstrap: roles, my professional, list of professionals (admin only).
   useEffect(() => {

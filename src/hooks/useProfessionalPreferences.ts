@@ -110,21 +110,50 @@ export function useProfessionalPreferences() {
 
   const update = useMutation({
     mutationFn: async (patch: Partial<ProfessionalPreferences>) => {
-      if (!user?.id) throw new Error('Sem sessão');
+      if (!user?.id) throw new Error('Sem sessão ativa. Faça login novamente.');
       const payload = { user_id: user.id, ...patch };
+
+      // Timeout de segurança: se o request travar (rede ruim, RLS bloqueando, etc.)
+      // abortamos em 15s para o usuário receber feedback claro em vez de spinner eterno.
+      const timeoutMs = 15000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo esgotado ao salvar (15s). Verifique sua conexão e tente novamente.')), timeoutMs)
+      );
+
+      // .select() confirma a persistência: se o servidor não devolver a linha,
+      // tratamos como falha em vez de assumir sucesso.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const upsertPromise = (supabase as any)
         .from('professional_preferences')
-        .upsert(payload, { onConflict: 'user_id' });
-      if (error) throw error;
+        .upsert(payload, { onConflict: 'user_id' })
+        .select()
+        .maybeSingle();
+
+      const { data, error } = await Promise.race([upsertPromise, timeoutPromise]) as any;
+      if (error) {
+        const msg = error.message || 'Erro desconhecido';
+        if (msg.toLowerCase().includes('permission')) {
+          throw new Error('Você não tem permissão para salvar essas preferências. Contate o administrador.');
+        }
+        throw new Error(msg);
+      }
+      if (!data) throw new Error('Servidor não confirmou o salvamento. Tente novamente.');
+      return data;
     },
+    retry: (failureCount, error: Error) => {
+      // Retry automático apenas para erros de rede transientes (não para permissão/validação).
+      const msg = (error?.message || '').toLowerCase();
+      const isTransient = msg.includes('network') || msg.includes('fetch') || msg.includes('tempo esgotado');
+      return isTransient && failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['professional-preferences', user?.id] });
       qc.invalidateQueries({ queryKey: ['effective-business-settings', user?.id] });
       qc.invalidateQueries({ queryKey: ['business-settings'] });
       toast.success('Suas preferências foram salvas!');
     },
-    onError: (e: Error) => toast.error('Erro ao salvar: ' + e.message),
+    onError: (e: Error) => toast.error('Erro ao salvar: ' + e.message, { duration: 6000 }),
   });
 
   const resetField = (field: keyof ProfessionalPreferences) => {

@@ -120,34 +120,57 @@ export function useBusinessSettings() {
           (formattedUpdates as any)[field] = val + ':00';
         }
       });
-      
-      if (!settings?.id) {
-        // Create settings if they don't exist
+
+      // Timeout de segurança para evitar spinner eterno em caso de rede travada/RLS.
+      const timeoutMs = 15000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo esgotado ao salvar (15s). Verifique sua conexão e tente novamente.')), timeoutMs)
+      );
+
+      const exec = async () => {
+        if (!settings?.id) {
+          const { data, error } = await supabase
+            .from('business_settings')
+            .insert(formattedUpdates)
+            .select()
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) throw new Error('Servidor não confirmou a criação das configurações.');
+          return data;
+        }
         const { data, error } = await supabase
           .from('business_settings')
-          .insert(formattedUpdates)
+          .update(formattedUpdates)
+          .eq('id', settings.id)
           .select()
-          .single();
+          .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error('Servidor não confirmou o salvamento. Tente novamente.');
         return data;
-      }
-      
-      const { data, error } = await supabase
-        .from('business_settings')
-        .update(formattedUpdates)
-        .eq('id', settings.id)
-        .select()
-        .single();
+      };
 
-      if (error) throw error;
-      return data;
+      try {
+        return await Promise.race([exec(), timeoutPromise]);
+      } catch (err: any) {
+        const msg = (err?.message || '').toLowerCase();
+        if (msg.includes('permission')) {
+          throw new Error('Você não tem permissão para alterar essas configurações.');
+        }
+        throw err;
+      }
     },
+    retry: (failureCount, error: Error) => {
+      const msg = (error?.message || '').toLowerCase();
+      const isTransient = msg.includes('network') || msg.includes('fetch') || msg.includes('tempo esgotado');
+      return isTransient && failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-settings'] });
       toast.success('Configurações atualizadas!');
     },
-    onError: (error) => {
-      toast.error('Erro ao atualizar configurações: ' + error.message);
+    onError: (error: Error) => {
+      toast.error('Erro ao atualizar configurações: ' + error.message, { duration: 6000 });
     },
   });
 

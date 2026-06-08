@@ -23,6 +23,7 @@ export function MinhasPreferenciasSettings() {
   const [slot, setSlot] = useState<number | ''>('');
   const [workSat, setWorkSat] = useState<boolean | null>(null);
   const [workSun, setWorkSun] = useState<boolean | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (prefs) {
@@ -34,14 +35,32 @@ export function MinhasPreferenciasSettings() {
     }
   }, [prefs]);
 
+  // Detecta alterações pendentes (campos editados que ainda não foram salvos)
+  const isDirty = (() => {
+    if (!prefs) return !!(opening || closing || slot !== '' || workSat !== null || workSun !== null);
+    const o = prefs.opening_time?.substring(0, 5) ?? '';
+    const c = prefs.closing_time?.substring(0, 5) ?? '';
+    const s = prefs.slot_interval ?? '';
+    return (
+      opening !== o ||
+      closing !== c ||
+      String(slot) !== String(s) ||
+      workSat !== prefs.work_saturdays ||
+      workSun !== prefs.work_sundays
+    );
+  })();
+
   const saveHours = () => {
-    update.mutate({
-      opening_time: opening ? `${opening}:00` : null,
-      closing_time: closing ? `${closing}:00` : null,
-      slot_interval: slot === '' ? null : Number(slot),
-      work_saturdays: workSat,
-      work_sundays: workSun,
-    });
+    update.mutate(
+      {
+        opening_time: opening ? `${opening}:00` : null,
+        closing_time: closing ? `${closing}:00` : null,
+        slot_interval: slot === '' ? null : Number(slot),
+        work_saturdays: workSat,
+        work_sundays: workSun,
+      },
+      { onSuccess: () => setLastSavedAt(new Date()) }
+    );
   };
 
   const automations = [
@@ -105,20 +124,33 @@ export function MinhasPreferenciasSettings() {
               <Switch checked={workSun ?? global?.work_sundays ?? false} onCheckedChange={v => setWorkSun(v)} />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8" onClick={saveHours} disabled={update.isPending}>
-              {update.isPending ? 'Salvando…' : 'Salvar meus horários'}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" className="h-8" onClick={saveHours} disabled={update.isPending || !isDirty}>
+              {update.isPending ? 'Salvando…' : isDirty ? 'Salvar meus horários' : 'Salvo'}
             </Button>
             <Button size="sm" variant="ghost" className="h-8 text-xs gap-1"
               onClick={() => {
                 setOpening(''); setClosing(''); setSlot(''); setWorkSat(null); setWorkSun(null);
-                update.mutate({
-                  opening_time: null, closing_time: null, slot_interval: null,
-                  work_saturdays: null, work_sundays: null,
-                });
+                update.mutate(
+                  {
+                    opening_time: null, closing_time: null, slot_interval: null,
+                    work_saturdays: null, work_sundays: null,
+                  },
+                  { onSuccess: () => setLastSavedAt(new Date()) }
+                );
               }}>
               <RotateCcw className="h-3 w-3" /> Voltar ao padrão da conta
             </Button>
+            {isDirty && !update.isPending && (
+              <Badge variant="outline" className="h-5 text-[10px] px-1.5 border-amber-400 text-amber-700 bg-amber-50">
+                Alterações não salvas
+              </Badge>
+            )}
+            {!isDirty && lastSavedAt && !update.isPending && (
+              <span className="text-[10px] text-emerald-700">
+                ✓ Salvo às {lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
           {effective && (
             <p className="text-[10px] text-muted-foreground">

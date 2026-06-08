@@ -247,6 +247,9 @@ export default function SuperAdmin() {
           />
         </Card>
 
+        <WhatsappPoolCostPanel />
+
+
         <Card className="overflow-x-auto">
           <TooltipProvider delayDuration={150}>
             <Table>

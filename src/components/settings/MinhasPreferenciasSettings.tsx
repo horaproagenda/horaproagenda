@@ -23,6 +23,7 @@ export function MinhasPreferenciasSettings() {
   const [slot, setSlot] = useState<number | ''>('');
   const [workSat, setWorkSat] = useState<boolean | null>(null);
   const [workSun, setWorkSun] = useState<boolean | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (prefs) {
@@ -34,14 +35,32 @@ export function MinhasPreferenciasSettings() {
     }
   }, [prefs]);
 
+  // Detecta alterações pendentes (campos editados que ainda não foram salvos)
+  const isDirty = (() => {
+    if (!prefs) return !!(opening || closing || slot !== '' || workSat !== null || workSun !== null);
+    const o = prefs.opening_time?.substring(0, 5) ?? '';
+    const c = prefs.closing_time?.substring(0, 5) ?? '';
+    const s = prefs.slot_interval ?? '';
+    return (
+      opening !== o ||
+      closing !== c ||
+      String(slot) !== String(s) ||
+      workSat !== prefs.work_saturdays ||
+      workSun !== prefs.work_sundays
+    );
+  })();
+
   const saveHours = () => {
-    update.mutate({
-      opening_time: opening ? `${opening}:00` : null,
-      closing_time: closing ? `${closing}:00` : null,
-      slot_interval: slot === '' ? null : Number(slot),
-      work_saturdays: workSat,
-      work_sundays: workSun,
-    });
+    update.mutate(
+      {
+        opening_time: opening ? `${opening}:00` : null,
+        closing_time: closing ? `${closing}:00` : null,
+        slot_interval: slot === '' ? null : Number(slot),
+        work_saturdays: workSat,
+        work_sundays: workSun,
+      },
+      { onSuccess: () => setLastSavedAt(new Date()) }
+    );
   };
 
   const automations = [

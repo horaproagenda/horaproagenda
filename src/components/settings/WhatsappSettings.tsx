@@ -155,26 +155,35 @@ export function WhatsappSettings() {
       toast.error('Selecione um profissional.');
       return;
     }
+    if (connected) {
+      const ok = window.confirm(
+        'O WhatsApp deste profissional já está conectado. Gerar um novo QR Code irá desconectar a sessão atual. Deseja continuar?',
+      );
+      if (!ok) return;
+    }
     setConnecting(true);
     try {
-      // Se ainda não tem credencial vinculada, reserva uma do pool primeiro.
-      if (!credsMap[selectedProfId]) {
-        const { data, error } = await supabase.functions.invoke('whatsapp-claim-pool-instance', {
-          body: { professional_id: selectedProfId },
-        });
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || 'Não foi possível conectar agora. Tente novamente em alguns instantes.');
-        const { data: row } = await supabase
-          .from('professional_whatsapp_credentials')
-          .select('professional_id, is_active, last_connected_at')
-          .eq('professional_id', selectedProfId).maybeSingle();
-        if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
-      } else if (connected) {
-        const ok = window.confirm(
-          'O WhatsApp deste profissional já está conectado. Gerar um novo QR Code irá desconectar a sessão atual. Deseja continuar?',
-        );
-        if (!ok) { setConnecting(false); return; }
+      // Endpoint único: reserva instância (se necessário) e retorna apenas o QR.
+      const { data, error } = await supabase.functions.invoke('whatsapp-connect', {
+        body: { professional_id: selectedProfId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Não foi possível conectar agora.');
+
+      if (data.connected) {
+        toast.success('WhatsApp já está conectado.');
+        void checkConnection(selectedProfId);
+        return;
       }
+
+      // Refresh credential flags (sem ler instance_id/token).
+      const { data: row } = await supabase
+        .from('professional_whatsapp_credentials')
+        .select('professional_id, is_active, last_connected_at')
+        .eq('professional_id', selectedProfId).maybeSingle();
+      if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
+
+      // Hidrata o hook useWhatsapp via getQRCode (que usa a mesma instância já reservada).
       await getQRCode(selectedProfId);
       toast.success('QR Code gerado. Escaneie no celular do profissional.');
     } catch (e: any) {

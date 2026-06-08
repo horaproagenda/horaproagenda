@@ -25,13 +25,40 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // Controle de acesso: cron usa apikey (anon) sem Authorization;
+    // chamadas manuais devem vir de um Super Admin autenticado.
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: roles } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const isSuper = (roles ?? []).some((r: any) => r.role === 'super_admin');
+      if (!isSuper) {
+        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const { data: rows } = await supabase
       .from('ultramsg_instance_pool')
       .select('id, instance_id, token, api_url, assigned_professional_id')
       .eq('status', 'assigned');
 
-    const results: any[] = [];
+    let connected = 0;
+    let total = 0;
     for (const row of rows ?? []) {
+      total++;
       try {
         const st = await ultramsgStatus({
           base: row.api_url, instance: row.instance_id, token: row.token,
@@ -46,26 +73,17 @@ serve(async (req) => {
             })
             .eq('professional_id', row.assigned_professional_id);
         }
-        results.push({
-          instance: row.instance_id,
-          connected: st.connected,
-          state: st.state ?? null,
-        });
+        if (st.connected) connected++;
       } catch (e) {
-        results.push({
-          instance: row.instance_id,
-          connected: false,
-          error: e instanceof Error ? e.message : 'unknown',
-        });
+        console.error('[pool-healthcheck] instance check failed:', e instanceof Error ? e.message : e);
       }
     }
 
-    const connected = results.filter(r => r.connected).length;
-    const total = results.length;
     console.log(`[pool-healthcheck] ${connected}/${total} healthy`);
 
+    // Resposta minimalista — sem instance_id ou tokens.
     return new Response(JSON.stringify({
-      success: true, total, connected, results, checked_at: new Date().toISOString(),
+      success: true, total, connected, checked_at: new Date().toISOString(),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown';
@@ -74,3 +92,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
+

@@ -3939,6 +3939,7 @@ export type Database = {
           created_at: string
           id: string
           instance_id: string
+          monthly_cost_usd: number
           notes: string | null
           status: string
           token: string
@@ -3951,6 +3952,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id: string
+          monthly_cost_usd?: number
           notes?: string | null
           status?: string
           token: string
@@ -3963,6 +3965,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id?: string
+          monthly_cost_usd?: number
           notes?: string | null
           status?: string
           token?: string

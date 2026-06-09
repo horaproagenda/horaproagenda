@@ -435,12 +435,36 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto px-6 py-3 scrollbar-visible" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="beneficiario"><Building2 className="h-3.5 w-3.5 mr-1" />Beneficiário</TabsTrigger>
-              <TabsTrigger value="pagador"><User className="h-3.5 w-3.5 mr-1" />Pagador</TabsTrigger>
-              <TabsTrigger value="financeiro"><Receipt className="h-3.5 w-3.5 mr-1" />Financeiro</TabsTrigger>
-              <TabsTrigger value="parcelas"><Calendar className="h-3.5 w-3.5 mr-1" />Parcelas</TabsTrigger>
+            <TabsList className="flex w-full h-auto p-1 gap-1 bg-muted/50">
+              <TabsTrigger
+                value="beneficiario"
+                className="flex-1 gap-1 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=inactive]:text-blue-700 dark:data-[state=inactive]:text-blue-300"
+              >
+                <Building2 className="h-3.5 w-3.5" />Beneficiário
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="pagador"
+                className="flex-1 gap-1 data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=inactive]:text-purple-700 dark:data-[state=inactive]:text-purple-300"
+              >
+                <User className="h-3.5 w-3.5" />Pagador
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="financeiro"
+                className="flex-1 gap-1 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:text-emerald-700 dark:data-[state=inactive]:text-emerald-300"
+              >
+                <Receipt className="h-3.5 w-3.5" />Financeiro
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="parcelas"
+                className="flex-1 gap-1 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=inactive]:text-orange-700 dark:data-[state=inactive]:text-orange-300"
+              >
+                <Calendar className="h-3.5 w-3.5" />Parcelas
+              </TabsTrigger>
             </TabsList>
+
 
             {/* BENEFICIÁRIO */}
             <TabsContent value="beneficiario" className="space-y-3 pt-3">

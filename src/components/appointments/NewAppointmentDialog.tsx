@@ -929,11 +929,9 @@ Até breve! ✨`;
           // Paid service repeat: consume one paid sibling per appointment
           const siblings = paidSiblings.slice(0, editableServiceDates.length);
           if (siblings.length < editableServiceDates.length) {
-            toast({
-              title: 'Aplicações insuficientes',
-              description: `Disponíveis: ${siblings.length}. Reduza a quantidade ou compre mais aplicações.`,
-              variant: 'destructive',
-            });
+            toast.error(
+              `Aplicações insuficientes. Disponíveis: ${siblings.length}. Reduza a quantidade ou compre mais aplicações.`,
+            );
             return;
           }
           const duration = selectedServiceData?.duration || 60;

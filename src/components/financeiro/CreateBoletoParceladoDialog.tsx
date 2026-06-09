@@ -247,20 +247,20 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     }
     setSubmitting(true);
     try {
-      // 1) Persist client address updates if missing
-      if (payer.client_id) {
-        await supabase.from('clients').update({
-          cep: payer.cep || null,
-          address_street: payer.street || null,
-          address_number: payer.number || null,
-          address_complement: payer.complement || null,
-          address_neighborhood: payer.neighborhood || null,
-          address_city: payer.city || null,
-          address_state: payer.state || null,
-          cnpj: payer.document && payer.document.replace(/\D/g, '').length === 14 ? payer.document : undefined,
-          company_name: payer.company_name || undefined,
-        }).eq('id', payer.client_id);
-      }
+      // 1) Persist client address updates (em paralelo com o resto — não bloqueia)
+      const clientUpdatePromise = payer.client_id
+        ? supabase.from('clients').update({
+            cep: payer.cep || null,
+            address_street: payer.street || null,
+            address_number: payer.number || null,
+            address_complement: payer.complement || null,
+            address_neighborhood: payer.neighborhood || null,
+            address_city: payer.city || null,
+            address_state: payer.state || null,
+            cnpj: payer.document && payer.document.replace(/\D/g, '').length === 14 ? payer.document : undefined,
+            company_name: payer.company_name || undefined,
+          }).eq('id', payer.client_id)
+        : Promise.resolve({ error: null });
 
       // 2) Create single_sale
       // Compute original (gross) and discount based on item type.
@@ -299,13 +299,11 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       const { data: sale, error: saleErr } = await supabase
         .from('single_sales')
         .insert(saleInsert)
-        .select()
+        .select('id')
         .single();
       if (saleErr) throw saleErr;
 
-      // 3) Create installments with all metadata. Retroactive installments (due date already
-      // in the past) can be marked as paid up-front with the provided paid_date so the
-      // historical baixa is registered correctly.
+      // 3) Build installments + provisioning rows
       const payerSnapshot = { ...payer };
       const beneficiarySnapshot = { ...beneficiary };
       const todayStr = today();
@@ -341,14 +339,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         };
       });
 
-      const { error: instErr } = await supabase
-        .from('boleto_installments')
-        .insert(records);
-      if (instErr) throw instErr;
+      // 4) Provisioning rows
+      let provisioningPromise: Promise<any> = Promise.resolve();
 
-
-      // 4) Provision inventory. Packages bought by boleto are created inactive and
-      // become bookable only when the configured payment rule is met.
       if (itemType === 'service' && itemId) {
         const qty = Math.max(1, applicationsCount || 1);
         const perAppPaid = Number((totalAmount / qty).toFixed(2));
@@ -363,39 +356,38 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             : 'Disponibilizado via Boleto Parcelado',
           created_by: user?.id || null,
         }));
-        await supabase.from('client_services').insert(rows);
+        provisioningPromise = supabase.from('client_services').insert(rows);
       } else if (itemType === 'package' && itemId) {
-        // Clone from package_templates (the only valid source — service_packages are
-        // per-client purchase records and would create duplicates in the picker).
         const template = packageOptions.find(t => t.id === itemId);
-
         if (template) {
-          const { data: clientPackage, error: pkgError } = await supabase
-            .from('service_packages')
-            .insert({
-              name: template.name,
-              description: template.description,
-              client_id: payer.client_id,
-              template_id: template.id,
-              total_sessions: template.total_sessions,
-              duration: template.duration || 60,
-              interval_days: template.interval_days || 7,
-              total_price: totalAmount,
-              package_type: template.package_type || 'standard',
-              service_id: template.service_id || null,
-              professional_id: template.professional_id,
-              room_id: template.room_id,
-              equipment: template.equipment || [],
-              payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
-              payment_type: packageReleaseRule,
-              sessions_scheduled: 0,
-              is_active: false,
-              category: template.category || 'Pago via Boleto Parcelado',
-            })
-            .select()
-            .single();
+          provisioningPromise = (async () => {
+            const { data: clientPackage, error: pkgError } = await supabase
+              .from('service_packages')
+              .insert({
+                name: template.name,
+                description: template.description,
+                client_id: payer.client_id,
+                template_id: template.id,
+                total_sessions: template.total_sessions,
+                duration: template.duration || 60,
+                interval_days: template.interval_days || 7,
+                total_price: totalAmount,
+                package_type: template.package_type || 'standard',
+                service_id: template.service_id || null,
+                professional_id: template.professional_id,
+                room_id: template.room_id,
+                equipment: template.equipment || [],
+                payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
+                payment_type: packageReleaseRule,
+                sessions_scheduled: 0,
+                is_active: false,
+                category: template.category || 'Pago via Boleto Parcelado',
+              })
+              .select('id')
+              .single();
 
-          if (!pkgError && clientPackage) {
+            if (pkgError || !clientPackage) return;
+
             const templateSteps = template.package_type === 'sequential' && template.steps?.length
               ? template.steps
               : Array.from({ length: template.total_sessions }, (_, i) => ({
@@ -416,25 +408,33 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               notes: 'Disponibilizado via Boleto Parcelado',
             }));
 
-            await supabase.from('package_appointments').insert(sessions);
-
-            // Update sale to point to the client-specific package
-            await supabase.from('single_sales').update({ package_id: clientPackage.id }).eq('id', sale.id);
-          }
+            // Sessions + sale package_id patch em paralelo
+            await Promise.all([
+              supabase.from('package_appointments').insert(sessions),
+              supabase.from('single_sales').update({ package_id: clientPackage.id }).eq('id', sale.id),
+            ]);
+          })();
         }
       }
 
+      // 5) Disparar parcelas + provisioning + atualização de cliente EM PARALELO
+      const [{ error: instErr }] = await Promise.all([
+        supabase.from('boleto_installments').insert(records),
+        provisioningPromise,
+        clientUpdatePromise,
+      ]);
+      if (instErr) throw instErr;
 
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['reminders'] });
-      queryClient.invalidateQueries({ queryKey: ['client_services'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['client-packages'] });
+      // Invalidação única via predicate — uma só passada pelo cache
+      const KEYS = new Set([
+        'boleto_installments_all','boleto_installments','single_sales',
+        'reminders','client_services','service_packages','package_appointments',
+        'client-sales','client-packages','financial_entries',
+      ]);
+      queryClient.invalidateQueries({
+        predicate: (q) => typeof q.queryKey?.[0] === 'string' && KEYS.has(q.queryKey[0] as string),
+      });
       onOpenChange(false);
 
       // reset

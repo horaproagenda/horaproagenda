@@ -63,13 +63,33 @@ const today = () => new Date().toISOString().split('T')[0];
 export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
   const { clients } = useClients();
-  const { services } = useServices();
-  const { packages } = useServicePackages();
+  const { activeServices } = useServices();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { activePaymentMethods } = usePaymentMethods();
   const queryClient = useQueryClient();
 
   const [tab, setTab] = useState('beneficiario');
   const [submitting, setSubmitting] = useState(false);
+
+  // Deduplicate by name to avoid duplicates in the select
+  const serviceOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const s of activeServices) {
+      const key = `${(s.name || '').trim().toLowerCase()}|${s.price}`;
+      if (!seen.has(key)) seen.set(key, s);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [activeServices]);
+
+  const packageOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const p of packageTemplates) {
+      const key = `${(p.name || '').trim().toLowerCase()}|${p.price}`;
+      if (!seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [packageTemplates]);
+
 
   // Beneficiary (auto-fill from logged professional)
   const [beneficiary, setBeneficiary] = useState<Beneficiary>({

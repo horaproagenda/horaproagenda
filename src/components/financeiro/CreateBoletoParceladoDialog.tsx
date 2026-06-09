@@ -356,7 +356,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             : 'Disponibilizado via Boleto Parcelado',
           created_by: user?.id || null,
         }));
-        provisioningPromise = supabase.from('client_services').insert(rows);
+        provisioningPromise = Promise.resolve(supabase.from('client_services').insert(rows));
       } else if (itemType === 'package' && itemId) {
         const template = packageOptions.find(t => t.id === itemId);
         if (template) {

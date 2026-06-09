@@ -205,9 +205,9 @@ export function useAllBoletoInstallments() {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 2000,
-    refetchIntervalInBackground: false,
+    // Realtime + manual invalidations já mantêm a lista atualizada.
+    // Polling de 2s degradava a performance (re-render constante + payload grande).
+    staleTime: 30_000,
   });
 
   const logAudit = async (params: {

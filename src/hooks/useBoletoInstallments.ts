@@ -21,19 +21,31 @@ export interface BoletoInstallment {
 
 const BOLETO_KEYS = ['boleto_installments', 'boleto_installments_all'] as const;
 
+// Lista das chaves de cache afetadas pelas mutações de boleto.
+// Invalidamos numa única chamada via predicate para evitar várias passadas
+// pelo cache (cada invalidateQueries percorre TODAS as queries ativas).
+const INVALIDATE_KEYS = new Set<string>([
+  ...BOLETO_KEYS,
+  'financial_entries',
+  'appointments',
+  'reminders',
+  'cash_transactions',
+  'cash_register_entries',
+  'single_sales',
+  'client-sales',
+  'client_boleto_status',
+  'client_packages',
+  'service_packages',
+  'package_appointments',
+]);
+
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
-  BOLETO_KEYS.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
-  queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-  queryClient.invalidateQueries({ queryKey: ['appointments'] });
-  queryClient.invalidateQueries({ queryKey: ['reminders'] });
-  queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-  queryClient.invalidateQueries({ queryKey: ['cash_register_entries'] });
-  queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-  queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-  queryClient.invalidateQueries({ queryKey: ['client_boleto_status'] });
-  queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-  queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-  queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const k = q.queryKey?.[0];
+      return typeof k === 'string' && INVALIDATE_KEYS.has(k);
+    },
+  });
 }
 
 export function useBoletoInstallments(saleId?: string) {
@@ -205,9 +217,9 @@ export function useAllBoletoInstallments() {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 2000,
-    refetchIntervalInBackground: false,
+    // Realtime + manual invalidations já mantêm a lista atualizada.
+    // Polling de 2s degradava a performance (re-render constante + payload grande).
+    staleTime: 30_000,
   });
 
   const logAudit = async (params: {
@@ -279,18 +291,16 @@ export function useAllBoletoInstallments() {
 
       await Promise.all(Array.from(new Set((currentItems || []).map((item: any) => item.sale_id).filter(Boolean))).map((saleId: string) => syncBoletoPackageAvailability(saleId)));
 
-      // Log audit for each
-      for (const item of (currentItems || [])) {
-        await logAudit({
-          boleto_installment_id: item.id,
-          sale_id: item.sale_id,
-          event_type: 'batch_payment',
-          previous_status: item.status,
-          new_status: 'paid',
-          new_amount: item.amount,
-          notes: `Baixa em lote (${params.ids.length} parcelas) em ${paidDate}`,
-        });
-      }
+      // Log audit for each (em paralelo — evita 1 round-trip por parcela)
+      await Promise.all((currentItems || []).map((item: any) => logAudit({
+        boleto_installment_id: item.id,
+        sale_id: item.sale_id,
+        event_type: 'batch_payment',
+        previous_status: item.status,
+        new_status: 'paid',
+        new_amount: item.amount,
+        notes: `Baixa em lote (${params.ids.length} parcelas) em ${paidDate}`,
+      })));
     },
     onSuccess: (_, vars) => {
       invalidateAll(queryClient);

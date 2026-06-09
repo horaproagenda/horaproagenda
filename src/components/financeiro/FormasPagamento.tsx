@@ -45,7 +45,7 @@ export function FormasPagamento() {
   const { cardBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
   const {
     installments: allBoletoInstallments, isLoading: loadingBoletos,
-    markAsPaid, batchMarkAsPaid, updateInstallment, cancelInstallment, triggerSync,
+    markAsPaid, batchMarkAsPaid, updateInstallment, cancelInstallment, deleteInstallment, triggerSync,
   } = useAllBoletoInstallments();
   const queryClient = useQueryClient();
 

@@ -44,7 +44,9 @@ export function BoletoDetailModal({
   onBatchPay,
   onUpdate,
   onCancel,
+  onDelete,
 }: BoletoDetailModalProps) {
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', due_date: '' });

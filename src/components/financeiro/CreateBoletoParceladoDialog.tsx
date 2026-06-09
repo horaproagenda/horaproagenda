@@ -123,6 +123,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountUntilDays, setDiscountUntilDays] = useState<number>(0);
   const [notes, setNotes] = useState('');
+  // Map parcel number -> paid_date string (for retroactive parcels)
+  const [retroPaidDates, setRetroPaidDates] = useState<Record<number, string>>({});
 
   const boletoPaymentMethod = useMemo(
     () => activePaymentMethods.find(pm =>

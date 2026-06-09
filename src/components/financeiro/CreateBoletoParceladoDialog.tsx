@@ -746,17 +746,41 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label>Vencimento da 1ª *</Label>
                   <Input type="date" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label>Intervalo entre parcelas (dias)</Label>
-                  <Input type="number" min={1} value={intervalDays}
-                    onChange={e => setIntervalDays(Number(e.target.value))} />
+                  <Label>Recorrência</Label>
+                  <select
+                    className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                    value={intervalMode}
+                    onChange={e => setIntervalMode(e.target.value as 'days' | 'monthly')}
+                  >
+                    <option value="days">A cada N dias</option>
+                    <option value="monthly">Mesmo dia do mês</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>{intervalMode === 'days' ? 'Intervalo (dias)' : 'Dia fixo'}</Label>
+                  {intervalMode === 'days' ? (
+                    <Input type="number" min={1} value={intervalDays}
+                      onChange={e => setIntervalDays(Number(e.target.value))} />
+                  ) : (
+                    <Input
+                      value={firstDueDate ? `Dia ${new Date(firstDueDate + 'T12:00:00').getDate()}` : '-'}
+                      disabled
+                      title="Definido pelo vencimento da 1ª parcela"
+                    />
+                  )}
                 </div>
               </div>
+              {intervalMode === 'monthly' && (
+                <p className="text-[11px] text-muted-foreground -mt-2">
+                  Cada parcela vencerá no mesmo dia do mês seguinte. Se o mês não tiver o dia escolhido, será usado o último dia do mês.
+                </p>
+              )}
 
               {itemType === 'package' && itemId && (() => {
                 const p = packageOptions.find(x => x.id === itemId);

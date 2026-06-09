@@ -426,8 +426,31 @@ export function FormasPagamento() {
                   <RefreshCw className={`h-3 w-3 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
                   Sincronizar
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 h-7 px-2 text-[11px] border-destructive/40 text-destructive hover:bg-destructive/10"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={(allBoletoInstallments as any[]).length === 0}
+                  title="Excluir TODOS os boletos do sistema permanentemente"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Excluir Todos
+                </Button>
               </div>
             </div>
+
+            {/* Info: cancelar vs excluir */}
+            <Alert className="border-blue-500/40 bg-blue-50 dark:bg-blue-950/20 py-2">
+              <Info className="h-3.5 w-3.5 text-blue-600" />
+              <AlertDescription className="text-[11px] text-blue-800 dark:text-blue-300 leading-snug">
+                <strong>Cancelar boleto</strong> <Ban className="inline h-3 w-3 align-text-bottom" />: marca a parcela como <em>cancelada</em>, mantém o registro no histórico de auditoria e <strong>redistribui o valor</strong> entre as parcelas restantes (não apaga). Ideal para boletos que não serão mais cobrados, mas precisam ser rastreáveis.
+                <br />
+                <strong>Excluir parcela</strong> <Trash2 className="inline h-3 w-3 align-text-bottom" />: remove a parcela permanentemente do banco de dados. Use somente em casos de erro de cadastro.
+                <br />
+                <strong>Excluir Todos</strong>: apaga <strong>todos</strong> os boletos, vendas vinculadas, lançamentos de caixa e serviços vendidos — usado para limpar dados de teste. Ação irreversível.
+              </AlertDescription>
+            </Alert>
 
             {/* Batch bar */}
             {selectedBoletoIds.length > 0 && (

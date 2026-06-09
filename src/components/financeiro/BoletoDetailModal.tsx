@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw,
+  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,7 +31,9 @@ interface BoletoDetailModalProps {
   onBatchPay: (params: { ids: string[]; paidDate?: string }) => Promise<void>;
   onUpdate: (params: { id: string; amount?: number; due_date?: string; notes?: string }) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
 }
+
 
 export function BoletoDetailModal({
   open,

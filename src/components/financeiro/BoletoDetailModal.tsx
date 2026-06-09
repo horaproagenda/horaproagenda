@@ -233,6 +233,22 @@ export function BoletoDetailModal({
 
             <Separator />
 
+            {/* Delete-all row (acima da seleção) */}
+            {onDelete && sorted.length > 0 && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 px-2 text-[11px] gap-1"
+                  disabled={batchDeleting || batchPaying}
+                  onClick={() => setConfirmAction({ kind: 'deleteAll', ids: sorted.map(i => i.id) })}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Excluir todas ({sorted.length})
+                </Button>
+              </div>
+            )}
+
             {/* Batch selection bar */}
             {sorted.length > 0 && (
               <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30 flex-wrap gap-2">
@@ -269,18 +285,6 @@ export function BoletoDetailModal({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Excluir {selectedIds.length}
-                    </Button>
-                  )}
-                  {onDelete && sorted.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="gap-1"
-                      disabled={batchDeleting || batchPaying}
-                      onClick={() => setConfirmAction({ kind: 'deleteAll', ids: sorted.map(i => i.id) })}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Excluir todas ({sorted.length})
                     </Button>
                   )}
                 </div>

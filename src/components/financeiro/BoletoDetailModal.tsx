@@ -57,8 +57,11 @@ export function BoletoDetailModal({
     | { kind: 'delete'; id: string; label: string }
     | { kind: 'edit'; id: string; label: string }
     | { kind: 'batchPay'; ids: string[]; total: number }
+    | { kind: 'batchDelete'; ids: string[] }
+    | { kind: 'deleteAll'; ids: string[] }
     | null
   >(null);
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
 
   const sorted = useMemo(

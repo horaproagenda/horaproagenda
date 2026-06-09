@@ -178,6 +178,44 @@ export function FormasPagamento() {
     } finally { setBatchPaying(false); }
   };
 
+  const handleBulkDeleteAllBoletos = async () => {
+    if (bulkDeleteConfirm !== 'EXCLUIR TODOS') {
+      toast.error('Digite "EXCLUIR TODOS" para confirmar');
+      return;
+    }
+    setBulkDeleting(true);
+    try {
+      const saleIds = Array.from(new Set((allBoletoInstallments as any[]).map(b => b.sale_id).filter(Boolean)));
+
+      // 1) Apaga todas as parcelas (RLS limita ao usuário atual)
+      const { error: delInstError } = await supabase
+        .from('boleto_installments')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delInstError) throw delInstError;
+
+      // 2) Apaga as vendas (single_sales) que originaram os boletos, e as entradas financeiras vinculadas
+      if (saleIds.length > 0) {
+        await supabase.from('financial_entries').delete().in('source_sale_id', saleIds);
+        await supabase.from('cash_transactions').delete().in('sale_id', saleIds);
+        await supabase.from('client_services').delete().in('sale_id', saleIds);
+        await supabase.from('single_sales').delete().in('id', saleIds);
+      }
+
+      // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)
+      queryClient.invalidateQueries();
+      toast.success('Todos os boletos foram excluídos.');
+      setBulkDeleteOpen(false);
+      setBulkDeleteConfirm('');
+      setSelectedBoletoIds([]);
+    } catch (err: any) {
+      console.error('Erro ao excluir todos os boletos:', err);
+      toast.error('Erro ao excluir boletos: ' + (err.message || 'desconhecido'));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleBoletoPayment = async (boleto: any) => {
     await markAsPaid.mutateAsync({ id: boleto.id });
   };

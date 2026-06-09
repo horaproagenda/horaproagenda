@@ -2077,11 +2077,35 @@ Até breve! ✨`;
                   </Popover>
                 </div>
                 {appointmentTimes && (
-                  <p className="text-[11px] font-medium text-primary">
-                    Término previsto: {format(appointmentTimes.endTime, 'HH:mm')}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[11px] text-muted-foreground shrink-0">Término:</Label>
+                    <div className="relative flex-1">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="time"
+                        value={endTimeOverride || format(appointmentTimes.endTime, 'HH:mm')}
+                        onChange={(e) => setEndTimeOverride(e.target.value)}
+                        className="pl-8 h-8 text-xs"
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                    {endTimeOverride && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={() => setEndTimeOverride('')}
+                        title="Restaurar término automático"
+                      >
+                        Auto
+                      </Button>
+                    )}
+                  </div>
                 )}
-                <p className="text-[10px] text-muted-foreground">Digite qualquer horário ou clique no ícone para sugestões. O término é calculado pela duração do serviço/pacote.</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Digite o horário ou use o ícone de sugestões. O término é calculado pela duração, mas pode ser editado manualmente.
+                </p>
               </div>
             </div>
 

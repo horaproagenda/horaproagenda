@@ -35,6 +35,8 @@ const INVALIDATE_KEYS = new Set<string>([
   'client-sales',
   'client_boleto_status',
   'client_packages',
+  'client_packages_with_counts',
+  'client_services',
   'service_packages',
   'package_appointments',
 ]);

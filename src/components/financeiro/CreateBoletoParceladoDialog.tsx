@@ -263,10 +263,26 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       }
 
       // 2) Create single_sale
+      // Compute original (gross) and discount based on item type.
+      let originalGross = totalAmount;
+      let discountTotal = 0;
+      if (itemType === 'service' && itemId) {
+        const s = serviceOptions.find(x => x.id === itemId);
+        const unit = Number(s?.price || 0);
+        const qty = Math.max(1, applicationsCount || 1);
+        originalGross = Number((unit * qty).toFixed(2));
+        discountTotal = Math.max(0, applicationsDiscount || 0);
+      } else if (itemType === 'package' && itemId) {
+        const p = packageOptions.find(x => x.id === itemId);
+        originalGross = Number(p?.price || totalAmount);
+        discountTotal = Math.max(0, packageDiscount || 0);
+      }
+
       const saleInsert: any = {
         client_id: payer.client_id,
         description: serviceDescription,
-        original_amount: totalAmount,
+        original_amount: originalGross,
+        discount_amount: discountTotal,
         final_amount: totalAmount,
         payment_method_id: boletoPaymentMethod.id,
         sale_date: today(),
@@ -276,7 +292,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         created_by: user?.id || null,
       };
       if (itemType === 'service' && itemId) saleInsert.service_id = itemId;
-      if (itemType === 'package' && itemId) saleInsert.package_id = itemId;
+      // IMPORTANT: do NOT set package_id to the template id — single_sales.package_id
+      // references service_packages (per-client purchases), not package_templates.
+      // For packages we create the service_packages clone after, then patch the sale.
 
       const { data: sale, error: saleErr } = await supabase
         .from('single_sales')

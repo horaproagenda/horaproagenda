@@ -113,6 +113,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   // For services: how many applications the client is buying + discount on the total
   const [applicationsCount, setApplicationsCount] = useState<number>(1);
   const [applicationsDiscount, setApplicationsDiscount] = useState<number>(0);
+  // For packages: discount applied to package total (subtracted from total to parcel)
+  const [packageDiscount, setPackageDiscount] = useState<number>(0);
   const [firstDueDate, setFirstDueDate] = useState<string>(() => {
     const d = new Date(); d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];

@@ -761,10 +761,12 @@ export function NewAppointmentDialog({
     }
 
     const duration = serviceOrPackage.duration || 60;
-    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
+    const startTime = appointmentTimes?.startTime ?? createDateTimeInTimeZone(date, time, settings?.timezone);
 
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + duration);
+    // Honor user-edited end time when valid; otherwise compute from duration
+    const endTime = appointmentTimes?.endTime
+      ? new Date(appointmentTimes.endTime)
+      : new Date(startTime.getTime() + duration * 60000);
 
     try {
       if (isPackageAppointment && selectedPackageData) {

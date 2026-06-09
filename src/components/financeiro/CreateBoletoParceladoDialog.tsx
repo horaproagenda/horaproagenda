@@ -110,6 +110,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [serviceDescription, setServiceDescription] = useState('');
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [installments, setInstallments] = useState<number>(2);
+  // For services: how many applications the client is buying + discount on the total
+  const [applicationsCount, setApplicationsCount] = useState<number>(1);
+  const [applicationsDiscount, setApplicationsDiscount] = useState<number>(0);
   const [firstDueDate, setFirstDueDate] = useState<string>(() => {
     const d = new Date(); d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];

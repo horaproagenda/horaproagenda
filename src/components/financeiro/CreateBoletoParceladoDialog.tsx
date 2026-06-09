@@ -248,8 +248,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     setSubmitting(true);
     try {
       // 1) Persist client address updates (em paralelo com o resto — não bloqueia)
-      const clientUpdatePromise = payer.client_id
-        ? supabase.from('clients').update({
+      const clientUpdatePromise: Promise<any> = payer.client_id
+        ? Promise.resolve(supabase.from('clients').update({
             cep: payer.cep || null,
             address_street: payer.street || null,
             address_number: payer.number || null,
@@ -259,7 +259,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             address_state: payer.state || null,
             cnpj: payer.document && payer.document.replace(/\D/g, '').length === 14 ? payer.document : undefined,
             company_name: payer.company_name || undefined,
-          }).eq('id', payer.client_id)
+          }).eq('id', payer.client_id))
         : Promise.resolve({ error: null });
 
       // 2) Create single_sale

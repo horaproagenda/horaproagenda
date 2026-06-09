@@ -323,29 +323,47 @@ export function BoletoDetailModal({
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </>
-                          ) : isPending ? (
+                          ) : (
                             <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(inst)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
-                              >
-                                <Check className="h-3.5 w-3.5 text-green-600" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
-                              >
-                                <X className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
+                              {isPending && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(inst)} title="Editar">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Dar baixa"
+                                    onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
+                                  >
+                                    <Check className="h-3.5 w-3.5 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Cancelar (mantém histórico)"
+                                    onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                  >
+                                    <X className="h-3.5 w-3.5 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                              {onDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Excluir parcela permanentemente"
+                                  onClick={() => setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              )}
                             </>
-                          ) : null}
+                          )}
+
                         </div>
                       </TableCell>
                     </TableRow>

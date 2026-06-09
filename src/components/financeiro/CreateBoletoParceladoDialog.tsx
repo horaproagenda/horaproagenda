@@ -226,16 +226,26 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     if (!totalAmount || !installments || !firstDueDate) return [];
     const base = Math.round((totalAmount / installments) * 100) / 100;
     const remainder = Math.round((totalAmount - base * installments) * 100) / 100;
+    const baseDate = new Date(firstDueDate + 'T12:00:00');
     return Array.from({ length: installments }, (_, i) => {
-      const d = new Date(firstDueDate + 'T12:00:00');
-      d.setDate(d.getDate() + i * intervalDays);
+      let d: Date;
+      if (intervalMode === 'monthly') {
+        // Mesmo dia de cada mês (ajusta se o mês não tem o dia: usa último dia do mês)
+        const targetDay = baseDate.getDate();
+        d = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1, 12, 0, 0);
+        const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(targetDay, lastDayOfMonth));
+      } else {
+        d = new Date(baseDate);
+        d.setDate(d.getDate() + i * intervalDays);
+      }
       return {
         n: i + 1,
         amount: i === 0 ? base + remainder : base,
         dueDate: d.toISOString().split('T')[0],
       };
     });
-  }, [totalAmount, installments, firstDueDate, intervalDays]);
+  }, [totalAmount, installments, firstDueDate, intervalDays, intervalMode]);
 
   const canSubmit = !!beneficiary.name && !!payer.client_id && !!payer.name &&
     totalAmount > 0 && installments >= 1 && !!firstDueDate && !!serviceDescription &&

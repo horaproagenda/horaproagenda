@@ -155,6 +155,19 @@ export function BoletoDetailModal({
     }
   };
 
+  const performBatchDelete = async (ids: string[]) => {
+    if (!onDelete || ids.length === 0) return;
+    setBatchDeleting(true);
+    try {
+      for (const id of ids) {
+        await onDelete(id);
+      }
+      setSelectedIds([]);
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
   const performConfirm = async () => {
     if (!confirmAction) return;
     const action = confirmAction;
@@ -164,6 +177,8 @@ export function BoletoDetailModal({
     else if (action.kind === 'delete' && onDelete) await onDelete(action.id);
     else if (action.kind === 'edit') await performSaveEdit();
     else if (action.kind === 'batchPay') await performBatchPay();
+    else if (action.kind === 'batchDelete') await performBatchDelete(action.ids);
+    else if (action.kind === 'deleteAll') await performBatchDelete(action.ids);
   };
 
 

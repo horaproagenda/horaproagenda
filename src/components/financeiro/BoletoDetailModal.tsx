@@ -235,7 +235,7 @@ export function BoletoDetailModal({
 
             {/* Batch selection bar */}
             {pendingInstallments.length > 0 && (
-              <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30">
+              <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={selectedIds.length === pendingInstallments.length && pendingInstallments.length > 0}
@@ -244,20 +244,46 @@ export function BoletoDetailModal({
                   <span className="text-xs text-muted-foreground">
                     {selectedIds.length > 0
                       ? `${selectedIds.length} parcela(s) selecionada(s) — R$ ${selectedTotal.toFixed(2)}`
-                      : 'Selecionar para baixa parcial'}
+                      : 'Selecionar parcelas pendentes'}
                   </span>
                 </div>
-                {selectedIds.length > 0 && (
-                  <Button
-                    size="sm"
-                    className="gap-1"
-                    onClick={handleBatchPay}
-                    disabled={batchPaying}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {batchPaying ? 'Processando...' : `Pagar ${selectedIds.length} parcela(s)`}
-                  </Button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      className="gap-1"
+                      onClick={handleBatchPay}
+                      disabled={batchPaying || batchDeleting}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {batchPaying ? 'Processando...' : `Pagar ${selectedIds.length}`}
+                    </Button>
+                  )}
+                  {onDelete && selectedIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                      disabled={batchDeleting || batchPaying}
+                      onClick={() => setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir {selectedIds.length}
+                    </Button>
+                  )}
+                  {onDelete && sorted.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                      disabled={batchDeleting || batchPaying}
+                      onClick={() => setConfirmAction({ kind: 'deleteAll', ids: sorted.map(i => i.id) })}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir todas ({sorted.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 

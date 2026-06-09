@@ -272,9 +272,12 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .single();
       if (saleErr) throw saleErr;
 
-      // 3) Create installments with all metadata
+      // 3) Create installments with all metadata. Retroactive installments (due date already
+      // in the past) can be marked as paid up-front with the provided paid_date so the
+      // historical baixa is registered correctly.
       const payerSnapshot = { ...payer };
       const beneficiarySnapshot = { ...beneficiary };
+      const todayStr = today();
 
       const records = previewInstallments.map(p => {
         const discountUntil = discountUntilDays > 0
@@ -284,13 +287,17 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               return dd.toISOString().split('T')[0];
             })()
           : null;
+        const isRetro = p.dueDate < todayStr;
+        const retroPaidDate = retroPaidDates[p.n];
+        const markPaid = isRetro && retroPaidDate;
         return {
           sale_id: sale.id,
           installment_number: p.n,
           total_installments: installments,
           amount: p.amount,
           due_date: p.dueDate,
-          status: 'pending',
+          status: markPaid ? 'paid' : 'pending',
+          paid_date: markPaid ? retroPaidDate : null,
           interest_percent_per_day: interestPctDay,
           fine_percent: finePct,
           discount_amount: discountAmount,
@@ -307,6 +314,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .from('boleto_installments')
         .insert(records);
       if (instErr) throw instErr;
+
 
       // 4) Provision inventory. Packages bought by boleto are created inactive and
       // become bookable only when the configured payment rule is met.

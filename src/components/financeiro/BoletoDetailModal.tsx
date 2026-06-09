@@ -57,8 +57,11 @@ export function BoletoDetailModal({
     | { kind: 'delete'; id: string; label: string }
     | { kind: 'edit'; id: string; label: string }
     | { kind: 'batchPay'; ids: string[]; total: number }
+    | { kind: 'batchDelete'; ids: string[] }
+    | { kind: 'deleteAll'; ids: string[] }
     | null
   >(null);
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
 
   const sorted = useMemo(
@@ -152,6 +155,19 @@ export function BoletoDetailModal({
     }
   };
 
+  const performBatchDelete = async (ids: string[]) => {
+    if (!onDelete || ids.length === 0) return;
+    setBatchDeleting(true);
+    try {
+      for (const id of ids) {
+        await onDelete(id);
+      }
+      setSelectedIds([]);
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
   const performConfirm = async () => {
     if (!confirmAction) return;
     const action = confirmAction;
@@ -161,6 +177,8 @@ export function BoletoDetailModal({
     else if (action.kind === 'delete' && onDelete) await onDelete(action.id);
     else if (action.kind === 'edit') await performSaveEdit();
     else if (action.kind === 'batchPay') await performBatchPay();
+    else if (action.kind === 'batchDelete') await performBatchDelete(action.ids);
+    else if (action.kind === 'deleteAll') await performBatchDelete(action.ids);
   };
 
 
@@ -216,8 +234,8 @@ export function BoletoDetailModal({
             <Separator />
 
             {/* Batch selection bar */}
-            {pendingInstallments.length > 0 && (
-              <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30">
+            {sorted.length > 0 && (
+              <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={selectedIds.length === pendingInstallments.length && pendingInstallments.length > 0}
@@ -226,20 +244,46 @@ export function BoletoDetailModal({
                   <span className="text-xs text-muted-foreground">
                     {selectedIds.length > 0
                       ? `${selectedIds.length} parcela(s) selecionada(s) — R$ ${selectedTotal.toFixed(2)}`
-                      : 'Selecionar para baixa parcial'}
+                      : 'Selecionar parcelas pendentes'}
                   </span>
                 </div>
-                {selectedIds.length > 0 && (
-                  <Button
-                    size="sm"
-                    className="gap-1"
-                    onClick={handleBatchPay}
-                    disabled={batchPaying}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {batchPaying ? 'Processando...' : `Pagar ${selectedIds.length} parcela(s)`}
-                  </Button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      className="gap-1"
+                      onClick={handleBatchPay}
+                      disabled={batchPaying || batchDeleting}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {batchPaying ? 'Processando...' : `Pagar ${selectedIds.length}`}
+                    </Button>
+                  )}
+                  {onDelete && selectedIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                      disabled={batchDeleting || batchPaying}
+                      onClick={() => setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir {selectedIds.length}
+                    </Button>
+                  )}
+                  {onDelete && sorted.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                      disabled={batchDeleting || batchPaying}
+                      onClick={() => setConfirmAction({ kind: 'deleteAll', ids: sorted.map(i => i.id) })}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir todas ({sorted.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -405,6 +449,8 @@ export function BoletoDetailModal({
               {confirmAction?.kind === 'delete' && 'Excluir parcela permanentemente'}
               {confirmAction?.kind === 'edit' && 'Confirmar edição da parcela'}
               {confirmAction?.kind === 'batchPay' && 'Confirmar baixa em lote'}
+              {confirmAction?.kind === 'batchDelete' && 'Excluir parcelas selecionadas'}
+              {confirmAction?.kind === 'deleteAll' && 'Excluir todas as parcelas deste boleto'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
@@ -412,13 +458,15 @@ export function BoletoDetailModal({
               {confirmAction?.kind === 'delete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE a ${confirmAction.label}? Esta ação remove o registro do banco de dados e não pode ser desfeita.`}
               {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
               {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
+              {confirmAction?.kind === 'batchDelete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE ${confirmAction.ids.length} parcela(s) selecionada(s)? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'deleteAll' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE todas as ${confirmAction.ids.length} parcela(s) deste boleto? Esta ação não pode ser desfeita.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={performConfirm}
-              className={confirmAction?.kind === 'cancel' || confirmAction?.kind === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={['cancel','delete','batchDelete','deleteAll'].includes(confirmAction?.kind || '') ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
 
               Confirmar

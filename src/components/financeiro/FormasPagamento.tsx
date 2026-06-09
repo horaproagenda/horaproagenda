@@ -592,6 +592,7 @@ export function FormasPagamento() {
         onBatchPay={async (p) => { await batchMarkAsPaid.mutateAsync(p); }}
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
+        onDelete={async (id) => { await deleteInstallment.mutateAsync(id); }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />

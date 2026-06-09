@@ -279,18 +279,16 @@ export function useAllBoletoInstallments() {
 
       await Promise.all(Array.from(new Set((currentItems || []).map((item: any) => item.sale_id).filter(Boolean))).map((saleId: string) => syncBoletoPackageAvailability(saleId)));
 
-      // Log audit for each
-      for (const item of (currentItems || [])) {
-        await logAudit({
-          boleto_installment_id: item.id,
-          sale_id: item.sale_id,
-          event_type: 'batch_payment',
-          previous_status: item.status,
-          new_status: 'paid',
-          new_amount: item.amount,
-          notes: `Baixa em lote (${params.ids.length} parcelas) em ${paidDate}`,
-        });
-      }
+      // Log audit for each (em paralelo — evita 1 round-trip por parcela)
+      await Promise.all((currentItems || []).map((item: any) => logAudit({
+        boleto_installment_id: item.id,
+        sale_id: item.sale_id,
+        event_type: 'batch_payment',
+        previous_status: item.status,
+        new_status: 'paid',
+        new_amount: item.amount,
+        notes: `Baixa em lote (${params.ids.length} parcelas) em ${paidDate}`,
+      })));
     },
     onSuccess: (_, vars) => {
       invalidateAll(queryClient);

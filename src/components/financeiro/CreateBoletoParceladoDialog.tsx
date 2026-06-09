@@ -10,12 +10,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Building2, User, Receipt, Calendar, AlertCircle, Loader2 } from 'lucide-react';
+import { Building2, User, Receipt, Calendar, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,6 +27,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
 import type { BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
+
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
   const data = await fetchAddressByCep(cep);

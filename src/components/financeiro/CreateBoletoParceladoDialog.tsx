@@ -722,7 +722,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             {/* PARCELAS PREVIEW */}
             <TabsContent value="parcelas" className="space-y-3 pt-3">
               <p className="text-sm text-muted-foreground">
-                Pré-visualização das parcelas que serão geradas. "Nosso número" e "Nº documento" são gerados automaticamente após salvar.
+                Pré-visualização das parcelas que serão geradas. Parcelas com vencimento <strong>anterior à data de hoje</strong> podem ser marcadas como pagas informando a data correta da baixa.
               </p>
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-sm">
@@ -731,27 +731,54 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                       <th className="text-left p-2">Cota</th>
                       <th className="text-left p-2">Vencimento</th>
                       <th className="text-right p-2">Valor</th>
-                      <th className="text-left p-2">Encargos</th>
+                      <th className="text-left p-2">Data de pagamento (retroativo)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {previewInstallments.map(p => (
-                      <tr key={p.n} className="border-t">
-                        <td className="p-2"><Badge variant="outline">{String(p.n).padStart(2, '0')}/{String(installments).padStart(2, '0')}</Badge></td>
-                        <td className="p-2">{new Date(p.dueDate + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                        <td className="p-2 text-right">R$ {p.amount.toFixed(2)}</td>
-                        <td className="p-2 text-xs text-muted-foreground">
-                          {finePct}% multa · {interestPctDay}%/dia
-                          {discountAmount > 0 && ` · -R$${discountAmount.toFixed(2)} até ${discountUntilDays}d antes`}
-                        </td>
-                      </tr>
-                    ))}
+                    {previewInstallments.map(p => {
+                      const isRetro = p.dueDate < today();
+                      return (
+                        <tr key={p.n} className="border-t">
+                          <td className="p-2"><Badge variant="outline">{String(p.n).padStart(2, '0')}/{String(installments).padStart(2, '0')}</Badge></td>
+                          <td className="p-2">
+                            {new Date(p.dueDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            {isRetro && <Badge variant="outline" className="ml-2 text-[10px] text-orange-600 border-orange-300">Retroativo</Badge>}
+                          </td>
+                          <td className="p-2 text-right">R$ {p.amount.toFixed(2)}</td>
+                          <td className="p-2">
+                            {isRetro ? (
+                              <Input
+                                type="date"
+                                className="h-8 text-xs w-40"
+                                max={today()}
+                                value={retroPaidDates[p.n] || ''}
+                                onChange={e => setRetroPaidDates(prev => ({ ...prev, [p.n]: e.target.value }))}
+                                placeholder="Selecione a data da baixa"
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {finePct}% multa · {interestPctDay}%/dia
+                                {discountAmount > 0 && ` · -R$${discountAmount.toFixed(2)} até ${discountUntilDays}d antes`}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {previewInstallments.length === 0 && (
                       <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">Preencha os dados financeiros para visualizar.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
+              {previewInstallments.some(p => p.dueDate < today()) && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Informe a <strong>data real da baixa</strong> para cada parcela retroativa. Se nenhuma data for informada, a parcela será criada como <strong>pendente</strong>.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
@@ -762,14 +789,94 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           </Tabs>
         </div>
 
-        <DialogFooter className="border-t px-6 py-3">
+        <DialogFooter className="border-t px-6 py-3 flex flex-row justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
-            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Gerar Boleto Parcelado
-          </Button>
+          <div className="flex gap-2">
+            {tab !== 'beneficiario' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const order = ['beneficiario', 'pagador', 'financeiro', 'parcelas'];
+                  const idx = order.indexOf(tab);
+                  if (idx > 0) setTab(order[idx - 1]);
+                }}
+                disabled={submitting}
+              >
+                ← Voltar
+              </Button>
+            )}
+            {tab !== 'parcelas' ? (
+              <Button
+                onClick={() => {
+                  const order = ['beneficiario', 'pagador', 'financeiro', 'parcelas'];
+                  const idx = order.indexOf(tab);
+                  if (idx < order.length - 1) setTab(order[idx + 1]);
+                }}
+              >
+                Próximo →
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Gerar Boleto Parcelado
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+interface ItemPickerProps {
+  items: any[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+  kind: 'service' | 'package';
+}
+
+function ItemPicker({ items, value, onChange, placeholder, kind }: ItemPickerProps) {
+  const [open, setOpen] = useState(false);
+  const selected = items.find(i => i.id === value);
+  const label = selected
+    ? `${selected.name} — R$ ${Number(kind === 'package' ? selected.price : selected.price).toFixed(2)}`
+    : 'Selecione...';
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          <span className="truncate">{label}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[60] bg-popover">
+        <Command>
+          <CommandInput placeholder={placeholder} />
+          <CommandList className="max-h-[300px]">
+            <CommandEmpty>Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              {items.map(item => (
+                <CommandItem
+                  key={item.id}
+                  value={`${item.name} ${item.id}`}
+                  onSelect={() => { onChange(item.id); setOpen(false); }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === item.id ? 'opacity-100' : 'opacity-0')} />
+                  <div className="flex-1 flex items-center justify-between gap-2">
+                    <span className="truncate">{item.name}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      R$ {Number(item.price).toFixed(2)}
+                      {kind === 'package' && item.total_sessions ? ` · ${item.total_sessions}x` : ''}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+

@@ -613,7 +613,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                   <Label>Tipo *</Label>
                   <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                     value={itemType}
-                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); }}>
+                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); }}>
                     <option value="service">Serviço</option>
                     <option value="package">Pacote</option>
                     <option value="custom">Personalizado</option>

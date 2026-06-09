@@ -73,6 +73,9 @@ export function FormasPagamento() {
   const [detailClientKey, setDetailClientKey] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);
   const [createBoletoOpen, setCreateBoletoOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
 
   useEffect(() => {
     if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {

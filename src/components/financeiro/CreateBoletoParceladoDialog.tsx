@@ -634,6 +634,56 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
               </div>
 
+              {itemType === 'service' && itemId && (() => {
+                const s = serviceOptions.find(x => x.id === itemId);
+                const unit = Number(s?.price || 0);
+                const subtotal = unit * Math.max(1, applicationsCount || 1);
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Quantas aplicações deste serviço o cliente está comprando? O valor total será recalculado automaticamente.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label>Qtd. aplicações *</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={applicationsCount}
+                          onChange={e => setApplicationsCount(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor unitário</Label>
+                        <Input value={`R$ ${unit.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Subtotal</Label>
+                        <Input value={`R$ ${subtotal.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Desconto total (R$)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={applicationsDiscount}
+                          onChange={e => setApplicationsDiscount(Math.max(0, Number(e.target.value) || 0))}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Total a parcelar</Label>
+                        <Input
+                          value={`R$ ${Math.max(0, subtotal - (applicationsDiscount || 0)).toFixed(2)}`}
+                          disabled
+                          className="font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <Label>Descrição do serviço/pacote *</Label>
                 <Input value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}

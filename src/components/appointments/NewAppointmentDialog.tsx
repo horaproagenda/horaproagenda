@@ -925,7 +925,39 @@ Até breve! ✨`;
         const clientData = clients.find(c => c.id === selectedClient);
         
         // Check if recurring appointments are enabled for this service
-        if (repeatServiceEnabled && editableServiceDates.length > 1 && !usingPaidServiceId) {
+        if (repeatServiceEnabled && editableServiceDates.length > 1 && usingPaidServiceId) {
+          // Paid service repeat: consume one paid sibling per appointment
+          const siblings = paidSiblings.slice(0, editableServiceDates.length);
+          if (siblings.length < editableServiceDates.length) {
+            toast({
+              title: 'Aplicações insuficientes',
+              description: `Disponíveis: ${siblings.length}. Reduza a quantidade ou compre mais aplicações.`,
+              variant: 'destructive',
+            });
+            return;
+          }
+          const duration = selectedServiceData?.duration || 60;
+          for (let i = 0; i < editableServiceDates.length; i++) {
+            const start = editableServiceDates[i];
+            const end = new Date(start.getTime() + duration * 60_000);
+            const apt = await createAppointment.mutateAsync({
+              client_id: selectedClient,
+              service_id: selectedService,
+              start_time: start.toISOString(),
+              end_time: end.toISOString(),
+              notes: `Aplicação ${i + 1}/${editableServiceDates.length} — Serviço pago utilizado${notes ? ` — ${notes}` : ''}`,
+              professional_id: selectedProfessional || undefined,
+              room_id: selectedRoom || undefined,
+              payment_status: 'paid',
+            });
+            if (apt?.id) {
+              await markServiceAsUsed.mutateAsync({
+                serviceId: siblings[i].id,
+                appointmentId: apt.id,
+              });
+            }
+          }
+        } else if (repeatServiceEnabled && editableServiceDates.length > 1 && !usingPaidServiceId) {
           // Create recurring appointments using the hook with custom dates
           const duration = selectedServiceData?.duration || 60;
           

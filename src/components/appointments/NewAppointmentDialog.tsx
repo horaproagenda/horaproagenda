@@ -199,6 +199,11 @@ export function NewAppointmentDialog({
   }, [packages, packageTemplates]);
 
   const selectedServiceData = services.find(s => s.id === selectedService);
+  // Available paid applications of the SAME service the user picked from "Serviços Pagos"
+  const paidSiblings = (clientPaidServices || []).filter(
+    (p: any) => ((p.service?.id || p.service_id) === selectedService) && p.status === 'available',
+  );
+  const paidSiblingCount = paidSiblings.length;
   // Look for package in both templates and client packages (paid packages)
   const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);
@@ -920,7 +925,37 @@ Até breve! ✨`;
         const clientData = clients.find(c => c.id === selectedClient);
         
         // Check if recurring appointments are enabled for this service
-        if (repeatServiceEnabled && editableServiceDates.length > 1 && !usingPaidServiceId) {
+        if (repeatServiceEnabled && editableServiceDates.length > 1 && usingPaidServiceId) {
+          // Paid service repeat: consume one paid sibling per appointment
+          const siblings = paidSiblings.slice(0, editableServiceDates.length);
+          if (siblings.length < editableServiceDates.length) {
+            toast.error(
+              `Aplicações insuficientes. Disponíveis: ${siblings.length}. Reduza a quantidade ou compre mais aplicações.`,
+            );
+            return;
+          }
+          const duration = selectedServiceData?.duration || 60;
+          for (let i = 0; i < editableServiceDates.length; i++) {
+            const start = editableServiceDates[i];
+            const end = new Date(start.getTime() + duration * 60_000);
+            const apt = await createAppointment.mutateAsync({
+              client_id: selectedClient,
+              service_id: selectedService,
+              start_time: start.toISOString(),
+              end_time: end.toISOString(),
+              notes: `Aplicação ${i + 1}/${editableServiceDates.length} — Serviço pago utilizado${notes ? ` — ${notes}` : ''}`,
+              professional_id: selectedProfessional || undefined,
+              room_id: selectedRoom || undefined,
+              payment_status: 'paid',
+            });
+            if (apt?.id) {
+              await markServiceAsUsed.mutateAsync({
+                serviceId: siblings[i].id,
+                appointmentId: apt.id,
+              });
+            }
+          }
+        } else if (repeatServiceEnabled && editableServiceDates.length > 1 && !usingPaidServiceId) {
           // Create recurring appointments using the hook with custom dates
           const duration = selectedServiceData?.duration || 60;
           
@@ -1518,7 +1553,7 @@ Até breve! ✨`;
 
                   
                   {/* Recurring service options - only if not using a paid service */}
-                  {selectedClient && !usingPaidServiceId && (
+                  {selectedClient && (!usingPaidServiceId || paidSiblingCount > 1) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
@@ -1538,6 +1573,11 @@ Até breve! ✨`;
 
                       {repeatServiceEnabled && (
                         <div className="space-y-3 pt-2 border-t">
+                          {usingPaidServiceId && paidSiblingCount > 1 && (
+                            <div className="text-[11px] rounded-md bg-green-500/10 border border-green-500/30 text-green-700 px-2 py-1.5">
+                              Este cliente possui <strong>{paidSiblingCount} aplicações pagas</strong> deste serviço. Cada agendamento criado consumirá uma aplicação.
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Quantidade de vezes</Label>
@@ -1549,7 +1589,10 @@ Até breve! ✨`;
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                                  {(usingPaidServiceId
+                                    ? Array.from({ length: Math.max(1, paidSiblingCount - 1) }, (_, i) => i + 2)
+                                    : [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]
+                                  ).map(num => (
                                     <SelectItem key={num} value={num.toString()}>
                                       {num} agendamentos
                                     </SelectItem>

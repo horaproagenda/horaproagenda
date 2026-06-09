@@ -110,6 +110,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [serviceDescription, setServiceDescription] = useState('');
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [installments, setInstallments] = useState<number>(2);
+  // For services: how many applications the client is buying + discount on the total
+  const [applicationsCount, setApplicationsCount] = useState<number>(1);
+  const [applicationsDiscount, setApplicationsDiscount] = useState<number>(0);
   const [firstDueDate, setFirstDueDate] = useState<string>(() => {
     const d = new Date(); d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
@@ -187,13 +190,17 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     setClientPickerOpen(false);
   };
 
-  // Auto-fill when service/package picked
+  // Auto-fill when service/package picked. For services, total = unitPrice * qty - discount.
   useEffect(() => {
     if (itemType === 'service' && itemId) {
       const s = serviceOptions.find(x => x.id === itemId);
       if (s) {
-        setServiceDescription(s.name);
-        if (!totalAmount) setTotalAmount(Number(s.price) || 0);
+        const unit = Number(s.price) || 0;
+        const qty = Math.max(1, applicationsCount || 1);
+        const disc = Math.max(0, applicationsDiscount || 0);
+        const total = Math.max(0, unit * qty - disc);
+        setServiceDescription(qty > 1 ? `${qty}x ${s.name}` : s.name);
+        setTotalAmount(Number(total.toFixed(2)));
       }
     } else if (itemType === 'package' && itemId) {
       const p = packageOptions.find(x => x.id === itemId);
@@ -203,7 +210,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId, itemType]);
+  }, [itemId, itemType, applicationsCount, applicationsDiscount]);
 
   const installmentValue = useMemo(() => {
     if (!totalAmount || !installments) return 0;
@@ -321,15 +328,20 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       // 4) Provision inventory. Packages bought by boleto are created inactive and
       // become bookable only when the configured payment rule is met.
       if (itemType === 'service' && itemId) {
-        await supabase.from('client_services').insert({
+        const qty = Math.max(1, applicationsCount || 1);
+        const perAppPaid = Number((totalAmount / qty).toFixed(2));
+        const rows = Array.from({ length: qty }, (_, i) => ({
           client_id: payer.client_id,
           service_id: itemId,
           sale_id: sale.id,
-          amount_paid: totalAmount,
+          amount_paid: perAppPaid,
           status: 'available',
-          notes: 'Disponibilizado via Boleto Parcelado',
+          notes: qty > 1
+            ? `Aplicação ${i + 1}/${qty} — Disponibilizado via Boleto Parcelado`
+            : 'Disponibilizado via Boleto Parcelado',
           created_by: user?.id || null,
-        });
+        }));
+        await supabase.from('client_services').insert(rows);
       } else if (itemType === 'package' && itemId) {
         // Clone from package_templates (the only valid source — service_packages are
         // per-client purchase records and would create duplicates in the picker).
@@ -407,6 +419,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
       setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
+      setApplicationsCount(1); setApplicationsDiscount(0);
       setRetroPaidDates({});
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',
@@ -606,7 +619,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                   <Label>Tipo *</Label>
                   <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                     value={itemType}
-                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); }}>
+                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); }}>
                     <option value="service">Serviço</option>
                     <option value="package">Pacote</option>
                     <option value="custom">Personalizado</option>
@@ -626,6 +639,56 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 )}
 
               </div>
+
+              {itemType === 'service' && itemId && (() => {
+                const s = serviceOptions.find(x => x.id === itemId);
+                const unit = Number(s?.price || 0);
+                const subtotal = unit * Math.max(1, applicationsCount || 1);
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Quantas aplicações deste serviço o cliente está comprando? O valor total será recalculado automaticamente.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label>Qtd. aplicações *</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={applicationsCount}
+                          onChange={e => setApplicationsCount(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor unitário</Label>
+                        <Input value={`R$ ${unit.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Subtotal</Label>
+                        <Input value={`R$ ${subtotal.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Desconto total (R$)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={applicationsDiscount}
+                          onChange={e => setApplicationsDiscount(Math.max(0, Number(e.target.value) || 0))}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Total a parcelar</Label>
+                        <Input
+                          value={`R$ ${Math.max(0, subtotal - (applicationsDiscount || 0)).toFixed(2)}`}
+                          disabled
+                          className="font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <Label>Descrição do serviço/pacote *</Label>

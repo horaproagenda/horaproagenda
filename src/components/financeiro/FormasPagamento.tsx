@@ -194,12 +194,12 @@ export function FormasPagamento() {
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (delInstError) throw delInstError;
 
-      // 2) Apaga as vendas (single_sales) que originaram os boletos, e as entradas financeiras vinculadas
+      // 2) Apaga as vendas (single_sales) que originaram os boletos e registros vinculados
       if (saleIds.length > 0) {
-        await supabase.from('financial_entries').delete().in('source_sale_id', saleIds);
-        await supabase.from('cash_transactions').delete().in('sale_id', saleIds);
-        await supabase.from('client_services').delete().in('sale_id', saleIds);
-        await supabase.from('single_sales').delete().in('id', saleIds);
+        const sb: any = supabase;
+        await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
+        await sb.from('client_services').delete().in('sale_id', saleIds);
+        await sb.from('single_sales').delete().in('id', saleIds);
       }
 
       // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)

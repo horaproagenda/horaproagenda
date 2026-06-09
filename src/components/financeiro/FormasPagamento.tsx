@@ -664,6 +664,47 @@ export function FormasPagamento() {
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />
+
+      {/* Bulk Delete All Boletos */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(o) => { setBulkDeleteOpen(o); if (!o) setBulkDeleteConfirm(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Excluir TODOS os boletos
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>Esta ação apaga <strong>permanentemente</strong>:</p>
+                <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
+                  <li>{(allBoletoInstallments as any[]).length} parcela(s) de boleto</li>
+                  <li>Todas as vendas (single_sales) vinculadas aos boletos</li>
+                  <li>Lançamentos de caixa e serviços vendidos correspondentes</li>
+                </ul>
+                <p className="text-xs text-destructive">A ação é irreversível e sincroniza automaticamente com Financeiro, Caixa e Agenda.</p>
+                <div>
+                  <Label className="text-xs">Para confirmar, digite <strong className="text-destructive">EXCLUIR TODOS</strong>:</Label>
+                  <Input
+                    value={bulkDeleteConfirm}
+                    onChange={(e) => setBulkDeleteConfirm(e.target.value.toUpperCase())}
+                    placeholder="EXCLUIR TODOS"
+                    className="font-mono mt-1"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDeleteAllBoletos(); }}
+              disabled={bulkDeleteConfirm !== 'EXCLUIR TODOS' || bulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {bulkDeleting ? 'Excluindo...' : 'Excluir Tudo'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

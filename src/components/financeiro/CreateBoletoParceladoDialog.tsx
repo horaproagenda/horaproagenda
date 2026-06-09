@@ -331,58 +331,53 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           created_by: user?.id || null,
         });
       } else if (itemType === 'package' && itemId) {
-        // Clone the package template into a client-specific package
-        const { data: packageTemplate } = await (supabase as any)
-          .from('service_packages')
-          .select('*, appointments:package_appointments(*)')
-          .eq('id', itemId)
-          .single();
+        // Clone from package_templates (the only valid source — service_packages are
+        // per-client purchase records and would create duplicates in the picker).
+        const template = packageOptions.find(t => t.id === itemId);
 
-        if (packageTemplate) {
+        if (template) {
           const { data: clientPackage, error: pkgError } = await supabase
             .from('service_packages')
             .insert({
-              name: packageTemplate.name,
-              description: packageTemplate.description,
+              name: template.name,
+              description: template.description,
               client_id: payer.client_id,
-              template_id: packageTemplate.template_id || null,
-              total_sessions: packageTemplate.total_sessions,
-              duration: packageTemplate.duration || 60,
-              interval_days: packageTemplate.interval_days || 7,
+              template_id: template.id,
+              total_sessions: template.total_sessions,
+              duration: template.duration || 60,
+              interval_days: template.interval_days || 7,
               total_price: totalAmount,
-              package_type: packageTemplate.package_type || 'standard',
-              service_id: packageTemplate.service_id || null,
-              professional_id: packageTemplate.professional_id,
-              room_id: packageTemplate.room_id,
-              equipment: packageTemplate.equipment || [],
+              package_type: template.package_type || 'standard',
+              service_id: template.service_id || null,
+              professional_id: template.professional_id,
+              room_id: template.room_id,
+              equipment: template.equipment || [],
               payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
               payment_type: packageReleaseRule,
               sessions_scheduled: 0,
               is_active: false,
-              category: packageTemplate.category || 'Pago via Boleto Parcelado',
+              category: template.category || 'Pago via Boleto Parcelado',
             })
             .select()
             .single();
 
           if (!pkgError && clientPackage) {
-            const packageSteps = packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
-              ? packageTemplate.appointments.sort(
-                  (a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number)
-                )
-              : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
-                  service_id: packageTemplate.service_id || null,
-                  interval_after_days: packageTemplate.interval_days || 7,
+            const templateSteps = template.package_type === 'sequential' && template.steps?.length
+              ? template.steps
+              : Array.from({ length: template.total_sessions }, (_, i) => ({
+                  service_id: template.service_id || null,
+                  interval_after_days: template.interval_days || 7,
                   sequence_order: i + 1,
                 }));
 
-            const sessions = packageSteps.map((step: any, i: number) => ({
+            const sessions = templateSteps.map((step: any, i: number) => ({
               package_id: clientPackage.id,
-              service_id: step.service_id || packageTemplate.service_id || null,
+              service_id: step.service_id || template.service_id || null,
               session_number: i + 1,
               original_session_number: i + 1,
               sequence_order: step.sequence_order || i + 1,
               interval_after_days:
-                i === packageSteps.length - 1 ? 0 : step.interval_after_days || packageTemplate.interval_days || 7,
+                i === templateSteps.length - 1 ? 0 : step.interval_after_days || template.interval_days || 7,
               status: 'pending',
               notes: 'Disponibilizado via Boleto Parcelado',
             }));
@@ -394,6 +389,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           }
         }
       }
+
 
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });

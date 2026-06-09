@@ -158,6 +158,7 @@ export function BoletoDetailModal({
     setConfirmAction(null);
     if (action.kind === 'pay') await onMarkAsPaid({ id: action.id });
     else if (action.kind === 'cancel') await onCancel(action.id);
+    else if (action.kind === 'delete' && onDelete) await onDelete(action.id);
     else if (action.kind === 'edit') await performSaveEdit();
     else if (action.kind === 'batchPay') await performBatchPay();
   };

@@ -401,13 +401,15 @@ export function BoletoDetailModal({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmAction?.kind === 'pay' && 'Confirmar baixa do boleto'}
-              {confirmAction?.kind === 'cancel' && 'Apagar/cancelar parcela'}
+              {confirmAction?.kind === 'cancel' && 'Cancelar parcela'}
+              {confirmAction?.kind === 'delete' && 'Excluir parcela permanentemente'}
               {confirmAction?.kind === 'edit' && 'Confirmar edição da parcela'}
               {confirmAction?.kind === 'batchPay' && 'Confirmar baixa em lote'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
-              {confirmAction?.kind === 'cancel' && `Tem certeza que deseja apagar/cancelar a ${confirmAction.label}? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'cancel' && `Tem certeza que deseja cancelar a ${confirmAction.label}? O registro permanecerá no histórico marcado como cancelado.`}
+              {confirmAction?.kind === 'delete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE a ${confirmAction.label}? Esta ação remove o registro do banco de dados e não pode ser desfeita.`}
               {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
               {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
             </AlertDialogDescription>
@@ -416,8 +418,9 @@ export function BoletoDetailModal({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={performConfirm}
-              className={confirmAction?.kind === 'cancel' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={confirmAction?.kind === 'cancel' || confirmAction?.kind === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
+
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>

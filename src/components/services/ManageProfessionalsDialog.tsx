@@ -333,40 +333,35 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja remover este profissional?')) return;
-    
+
+    // Check for linked data to warn the user before forcing
+    const [{ count: svcCount }, { count: apptCount }, { count: pkgCount }, { count: finCount }] = await Promise.all([
+      supabase.from('services').select('id', { count: 'exact', head: true }).eq('professional_id', id),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('professional_id', id),
+      supabase.from('service_packages').select('id', { count: 'exact', head: true }).eq('professional_id', id),
+      supabase.from('financial_entries').select('id', { count: 'exact', head: true }).eq('professional_id', id),
+    ]);
+
+    const total = (svcCount || 0) + (apptCount || 0) + (pkgCount || 0) + (finCount || 0);
+    if (total > 0) {
+      const ok = confirm(
+        `Este profissional possui dados vinculados:\n` +
+        `• ${svcCount || 0} serviço(s)\n` +
+        `• ${apptCount || 0} agendamento(s)\n` +
+        `• ${pkgCount || 0} pacote(s)\n` +
+        `• ${finCount || 0} lançamento(s) financeiro(s)\n\n` +
+        `Os registros não serão apagados, apenas desvinculados do profissional. Deseja continuar?`
+      );
+      if (!ok) return;
+    }
+
     try {
-      const { data: services } = await supabase
-        .from('services')
-        .select('id')
-        .eq('professional_id', id)
-        .limit(1);
-      
-      if (services && services.length > 0) {
-        toast.error('Não é possível remover: profissional possui serviços vinculados.');
-        return;
-      }
-
-      const { data: appointments } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('professional_id', id)
-        .limit(1);
-      
-      if (appointments && appointments.length > 0) {
-        toast.error('Não é possível remover: profissional possui agendamentos vinculados.');
-        return;
-      }
-
-      const { error } = await supabase.from('professionals').delete().eq('id', id);
+      const { error } = await supabase.rpc('force_delete_professional' as any, { _professional_id: id });
       if (error) throw error;
       toast.success('Profissional removido!');
       refetch();
     } catch (error: any) {
-      if (error.message?.includes('violates foreign key constraint')) {
-        toast.error('Não é possível remover: profissional possui dados vinculados no sistema.');
-      } else {
-        toast.error('Erro ao remover: ' + error.message);
-      }
+      toast.error('Erro ao remover: ' + (error.message || 'erro desconhecido'));
     }
   };
 

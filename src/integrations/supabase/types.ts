@@ -4561,6 +4561,10 @@ export type Database = {
         Returns: undefined
       }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
+      force_delete_professional: {
+        Args: { _professional_id: string }
+        Returns: undefined
+      }
       get_account_owner: { Args: { _user_id: string }; Returns: string }
       get_agenda_package_integrity_report: { Args: never; Returns: Json }
       get_client_outstanding_balance: {

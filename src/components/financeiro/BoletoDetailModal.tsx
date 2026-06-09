@@ -54,10 +54,12 @@ export function BoletoDetailModal({
   const [confirmAction, setConfirmAction] = useState<
     | { kind: 'pay'; id: string; label: string }
     | { kind: 'cancel'; id: string; label: string }
+    | { kind: 'delete'; id: string; label: string }
     | { kind: 'edit'; id: string; label: string }
     | { kind: 'batchPay'; ids: string[]; total: number }
     | null
   >(null);
+
 
   const sorted = useMemo(
     () => [...installments].sort((a, b) => {

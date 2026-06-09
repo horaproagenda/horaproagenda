@@ -407,9 +407,11 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
       setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
+      setRetroPaidDates({});
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',
         neighborhood: '', city: '', state: '' });
+
     } catch (e: any) {
       console.error(e);
       toast.error('Erro ao criar boleto: ' + (e.message || e));

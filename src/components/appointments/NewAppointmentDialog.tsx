@@ -107,6 +107,7 @@ export function NewAppointmentDialog({
   const queryClient = useQueryClient();
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
+  const [endTimeOverride, setEndTimeOverride] = useState('');
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);

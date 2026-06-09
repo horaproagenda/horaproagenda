@@ -747,6 +747,39 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
+              {itemType === 'package' && itemId && (() => {
+                const p = packageOptions.find(x => x.id === itemId);
+                const base = Number(p?.price || 0);
+                const finalVal = Math.max(0, base - (packageDiscount || 0));
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Desconto aplicado ao valor total do pacote. O valor a parcelar será recalculado automaticamente.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label>Valor do pacote</Label>
+                        <Input value={`R$ ${base.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Desconto (R$)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={packageDiscount}
+                          onChange={e => setPackageDiscount(Math.max(0, Number(e.target.value) || 0))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Total a parcelar</Label>
+                        <Input value={`R$ ${finalVal.toFixed(2)}`} disabled className="font-semibold" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {itemType === 'package' && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <Label>Disponibilizar pacote para agendamento</Label>

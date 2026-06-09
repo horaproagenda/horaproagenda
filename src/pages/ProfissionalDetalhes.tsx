@@ -459,7 +459,7 @@ export default function ProfissionalDetalhes() {
       <AppLayout title="Profissional não encontrado">
         <div className="text-center py-8">
           <p className="text-muted-foreground">Profissional não encontrado.</p>
-          <Button variant="outline" onClick={() => navigate('/cadastros')} className="mt-4">
+          <Button variant="outline" onClick={() => navigate('/admin')} className="mt-4">
             Voltar
           </Button>
         </div>
@@ -483,7 +483,7 @@ export default function ProfissionalDetalhes() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => navigate('/cadastros')}
+                onClick={() => navigate('/admin')}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

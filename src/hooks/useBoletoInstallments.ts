@@ -21,19 +21,31 @@ export interface BoletoInstallment {
 
 const BOLETO_KEYS = ['boleto_installments', 'boleto_installments_all'] as const;
 
+// Lista das chaves de cache afetadas pelas mutações de boleto.
+// Invalidamos numa única chamada via predicate para evitar várias passadas
+// pelo cache (cada invalidateQueries percorre TODAS as queries ativas).
+const INVALIDATE_KEYS = new Set<string>([
+  ...BOLETO_KEYS,
+  'financial_entries',
+  'appointments',
+  'reminders',
+  'cash_transactions',
+  'cash_register_entries',
+  'single_sales',
+  'client-sales',
+  'client_boleto_status',
+  'client_packages',
+  'service_packages',
+  'package_appointments',
+]);
+
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
-  BOLETO_KEYS.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
-  queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-  queryClient.invalidateQueries({ queryKey: ['appointments'] });
-  queryClient.invalidateQueries({ queryKey: ['reminders'] });
-  queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-  queryClient.invalidateQueries({ queryKey: ['cash_register_entries'] });
-  queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-  queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-  queryClient.invalidateQueries({ queryKey: ['client_boleto_status'] });
-  queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-  queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-  queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const k = q.queryKey?.[0];
+      return typeof k === 'string' && INVALIDATE_KEYS.has(k);
+    },
+  });
 }
 
 export function useBoletoInstallments(saleId?: string) {

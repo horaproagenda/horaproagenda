@@ -188,16 +188,16 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   // Auto-fill when service/package picked
   useEffect(() => {
     if (itemType === 'service' && itemId) {
-      const s = services.find(x => x.id === itemId);
+      const s = serviceOptions.find(x => x.id === itemId);
       if (s) {
         setServiceDescription(s.name);
         if (!totalAmount) setTotalAmount(Number(s.price) || 0);
       }
     } else if (itemType === 'package' && itemId) {
-      const p = packages.find(x => x.id === itemId);
+      const p = packageOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
-        if (!totalAmount) setTotalAmount(Number(p.total_price) || 0);
+        if (!totalAmount) setTotalAmount(Number(p.price) || 0);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

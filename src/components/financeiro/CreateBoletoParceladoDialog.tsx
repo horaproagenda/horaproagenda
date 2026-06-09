@@ -113,6 +113,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   // For services: how many applications the client is buying + discount on the total
   const [applicationsCount, setApplicationsCount] = useState<number>(1);
   const [applicationsDiscount, setApplicationsDiscount] = useState<number>(0);
+  // For packages: discount applied to package total (subtracted from total to parcel)
+  const [packageDiscount, setPackageDiscount] = useState<number>(0);
   const [firstDueDate, setFirstDueDate] = useState<string>(() => {
     const d = new Date(); d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
@@ -190,7 +192,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     setClientPickerOpen(false);
   };
 
-  // Auto-fill when service/package picked. For services, total = unitPrice * qty - discount.
+  // Auto-fill when service/package picked. For services and packages, total = unitPrice * qty - discount.
   useEffect(() => {
     if (itemType === 'service' && itemId) {
       const s = serviceOptions.find(x => x.id === itemId);
@@ -206,11 +208,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       const p = packageOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
-        if (!totalAmount) setTotalAmount(Number(p.price) || 0);
+        const base = Number(p.price) || 0;
+        const disc = Math.max(0, packageDiscount || 0);
+        setTotalAmount(Number(Math.max(0, base - disc).toFixed(2)));
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId, itemType, applicationsCount, applicationsDiscount]);
+  }, [itemId, itemType, applicationsCount, applicationsDiscount, packageDiscount]);
 
   const installmentValue = useMemo(() => {
     if (!totalAmount || !installments) return 0;
@@ -259,10 +263,26 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       }
 
       // 2) Create single_sale
+      // Compute original (gross) and discount based on item type.
+      let originalGross = totalAmount;
+      let discountTotal = 0;
+      if (itemType === 'service' && itemId) {
+        const s = serviceOptions.find(x => x.id === itemId);
+        const unit = Number(s?.price || 0);
+        const qty = Math.max(1, applicationsCount || 1);
+        originalGross = Number((unit * qty).toFixed(2));
+        discountTotal = Math.max(0, applicationsDiscount || 0);
+      } else if (itemType === 'package' && itemId) {
+        const p = packageOptions.find(x => x.id === itemId);
+        originalGross = Number(p?.price || totalAmount);
+        discountTotal = Math.max(0, packageDiscount || 0);
+      }
+
       const saleInsert: any = {
         client_id: payer.client_id,
         description: serviceDescription,
-        original_amount: totalAmount,
+        original_amount: originalGross,
+        discount_amount: discountTotal,
         final_amount: totalAmount,
         payment_method_id: boletoPaymentMethod.id,
         sale_date: today(),
@@ -272,7 +292,9 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         created_by: user?.id || null,
       };
       if (itemType === 'service' && itemId) saleInsert.service_id = itemId;
-      if (itemType === 'package' && itemId) saleInsert.package_id = itemId;
+      // IMPORTANT: do NOT set package_id to the template id — single_sales.package_id
+      // references service_packages (per-client purchases), not package_templates.
+      // For packages we create the service_packages clone after, then patch the sale.
 
       const { data: sale, error: saleErr } = await supabase
         .from('single_sales')
@@ -419,7 +441,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
       setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
-      setApplicationsCount(1); setApplicationsDiscount(0);
+      setApplicationsCount(1); setApplicationsDiscount(0); setPackageDiscount(0);
       setRetroPaidDates({});
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',
@@ -619,7 +641,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                   <Label>Tipo *</Label>
                   <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                     value={itemType}
-                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); }}>
+                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); setPackageDiscount(0); }}>
                     <option value="service">Serviço</option>
                     <option value="package">Pacote</option>
                     <option value="custom">Personalizado</option>
@@ -724,6 +746,39 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                     onChange={e => setIntervalDays(Number(e.target.value))} />
                 </div>
               </div>
+
+              {itemType === 'package' && itemId && (() => {
+                const p = packageOptions.find(x => x.id === itemId);
+                const base = Number(p?.price || 0);
+                const finalVal = Math.max(0, base - (packageDiscount || 0));
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Desconto aplicado ao valor total do pacote. O valor a parcelar será recalculado automaticamente.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label>Valor do pacote</Label>
+                        <Input value={`R$ ${base.toFixed(2)}`} disabled />
+                      </div>
+                      <div>
+                        <Label>Desconto (R$)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={packageDiscount}
+                          onChange={e => setPackageDiscount(Math.max(0, Number(e.target.value) || 0))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Total a parcelar</Label>
+                        <Input value={`R$ ${finalVal.toFixed(2)}`} disabled className="font-semibold" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {itemType === 'package' && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">

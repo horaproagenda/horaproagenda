@@ -107,6 +107,7 @@ export function NewAppointmentDialog({
   const queryClient = useQueryClient();
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
+  const [endTimeOverride, setEndTimeOverride] = useState('');
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<'service' | 'package'>('service');
   const [manualDuration, setManualDuration] = useState(60);
@@ -332,8 +333,25 @@ export function NewAppointmentDialog({
     
     const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, time, duration, settings?.timezone);
 
+    // Apply user override for end time, if valid and after start time
+    if (endTimeOverride && /^\d{2}:\d{2}$/.test(endTimeOverride)) {
+      try {
+        const overrideEnd = createDateTimeInTimeZone(date, endTimeOverride, settings?.timezone);
+        if (overrideEnd > startTime) {
+          return { startTime, endTime: overrideEnd };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     return { startTime, endTime };
-  }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
+  }, [date, time, endTimeOverride, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
+
+  // Reset end-time override when start time or service/package changes
+  useEffect(() => {
+    setEndTimeOverride('');
+  }, [time, selectedService, selectedPackageData?.id, serviceType]);
 
   // Calculate preview dates for auto-scheduling
   const packageSequenceSteps = useMemo(() => {
@@ -743,10 +761,12 @@ export function NewAppointmentDialog({
     }
 
     const duration = serviceOrPackage.duration || 60;
-    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
+    const startTime = appointmentTimes?.startTime ?? createDateTimeInTimeZone(date, time, settings?.timezone);
 
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + duration);
+    // Honor user-edited end time when valid; otherwise compute from duration
+    const endTime = appointmentTimes?.endTime
+      ? new Date(appointmentTimes.endTime)
+      : new Date(startTime.getTime() + duration * 60000);
 
     try {
       if (isPackageAppointment && selectedPackageData) {
@@ -2057,11 +2077,35 @@ Até breve! ✨`;
                   </Popover>
                 </div>
                 {appointmentTimes && (
-                  <p className="text-[11px] font-medium text-primary">
-                    Término previsto: {format(appointmentTimes.endTime, 'HH:mm')}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[11px] text-muted-foreground shrink-0">Término:</Label>
+                    <div className="relative flex-1">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="time"
+                        value={endTimeOverride || format(appointmentTimes.endTime, 'HH:mm')}
+                        onChange={(e) => setEndTimeOverride(e.target.value)}
+                        className="pl-8 h-8 text-xs"
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                    {endTimeOverride && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={() => setEndTimeOverride('')}
+                        title="Restaurar término automático"
+                      >
+                        Auto
+                      </Button>
+                    )}
+                  </div>
                 )}
-                <p className="text-[10px] text-muted-foreground">Digite qualquer horário ou clique no ícone para sugestões. O término é calculado pela duração do serviço/pacote.</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Digite o horário ou use o ícone de sugestões. O término é calculado pela duração, mas pode ser editado manualmente.
+                </p>
               </div>
             </div>
 

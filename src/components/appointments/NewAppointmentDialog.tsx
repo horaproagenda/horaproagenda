@@ -199,6 +199,11 @@ export function NewAppointmentDialog({
   }, [packages, packageTemplates]);
 
   const selectedServiceData = services.find(s => s.id === selectedService);
+  // Available paid applications of the SAME service the user picked from "Serviços Pagos"
+  const paidSiblings = (clientPaidServices || []).filter(
+    (p: any) => ((p.service?.id || p.service_id) === selectedService) && p.status === 'available',
+  );
+  const paidSiblingCount = paidSiblings.length;
   // Look for package in both templates and client packages (paid packages)
   const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);

@@ -1543,6 +1543,11 @@ Até breve! ✨`;
 
                       {repeatServiceEnabled && (
                         <div className="space-y-3 pt-2 border-t">
+                          {usingPaidServiceId && paidSiblingCount > 1 && (
+                            <div className="text-[11px] rounded-md bg-green-500/10 border border-green-500/30 text-green-700 px-2 py-1.5">
+                              Este cliente possui <strong>{paidSiblingCount} aplicações pagas</strong> deste serviço. Cada agendamento criado consumirá uma aplicação.
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Quantidade de vezes</Label>
@@ -1554,7 +1559,10 @@ Até breve! ✨`;
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                                  {(usingPaidServiceId
+                                    ? Array.from({ length: Math.max(1, paidSiblingCount - 1) }, (_, i) => i + 2)
+                                    : [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]
+                                  ).map(num => (
                                     <SelectItem key={num} value={num.toString()}>
                                       {num} agendamentos
                                     </SelectItem>

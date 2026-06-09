@@ -2056,19 +2056,21 @@ Até breve! ✨`;
                     </PopoverContent>
                   </Popover>
                 </div>
-                <p className="text-[10px] text-muted-foreground">Digite qualquer horário ou clique no ícone para sugestões</p>
+                {appointmentTimes && (
+                  <p className="text-[11px] font-medium text-primary">
+                    Término previsto: {format(appointmentTimes.endTime, 'HH:mm')}
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground">Digite qualquer horário ou clique no ícone para sugestões. O término é calculado pela duração do serviço/pacote.</p>
               </div>
             </div>
 
             {/* Show appointment summary */}
-            {date && time && selectedServiceData && (
+            {date && time && appointmentTimes && (selectedServiceData || selectedPackageData) && (
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-sm font-medium mb-1">Resumo do Agendamento</p>
                 <p className="text-xs text-muted-foreground">
-                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} às {time}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Término previsto: {appointmentTimes && format(appointmentTimes.endTime, 'HH:mm')}
+                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} • Início {time} • Término {format(appointmentTimes.endTime, 'HH:mm')}
                 </p>
               </div>
             )}

@@ -583,15 +583,16 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 {itemType !== 'custom' && (
                   <div className="col-span-2">
                     <Label>{itemType === 'service' ? 'Serviço' : 'Pacote'} *</Label>
-                    <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                      value={itemId} onChange={e => setItemId(e.target.value)}>
-                      <option value="">Selecione...</option>
-                      {(itemType === 'service' ? services : packages).map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                    <ItemPicker
+                      items={itemType === 'service' ? serviceOptions : packageOptions}
+                      value={itemId}
+                      onChange={setItemId}
+                      placeholder={itemType === 'service' ? 'Buscar serviço...' : 'Buscar pacote...'}
+                      kind={itemType}
+                    />
                   </div>
                 )}
+
               </div>
 
               <div>

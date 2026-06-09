@@ -20,7 +20,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye, History, LayoutList, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye, History, LayoutList, Clock, AlertTriangle, CheckCircle2, Info, Ban } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { useCardBrands, type CardBrand } from '@/hooks/useCardBrands';
@@ -69,6 +73,9 @@ export function FormasPagamento() {
   const [detailClientKey, setDetailClientKey] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);
   const [createBoletoOpen, setCreateBoletoOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
 
   useEffect(() => {
     if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {
@@ -169,6 +176,44 @@ export function FormasPagamento() {
       await batchMarkAsPaid.mutateAsync({ ids: selectedBoletoIds });
       setSelectedBoletoIds([]);
     } finally { setBatchPaying(false); }
+  };
+
+  const handleBulkDeleteAllBoletos = async () => {
+    if (bulkDeleteConfirm !== 'EXCLUIR TODOS') {
+      toast.error('Digite "EXCLUIR TODOS" para confirmar');
+      return;
+    }
+    setBulkDeleting(true);
+    try {
+      const saleIds = Array.from(new Set((allBoletoInstallments as any[]).map(b => b.sale_id).filter(Boolean)));
+
+      // 1) Apaga todas as parcelas (RLS limita ao usuário atual)
+      const { error: delInstError } = await supabase
+        .from('boleto_installments')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delInstError) throw delInstError;
+
+      // 2) Apaga as vendas (single_sales) que originaram os boletos e registros vinculados
+      if (saleIds.length > 0) {
+        const sb: any = supabase;
+        await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
+        await sb.from('client_services').delete().in('sale_id', saleIds);
+        await sb.from('single_sales').delete().in('id', saleIds);
+      }
+
+      // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)
+      queryClient.invalidateQueries();
+      toast.success('Todos os boletos foram excluídos.');
+      setBulkDeleteOpen(false);
+      setBulkDeleteConfirm('');
+      setSelectedBoletoIds([]);
+    } catch (err: any) {
+      console.error('Erro ao excluir todos os boletos:', err);
+      toast.error('Erro ao excluir boletos: ' + (err.message || 'desconhecido'));
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleBoletoPayment = async (boleto: any) => {
@@ -381,8 +426,31 @@ export function FormasPagamento() {
                   <RefreshCw className={`h-3 w-3 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
                   Sincronizar
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 h-7 px-2 text-[11px] border-destructive/40 text-destructive hover:bg-destructive/10"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={(allBoletoInstallments as any[]).length === 0}
+                  title="Excluir TODOS os boletos do sistema permanentemente"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Excluir Todos
+                </Button>
               </div>
             </div>
+
+            {/* Info: cancelar vs excluir */}
+            <Alert className="border-blue-500/40 bg-blue-50 dark:bg-blue-950/20 py-2">
+              <Info className="h-3.5 w-3.5 text-blue-600" />
+              <AlertDescription className="text-[11px] text-blue-800 dark:text-blue-300 leading-snug">
+                <strong>Cancelar boleto</strong> <Ban className="inline h-3 w-3 align-text-bottom" />: marca a parcela como <em>cancelada</em>, mantém o registro no histórico de auditoria e <strong>redistribui o valor</strong> entre as parcelas restantes (não apaga). Ideal para boletos que não serão mais cobrados, mas precisam ser rastreáveis.
+                <br />
+                <strong>Excluir parcela</strong> <Trash2 className="inline h-3 w-3 align-text-bottom" />: remove a parcela permanentemente do banco de dados. Use somente em casos de erro de cadastro.
+                <br />
+                <strong>Excluir Todos</strong>: apaga <strong>todos</strong> os boletos, vendas vinculadas, lançamentos de caixa e serviços vendidos — usado para limpar dados de teste. Ação irreversível.
+              </AlertDescription>
+            </Alert>
 
             {/* Batch bar */}
             {selectedBoletoIds.length > 0 && (
@@ -596,6 +664,47 @@ export function FormasPagamento() {
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />
+
+      {/* Bulk Delete All Boletos */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(o) => { setBulkDeleteOpen(o); if (!o) setBulkDeleteConfirm(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Excluir TODOS os boletos
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>Esta ação apaga <strong>permanentemente</strong>:</p>
+                <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
+                  <li>{(allBoletoInstallments as any[]).length} parcela(s) de boleto</li>
+                  <li>Todas as vendas (single_sales) vinculadas aos boletos</li>
+                  <li>Lançamentos de caixa e serviços vendidos correspondentes</li>
+                </ul>
+                <p className="text-xs text-destructive">A ação é irreversível e sincroniza automaticamente com Financeiro, Caixa e Agenda.</p>
+                <div>
+                  <Label className="text-xs">Para confirmar, digite <strong className="text-destructive">EXCLUIR TODOS</strong>:</Label>
+                  <Input
+                    value={bulkDeleteConfirm}
+                    onChange={(e) => setBulkDeleteConfirm(e.target.value.toUpperCase())}
+                    placeholder="EXCLUIR TODOS"
+                    className="font-mono mt-1"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDeleteAllBoletos(); }}
+              disabled={bulkDeleteConfirm !== 'EXCLUIR TODOS' || bulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {bulkDeleting ? 'Excluindo...' : 'Excluir Tudo'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

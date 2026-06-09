@@ -419,6 +419,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
       setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
+      setApplicationsCount(1); setApplicationsDiscount(0);
       setRetroPaidDates({});
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',

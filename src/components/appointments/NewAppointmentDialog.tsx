@@ -333,8 +333,25 @@ export function NewAppointmentDialog({
     
     const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, time, duration, settings?.timezone);
 
+    // Apply user override for end time, if valid and after start time
+    if (endTimeOverride && /^\d{2}:\d{2}$/.test(endTimeOverride)) {
+      try {
+        const overrideEnd = createDateTimeInTimeZone(date, endTimeOverride, settings?.timezone);
+        if (overrideEnd > startTime) {
+          return { startTime, endTime: overrideEnd };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     return { startTime, endTime };
-  }, [date, time, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
+  }, [date, time, endTimeOverride, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
+
+  // Reset end-time override when start time or service/package changes
+  useEffect(() => {
+    setEndTimeOverride('');
+  }, [time, selectedService, selectedPackageData?.id, serviceType]);
 
   // Calculate preview dates for auto-scheduling
   const packageSequenceSteps = useMemo(() => {

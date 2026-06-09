@@ -449,6 +449,8 @@ export function BoletoDetailModal({
               {confirmAction?.kind === 'delete' && 'Excluir parcela permanentemente'}
               {confirmAction?.kind === 'edit' && 'Confirmar edição da parcela'}
               {confirmAction?.kind === 'batchPay' && 'Confirmar baixa em lote'}
+              {confirmAction?.kind === 'batchDelete' && 'Excluir parcelas selecionadas'}
+              {confirmAction?.kind === 'deleteAll' && 'Excluir todas as parcelas deste boleto'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
@@ -456,13 +458,15 @@ export function BoletoDetailModal({
               {confirmAction?.kind === 'delete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE a ${confirmAction.label}? Esta ação remove o registro do banco de dados e não pode ser desfeita.`}
               {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
               {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
+              {confirmAction?.kind === 'batchDelete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE ${confirmAction.ids.length} parcela(s) selecionada(s)? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'deleteAll' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE todas as ${confirmAction.ids.length} parcela(s) deste boleto? Esta ação não pode ser desfeita.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={performConfirm}
-              className={confirmAction?.kind === 'cancel' || confirmAction?.kind === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={['cancel','delete','batchDelete','deleteAll'].includes(confirmAction?.kind || '') ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
 
               Confirmar

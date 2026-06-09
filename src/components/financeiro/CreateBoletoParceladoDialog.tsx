@@ -120,6 +120,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     return d.toISOString().split('T')[0];
   });
   const [intervalDays, setIntervalDays] = useState<number>(30);
+  const [intervalMode, setIntervalMode] = useState<'days' | 'monthly'>('days');
   const [packageReleaseRule, setPackageReleaseRule] = useState<BoletoPackageReleaseRule>('boleto_first_paid');
 
   // Fees

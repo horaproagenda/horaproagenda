@@ -45,7 +45,7 @@ export function FormasPagamento() {
   const { cardBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
   const {
     installments: allBoletoInstallments, isLoading: loadingBoletos,
-    markAsPaid, batchMarkAsPaid, updateInstallment, cancelInstallment, triggerSync,
+    markAsPaid, batchMarkAsPaid, updateInstallment, cancelInstallment, deleteInstallment, triggerSync,
   } = useAllBoletoInstallments();
   const queryClient = useQueryClient();
 
@@ -592,6 +592,7 @@ export function FormasPagamento() {
         onBatchPay={async (p) => { await batchMarkAsPaid.mutateAsync(p); }}
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
+        onDelete={async (id) => { await deleteInstallment.mutateAsync(id); }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />

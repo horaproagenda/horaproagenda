@@ -367,6 +367,41 @@ export function useAllBoletoInstallments() {
     },
   });
 
+  const deleteInstallment = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: current } = await supabase
+        .from('boleto_installments')
+        .select('status, amount, sale_id, installment_number, total_installments')
+        .eq('id', id)
+        .single();
+
+      await logAudit({
+        boleto_installment_id: id,
+        sale_id: current?.sale_id,
+        event_type: 'delete',
+        previous_status: current?.status,
+        new_status: 'deleted',
+        new_amount: current?.amount,
+        notes: `Parcela ${current?.installment_number}/${current?.total_installments} excluída permanentemente`,
+      });
+
+      const { error } = await supabase.from('boleto_installments').delete().eq('id', id);
+      if (error) throw error;
+
+      if (current?.sale_id) {
+        await redistributeActiveBoletoInstallments(current.sale_id);
+        await syncBoletoPackageAvailability(current.sale_id);
+      }
+    },
+    onSuccess: () => {
+      invalidateAll(queryClient);
+      toast.success('Parcela excluída!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao excluir parcela: ' + error.message);
+    },
+  });
+
   // Trigger manual sync
   const triggerSync = useMutation({
     mutationFn: async () => {
@@ -390,6 +425,8 @@ export function useAllBoletoInstallments() {
     batchMarkAsPaid,
     updateInstallment,
     cancelInstallment,
+    deleteInstallment,
     triggerSync,
   };
 }
+

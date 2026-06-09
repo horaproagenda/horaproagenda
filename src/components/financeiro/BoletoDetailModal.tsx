@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw,
+  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,7 +31,9 @@ interface BoletoDetailModalProps {
   onBatchPay: (params: { ids: string[]; paidDate?: string }) => Promise<void>;
   onUpdate: (params: { id: string; amount?: number; due_date?: string; notes?: string }) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
 }
+
 
 export function BoletoDetailModal({
   open,
@@ -42,7 +44,9 @@ export function BoletoDetailModal({
   onBatchPay,
   onUpdate,
   onCancel,
+  onDelete,
 }: BoletoDetailModalProps) {
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', due_date: '' });
@@ -50,10 +54,12 @@ export function BoletoDetailModal({
   const [confirmAction, setConfirmAction] = useState<
     | { kind: 'pay'; id: string; label: string }
     | { kind: 'cancel'; id: string; label: string }
+    | { kind: 'delete'; id: string; label: string }
     | { kind: 'edit'; id: string; label: string }
     | { kind: 'batchPay'; ids: string[]; total: number }
     | null
   >(null);
+
 
   const sorted = useMemo(
     () => [...installments].sort((a, b) => {
@@ -152,6 +158,7 @@ export function BoletoDetailModal({
     setConfirmAction(null);
     if (action.kind === 'pay') await onMarkAsPaid({ id: action.id });
     else if (action.kind === 'cancel') await onCancel(action.id);
+    else if (action.kind === 'delete' && onDelete) await onDelete(action.id);
     else if (action.kind === 'edit') await performSaveEdit();
     else if (action.kind === 'batchPay') await performBatchPay();
   };
@@ -316,29 +323,47 @@ export function BoletoDetailModal({
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </>
-                          ) : isPending ? (
+                          ) : (
                             <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(inst)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
-                              >
-                                <Check className="h-3.5 w-3.5 text-green-600" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
-                              >
-                                <X className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
+                              {isPending && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(inst)} title="Editar">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Dar baixa"
+                                    onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
+                                  >
+                                    <Check className="h-3.5 w-3.5 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Cancelar (mantém histórico)"
+                                    onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                  >
+                                    <X className="h-3.5 w-3.5 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                              {onDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Excluir parcela permanentemente"
+                                  onClick={() => setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              )}
                             </>
-                          ) : null}
+                          )}
+
                         </div>
                       </TableCell>
                     </TableRow>
@@ -376,13 +401,15 @@ export function BoletoDetailModal({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmAction?.kind === 'pay' && 'Confirmar baixa do boleto'}
-              {confirmAction?.kind === 'cancel' && 'Apagar/cancelar parcela'}
+              {confirmAction?.kind === 'cancel' && 'Cancelar parcela'}
+              {confirmAction?.kind === 'delete' && 'Excluir parcela permanentemente'}
               {confirmAction?.kind === 'edit' && 'Confirmar edição da parcela'}
               {confirmAction?.kind === 'batchPay' && 'Confirmar baixa em lote'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
-              {confirmAction?.kind === 'cancel' && `Tem certeza que deseja apagar/cancelar a ${confirmAction.label}? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'cancel' && `Tem certeza que deseja cancelar a ${confirmAction.label}? O registro permanecerá no histórico marcado como cancelado.`}
+              {confirmAction?.kind === 'delete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE a ${confirmAction.label}? Esta ação remove o registro do banco de dados e não pode ser desfeita.`}
               {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
               {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
             </AlertDialogDescription>
@@ -391,8 +418,9 @@ export function BoletoDetailModal({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={performConfirm}
-              className={confirmAction?.kind === 'cancel' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={confirmAction?.kind === 'cancel' || confirmAction?.kind === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
+
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -10,12 +10,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Building2, User, Receipt, Calendar, AlertCircle, Loader2 } from 'lucide-react';
+import { Building2, User, Receipt, Calendar, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
-import { useServicePackages } from '@/hooks/useServicePackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,6 +27,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
 import type { BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
+
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
   const data = await fetchAddressByCep(cep);
@@ -62,13 +63,33 @@ const today = () => new Date().toISOString().split('T')[0];
 export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
   const { clients } = useClients();
-  const { services } = useServices();
-  const { packages } = useServicePackages();
+  const { activeServices } = useServices();
+  const { templates: packageTemplates } = usePackageTemplates();
   const { activePaymentMethods } = usePaymentMethods();
   const queryClient = useQueryClient();
 
   const [tab, setTab] = useState('beneficiario');
   const [submitting, setSubmitting] = useState(false);
+
+  // Deduplicate by name to avoid duplicates in the select
+  const serviceOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const s of activeServices) {
+      const key = `${(s.name || '').trim().toLowerCase()}|${s.price}`;
+      if (!seen.has(key)) seen.set(key, s);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [activeServices]);
+
+  const packageOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const p of packageTemplates) {
+      const key = `${(p.name || '').trim().toLowerCase()}|${p.price}`;
+      if (!seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [packageTemplates]);
+
 
   // Beneficiary (auto-fill from logged professional)
   const [beneficiary, setBeneficiary] = useState<Beneficiary>({
@@ -102,6 +123,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountUntilDays, setDiscountUntilDays] = useState<number>(0);
   const [notes, setNotes] = useState('');
+  // Map parcel number -> paid_date string (for retroactive parcels)
+  const [retroPaidDates, setRetroPaidDates] = useState<Record<number, string>>({});
 
   const boletoPaymentMethod = useMemo(
     () => activePaymentMethods.find(pm =>
@@ -167,16 +190,16 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   // Auto-fill when service/package picked
   useEffect(() => {
     if (itemType === 'service' && itemId) {
-      const s = services.find(x => x.id === itemId);
+      const s = serviceOptions.find(x => x.id === itemId);
       if (s) {
         setServiceDescription(s.name);
         if (!totalAmount) setTotalAmount(Number(s.price) || 0);
       }
     } else if (itemType === 'package' && itemId) {
-      const p = packages.find(x => x.id === itemId);
+      const p = packageOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
-        if (!totalAmount) setTotalAmount(Number(p.total_price) || 0);
+        if (!totalAmount) setTotalAmount(Number(p.price) || 0);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,9 +274,12 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .single();
       if (saleErr) throw saleErr;
 
-      // 3) Create installments with all metadata
+      // 3) Create installments with all metadata. Retroactive installments (due date already
+      // in the past) can be marked as paid up-front with the provided paid_date so the
+      // historical baixa is registered correctly.
       const payerSnapshot = { ...payer };
       const beneficiarySnapshot = { ...beneficiary };
+      const todayStr = today();
 
       const records = previewInstallments.map(p => {
         const discountUntil = discountUntilDays > 0
@@ -263,13 +289,17 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               return dd.toISOString().split('T')[0];
             })()
           : null;
+        const isRetro = p.dueDate < todayStr;
+        const retroPaidDate = retroPaidDates[p.n];
+        const markPaid = isRetro && retroPaidDate;
         return {
           sale_id: sale.id,
           installment_number: p.n,
           total_installments: installments,
           amount: p.amount,
           due_date: p.dueDate,
-          status: 'pending',
+          status: markPaid ? 'paid' : 'pending',
+          paid_date: markPaid ? retroPaidDate : null,
           interest_percent_per_day: interestPctDay,
           fine_percent: finePct,
           discount_amount: discountAmount,
@@ -287,6 +317,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         .insert(records);
       if (instErr) throw instErr;
 
+
       // 4) Provision inventory. Packages bought by boleto are created inactive and
       // become bookable only when the configured payment rule is met.
       if (itemType === 'service' && itemId) {
@@ -300,58 +331,53 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           created_by: user?.id || null,
         });
       } else if (itemType === 'package' && itemId) {
-        // Clone the package template into a client-specific package
-        const { data: packageTemplate } = await (supabase as any)
-          .from('service_packages')
-          .select('*, appointments:package_appointments(*)')
-          .eq('id', itemId)
-          .single();
+        // Clone from package_templates (the only valid source — service_packages are
+        // per-client purchase records and would create duplicates in the picker).
+        const template = packageOptions.find(t => t.id === itemId);
 
-        if (packageTemplate) {
+        if (template) {
           const { data: clientPackage, error: pkgError } = await supabase
             .from('service_packages')
             .insert({
-              name: packageTemplate.name,
-              description: packageTemplate.description,
+              name: template.name,
+              description: template.description,
               client_id: payer.client_id,
-              template_id: packageTemplate.template_id || null,
-              total_sessions: packageTemplate.total_sessions,
-              duration: packageTemplate.duration || 60,
-              interval_days: packageTemplate.interval_days || 7,
+              template_id: template.id,
+              total_sessions: template.total_sessions,
+              duration: template.duration || 60,
+              interval_days: template.interval_days || 7,
               total_price: totalAmount,
-              package_type: packageTemplate.package_type || 'standard',
-              service_id: packageTemplate.service_id || null,
-              professional_id: packageTemplate.professional_id,
-              room_id: packageTemplate.room_id,
-              equipment: packageTemplate.equipment || [],
+              package_type: template.package_type || 'standard',
+              service_id: template.service_id || null,
+              professional_id: template.professional_id,
+              room_id: template.room_id,
+              equipment: template.equipment || [],
               payment_methods: boletoPaymentMethod.id ? [boletoPaymentMethod.id] : [],
               payment_type: packageReleaseRule,
               sessions_scheduled: 0,
               is_active: false,
-              category: packageTemplate.category || 'Pago via Boleto Parcelado',
+              category: template.category || 'Pago via Boleto Parcelado',
             })
             .select()
             .single();
 
           if (!pkgError && clientPackage) {
-            const packageSteps = packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
-              ? packageTemplate.appointments.sort(
-                  (a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number)
-                )
-              : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
-                  service_id: packageTemplate.service_id || null,
-                  interval_after_days: packageTemplate.interval_days || 7,
+            const templateSteps = template.package_type === 'sequential' && template.steps?.length
+              ? template.steps
+              : Array.from({ length: template.total_sessions }, (_, i) => ({
+                  service_id: template.service_id || null,
+                  interval_after_days: template.interval_days || 7,
                   sequence_order: i + 1,
                 }));
 
-            const sessions = packageSteps.map((step: any, i: number) => ({
+            const sessions = templateSteps.map((step: any, i: number) => ({
               package_id: clientPackage.id,
-              service_id: step.service_id || packageTemplate.service_id || null,
+              service_id: step.service_id || template.service_id || null,
               session_number: i + 1,
               original_session_number: i + 1,
               sequence_order: step.sequence_order || i + 1,
               interval_after_days:
-                i === packageSteps.length - 1 ? 0 : step.interval_after_days || packageTemplate.interval_days || 7,
+                i === templateSteps.length - 1 ? 0 : step.interval_after_days || template.interval_days || 7,
               status: 'pending',
               notes: 'Disponibilizado via Boleto Parcelado',
             }));
@@ -363,6 +389,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           }
         }
       }
+
 
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
@@ -380,9 +407,11 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       setTab('beneficiario');
       setItemId(''); setServiceDescription(''); setTotalAmount(0);
       setInstallments(2); setNotes(''); setPackageReleaseRule('boleto_first_paid');
+      setRetroPaidDates({});
       setPayer({ client_id: '', name: '', document: '', company_name: '',
         cep: '', street: '', number: '', complement: '',
         neighborhood: '', city: '', state: '' });
+
     } catch (e: any) {
       console.error(e);
       toast.error('Erro ao criar boleto: ' + (e.message || e));
@@ -406,12 +435,36 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto px-6 py-3 scrollbar-visible" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="beneficiario"><Building2 className="h-3.5 w-3.5 mr-1" />Beneficiário</TabsTrigger>
-              <TabsTrigger value="pagador"><User className="h-3.5 w-3.5 mr-1" />Pagador</TabsTrigger>
-              <TabsTrigger value="financeiro"><Receipt className="h-3.5 w-3.5 mr-1" />Financeiro</TabsTrigger>
-              <TabsTrigger value="parcelas"><Calendar className="h-3.5 w-3.5 mr-1" />Parcelas</TabsTrigger>
+            <TabsList className="flex w-full h-auto p-1 gap-1 bg-muted/50">
+              <TabsTrigger
+                value="beneficiario"
+                className="flex-1 gap-1 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=inactive]:text-blue-700 dark:data-[state=inactive]:text-blue-300"
+              >
+                <Building2 className="h-3.5 w-3.5" />Beneficiário
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="pagador"
+                className="flex-1 gap-1 data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=inactive]:text-purple-700 dark:data-[state=inactive]:text-purple-300"
+              >
+                <User className="h-3.5 w-3.5" />Pagador
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="financeiro"
+                className="flex-1 gap-1 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:text-emerald-700 dark:data-[state=inactive]:text-emerald-300"
+              >
+                <Receipt className="h-3.5 w-3.5" />Financeiro
+              </TabsTrigger>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+              <TabsTrigger
+                value="parcelas"
+                className="flex-1 gap-1 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=inactive]:text-orange-700 dark:data-[state=inactive]:text-orange-300"
+              >
+                <Calendar className="h-3.5 w-3.5" />Parcelas
+              </TabsTrigger>
             </TabsList>
+
 
             {/* BENEFICIÁRIO */}
             <TabsContent value="beneficiario" className="space-y-3 pt-3">
@@ -562,15 +615,16 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 {itemType !== 'custom' && (
                   <div className="col-span-2">
                     <Label>{itemType === 'service' ? 'Serviço' : 'Pacote'} *</Label>
-                    <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                      value={itemId} onChange={e => setItemId(e.target.value)}>
-                      <option value="">Selecione...</option>
-                      {(itemType === 'service' ? services : packages).map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                    <ItemPicker
+                      items={itemType === 'service' ? serviceOptions : packageOptions}
+                      value={itemId}
+                      onChange={setItemId}
+                      placeholder={itemType === 'service' ? 'Buscar serviço...' : 'Buscar pacote...'}
+                      kind={itemType}
+                    />
                   </div>
                 )}
+
               </div>
 
               <div>
@@ -668,7 +722,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             {/* PARCELAS PREVIEW */}
             <TabsContent value="parcelas" className="space-y-3 pt-3">
               <p className="text-sm text-muted-foreground">
-                Pré-visualização das parcelas que serão geradas. "Nosso número" e "Nº documento" são gerados automaticamente após salvar.
+                Pré-visualização das parcelas que serão geradas. Parcelas com vencimento <strong>anterior à data de hoje</strong> podem ser marcadas como pagas informando a data correta da baixa.
               </p>
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-sm">
@@ -677,27 +731,54 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                       <th className="text-left p-2">Cota</th>
                       <th className="text-left p-2">Vencimento</th>
                       <th className="text-right p-2">Valor</th>
-                      <th className="text-left p-2">Encargos</th>
+                      <th className="text-left p-2">Data de pagamento (retroativo)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {previewInstallments.map(p => (
-                      <tr key={p.n} className="border-t">
-                        <td className="p-2"><Badge variant="outline">{String(p.n).padStart(2, '0')}/{String(installments).padStart(2, '0')}</Badge></td>
-                        <td className="p-2">{new Date(p.dueDate + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                        <td className="p-2 text-right">R$ {p.amount.toFixed(2)}</td>
-                        <td className="p-2 text-xs text-muted-foreground">
-                          {finePct}% multa · {interestPctDay}%/dia
-                          {discountAmount > 0 && ` · -R$${discountAmount.toFixed(2)} até ${discountUntilDays}d antes`}
-                        </td>
-                      </tr>
-                    ))}
+                    {previewInstallments.map(p => {
+                      const isRetro = p.dueDate < today();
+                      return (
+                        <tr key={p.n} className="border-t">
+                          <td className="p-2"><Badge variant="outline">{String(p.n).padStart(2, '0')}/{String(installments).padStart(2, '0')}</Badge></td>
+                          <td className="p-2">
+                            {new Date(p.dueDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            {isRetro && <Badge variant="outline" className="ml-2 text-[10px] text-orange-600 border-orange-300">Retroativo</Badge>}
+                          </td>
+                          <td className="p-2 text-right">R$ {p.amount.toFixed(2)}</td>
+                          <td className="p-2">
+                            {isRetro ? (
+                              <Input
+                                type="date"
+                                className="h-8 text-xs w-40"
+                                max={today()}
+                                value={retroPaidDates[p.n] || ''}
+                                onChange={e => setRetroPaidDates(prev => ({ ...prev, [p.n]: e.target.value }))}
+                                placeholder="Selecione a data da baixa"
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {finePct}% multa · {interestPctDay}%/dia
+                                {discountAmount > 0 && ` · -R$${discountAmount.toFixed(2)} até ${discountUntilDays}d antes`}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {previewInstallments.length === 0 && (
                       <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">Preencha os dados financeiros para visualizar.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
+              {previewInstallments.some(p => p.dueDate < today()) && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Informe a <strong>data real da baixa</strong> para cada parcela retroativa. Se nenhuma data for informada, a parcela será criada como <strong>pendente</strong>.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
@@ -708,14 +789,94 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           </Tabs>
         </div>
 
-        <DialogFooter className="border-t px-6 py-3">
+        <DialogFooter className="border-t px-6 py-3 flex flex-row justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
-            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Gerar Boleto Parcelado
-          </Button>
+          <div className="flex gap-2">
+            {tab !== 'beneficiario' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const order = ['beneficiario', 'pagador', 'financeiro', 'parcelas'];
+                  const idx = order.indexOf(tab);
+                  if (idx > 0) setTab(order[idx - 1]);
+                }}
+                disabled={submitting}
+              >
+                ← Voltar
+              </Button>
+            )}
+            {tab !== 'parcelas' ? (
+              <Button
+                onClick={() => {
+                  const order = ['beneficiario', 'pagador', 'financeiro', 'parcelas'];
+                  const idx = order.indexOf(tab);
+                  if (idx < order.length - 1) setTab(order[idx + 1]);
+                }}
+              >
+                Próximo →
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Gerar Boleto Parcelado
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+interface ItemPickerProps {
+  items: any[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+  kind: 'service' | 'package';
+}
+
+function ItemPicker({ items, value, onChange, placeholder, kind }: ItemPickerProps) {
+  const [open, setOpen] = useState(false);
+  const selected = items.find(i => i.id === value);
+  const label = selected
+    ? `${selected.name} — R$ ${Number(kind === 'package' ? selected.price : selected.price).toFixed(2)}`
+    : 'Selecione...';
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          <span className="truncate">{label}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[60] bg-popover">
+        <Command>
+          <CommandInput placeholder={placeholder} />
+          <CommandList className="max-h-[300px]">
+            <CommandEmpty>Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              {items.map(item => (
+                <CommandItem
+                  key={item.id}
+                  value={`${item.name} ${item.id}`}
+                  onSelect={() => { onChange(item.id); setOpen(false); }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === item.id ? 'opacity-100' : 'opacity-0')} />
+                  <div className="flex-1 flex items-center justify-between gap-2">
+                    <span className="truncate">{item.name}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      R$ {Number(item.price).toFixed(2)}
+                      {kind === 'package' && item.total_sessions ? ` · ${item.total_sessions}x` : ''}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+

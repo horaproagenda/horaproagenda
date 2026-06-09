@@ -192,7 +192,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     setClientPickerOpen(false);
   };
 
-  // Auto-fill when service/package picked. For services, total = unitPrice * qty - discount.
+  // Auto-fill when service/package picked. For services and packages, total = unitPrice * qty - discount.
   useEffect(() => {
     if (itemType === 'service' && itemId) {
       const s = serviceOptions.find(x => x.id === itemId);
@@ -208,11 +208,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       const p = packageOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
-        if (!totalAmount) setTotalAmount(Number(p.price) || 0);
+        const base = Number(p.price) || 0;
+        const disc = Math.max(0, packageDiscount || 0);
+        setTotalAmount(Number(Math.max(0, base - disc).toFixed(2)));
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId, itemType, applicationsCount, applicationsDiscount]);
+  }, [itemId, itemType, applicationsCount, applicationsDiscount, packageDiscount]);
 
   const installmentValue = useMemo(() => {
     if (!totalAmount || !installments) return 0;

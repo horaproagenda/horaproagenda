@@ -328,15 +328,20 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       // 4) Provision inventory. Packages bought by boleto are created inactive and
       // become bookable only when the configured payment rule is met.
       if (itemType === 'service' && itemId) {
-        await supabase.from('client_services').insert({
+        const qty = Math.max(1, applicationsCount || 1);
+        const perAppPaid = Number((totalAmount / qty).toFixed(2));
+        const rows = Array.from({ length: qty }, (_, i) => ({
           client_id: payer.client_id,
           service_id: itemId,
           sale_id: sale.id,
-          amount_paid: totalAmount,
+          amount_paid: perAppPaid,
           status: 'available',
-          notes: 'Disponibilizado via Boleto Parcelado',
+          notes: qty > 1
+            ? `Aplicação ${i + 1}/${qty} — Disponibilizado via Boleto Parcelado`
+            : 'Disponibilizado via Boleto Parcelado',
           created_by: user?.id || null,
-        });
+        }));
+        await supabase.from('client_services').insert(rows);
       } else if (itemType === 'package' && itemId) {
         // Clone from package_templates (the only valid source — service_packages are
         // per-client purchase records and would create duplicates in the picker).

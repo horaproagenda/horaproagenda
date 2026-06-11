@@ -72,8 +72,9 @@ serve(async (req) => {
       if (!row) {
         return json({
           success: false,
-          error: 'Estamos com alta demanda no momento. Tente novamente em alguns minutos.',
-        }, 503);
+          fallback: true,
+          error: 'Nenhuma instância de WhatsApp disponível no momento. Tente novamente em alguns minutos ou contate o administrador.',
+        }, 200);
       }
       const { error: upErr } = await supabaseService
         .from('professional_whatsapp_credentials')

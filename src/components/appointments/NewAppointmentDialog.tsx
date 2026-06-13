@@ -1260,18 +1260,17 @@ Até breve! ✨`;
               />
               {showServiceSuggestions && (serviceSearch || selectedClient) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[350px] overflow-y-auto">
-                  {/* Filtro de tipo de pacote removido para limpar visual */}
                   {/* Client's frequent services - shown as quick suggestions */}
                   {selectedClient && clientFrequentServices.length > 0 && !serviceSearch && (
-                    <div className="border-b-2 border-amber-500/20">
-                      <div className="px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-500/10 flex items-center gap-1">
+                    <div className="border-b border-amber-500/20">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-amber-600 bg-amber-500/10 flex items-center gap-1">
                         <Star className="h-3 w-3" />
                         Serviços Frequentes
                       </div>
                       {clientFrequentServices.map(service => (
                         <div
                           key={`freq-${service.id}`}
-                          className="p-2 hover:bg-amber-500/10 cursor-pointer border-b bg-amber-500/5"
+                          className="px-2 py-1.5 hover:bg-amber-500/10 cursor-pointer border-b border-border/50 bg-amber-500/5"
                           onClick={() => {
                             setSelectedService(service.id);
                             setServiceSearch(service.name);
@@ -1280,13 +1279,13 @@ Até breve! ✨`;
                             setShowServiceSuggestions(false);
                           }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-amber-700">{service.name}</span>
-                            <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-amber-700 truncate">{service.name}</span>
+                            <Badge variant="outline" className="text-[10px] h-5 px-1 border-amber-300 text-amber-600 flex-shrink-0">
                               {service.bookingCount}x agendado
                             </Badge>
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-[11px] text-muted-foreground">
                             {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                           </div>
                         </div>
@@ -1296,8 +1295,8 @@ Até breve! ✨`;
 
                   {/* Client's paid services - shown first */}
                   {selectedClient && clientPaidServices.length > 0 && (
-                    <div className="border-b-2 border-green-500/20">
-                      <div className="px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-500/10 flex items-center gap-1">
+                    <div className="border-b border-green-500/20">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-green-600 bg-green-500/10 flex items-center gap-1">
                         <Briefcase className="h-3 w-3" />
                         Serviços Pagos do Cliente
                       </div>
@@ -1306,9 +1305,8 @@ Até breve! ✨`;
                         .map(paidService => (
                           <div
                             key={`client-svc-${paidService.id}`}
-                            className="p-2 hover:bg-green-500/10 cursor-pointer border-b bg-green-500/5"
+                            className="px-2 py-1.5 hover:bg-green-500/10 cursor-pointer border-b border-border/50 bg-green-500/5"
                             onClick={() => {
-                              // Use the service.id from the joined service data for accuracy
                               const actualServiceId = paidService.service?.id || paidService.service_id;
                               setSelectedService(actualServiceId);
                               setServiceSearch(paidService.service?.name || '');
@@ -1317,14 +1315,14 @@ Até breve! ✨`;
                               setShowServiceSuggestions(false);
                             }}
                           >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-green-700">{paidService.service?.name}</span>
-                              <Badge className="text-xs bg-green-500 text-white">
-                                <CheckCircle className="h-3 w-3 mr-1" />
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium text-green-700 truncate">{paidService.service?.name}</span>
+                              <Badge className="text-[10px] h-5 px-1.5 bg-green-500 text-white flex-shrink-0">
+                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                 PAGO
                               </Badge>
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-[11px] text-muted-foreground">
                               {formatDurationClock(paidService.service?.duration || 0)} • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
                             </div>
                           </div>
@@ -1334,26 +1332,24 @@ Até breve! ✨`;
 
                   {/* Client's packages (paid and pending) */}
                   {selectedClient && visibleClientPackages.length > 0 && (
-                    <div className="border-b-2 border-primary/20">
-                      <div className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 flex items-center gap-1">
+                    <div className="border-b border-primary/20">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Package className="h-3 w-3" />
                         Pacotes do Cliente
                       </div>
                       {visibleClientPackages
-                        .map((pkg, index) => {
+                        .map((pkg) => {
                           const summary = getPackageAvailabilitySummary(pkg);
                           const remaining = summary.schedulableSessions;
-                          // Check if there are other packages with same name to show identifier
                           const sameNameCount = visibleClientPackages.filter(p => p.name === pkg.name).length;
                           const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
-                          // Check if package is paid (has payment_methods set from caixa sale)
                           const isPaid = pkg.payment_methods && pkg.payment_methods.length > 0;
                           
                           return (
                             <div
                               key={`client-pkg-${pkg.id}`}
                               className={cn(
-                                "p-2 cursor-pointer border-b",
+                                "px-2 py-1.5 cursor-pointer border-b border-border/50",
                                 isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
                               onClick={() => {
@@ -1364,39 +1360,39 @@ Até breve! ✨`;
                                 setShowServiceSuggestions(false);
                               }}
                             >
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <span className={cn("font-medium", isPaid ? "text-green-700" : "text-primary")}>{pkg.name}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className={cn("text-xs font-medium truncate", isPaid ? "text-green-700" : "text-primary")}>{pkg.name}</span>
                                   {sameNameCount > 1 && (
-                                    <span className="text-xs text-muted-foreground">({packageDate})</span>
+                                    <span className="text-[11px] text-muted-foreground flex-shrink-0">({packageDate})</span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                                  <Badge variant="secondary" className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-semibold gap-1 border border-border shadow-sm">
-                                    <Package className="h-3.5 w-3.5" />
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-semibold gap-0.5 border border-border">
+                                    <Package className="h-2.5 w-2.5" />
                                     Pacote
                                   </Badge>
                                   {pkg.package_type === 'sequential' && (
-                                    <Badge className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-bold gap-1 bg-primary text-primary-foreground border border-primary shadow-sm ring-1 ring-primary/30">
-                                      <Repeat className="h-3.5 w-3.5" />
-                                      Sequencial
+                                    <Badge className="h-5 px-1.5 text-[10px] font-bold gap-0.5 bg-primary text-primary-foreground border border-primary">
+                                      <Repeat className="h-2.5 w-2.5" />
+                                      Seq
                                     </Badge>
                                   )}
                                   {isPaid ? (
-                                    <Badge className="text-xs bg-green-500 text-white">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                    <Badge className="h-5 px-1.5 text-[10px] bg-green-500 text-white">
+                                      <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                       PAGO
                                     </Badge>
                                   ) : (
-                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-amber-600 border-amber-300">
                                       PENDENTE
                                     </Badge>
                                   )}
                                 </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                Dá para agendar: {remaining} • Sessões existentes: {summary.existingSessionRecords}/{summary.totalSessions}
-                                {summary.hasInconsistentCounter ? ' • contador antigo divergente' : ''}
+                              <div className="text-[11px] text-muted-foreground">
+                                Agendar: {remaining} • Sessões: {summary.existingSessionRecords}/{summary.totalSessions}
+                                {summary.hasInconsistentCounter ? ' • contador antigo' : ''}
                               </div>
                             </div>
                           );
@@ -1411,7 +1407,7 @@ Até breve! ✨`;
                     .map(service => (
                       <div
                         key={service.id}
-                        className="p-2 hover:bg-accent cursor-pointer border-b"
+                        className="px-2 py-1.5 hover:bg-accent cursor-pointer border-b border-border/50"
                         onClick={() => {
                           setSelectedService(service.id);
                           setServiceSearch(service.name);
@@ -1419,11 +1415,11 @@ Até breve! ✨`;
                           setShowServiceSuggestions(false);
                         }}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{service.name}</span>
-                          <Badge variant="outline" className="text-xs">Serviço</Badge>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium truncate">{service.name}</span>
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0">Serviço</Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground">
                           {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                         </div>
                       </div>
@@ -1434,7 +1430,7 @@ Até breve! ✨`;
                     .map(pkg => (
                       <div
                         key={pkg.id}
-                        className="p-2 hover:bg-accent cursor-pointer border-b"
+                        className="px-2 py-1.5 hover:bg-accent cursor-pointer border-b border-border/50"
                         onClick={() => {
                           setSelectedService(pkg.id);
                           setServiceSearch(pkg.name);
@@ -1442,22 +1438,22 @@ Até breve! ✨`;
                           setShowServiceSuggestions(false);
                         }}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{pkg.name}</span>
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            <Badge variant="secondary" className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-semibold gap-1 border border-border shadow-sm">
-                              <Package className="h-3.5 w-3.5" />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium truncate">{pkg.name}</span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-semibold gap-0.5 border border-border">
+                              <Package className="h-2.5 w-2.5" />
                               Pacote
                             </Badge>
                             {pkg.package_type === 'sequential' && (
-                              <Badge className="min-h-6 px-2 py-0.5 text-[11px] sm:text-xs font-bold gap-1 bg-primary text-primary-foreground border border-primary shadow-sm ring-1 ring-primary/30">
-                                <Repeat className="h-3.5 w-3.5" />
-                                Sequencial
+                              <Badge className="h-5 px-1.5 text-[10px] font-bold gap-0.5 bg-primary text-primary-foreground border border-primary">
+                                <Repeat className="h-2.5 w-2.5" />
+                                Seq
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground">
                           {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
                         </div>
                       </div>
@@ -1465,7 +1461,7 @@ Até breve! ✨`;
                   {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
                    visibleCatalogPackages.length === 0 &&
                    (!selectedClient || visibleClientPackages.length === 0) && (
-                    <div className="p-2 text-muted-foreground text-sm">Nenhum serviço ou pacote encontrado</div>
+                    <div className="px-2 py-1.5 text-muted-foreground text-xs">Nenhum serviço ou pacote encontrado</div>
                    )}
                 </div>
               )}

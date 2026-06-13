@@ -206,7 +206,7 @@ export function ProductDetailDialog({
     const totalQuantityUsed = Math.max(0, (product.quantity_purchased || 0) - (product.current_stock || 0));
     let totalAppointments = 0;
 
-    const byService = productServiceLinks.map((sp: any) => {
+    const perService = productServiceLinks.map((sp: any) => {
       const apts = appointments.filter(apt => apt.service_id === sp.service_id && inWindow(apt));
       totalAppointments += apts.length;
       const qtyPerUse = Number(sp.quantity_per_use ?? 0);
@@ -217,6 +217,22 @@ export function ProductDetailDialog({
         qtyPerUse,
         totalQty: apts.length * qtyPerUse,
       };
+    });
+
+    // Quando o consumo planejado (sum(qty_per_use*apts)) é 0 ou divergente do consumo real
+    // do estoque, distribuímos o consumo real proporcionalmente entre os serviços com base
+    // no número de atendimentos. Isso garante que o "Consumo por serviço" reflita o que
+    // realmente saiu do estoque, e não um valor fixo por serviço.
+    const plannedTotal = perService.reduce((s, x) => s + x.totalQty, 0);
+    const useReal = totalQuantityUsed > 0 && (plannedTotal === 0 || Math.abs(plannedTotal - totalQuantityUsed) > 0.001);
+    const byService = perService.map(x => {
+      if (useReal && totalAppointments > 0) {
+        const share = x.appointments / totalAppointments;
+        const totalQty = totalQuantityUsed * share;
+        const qtyPerUse = x.appointments > 0 ? totalQty / x.appointments : 0;
+        return { ...x, qtyPerUse, totalQty };
+      }
+      return x;
     });
 
     const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;

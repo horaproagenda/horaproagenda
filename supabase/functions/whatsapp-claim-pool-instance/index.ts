@@ -109,6 +109,7 @@ serve(async (req) => {
       success: true,
       professional_id,
       instance: row.instance_id,
+      activated_at: row.activated_at ?? null,
       source: 'pool',
     });
   } catch (err) {

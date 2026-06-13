@@ -3936,6 +3936,7 @@ export type Database = {
       }
       ultramsg_instance_pool: {
         Row: {
+          activated_at: string | null
           api_url: string | null
           assigned_at: string | null
           assigned_professional_id: string | null
@@ -3949,6 +3950,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           api_url?: string | null
           assigned_at?: string | null
           assigned_professional_id?: string | null
@@ -3962,6 +3964,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           api_url?: string | null
           assigned_at?: string | null
           assigned_professional_id?: string | null
@@ -4407,6 +4410,36 @@ export type Database = {
           },
         ]
       }
+      whatsapp_volume_pricing_tiers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          max_quantity: number | null
+          min_quantity: number
+          unit_price_usd: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_quantity?: number | null
+          min_quantity: number
+          unit_price_usd: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_quantity?: number | null
+          min_quantity?: number
+          unit_price_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -4467,6 +4500,7 @@ export type Database = {
       claim_ultramsg_pool_instance: {
         Args: { p_professional_id: string }
         Returns: {
+          activated_at: string
           api_url: string
           id: string
           instance_id: string
@@ -4639,6 +4673,7 @@ export type Database = {
           twilio_from_number: string
         }[]
       }
+      get_whatsapp_unit_price: { Args: { qty: number }; Returns: number }
       has_permission: {
         Args: {
           _action: string

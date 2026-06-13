@@ -184,7 +184,27 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   };
 
   // Friendly description shown above the raw URL — and used by share actions.
-  const linkDescription = `📄 Documento: ${template?.title ?? ''}\n👤 Cliente: ${selectedClient?.name ?? ''}\n\nPara acessar e assinar, será solicitado o CPF cadastrado.\n\n🔗 Link: ${generatedUrl}`;
+  const linkDescription = useMemo(() => {
+    const lines: string[] = [
+      `📄 Documento: ${template?.title ?? ''}`,
+      `👤 Cliente: ${selectedClient?.name ?? ''}`,
+      '',
+      'Olá!',
+      '',
+      `Você recebeu o documento "${template?.title ?? ''}" para preenchimento e assinatura.`,
+      '',
+      'Como acessar:',
+      `1. Clique no link abaixo ou copie e cole no navegador do seu celular/computador.`,
+      '2. Informe o CPF cadastrado para acessar com segurança.',
+      '3. Preencha todos os campos solicitados.',
+      '4. No final, confirme e assine digitalmente.',
+      '',
+      `🔗 Link: ${generatedUrl}`,
+      '',
+      '⚠️ O link é único e protegido. Não compartilhe com outras pessoas.',
+    ];
+    return lines.join('\n');
+  }, [template?.title, selectedClient?.name, generatedUrl]);
 
   const handleCopy = async (textOverride?: string, isDescription = false) => {
     try {
@@ -204,11 +224,23 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   };
 
   const handleWhatsApp = () => {
-    const message =
-      `Olá${selectedClient ? ` ${selectedClient.name.split(' ')[0]}` : ''}!\n\n` +
-      `Por favor, preencha e assine o documento *"${template?.title}"* pelo link abaixo.\n` +
-      `Para sua segurança, será necessário informar seu CPF cadastrado para acessar.\n\n` +
-      `${generatedUrl}`;
+    const firstName = selectedClient?.name ? selectedClient.name.split(' ')[0] : '';
+    const lines: string[] = [
+      `Olá${firstName ? ` ${firstName}` : ''}! 👋`,
+      '',
+      `Você recebeu o documento *"${template?.title ?? ''}"* para preenchimento e assinatura. ✍️`,
+      '',
+      '*Como acessar:*',
+      '1️⃣ Clique no link abaixo ou copie e cole no navegador do seu celular/computador.',
+      '2️⃣ Informe o CPF cadastrado para acessar com segurança.',
+      '3️⃣ Preencha todos os campos solicitados.',
+      '4️⃣ No final, confirme e assine digitalmente.',
+      '',
+      `🔗 Link: ${generatedUrl}`,
+      '',
+      '⚠️ O link é único e protegido. Não compartilhe com outras pessoas.',
+    ];
+    const message = lines.join('\n');
 
     if (selectedClient?.phone) {
       openWhatsappWithMessage(selectedClient.phone, message);

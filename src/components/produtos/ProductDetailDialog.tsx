@@ -321,6 +321,7 @@ export function ProductDetailDialog({
   useEffect(() => {
     if (product) {
       setContainerUnit(product.unit);
+      setQuantityPerUseUnit(product.unit);
     }
   }, [product?.id, product?.unit]);
 

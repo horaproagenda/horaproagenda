@@ -23,16 +23,18 @@ const templateTypes = [
 ];
 
 const variablesHelp = [
-  { variable: '{{cliente}}', description: 'Nome completo do cliente' },
-  { variable: '{{primeiro_nome}}', description: 'Apenas o primeiro nome' },
-  { variable: '{{data}}', description: 'Data (dd/mm/aaaa)' },
-  { variable: '{{data_extenso}}', description: 'Data por extenso (ex: segunda-feira, 1 de junho de 2026)' },
-  { variable: '{{horario}}', description: 'Horário do agendamento' },
-  { variable: '{{servico}}', description: 'Nome do serviço' },
-  { variable: '{{profissional}}', description: 'Nome do profissional' },
+  { variable: '{cliente}', description: 'Nome completo do cliente' },
+  { variable: '{primeiro_nome}', description: 'Apenas o primeiro nome' },
+  { variable: '{data}', description: 'Data com ano (dd/mm/aaaa)' },
+  { variable: '{data_sem_ano}', description: 'Data sem ano (dd/mm)' },
+  { variable: '{data_extenso}', description: 'Data por extenso com ano' },
+  { variable: '{data_extenso_sem_ano}', description: 'Data por extenso sem ano' },
+  { variable: '{horario}', description: 'Horário do agendamento' },
+  { variable: '{servico}', description: 'Nome do serviço' },
+  { variable: '{profissional}', description: 'Nome do profissional' },
 ];
 
-const MAX_TEMPLATES_PER_PROFESSIONAL = 3;
+const MAX_TEMPLATES_PER_PROFESSIONAL = 4;
 
 type FormState = {
   name: string;
@@ -202,8 +204,9 @@ export function WhatsappTemplatesSettings() {
             <div>
               <CardTitle className="text-lg">Mensagens WhatsApp</CardTitle>
               <CardDescription>
-                Até {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens por profissional. O envio é feito pelo WhatsApp do
-                navegador/aparelho do profissional (igual ao envio de documentos).
+                Até {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens por profissional. Uma delas é a de
+                <strong> Aniversário</strong> (envio em hora preferencial); as demais usam horas antes do
+                agendamento. O envio é feito pelo WhatsApp do navegador/aparelho do profissional.
               </CardDescription>
             </div>
           </div>
@@ -227,7 +230,10 @@ export function WhatsappTemplatesSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-lg bg-muted/50 p-3">
-          <p className="text-sm font-medium mb-2">Variáveis disponíveis:</p>
+          <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Use apenas <strong>um colchete</strong> ao redor da variável, ex.: <code>{'{primeiro_nome}'}</code>.
+          </p>
           <div className="flex flex-wrap gap-2">
             {variablesHelp.map(v => (
               <Badge key={v.variable} variant="outline" className="text-xs">
@@ -349,7 +355,7 @@ export function WhatsappTemplatesSettings() {
               <Textarea
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Ex: Oi {{primeiro_nome}}, lembrando do seu horário em {{data_extenso}} às {{horario}}."
+                placeholder="Ex: Oi {primeiro_nome}, lembrando do seu horário em {data_extenso} às {horario}."
                 rows={8}
                 className="font-mono text-sm"
               />

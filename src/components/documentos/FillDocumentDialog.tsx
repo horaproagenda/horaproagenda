@@ -335,8 +335,21 @@ export function FillDocumentDialog({
 
     setSaving(true);
     try {
-      const docType = template.title.toLowerCase().includes('anamnese') ? 'anamnese' : 
-                      template.title.toLowerCase().includes('contrato') ? 'contract' : 'other';
+      const templateCategory = (template as any)?.category as string | undefined;
+      const titleLc = template.title.toLowerCase();
+      const docType = templateCategory === 'anamnese'
+        ? 'anamnese'
+        : templateCategory === 'contract'
+        ? 'contract'
+        : templateCategory === 'consent'
+        ? 'consent'
+        : titleLc.includes('anamnese')
+        ? 'anamnese'
+        : titleLc.includes('contrato')
+        ? 'contract'
+        : titleLc.includes('termo') || titleLc.includes('consent')
+        ? 'consent'
+        : 'other';
 
       const hasContent = filledContent && filledContent.trim().length > 0;
       const insertData: any = {

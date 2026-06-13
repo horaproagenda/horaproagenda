@@ -813,7 +813,15 @@ export function ProductDetailDialog({
                         {canEdit ? (
                           <SafeDateInput
                             value={product.started_using_at || ''}
-                            onCommit={(v) => onUpdateProduct({ id: product.id, started_using_at: v })}
+                            onCommit={(v) => {
+                              // Ao informar/alterar o início do uso, limpamos o término
+                              // (para que o usuário registre manualmente quando terminar).
+                              onUpdateProduct({
+                                id: product.id,
+                                started_using_at: v,
+                                ...(v ? { finished_at: null as any } : {}),
+                              });
+                            }}
                             className="h-9"
                           />
                         ) : (
@@ -833,19 +841,19 @@ export function ProductDetailDialog({
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
                                if (v) {
-                                 // 1) Snapshot do ciclo atual: encontra a compra ativa de forma robusta
+                                 // Marca o término do uso preservando o estoque atual
+                                 // (o estoque reflete o consumo real registrado nos atendimentos
+                                 // e NÃO deve ser zerado automaticamente ao informar o término).
                                  let activePurchase = productPurchases.find(
                                    p => p.started_using_at && !p.finished_at
                                  );
                                  if (!activePurchase) {
-                                   // Fallback: qualquer compra não encerrada (mais recente já está no topo)
                                    activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
                                  }
                                  if (activePurchase && onUpdatePurchase) {
                                    await onUpdatePurchase({
                                      id: activePurchase.id,
                                      finished_at: v,
-                                     // Garante data de início preservada (fallback em cascata)
                                      started_using_at:
                                        activePurchase.started_using_at
                                        || product.started_using_at
@@ -853,7 +861,8 @@ export function ProductDetailDialog({
                                        || v,
                                    });
                                  }
-                                 // 2) Promove a próxima compra (se existir) como novo ciclo
+                                 // Promove próxima compra pendente (se existir) como novo ciclo,
+                                 // somando seu estoque ao saldo restante do ciclo encerrado.
                                  const next = productPurchases.find(
                                    p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
                                  );
@@ -864,15 +873,13 @@ export function ProductDetailDialog({
                                      id: product.id,
                                      finished_at: null as any,
                                      started_using_at: today,
-                                     current_stock: Number(next.quantity) || 0,
+                                     current_stock: (Number(product.current_stock) || 0) + (Number(next.quantity) || 0),
                                    });
                                  } else {
-                                   // Encerra ciclo: zera estoque e limpa início de uso para o próximo ciclo
+                                   // Apenas registra o término — preserva estoque e início do uso.
                                    await onUpdateProduct({
                                      id: product.id,
                                      finished_at: v,
-                                     current_stock: 0,
-                                     started_using_at: null as any,
                                    });
                                  }
                                } else {

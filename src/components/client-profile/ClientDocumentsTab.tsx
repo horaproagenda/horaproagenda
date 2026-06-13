@@ -403,6 +403,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                     <SelectContent>
                       <SelectItem value="anamnese" className="text-xs">Anamnese</SelectItem>
                       <SelectItem value="contract" className="text-xs">Contrato</SelectItem>
+                      <SelectItem value="consent" className="text-xs">Termo</SelectItem>
                       <SelectItem value="other" className="text-xs">Outro</SelectItem>
                     </SelectContent>
                   </Select>

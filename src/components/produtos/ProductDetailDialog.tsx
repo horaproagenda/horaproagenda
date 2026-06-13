@@ -344,35 +344,38 @@ export function ProductDetailDialog({
   }, [product?.id, product?.unit]);
 
   const handleAddServiceLink = async () => {
-    if (!product || !selectedServiceId) return;
+    if (!product || selectedServiceIds.length === 0) return;
 
     const useEstimated = knowsQuantity === 'no';
 
-    if (useEstimated) {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
-      await onCreateServiceLink({
-        service_id: selectedServiceId,
-        product_id: product.id,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: containerUnit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
-      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
-      await onCreateServiceLink({
-        service_id: selectedServiceId,
-        product_id: product.id,
-        quantity_per_use: normalizedQty,
-        tracking_method: 'exact',
-        notes: null,
-      });
+    for (const serviceId of selectedServiceIds) {
+      if (useEstimated) {
+        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        await onCreateServiceLink({
+          service_id: serviceId,
+          product_id: product.id,
+          quantity_per_use: calculatedQuantityPerUse,
+          estimated_appointments: estimatedAppointments,
+          container_amount: containerAmount,
+          container_unit: containerUnit,
+          tracking_method: 'estimated',
+          notes: null,
+        });
+      } else {
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        await onCreateServiceLink({
+          service_id: serviceId,
+          product_id: product.id,
+          quantity_per_use: normalizedQty,
+          tracking_method: 'exact',
+          notes: null,
+        });
+      }
     }
 
-    setSelectedServiceId('');
+    setSelectedServiceIds([]);
+    setServiceLinkSearch('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
@@ -380,35 +383,38 @@ export function ProductDetailDialog({
   };
 
   const handleAddTemplateLink = async () => {
-    if (!product || !selectedTemplateId) return;
+    if (!product || selectedTemplateIds.length === 0) return;
 
     const useEstimated = knowsQuantity === 'no';
 
-    if (useEstimated) {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplateId,
-        product_id: product.id,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: containerUnit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
-      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplateId,
-        product_id: product.id,
-        quantity_per_use: normalizedQty,
-        tracking_method: 'exact',
-        notes: null,
-      });
+    for (const templateId of selectedTemplateIds) {
+      if (useEstimated) {
+        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        await createTemplateProduct.mutateAsync({
+          template_id: templateId,
+          product_id: product.id,
+          quantity_per_use: calculatedQuantityPerUse,
+          estimated_appointments: estimatedAppointments,
+          container_amount: containerAmount,
+          container_unit: containerUnit,
+          tracking_method: 'estimated',
+          notes: null,
+        });
+      } else {
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        await createTemplateProduct.mutateAsync({
+          template_id: templateId,
+          product_id: product.id,
+          quantity_per_use: normalizedQty,
+          tracking_method: 'exact',
+          notes: null,
+        });
+      }
     }
 
-    setSelectedTemplateId('');
+    setSelectedTemplateIds([]);
+    setTemplateLinkSearch('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);

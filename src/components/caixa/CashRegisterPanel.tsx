@@ -690,7 +690,23 @@ export function CashRegisterPanel() {
                         </TableCell>
                         <TableCell className="text-right py-1 px-2">
                           {(() => {
-                            const aptId = (entry as any).appointment_id || (entry.type === 'appointment' ? entry.id : null);
+                            const e: any = entry;
+                            const aptId = e.appointment_id || (e.type === 'appointment' ? e.id : null);
+                            const boletoId = e.boleto_id || (e.type === 'boleto' ? e.id : null);
+                            if (boletoId) {
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                                  onClick={() => navigate(`/financeiro?tab=formas-pagamento&boleto=${e.boleto_id || boletoId.replace('boleto-', '')}`)}
+                                  title="Abrir boleto no financeiro"
+                                >
+                                  <DollarSign className="h-3 w-3 mr-1" />
+                                  Pagar
+                                </Button>
+                              );
+                            }
                             if (aptId) {
                               return (
                                 <Button

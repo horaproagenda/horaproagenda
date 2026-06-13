@@ -244,12 +244,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
       '⚠️ O link é único e protegido. Não compartilhe com outras pessoas.',
     ];
     const message = lines.join('\n');
-
-    if (selectedClient?.phone) {
-      openWhatsappWithMessage(selectedClient.phone, message);
-    } else {
-      openWhatsappWithMessage('', message);
-    }
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewOpen(true);
   };
 
   const handleReset = () => {

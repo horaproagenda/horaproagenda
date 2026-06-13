@@ -137,10 +137,13 @@ const Documentos = () => {
     setDialogOpen(true);
   };
 
-  const getTemplateType = (title: string): keyof typeof templateTypeConfig => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('facial')) return 'facial';
-    if (lowerTitle.includes('corporal')) return 'corporal';
+  const getTemplateType = (template: any): keyof typeof templateTypeConfig => {
+    const cat = template?.category as string | undefined;
+    if (cat === 'anamnese') return 'anamnese';
+    if (cat === 'contract') return 'contract';
+    if (cat === 'consent') return 'consent';
+    // Fallback by title for legacy rows
+    const lowerTitle = (template?.title || '').toLowerCase();
     if (lowerTitle.includes('anamnese')) return 'anamnese';
     if (lowerTitle.includes('contrato')) return 'contract';
     if (lowerTitle.includes('termo') || lowerTitle.includes('consent')) return 'consent';

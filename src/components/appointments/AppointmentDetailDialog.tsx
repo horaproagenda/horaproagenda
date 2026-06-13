@@ -2143,7 +2143,7 @@ export function AppointmentDetailDialog({
                       <p className="font-medium text-destructive">{sanitizeDisplayText(event.title)}</p>
                       <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {event.description}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {sanitizeDisplayText(event.description)}</p>
                   </div>
                 ))}
               </TabsContent>

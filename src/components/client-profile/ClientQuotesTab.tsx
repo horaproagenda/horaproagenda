@@ -62,6 +62,9 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const [notes, setNotes] = useState('');
   const [validDays, setValidDays] = useState('7');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const [whatsappPendingQuoteId, setWhatsappPendingQuoteId] = useState<string | null>(null);
   const { services } = useServices();
   const { packages } = useServicePackages();
 

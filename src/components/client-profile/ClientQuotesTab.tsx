@@ -181,16 +181,22 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
     }
   };
 
-  const sendViaWhatsApp = async (quote: Quote) => {
+  const sendViaWhatsApp = (quote: Quote) => {
     const message = generateQuoteMessage(quote);
-    openWhatsappWithMessage(clientPhone, message);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPendingQuoteId(quote.id);
+    setWhatsappPreviewOpen(true);
+  };
 
+  const handleWhatsappSent = async () => {
+    if (!whatsappPendingQuoteId) return;
     await onUpdateQuote({
-      id: quote.id,
+      id: whatsappPendingQuoteId,
       status: 'sent',
       sent_via: 'whatsapp',
       sent_at: new Date().toISOString(),
     });
+    setWhatsappPendingQuoteId(null);
   };
 
   const generateQuoteMessage = (quote: Quote) => {

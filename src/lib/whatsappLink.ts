@@ -170,11 +170,20 @@ function fullExtendedDate(d: Date): string {
   return format(d, "EEEE',' d 'de' MMMM 'de' yyyy", { locale: ptBR });
 }
 
+function fullExtendedDateNoYear(d: Date): string {
+  // Ex: "segunda-feira, 1 de junho"
+  return format(d, "EEEE',' d 'de' MMMM", { locale: ptBR });
+}
+
 function shortDate(d: Date): string {
   return format(d, 'dd/MM/yyyy', { locale: ptBR });
 }
 
-/** Replaces template variables. Supports both {{var}} and {var} syntaxes. */
+function shortDateNoYear(d: Date): string {
+  return format(d, 'dd/MM', { locale: ptBR });
+}
+
+/** Replaces template variables. Supports both {{var}} and {var} syntaxes (UI mostra apenas {var}). */
 export function renderTemplate(template: string, ctx: TemplateRenderContext): string {
   if (!template) return '';
   let date: Date | null = null;
@@ -192,7 +201,9 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
     servico: ctx.serviceName || '',
     profissional: ctx.professionalName || '',
     data: date ? shortDate(date) : '',
+    data_sem_ano: date ? shortDateNoYear(date) : '',
     data_extenso: date ? fullExtendedDate(date) : '',
+    data_extenso_sem_ano: date ? fullExtendedDateNoYear(date) : '',
     horario: ctx.appointmentTime || '',
   };
 

@@ -96,6 +96,10 @@ export function CashRegisterPanel() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
         queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+        queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
         queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
         queryClient.invalidateQueries({ queryKey: ['appointments'] });

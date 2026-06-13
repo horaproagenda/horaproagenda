@@ -85,8 +85,7 @@ export default function Financeiro() {
   return (
     <AppLayout title="Financeiro" subtitle="Gestão financeira completa">
       <div className="space-y-4 page-enter">
-        {/* Divergence Alert */}
-        <FinancialDivergenceAlert />
+
 
         {/* Summary Cards — minimalistas com ícones coloridos */}
         <div className="grid grid-cols-3 gap-2">

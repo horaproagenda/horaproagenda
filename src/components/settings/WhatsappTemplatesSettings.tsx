@@ -191,6 +191,7 @@ export function WhatsappTemplatesSettings() {
   }, [formData.professional_id, templates, editingId]);
 
   return (
+    <>
     <Card className="lg:col-span-2">
       <CardHeader>
         <div className="flex items-center justify-between">

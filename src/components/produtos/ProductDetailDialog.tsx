@@ -1418,9 +1418,9 @@ export function ProductDetailDialog({
                     )}
                   </div>
                   
-                  <Button onClick={handleAddServiceLink} disabled={!selectedServiceId} className="w-full">
+                  <Button onClick={handleAddServiceLink} disabled={selectedServiceIds.length === 0} className="w-full">
                     <Link2 className="h-4 w-4 mr-1" />
-                    Vincular Produto ao Serviço
+                    Vincular Produto {selectedServiceIds.length > 1 ? `a ${selectedServiceIds.length} Serviços` : 'ao Serviço'}
                   </Button>
                 </div>
               )}

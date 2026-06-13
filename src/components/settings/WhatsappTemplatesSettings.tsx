@@ -126,20 +126,9 @@ export function WhatsappTemplatesSettings() {
       return;
     }
 
-    if (formData.quiet_hours_start >= formData.quiet_hours_end) {
-      toast.error('A janela de envio é inválida: o horário inicial deve ser menor que o final.');
-      return;
-    }
-
     const adjustedSendOffset = ['follow_up', 'birthday'].includes(formData.type)
-      ? (formData.type === 'birthday'
-          ? adjustHourToQuietWindow(formData.send_offset_hours, formData.quiet_hours_start, formData.quiet_hours_end)
-          : formData.send_offset_hours)
+      ? formData.send_offset_hours
       : null;
-
-    if (formData.type === 'birthday' && adjustedSendOffset !== formData.send_offset_hours) {
-      toast.info(`Horário ajustado para ${String(adjustedSendOffset).padStart(2,'0')}:00 para respeitar a janela permitida.`);
-    }
 
     const payload = {
       name: formData.name,
@@ -147,8 +136,9 @@ export function WhatsappTemplatesSettings() {
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: adjustedSendOffset,
-      quiet_hours_start: formData.quiet_hours_start,
-      quiet_hours_end: formData.quiet_hours_end,
+      // Janela de envio é definida globalmente por profissional (coluna do WhatsApp em Configurações).
+      quiet_hours_start: null,
+      quiet_hours_end: null,
       professional_id: targetProfId,
       is_active: formData.is_active,
     };

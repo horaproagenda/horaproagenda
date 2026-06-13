@@ -333,30 +333,11 @@ export function WhatsappTemplatesSettings() {
                   max={23}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se o horário estiver fora da janela permitida abaixo, a mensagem será enviada no horário limite mais próximo.
+                  A janela de envio permitida é definida no painel do WhatsApp (Configurações → WhatsApp). Mensagens fora da janela são ajustadas automaticamente.
                 </p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Não enviar antes das (0–23)</Label>
-                <Input
-                  type="number"
-                  value={formData.quiet_hours_start}
-                  onChange={(e) => setFormData({ ...formData, quiet_hours_start: Number(e.target.value) })}
-                  min={0}
-                  max={23}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Não enviar após as (1–24)</Label>
-                <Input
-                  type="number"
-                  value={formData.quiet_hours_end}
-                  onChange={(e) => setFormData({ ...formData, quiet_hours_end: Number(e.target.value) })}
-                  min={1}
-                  max={24}
                 />
               </div>
               <p className="text-xs text-muted-foreground col-span-2">

@@ -35,22 +35,23 @@ export function AtendimentosPorProfissional() {
   const [detailDateFrom, setDetailDateFrom] = useState<Date | undefined>(undefined);
   const [detailDateTo, setDetailDateTo] = useState<Date | undefined>(undefined);
 
-  // Realtime sync
+  // Realtime sync — invalida ambas as queries (atendimentos + pagamentos de comissão)
+  // sempre que qualquer tabela relacionada mudar.
   useEffect(() => {
+    const invalidateAll = () => {
+      queryClient.invalidateQueries({ queryKey: ['atend_prof_data'] });
+      queryClient.invalidateQueries({ queryKey: ['atend_prof_commission_payments'] });
+    };
+
     const ch = supabase
       .channel('atend_prof_rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () =>
-        queryClient.invalidateQueries({ queryKey: ['atend_prof_data'] })
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () =>
-        queryClient.invalidateQueries({ queryKey: ['atend_prof_data'] })
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () =>
-        queryClient.invalidateQueries({ queryKey: ['atend_prof_data'] })
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () =>
-        queryClient.invalidateQueries({ queryKey: ['atend_prof_data'] })
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'professionals' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'professional_service_commissions' }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
@@ -75,6 +76,9 @@ export function AtendimentosPorProfissional() {
       return data || [];
     },
     staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+    refetchInterval: 60_000, // rede de segurança: revalida a cada 60s
   });
 
   // Commission payments from financial_entries
@@ -91,6 +95,9 @@ export function AtendimentosPorProfissional() {
       return data || [];
     },
     staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+    refetchInterval: 60_000,
   });
 
   // Build summary per professional

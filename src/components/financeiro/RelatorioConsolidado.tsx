@@ -71,38 +71,87 @@ export function RelatorioConsolidado() {
     }
   }, [periodFilter, customDate]);
 
-  // Combine and normalize data from both sources
-  const consolidatedData: ConsolidatedEntry[] = useMemo(() => [
-    // From financial entries
-    ...entries.map((entry) => ({
-      id: `fin-${entry.id}`,
-      date: entry.paid_date || entry.due_date,
-      description: entry.description,
-      type: entry.type === 'receivable' ? 'income' : 'expense' as 'income' | 'expense',
-      amount: Number(entry.amount),
-      source: 'financeiro' as const,
-      status: entry.status,
-    })),
-    // From cash transactions
-    ...transactions.map((tx) => ({
-      id: `cash-${tx.id}`,
-      date: tx.created_at.split('T')[0],
-      description: tx.description || tx.category,
-      type: tx.type as 'income' | 'expense',
-      amount: Number(tx.amount),
-      source: 'caixa' as const,
-      status: 'paid',
-    })),
-    ...creditTransactions.map((tx: any) => ({
-      id: `credit-${tx.id}`,
-      date: tx.created_at.split('T')[0],
-      description: tx.description || 'Crédito ao cliente',
-      type: 'non_cash' as const,
-      amount: Number(tx.amount || 0),
-      source: 'credito_cliente' as const,
-      status: 'paid',
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [entries, transactions, creditTransactions]);
+  // Combine and normalize data, deduplicating cash vs financial mirrors.
+  // STRATEGY: cash_transactions is the canonical source for sales/payments.
+  // A financial_entry is considered a mirror (and suppressed) when ANY of:
+  //   1. description starts with "Caixa:" (auto-mirror prefix)
+  //   2. appointment_id matches a cash transaction reference_id (appointment)
+  //   3. description contains [sale:<id>] matching a cash sale reference
+  //   4. same date + amount + payment method matches a cash transaction
+  const consolidatedData: ConsolidatedEntry[] = useMemo(() => {
+    const result: ConsolidatedEntry[] = [];
+
+    const cashKeys = new Set<string>();
+    const cashAppointmentIds = new Set<string>();
+    const cashSaleIds = new Set<string>();
+    const makeKey = (date: string, amount: number, method: string | null | undefined) => {
+      const day = (date || '').slice(0, 10);
+      const amt = Math.round(Number(amount || 0) * 100);
+      const m = (method || '').toLowerCase().trim();
+      return `${day}|${amt}|${m}`;
+    };
+
+    // Cash transactions (canonical)
+    transactions.forEach((tx) => {
+      cashKeys.add(makeKey(tx.created_at, Number(tx.amount), tx.payment_method_name));
+      if (tx.reference_type === 'appointment' && tx.reference_id) {
+        cashAppointmentIds.add(tx.reference_id);
+      }
+      if ((tx.reference_type === 'single_sale' || tx.reference_type === 'sale') && tx.reference_id) {
+        cashSaleIds.add(tx.reference_id);
+      }
+      result.push({
+        id: `cash-${tx.id}`,
+        date: tx.created_at.split('T')[0],
+        description: tx.description || tx.category,
+        type: tx.type as 'income' | 'expense',
+        amount: Number(tx.amount),
+        source: 'caixa' as const,
+        status: 'paid',
+      });
+    });
+
+    // Financial entries — skip those mirroring cash transactions
+    entries.forEach((entry) => {
+      const desc = entry.description || '';
+      const lowerDesc = desc.toLowerCase();
+
+      if (lowerDesc.startsWith('caixa:')) return;
+      if (entry.appointment_id && cashAppointmentIds.has(entry.appointment_id)) return;
+      const saleIdMatch = desc.match(/\[sale:([a-f0-9-]+)\]/i);
+      if (saleIdMatch && cashSaleIds.has(saleIdMatch[1])) return;
+
+      const paymentMethodName = entry.payment_method?.name || '';
+      const dedupKey = makeKey(entry.paid_date || entry.due_date, Number(entry.amount), paymentMethodName);
+      // Only dedup PAID entries by amount/date/method — keep pending/overdue visible
+      if (entry.status === 'paid' && cashKeys.has(dedupKey)) return;
+
+      result.push({
+        id: `fin-${entry.id}`,
+        date: entry.paid_date || entry.due_date,
+        description: desc,
+        type: entry.type === 'receivable' ? 'income' : 'expense' as 'income' | 'expense',
+        amount: Number(entry.amount),
+        source: 'financeiro' as const,
+        status: entry.status,
+      });
+    });
+
+    // Client credit transactions (separate source, never duplicated)
+    creditTransactions.forEach((tx: any) => {
+      result.push({
+        id: `credit-${tx.id}`,
+        date: tx.created_at.split('T')[0],
+        description: tx.description || 'Crédito ao cliente',
+        type: 'non_cash' as const,
+        amount: Number(tx.amount || 0),
+        source: 'credito_cliente' as const,
+        status: 'paid',
+      });
+    });
+
+    return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [entries, transactions, creditTransactions]);
 
   // Apply filters
   const filteredData = useMemo(() => consolidatedData.filter((entry) => {

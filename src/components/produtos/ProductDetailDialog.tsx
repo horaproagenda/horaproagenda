@@ -860,50 +860,126 @@ export function ProductDetailDialog({
                            <SafeDateInput
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
-                               if (v) {
-                                 // Marca o término do uso preservando o estoque atual
-                                 // (o estoque reflete o consumo real registrado nos atendimentos
-                                 // e NÃO deve ser zerado automaticamente ao informar o término).
-                                 let activePurchase = productPurchases.find(
-                                   p => p.started_using_at && !p.finished_at
-                                 );
-                                 if (!activePurchase) {
-                                   activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
-                                 }
-                                 if (activePurchase && onUpdatePurchase) {
-                                   await onUpdatePurchase({
-                                     id: activePurchase.id,
-                                     finished_at: v,
-                                     started_using_at:
-                                       activePurchase.started_using_at
-                                       || product.started_using_at
-                                       || activePurchase.purchase_date
-                                       || v,
-                                   });
-                                 }
-                                 // Promove próxima compra pendente (se existir) como novo ciclo,
-                                 // somando seu estoque ao saldo restante do ciclo encerrado.
-                                 const next = productPurchases.find(
-                                   p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
-                                 );
-                                 const today = new Date().toISOString().slice(0, 10);
-                                 if (next && onUpdatePurchase) {
-                                   await onUpdatePurchase({ id: next.id, started_using_at: today });
-                                   await onUpdateProduct({
-                                     id: product.id,
-                                     finished_at: null as any,
-                                     started_using_at: today,
-                                     current_stock: (Number(product.current_stock) || 0) + (Number(next.quantity) || 0),
-                                   });
-                                 } else {
-                                   // Apenas registra o término — preserva estoque e início do uso.
-                                   await onUpdateProduct({
-                                     id: product.id,
-                                     finished_at: v,
-                                   });
-                                 }
-                               } else {
+                               if (!v) {
                                  await onUpdateProduct({ id: product.id, finished_at: null as any });
+                                 return;
+                               }
+
+                               // 1) Identifica o ciclo ativo (compra em uso)
+                               let activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at);
+                               if (!activePurchase) {
+                                 activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
+                               }
+
+                               // 2) Apura janela do ciclo e atendimentos concluídos
+                               const cycleStart = activePurchase?.started_using_at || product.started_using_at;
+                               const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
+                               const endDate = parseISO(v + 'T23:59:59');
+                               const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
+                               const cycleAppointments = appointments.filter(a => {
+                                 if (a.status !== 'completed') return false;
+                                 if (!linkedServiceIds.includes(a.service_id)) return false;
+                                 const t = new Date(a.start_time);
+                                 if (startDate && t < startDate) return false;
+                                 return t <= endDate;
+                               });
+                               const totalApts = cycleAppointments.length;
+
+                               // 3) Para cada vínculo em modo estimado, calcula média e persiste
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method !== 'estimated') continue;
+                                 const containerInStockUnit = convertQuantity(
+                                   Number(sp.container_amount || 0),
+                                   sp.container_unit || product.unit,
+                                   product.unit
+                                 ) ?? Number(sp.container_amount || 0);
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 if (aptsThis > 0 && containerInStockUnit > 0) {
+                                   const avg = containerInStockUnit / aptsThis;
+                                   await updateServiceProduct.mutateAsync({
+                                     id: sp.id,
+                                     quantity_per_use: avg,
+                                     estimated_appointments: aptsThis,
+                                   } as any);
+                                 }
+                               }
+
+                               // 4) Calcula quanto deduzir do estoque total
+                               // Soma os "containers" dos vínculos estimados que tiveram uso neste ciclo (uma vez cada)
+                               const containerDeductions = new Map<string, number>();
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method !== 'estimated') continue;
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 if (aptsThis <= 0) continue;
+                                 const key = `${sp.container_amount}-${sp.container_unit}`;
+                                 const inStockUnit = convertQuantity(
+                                   Number(sp.container_amount || 0),
+                                   sp.container_unit || product.unit,
+                                   product.unit
+                                 ) ?? Number(sp.container_amount || 0);
+                                 // mantém o maior (assume mesmo recipiente compartilhado)
+                                 if (!containerDeductions.has(key) || (containerDeductions.get(key) || 0) < inStockUnit) {
+                                   containerDeductions.set(key, inStockUnit);
+                                 }
+                               }
+                               const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
+
+                               // Para vínculos exatos: deduzir qty_per_use * atendimentos
+                               let exactDeduction = 0;
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method === 'estimated') continue;
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 exactDeduction += aptsThis * Number(sp.quantity_per_use || 0);
+                               }
+
+                               const totalDeduction = estimatedDeduction + exactDeduction;
+                               const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+
+                               // 5) Fecha a compra ativa com o término
+                               if (activePurchase && onUpdatePurchase) {
+                                 await onUpdatePurchase({
+                                   id: activePurchase.id,
+                                   finished_at: v,
+                                   started_using_at:
+                                     activePurchase.started_using_at
+                                     || product.started_using_at
+                                     || activePurchase.purchase_date
+                                     || v,
+                                 });
+                               }
+
+                               // 6) Limpa início/término do produto e atualiza estoque.
+                               //    Se ainda há estoque, inicia automaticamente um novo ciclo na data de hoje.
+                               const today = new Date().toISOString().slice(0, 10);
+                               const next = productPurchases.find(
+                                 p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
+                               );
+
+                               if (next && onUpdatePurchase) {
+                                 // Promove próxima compra como novo ciclo
+                                 await onUpdatePurchase({ id: next.id, started_using_at: today });
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: today,
+                                   current_stock: newStock + (Number(next.quantity) || 0),
+                                 });
+                               } else if (newStock > 0) {
+                                 // Inicia automaticamente um novo ciclo com o estoque restante
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: today,
+                                   current_stock: newStock,
+                                 });
+                               } else {
+                                 // Estoque esgotado: limpa ambas as datas para o usuário registrar nova compra
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: null as any,
+                                   current_stock: 0,
+                                 });
                                }
                              }}
                              className="h-9"

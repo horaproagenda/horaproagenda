@@ -1680,9 +1680,9 @@ export function ProductDetailDialog({
                   </div>
                   
                   {availableTemplatesToLink.length > 0 && (
-                    <Button onClick={handleAddTemplateLink} disabled={!selectedTemplateId} className="w-full">
+                    <Button onClick={handleAddTemplateLink} disabled={selectedTemplateIds.length === 0} className="w-full">
                       <Gift className="h-4 w-4 mr-1" />
-                      Vincular Produto ao Template
+                      Vincular Produto {selectedTemplateIds.length > 1 ? `a ${selectedTemplateIds.length} Pacotes` : 'ao Pacote'}
                     </Button>
                   )}
                 </div>

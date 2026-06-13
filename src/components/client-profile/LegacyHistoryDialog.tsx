@@ -477,30 +477,33 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           {/* Shared selectors */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
             <div>
-              <Label className="text-xs">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
+              <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
               <SearchableSelect
                 options={serviceOptions}
                 value={serviceId}
                 onChange={setServiceId}
                 placeholder="Selecione o serviço"
+                className="h-8 text-xs"
               />
             </div>
             <div>
-              <Label className="text-xs">Profissional</Label>
+              <Label className="text-[10px]">Profissional</Label>
               <SearchableSelect
                 options={profOptions}
                 value={professionalId}
                 onChange={setProfessionalId}
                 placeholder="Selecione o profissional"
+                className="h-8 text-xs"
               />
             </div>
             <div>
-              <Label className="text-xs">Forma de pagamento</Label>
+              <Label className="text-[10px]">Forma de pagamento</Label>
               <SearchableSelect
                 options={paymentOptions}
                 value={paymentMethodId}
                 onChange={setPaymentMethodId}
                 placeholder="Forma de pagamento"
+                className="h-8 text-xs"
               />
             </div>
           </div>

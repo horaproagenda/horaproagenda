@@ -1254,18 +1254,80 @@ export function ProductDetailDialog({
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um serviço para vincular" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableServicesToLink.map(s => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} - {s.category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Input
+                          placeholder="Buscar serviço..."
+                          value={serviceLinkSearch}
+                          onChange={(e) => setServiceLinkSearch(e.target.value)}
+                          className="h-9 flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-9"
+                          onClick={() => {
+                            const filtered = availableServicesToLink.filter(s =>
+                              !serviceLinkSearch ||
+                              s.name.toLowerCase().includes(serviceLinkSearch.toLowerCase()) ||
+                              (s.category || '').toLowerCase().includes(serviceLinkSearch.toLowerCase())
+                            );
+                            const allIds = filtered.map(s => s.id);
+                            const allSelected = allIds.every(id => selectedServiceIds.includes(id));
+                            setSelectedServiceIds(allSelected
+                              ? selectedServiceIds.filter(id => !allIds.includes(id))
+                              : Array.from(new Set([...selectedServiceIds, ...allIds]))
+                            );
+                          }}
+                        >
+                          Selecionar todos
+                        </Button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded-md border bg-background p-2 space-y-1">
+                        {availableServicesToLink
+                          .filter(s =>
+                            !serviceLinkSearch ||
+                            s.name.toLowerCase().includes(serviceLinkSearch.toLowerCase()) ||
+                            (s.category || '').toLowerCase().includes(serviceLinkSearch.toLowerCase())
+                          )
+                          .map(s => {
+                            const checked = selectedServiceIds.includes(s.id);
+                            return (
+                              <label
+                                key={s.id}
+                                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/60 cursor-pointer text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setSelectedServiceIds(e.target.checked
+                                      ? [...selectedServiceIds, s.id]
+                                      : selectedServiceIds.filter(id => id !== s.id)
+                                    );
+                                  }}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span className="flex-1 truncate">{s.name}</span>
+                                {s.category && (
+                                  <span className="text-muted-foreground text-[10px]">{s.category}</span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        {availableServicesToLink.length === 0 && (
+                          <div className="text-xs text-muted-foreground text-center py-3">
+                            Nenhum serviço disponível para vincular.
+                          </div>
+                        )}
+                      </div>
+                      {selectedServiceIds.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {selectedServiceIds.length} serviço(s) selecionado(s)
+                        </p>
+                      )}
+                    </div>
 
                     <div>
                       <Label className="text-xs text-muted-foreground mb-1 block">

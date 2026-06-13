@@ -334,8 +334,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   </Button>
                 </div>
                 {steps.map((step, index) => (
-                  <div key={index} className="grid grid-cols-[1fr_88px_28px] gap-2 items-end">
-                    <div>
+                  <div key={index} className="grid grid-cols-[1fr_76px_28px] gap-2 items-end">
+                    <div className="min-w-0">
                       <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
                       <SearchableSelect
                         className="h-8 text-xs"
@@ -355,7 +355,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                       <FormLabel className="text-[10px]">Após (dias)</FormLabel>
                       <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
                     </div>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={steps.length === 1} onClick={() => removeStep(index)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={steps.length === 1} onClick={() => removeStep(index)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>

@@ -113,7 +113,8 @@ export function useDocumentTemplatesManagement() {
           content: template.content,
           variables: template.variables || [],
           is_active: true,
-        })
+          category: (template as any).category ?? 'anamnese',
+        } as any)
         .select()
         .single();
       

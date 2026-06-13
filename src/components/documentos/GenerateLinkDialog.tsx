@@ -392,11 +392,7 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
               <Separator />
 
               {/* Universal copy actions: visible on mobile AND desktop */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button variant="outline" className="gap-2 w-full" onClick={() => handleCopy()}>
-                  {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                  Copiar Link
-                </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Button variant="outline" className="gap-2 w-full" onClick={() => handleCopy(linkDescription, true)}>
                   {copiedDescription ? <Check className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4" />}
                   Copiar Mensagem

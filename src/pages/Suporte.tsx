@@ -13,6 +13,7 @@ import {
   Bug, Lightbulb, AlertTriangle, Send, ExternalLink
 } from "lucide-react";
 import { buildWebWhatsappUrl, openWhatsappWithMessage } from "@/lib/whatsappLink";
+import { WhatsappPreviewDialog } from "@/components/shared/WhatsappPreviewDialog";
 
 const Suporte = () => {
   const [formData, setFormData] = useState({

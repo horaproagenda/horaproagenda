@@ -231,7 +231,7 @@ const Documentos = () => {
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {filteredTemplates.map(template => {
-                      const type = getTemplateType(template.title);
+                      const type = getTemplateType(template);
                       const config = templateTypeConfig[type];
                       const Icon = config.icon;
                       

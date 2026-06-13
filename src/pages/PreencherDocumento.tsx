@@ -355,6 +355,68 @@ export default function PreencherDocumento() {
     return content;
   };
 
+  /**
+   * Validates that all required document fields have been answered.
+   * Returns the set of missing field keys. Auto-filled variables and checkboxes are optional.
+   */
+  const collectMissingFields = (): Set<string> => {
+    const missing = new Set<string>();
+    if (!template) return missing;
+
+    template.content.split('\n').forEach((line, lineIndex) => {
+      const tokens = tokenizeDocumentLine(line, lineIndex);
+      tokens.forEach((token) => {
+        switch (token.type) {
+          case 'variable': {
+            if (isAutoFilledVariable(token.name)) return;
+            const value = (formData[token.fieldKey] || '').trim();
+            if (!value) missing.add(token.fieldKey);
+            break;
+          }
+          case 'yesno': {
+            const value = yesNoAnswers[token.fieldKey];
+            if (value !== 'sim' && value !== 'nao') missing.add(token.fieldKey);
+            break;
+          }
+          case 'freeText':
+          case 'blankField': {
+            const value = (additionalInfo[token.fieldKey] || '').trim();
+            if (!value) missing.add(token.fieldKey);
+            break;
+          }
+          default:
+            break;
+        }
+      });
+    });
+    return missing;
+  };
+
+  const handleAttemptSubmit = () => {
+    const missing = collectMissingFields();
+    if (missing.size > 0) {
+      setMissingFields(missing);
+      setValidationError(
+        `Existe${missing.size > 1 ? 'm' : ''} ${missing.size} pergunta${missing.size > 1 ? 's' : ''} obrigatória${missing.size > 1 ? 's' : ''} não preenchida${missing.size > 1 ? 's' : ''}. Preencha todos os campos destacados em vermelho antes de enviar.`,
+      );
+      toast.error(
+        `Preencha todos os ${missing.size} campo${missing.size > 1 ? 's' : ''} destacado${missing.size > 1 ? 's' : ''} em vermelho para enviar o documento.`,
+      );
+      // Scroll first missing field into view
+      setTimeout(() => {
+        const firstKey = missing.values().next().value;
+        const el = document.querySelector(`[data-field-key="${firstKey}"]`);
+        if (el && 'scrollIntoView' in el) {
+          (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      return;
+    }
+    setMissingFields(new Set());
+    setValidationError(null);
+    setShowConfirmDialog(true);
+  };
+
   const handleSubmit = async () => {
     if (!documentLink || !template) return;
     setShowConfirmDialog(false);

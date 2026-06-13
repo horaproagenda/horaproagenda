@@ -97,6 +97,21 @@ import {
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
 
+const UUID_RE_GLOBAL = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+function sanitizeDisplayText(text: string): string {
+  return text
+    .replace(UUID_RE_GLOBAL, '')
+    .replace(/\s+/g, ' ')
+    .replace(/,\s*,/g, ',')
+    .replace(/•\s*•/g, '•')
+    .replace(/:\s*—\s*→\s*—/g, '')
+    .replace(/\s*→\s*—/g, '')
+    .replace(/—\s*→\s*/g, '')
+    .replace(/•\s*$/, '')
+    .replace(/^•\s*/, '')
+    .trim();
+}
+
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
   professionals: Professional[];

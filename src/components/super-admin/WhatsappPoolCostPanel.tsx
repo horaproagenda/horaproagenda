@@ -8,7 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Activity, DollarSign, Loader2, Package, Plus, RefreshCw, Trash2, Zap } from 'lucide-react';
+import {
+  Activity, ChevronDown, ChevronUp, DollarSign, Info, Loader2, Package, Pencil, Plus,
+  RefreshCw, Tags, Trash2, Zap,
+} from 'lucide-react';
 
 interface PoolRow {
   id: string;
@@ -19,10 +22,32 @@ interface PoolRow {
   assigned_professional_id: string | null;
   monthly_cost_usd: number | null;
   assigned_at: string | null;
+  activated_at: string | null;
   notes: string | null;
 }
 
+interface TierRow {
+  id: string;
+  min_quantity: number;
+  max_quantity: number | null;
+  unit_price_usd: number;
+  active: boolean;
+}
+
 const FX_KEY = 'super-admin:usd-brl-rate';
+
+function priceForQty(tiers: TierRow[], qty: number): TierRow | null {
+  const active = tiers.filter(t => t.active);
+  // Find the tier whose range contains qty
+  const exact = active.find(
+    t => qty >= t.min_quantity && (t.max_quantity == null || qty <= t.max_quantity),
+  );
+  if (exact) return exact;
+  // Fallback to the highest tier <= qty
+  return active
+    .filter(t => qty >= t.min_quantity)
+    .sort((a, b) => b.min_quantity - a.min_quantity)[0] ?? null;
+}
 
 export function WhatsappPoolCostPanel() {
   const qc = useQueryClient();
@@ -33,6 +58,7 @@ export function WhatsappPoolCostPanel() {
   const [running, setRunning] = useState(false);
   const [newPool, setNewPool] = useState({ instance_id: '', token: '', api_url: '', notes: '' });
   const [adding, setAdding] = useState(false);
+  const [showTiers, setShowTiers] = useState(false);
 
   useEffect(() => { localStorage.setItem(FX_KEY, String(rate)); }, [rate]);
 
@@ -41,7 +67,7 @@ export function WhatsappPoolCostPanel() {
     queryFn: async (): Promise<PoolRow[]> => {
       const { data, error } = await (supabase as any)
         .from('ultramsg_instance_pool')
-        .select('id, instance_id, token, api_url, status, assigned_professional_id, monthly_cost_usd, assigned_at, notes')
+        .select('id, instance_id, token, api_url, status, assigned_professional_id, monthly_cost_usd, assigned_at, activated_at, notes')
         .order('status', { ascending: true });
       if (error) throw error;
       return (data ?? []) as PoolRow[];
@@ -49,7 +75,31 @@ export function WhatsappPoolCostPanel() {
     staleTime: 15_000,
   });
 
-  // Map of assigned professional IDs → name
+  const { data: tiers, refetch: refetchTiers } = useQuery({
+    queryKey: ['super-admin-whatsapp-tiers'],
+    queryFn: async (): Promise<TierRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from('whatsapp_volume_pricing_tiers')
+        .select('id, min_quantity, max_quantity, unit_price_usd, active')
+        .order('min_quantity', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TierRow[];
+    },
+    staleTime: 30_000,
+  });
+
+  // Realtime: refresh on pool / tier changes
+  useEffect(() => {
+    const ch = supabase
+      .channel('super-admin-whatsapp-billing')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultramsg_instance_pool' },
+        () => { void refetch(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_volume_pricing_tiers' },
+        () => { void refetchTiers(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [refetch, refetchTiers]);
+
   const profIds = useMemo(
     () => (data ?? []).map(r => r.assigned_professional_id).filter(Boolean) as string[],
     [data],
@@ -72,15 +122,12 @@ export function WhatsappPoolCostPanel() {
     const free = rows.filter(r => r.status === 'free').length;
     const assigned = rows.filter(r => r.status === 'assigned').length;
     const disabled = rows.filter(r => r.status === 'disabled').length;
-    const monthlyUsd = rows
-      .filter(r => r.status !== 'disabled')
-      .reduce((s, r) => s + Number(r.monthly_cost_usd ?? 9), 0);
-    const monthlyAssignedUsd = rows
-      .filter(r => r.status === 'assigned')
-      .reduce((s, r) => s + Number(r.monthly_cost_usd ?? 9), 0);
+    const tier = priceForQty(tiers ?? [], assigned);
+    const unitPrice = tier ? Number(tier.unit_price_usd) : 9;
+    const billedUsd = assigned * unitPrice;
     const utilization = total > 0 ? Math.round((assigned / total) * 100) : 0;
-    return { total, free, assigned, disabled, monthlyUsd, monthlyAssignedUsd, utilization };
-  }, [data]);
+    return { total, free, assigned, disabled, billedUsd, utilization, tier, unitPrice };
+  }, [data, tiers]);
 
   const runHealthcheck = async () => {
     setRunning(true);
@@ -112,7 +159,7 @@ export function WhatsappPoolCostPanel() {
     });
     setAdding(false);
     if (error) return toast.error('Erro ao adicionar: ' + error.message);
-    toast.success('Instância adicionada ao pool.');
+    toast.success('Instância adicionada ao pool (sem custo até ser vinculada).');
     setNewPool({ instance_id: '', token: '', api_url: '', notes: '' });
     void refetch();
   };
@@ -136,13 +183,19 @@ export function WhatsappPoolCostPanel() {
   const fmtUsd = (v: number) => `US$ ${v.toFixed(2)}`;
   const fmtBrl = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return '—';
+    try {
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(iso));
+    } catch { return '—'; }
+  };
 
   return (
     <Card className="p-4 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Pool UltraMsg · Projeção de custos e gestão</h2>
+          <h2 className="text-sm font-semibold">Pool UltraMsg · Cobrança sob demanda</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => refetch()}>
@@ -155,14 +208,23 @@ export function WhatsappPoolCostPanel() {
         </div>
       </div>
 
+      <div className="flex items-start gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-2.5 text-[11px] text-muted-foreground">
+        <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+        <span>
+          <strong className="text-foreground">Instâncias livres não geram custo.</strong>{' '}
+          A cobrança mensal de uma instância só começa no momento em que ela é vinculada a um profissional.
+          O valor por instância depende da faixa de volume vigente (configurável abaixo).
+        </span>
+      </div>
+
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Carregando pool...</p>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard label="Total" value={stats.total} hint="instâncias cadastradas" />
-            <StatCard label="Livres" value={stats.free} variant="success" hint="disponíveis" />
-            <StatCard label="Ocupadas" value={stats.assigned} variant="primary" hint="profissionais conectados" />
+            <StatCard label="Livres" value={stats.free} variant="success" hint="sem custo" />
+            <StatCard label="Em uso" value={stats.assigned} variant="primary" hint="cobrança ativa" />
             <StatCard label="Desativadas" value={stats.disabled} variant="muted" hint="não cobradas" />
           </div>
 
@@ -175,22 +237,26 @@ export function WhatsappPoolCostPanel() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Card className="p-3 bg-primary/5 border-primary/20">
-              <div className="flex items-center gap-2 text-[11px] uppercase text-muted-foreground mb-1">
-                <DollarSign className="h-3 w-3" /> Custo mensal estimado (pool inteiro)
-              </div>
-              <div className="text-lg font-semibold tabular-nums">{fmtUsd(stats.monthlyUsd)}</div>
-              <div className="text-xs text-muted-foreground tabular-nums">
-                ≈ {fmtBrl(stats.monthlyUsd * rate)}
-              </div>
-            </Card>
             <Card className="p-3 bg-emerald-500/5 border-emerald-500/20">
               <div className="flex items-center gap-2 text-[11px] uppercase text-muted-foreground mb-1">
-                <Zap className="h-3 w-3" /> Custo das instâncias em uso
+                <Zap className="h-3 w-3" /> Custo mensal cobrado
               </div>
-              <div className="text-lg font-semibold tabular-nums">{fmtUsd(stats.monthlyAssignedUsd)}</div>
+              <div className="text-lg font-semibold tabular-nums">{fmtUsd(stats.billedUsd)}</div>
               <div className="text-xs text-muted-foreground tabular-nums">
-                ≈ {fmtBrl(stats.monthlyAssignedUsd * rate)}
+                ≈ {fmtBrl(stats.billedUsd * rate)} · {stats.assigned} × {fmtUsd(stats.unitPrice)}
+              </div>
+            </Card>
+            <Card className="p-3 bg-primary/5 border-primary/20">
+              <div className="flex items-center gap-2 text-[11px] uppercase text-muted-foreground mb-1">
+                <Tags className="h-3 w-3" /> Faixa de preço atual
+              </div>
+              <div className="text-lg font-semibold tabular-nums">
+                {stats.tier
+                  ? `${stats.tier.min_quantity}${stats.tier.max_quantity ? `–${stats.tier.max_quantity}` : '+'} inst`
+                  : 'Padrão'}
+              </div>
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {fmtUsd(stats.unitPrice)} por instância em uso
               </div>
             </Card>
           </div>
@@ -205,22 +271,33 @@ export function WhatsappPoolCostPanel() {
                 className="h-8 w-32 text-xs"
               />
             </div>
-            <p className="text-[11px] text-muted-foreground pb-2">
-              Custo por instância configurado em <code>monthly_cost_usd</code> (padrão US$ 9,00).
-            </p>
           </div>
 
-          {stats.free === 0 && stats.total > 0 && (
-            <Badge variant="destructive" className="text-[11px]">
-              Pool sem vagas livres — compre novas instâncias UltraMsg para novos profissionais.
-            </Badge>
-          )}
+          {/* Volume tiers section */}
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              onClick={() => setShowTiers(s => !s)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium hover:bg-muted/40"
+            >
+              <span className="flex items-center gap-2">
+                <Tags className="h-3.5 w-3.5" /> Faixas de desconto por volume ({(tiers ?? []).length})
+              </span>
+              {showTiers ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+            {showTiers && (
+              <div className="px-3 pb-3">
+                <PricingTiersEditor tiers={tiers ?? []} onChanged={() => refetchTiers()} />
+              </div>
+            )}
+          </div>
 
           {/* Add new instance */}
           <div className="space-y-2 rounded-lg border border-dashed p-3">
             <p className="text-xs font-medium">Adicionar nova instância ao pool</p>
             <p className="text-[11px] text-muted-foreground">
-              Compre em <code>user.ultramsg.com</code> com a sua conta master e cole abaixo. O custo fica oculto dos clientes do app.
+              Compre em <code>user.ultramsg.com</code> com a sua conta master e cole abaixo.
+              Enquanto a instância estiver livre, ela não gera custo no app.
             </p>
             <div className="grid gap-2 sm:grid-cols-4">
               <Input
@@ -264,11 +341,13 @@ export function WhatsappPoolCostPanel() {
                     : null;
                   return (
                     <div key={row.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <code className="text-foreground truncate">{row.instance_id}</code>
-                        {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre</Badge>}
+                        {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre · sem custo</Badge>}
                         {row.status === 'assigned' && (
-                          <Badge className="bg-green-500 text-[10px]">em uso · {profName}</Badge>
+                          <Badge className="bg-green-500 text-[10px]">
+                            em uso · {profName} · desde {fmtDate(row.activated_at)}
+                          </Badge>
                         )}
                         {row.status === 'disabled' && <Badge variant="destructive" className="text-[10px]">desabilitada</Badge>}
                         {row.notes && <span className="text-muted-foreground truncate">· {row.notes}</span>}
@@ -308,5 +387,157 @@ function StatCard({
       <div className="text-lg font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-[10px] text-muted-foreground">{hint}</div>}
     </Card>
+  );
+}
+
+function PricingTiersEditor({ tiers, onChanged }: { tiers: TierRow[]; onChanged: () => void }) {
+  const [editing, setEditing] = useState<Record<string, Partial<TierRow>>>({});
+  const [newTier, setNewTier] = useState<{ min: string; max: string; price: string }>({ min: '', max: '', price: '' });
+  const [busy, setBusy] = useState(false);
+
+  const startEdit = (t: TierRow) => setEditing(prev => ({ ...prev, [t.id]: { ...t } }));
+  const cancelEdit = (id: string) => setEditing(prev => {
+    const { [id]: _, ...rest } = prev;
+    return rest;
+  });
+
+  const saveEdit = async (id: string) => {
+    const e = editing[id];
+    if (!e) return;
+    setBusy(true);
+    const payload: any = {
+      min_quantity: Number(e.min_quantity),
+      max_quantity: e.max_quantity == null || (e.max_quantity as any) === '' ? null : Number(e.max_quantity),
+      unit_price_usd: Number(e.unit_price_usd),
+      active: !!e.active,
+    };
+    const { error } = await (supabase as any)
+      .from('whatsapp_volume_pricing_tiers').update(payload).eq('id', id);
+    setBusy(false);
+    if (error) return toast.error('Erro ao salvar: ' + error.message);
+    toast.success('Faixa atualizada.');
+    cancelEdit(id);
+    onChanged();
+  };
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Remover esta faixa?')) return;
+    const { error } = await (supabase as any).from('whatsapp_volume_pricing_tiers').delete().eq('id', id);
+    if (error) return toast.error('Erro: ' + error.message);
+    toast.success('Faixa removida.');
+    onChanged();
+  };
+
+  const add = async () => {
+    const min = Number(newTier.min);
+    const max = newTier.max.trim() === '' ? null : Number(newTier.max);
+    const price = Number(newTier.price);
+    if (!Number.isFinite(min) || min < 1) return toast.error('Quantidade mínima inválida.');
+    if (max != null && (!Number.isFinite(max) || max < min)) return toast.error('Quantidade máxima inválida.');
+    if (!Number.isFinite(price) || price < 0) return toast.error('Preço inválido.');
+    setBusy(true);
+    const { error } = await (supabase as any).from('whatsapp_volume_pricing_tiers').insert({
+      min_quantity: min, max_quantity: max, unit_price_usd: price, active: true,
+    });
+    setBusy(false);
+    if (error) return toast.error('Erro: ' + error.message);
+    toast.success('Faixa adicionada.');
+    setNewTier({ min: '', max: '', price: '' });
+    onChanged();
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        O preço por instância é definido pela faixa em que se enquadra a quantidade de instâncias <strong>em uso</strong>.
+        Deixe <em>máx</em> em branco para "em diante".
+      </p>
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-1 text-[11px] uppercase text-muted-foreground px-1">
+        <div>De</div><div>Até</div><div>US$ / inst.</div><div>Ativo</div><div></div>
+      </div>
+      {tiers.length === 0 && (
+        <p className="text-[11px] text-muted-foreground italic py-2">Nenhuma faixa cadastrada.</p>
+      )}
+      {tiers.map(t => {
+        const e = editing[t.id];
+        const isEditing = !!e;
+        return (
+          <div key={t.id} className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-1 items-center text-xs">
+            <Input
+              type="number" min="1" className="h-7 text-xs"
+              value={isEditing ? String(e.min_quantity ?? '') : String(t.min_quantity)}
+              disabled={!isEditing}
+              onChange={(ev) => setEditing(p => ({ ...p, [t.id]: { ...p[t.id], min_quantity: Number(ev.target.value) } }))}
+            />
+            <Input
+              type="number" min="1" className="h-7 text-xs"
+              placeholder="em diante"
+              value={isEditing ? (e.max_quantity == null ? '' : String(e.max_quantity)) : (t.max_quantity ?? '')}
+              disabled={!isEditing}
+              onChange={(ev) => setEditing(p => ({
+                ...p, [t.id]: { ...p[t.id], max_quantity: ev.target.value === '' ? null : Number(ev.target.value) },
+              }))}
+            />
+            <Input
+              type="number" step="0.01" min="0" className="h-7 text-xs"
+              value={isEditing ? String(e.unit_price_usd ?? '') : String(t.unit_price_usd)}
+              disabled={!isEditing}
+              onChange={(ev) => setEditing(p => ({ ...p, [t.id]: { ...p[t.id], unit_price_usd: Number(ev.target.value) } }))}
+            />
+            <div className="flex items-center justify-center px-2">
+              <input
+                type="checkbox"
+                checked={isEditing ? !!e.active : t.active}
+                disabled={!isEditing}
+                onChange={(ev) => setEditing(p => ({ ...p, [t.id]: { ...p[t.id], active: ev.target.checked } }))}
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              {!isEditing ? (
+                <>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(t)} title="Editar">
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(t.id)} title="Remover">
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" className="h-7 px-2 text-[11px]" disabled={busy} onClick={() => saveEdit(t.id)}>
+                    Salvar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => cancelEdit(t.id)}>
+                    Cancelar
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-1 items-center pt-2 border-t border-dashed">
+        <Input
+          type="number" min="1" className="h-7 text-xs"
+          placeholder="min" value={newTier.min}
+          onChange={(e) => setNewTier(p => ({ ...p, min: e.target.value }))}
+        />
+        <Input
+          type="number" min="1" className="h-7 text-xs"
+          placeholder="máx (vazio = +)" value={newTier.max}
+          onChange={(e) => setNewTier(p => ({ ...p, max: e.target.value }))}
+        />
+        <Input
+          type="number" step="0.01" min="0" className="h-7 text-xs"
+          placeholder="US$" value={newTier.price}
+          onChange={(e) => setNewTier(p => ({ ...p, price: e.target.value }))}
+        />
+        <div />
+        <Button size="sm" className="h-7 px-2 text-[11px]" disabled={busy} onClick={add}>
+          <Plus className="h-3 w-3 mr-1" /> Adicionar
+        </Button>
+      </div>
+    </div>
   );
 }

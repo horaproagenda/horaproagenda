@@ -155,6 +155,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
       content: '',
       variables: '',
       is_active: true,
+      category: 'anamnese',
     },
   });
 
@@ -166,6 +167,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         content: template.content,
         variables: template.variables?.join(', ') || '',
         is_active: template.is_active,
+        category: (template.category as 'anamnese' | 'contract' | 'consent') || 'anamnese',
       });
       return;
     }
@@ -176,6 +178,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
       content: '',
       variables: '',
       is_active: true,
+      category: 'anamnese',
     });
   }, [template, open, form]);
 
@@ -192,6 +195,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         content: data.content,
         variables: variablesArray,
         is_active: data.is_active,
+        category: data.category,
       });
     } finally {
       setIsLoading(false);

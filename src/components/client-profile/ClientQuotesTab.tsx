@@ -364,6 +364,16 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
           )}
         </CardContent>
       </Card>
+
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={clientPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar orçamento no WhatsApp"
+        description="Revise e edite a mensagem do orçamento antes de enviar."
+        onSent={handleWhatsappSent}
+      />
     </div>
   );
 }

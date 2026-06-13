@@ -1736,20 +1736,20 @@ export function AppointmentDetailDialog({
                         : productsForSale.map((product) => ({ value: product.id, label: product.name, sublabel: formatCurrency(product.sale_price || product.unit_price || 0) }));
                       const lineTotal = (Number(item.quantity) || 0) * parseBrazilianCurrency(item.unit_price);
                       return (
-                        <div key={`${item.item_type}-${index}`} className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                        <div key={`${item.item_type}-${index}`} className="space-y-2 p-2.5 rounded-lg border bg-muted/30">
                           <div className="flex items-end gap-2">
-                            <div className="flex-1">
-                              <Label className="text-xs">{item.item_type === 'service' ? 'Serviço' : 'Produto'}</Label>
+                            <div className="flex-1 min-w-0">
+                              <Label className="text-[10px]">{item.item_type === 'service' ? 'Serviço' : 'Produto'}</Label>
                               <SearchableSelect options={options} value={item.item_id} onChange={(value) => updateAdditionalItem(index, { item_id: value })} placeholder="Selecione..." searchPlaceholder="Buscar..." />
                             </div>
-                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeAdditionalItem(index)}>
-                              <Trash2 className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => removeAdditionalItem(index)}>
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                            <div><Label className="text-xs">Qtd.</Label><Input value={item.quantity} onChange={(e) => updateAdditionalItem(index, { quantity: e.target.value })} /></div>
-                            <div><Label className="text-xs">Valor</Label><CurrencyInput value={item.unit_price} onValueChange={(value) => updateAdditionalItem(index, { unit_price: String(value) })} /></div>
-                            <div><Label className="text-xs">Total</Label><div className="h-10 flex items-center font-semibold">{formatCurrency(lineTotal)}</div></div>
+                            <div><Label className="text-[10px]">Qtd.</Label><Input className="h-8 text-xs" value={item.quantity} onChange={(e) => updateAdditionalItem(index, { quantity: e.target.value })} /></div>
+                            <div><Label className="text-[10px]">Valor</Label><CurrencyInput className="h-8 text-xs" value={item.unit_price} onValueChange={(value) => updateAdditionalItem(index, { unit_price: String(value) })} /></div>
+                            <div><Label className="text-[10px]">Total</Label><div className="h-8 flex items-center font-semibold text-xs">{formatCurrency(lineTotal)}</div></div>
                           </div>
                         </div>
                       );

@@ -158,10 +158,13 @@ const Ajuda = () => {
       title: "Relatórios",
       description: "Análises e estatísticas",
       features: [
+        { name: "Atendimentos por Profissional", description: "Tempo real: cada novo atendimento aparece automaticamente com data, cliente, serviço, valor e comissão. Totais (atendimentos, receita e comissões) atualizam sozinhos." },
         { name: "Aniversariantes", description: "Lista de clientes que fazem aniversário no período selecionado, ideal para ações de marketing." },
         { name: "Retornos Pendentes", description: "Clientes que precisam retornar baseado nos dias de retorno configurados nos serviços." },
         { name: "Clientes Inativos", description: "Identifique clientes que não comparecem há determinado período para ações de reativação." },
         { name: "Pacotes Ativos", description: "Acompanhe todos os pacotes vendidos, sessões utilizadas e restantes por cliente." },
+        { name: "Exportação", description: "Exporte qualquer relatório em CSV/Excel para análise externa ou contabilidade." },
+
       ]
     },
     {

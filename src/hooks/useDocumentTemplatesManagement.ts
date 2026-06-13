@@ -3,13 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { DocumentTemplate } from '@/types';
 import { toast } from 'sonner';
 
+export type TemplateCategory = 'anamnese' | 'contract' | 'consent';
+
 export interface TemplateFormData {
   title: string;
   description?: string | null;
   content: string;
   variables?: string[];
   is_active?: boolean;
-  category?: string;
+  category?: TemplateCategory;
 }
 
 export function useDocumentTemplatesManagement() {

@@ -561,6 +561,15 @@ export function PrebuiltTemplatesDialog({
   const [selectedPreview, setSelectedPreview] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const resolveCategory = (template: any): 'anamnese' | 'contract' | 'consent' => {
+    // Inside the "anamnese" group every prebuilt is an anamnese template;
+    // inside "contracts" group the local `category` is already 'contract' or 'consent'.
+    const c = template?.category as string | undefined;
+    if (c === 'contract') return 'contract';
+    if (c === 'consent') return 'consent';
+    return 'anamnese';
+  };
+
   const handleSelect = async (template: any) => {
     setIsLoading(true);
     try {
@@ -570,6 +579,7 @@ export function PrebuiltTemplatesDialog({
         content: template.content,
         variables: template.variables,
         is_active: true,
+        category: resolveCategory(template),
       });
     } finally {
       setIsLoading(false);

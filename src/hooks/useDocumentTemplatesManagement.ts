@@ -40,7 +40,8 @@ export function useDocumentTemplatesManagement() {
           content: data.content,
           variables: data.variables || [],
           is_active: data.is_active ?? true,
-        })
+          category: data.category ?? 'anamnese',
+        } as any)
         .select()
         .single();
       

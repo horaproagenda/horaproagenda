@@ -32,6 +32,7 @@ const templateSchema = z.object({
   content: z.string().trim().min(10, 'Conteúdo deve ter pelo menos 10 caracteres'),
   variables: z.string().optional(),
   is_active: z.boolean(),
+  category: z.enum(['anamnese', 'contract', 'consent']),
 });
 
 type FormData = z.infer<typeof templateSchema>;

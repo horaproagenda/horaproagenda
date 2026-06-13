@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 

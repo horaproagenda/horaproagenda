@@ -1062,8 +1062,9 @@ export function AppointmentDetailDialog({
       return;
     }
     const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
-    openWhatsappWithMessage(phone, message);
-    toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.');
+    setWhatsappPreviewPhone(phone);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewOpen(true);
   };
 
   const addPaymentMethod = () => {

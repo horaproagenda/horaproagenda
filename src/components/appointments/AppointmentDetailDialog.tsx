@@ -417,6 +417,13 @@ export function AppointmentDetailDialog({
     recurring_group_id?: string;
   }>(null);
 
+  // Confirmation when changing status to "missed" or "cancelled" on a package appointment:
+  // user chooses whether to release the package session (make it available again)
+  // or consume it (mark as done because the client missed/cancelled).
+  const [pendingPackageOutcome, setPendingPackageOutcome] = useState<null | {
+    newStatus: AppointmentStatus;
+  }>(null);
+
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
     if (isClientCreditPaymentMethod(methodName)) return false;

@@ -350,6 +350,4 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
     </Card>
   );
 }
-    </div>
-  );
-}
+

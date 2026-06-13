@@ -125,7 +125,7 @@ export function ProductDetailDialog({
   const { services, activeServices } = useServices();
   const { templates } = usePackageTemplates();
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
-  const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
+  const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
 
   const { appointments } = useAppointments();

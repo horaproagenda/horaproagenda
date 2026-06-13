@@ -261,7 +261,7 @@ export interface AppointmentEditLock {
   updated_at: string;
 }
 
-export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';
+export type DocumentType = 'anamnese' | 'contract' | 'consent' | 'quote' | 'photo' | 'other';
 
 export interface ClientDocument {
   id: string;

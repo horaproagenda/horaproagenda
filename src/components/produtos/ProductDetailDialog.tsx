@@ -136,8 +136,10 @@ export function ProductDetailDialog({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [serviceLinkSearch, setServiceLinkSearch] = useState('');
+  const [templateLinkSearch, setTemplateLinkSearch] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);

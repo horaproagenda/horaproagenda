@@ -84,28 +84,29 @@ export function SearchableSelect({
                     onChange(option.value === value ? '' : option.value);
                     setOpen(false);
                   }}
+                  className="text-xs"
                 >
                   <Check
                     className={cn(
-                      'mr-2 h-4 w-4',
+                      'mr-2 h-3.5 w-3.5 flex-shrink-0',
                       value === option.value ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  <div className="flex items-center gap-2">
-                    {option.color && (
-                      <div
-                        className="h-3 w-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: option.color }}
-                      />
-                    )}
-                    <div>
-                      <span>{option.label}</span>
-                      {option.sublabel && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {option.sublabel}
-                        </span>
+                  <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {option.color && (
+                        <div
+                          className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: option.color }}
+                        />
                       )}
+                      <span className="truncate">{option.label}</span>
                     </div>
+                    {option.sublabel && (
+                      <span className="text-[11px] text-muted-foreground flex-shrink-0">
+                        {option.sublabel}
+                      </span>
+                    )}
                   </div>
                 </CommandItem>
               ))}

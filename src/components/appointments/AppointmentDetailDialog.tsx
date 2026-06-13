@@ -2688,6 +2688,16 @@ export function AppointmentDetailDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={whatsappPreviewPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar recibo no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa."
+        onSent={() => toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.')}
+      />
     </>
   );
 }

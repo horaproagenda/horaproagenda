@@ -124,8 +124,8 @@ export function ProductDetailDialog({
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
   const { templates } = usePackageTemplates();
-  const { serviceProducts } = useServiceProducts();
-  const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
+  const { serviceProducts, updateServiceProduct } = useServiceProducts();
+  const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
 
   const { appointments } = useAppointments();
@@ -142,7 +142,7 @@ export function ProductDetailDialog({
   const [templateLinkSearch, setTemplateLinkSearch] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
-  const [estimatedAppointments, setEstimatedAppointments] = useState(30);
+  // estimatedAppointments removido do formulário — agora é calculado automaticamente ao preencher o término do uso
   const [containerAmount, setContainerAmount] = useState(1);
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
   const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
@@ -350,13 +350,13 @@ export function ProductDetailDialog({
 
     for (const serviceId of selectedServiceIds) {
       if (useEstimated) {
-        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        // Modo estimado: usuário só informa o recipiente em uso.
+        // A média por atendimento será calculada automaticamente ao preencher o término do uso.
         await onCreateServiceLink({
           service_id: serviceId,
           product_id: product.id,
-          quantity_per_use: calculatedQuantityPerUse,
-          estimated_appointments: estimatedAppointments,
+          quantity_per_use: 0,
+          estimated_appointments: null,
           container_amount: containerAmount,
           container_unit: containerUnit,
           tracking_method: 'estimated',
@@ -377,7 +377,6 @@ export function ProductDetailDialog({
     setSelectedServiceIds([]);
     setServiceLinkSearch('');
     setQuantityPerUse(0);
-    setEstimatedAppointments(30);
     setContainerAmount(1);
     setKnowsQuantity('yes');
   };
@@ -389,13 +388,11 @@ export function ProductDetailDialog({
 
     for (const templateId of selectedTemplateIds) {
       if (useEstimated) {
-        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
         await createTemplateProduct.mutateAsync({
           template_id: templateId,
           product_id: product.id,
-          quantity_per_use: calculatedQuantityPerUse,
-          estimated_appointments: estimatedAppointments,
+          quantity_per_use: 0,
+          estimated_appointments: null,
           container_amount: containerAmount,
           container_unit: containerUnit,
           tracking_method: 'estimated',
@@ -416,7 +413,6 @@ export function ProductDetailDialog({
     setSelectedTemplateIds([]);
     setTemplateLinkSearch('');
     setQuantityPerUse(0);
-    setEstimatedAppointments(30);
     setContainerAmount(1);
     setKnowsQuantity('yes');
   };
@@ -864,50 +860,126 @@ export function ProductDetailDialog({
                            <SafeDateInput
                              value={product.finished_at || ''}
                              onCommit={async (v) => {
-                               if (v) {
-                                 // Marca o término do uso preservando o estoque atual
-                                 // (o estoque reflete o consumo real registrado nos atendimentos
-                                 // e NÃO deve ser zerado automaticamente ao informar o término).
-                                 let activePurchase = productPurchases.find(
-                                   p => p.started_using_at && !p.finished_at
-                                 );
-                                 if (!activePurchase) {
-                                   activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
-                                 }
-                                 if (activePurchase && onUpdatePurchase) {
-                                   await onUpdatePurchase({
-                                     id: activePurchase.id,
-                                     finished_at: v,
-                                     started_using_at:
-                                       activePurchase.started_using_at
-                                       || product.started_using_at
-                                       || activePurchase.purchase_date
-                                       || v,
-                                   });
-                                 }
-                                 // Promove próxima compra pendente (se existir) como novo ciclo,
-                                 // somando seu estoque ao saldo restante do ciclo encerrado.
-                                 const next = productPurchases.find(
-                                   p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
-                                 );
-                                 const today = new Date().toISOString().slice(0, 10);
-                                 if (next && onUpdatePurchase) {
-                                   await onUpdatePurchase({ id: next.id, started_using_at: today });
-                                   await onUpdateProduct({
-                                     id: product.id,
-                                     finished_at: null as any,
-                                     started_using_at: today,
-                                     current_stock: (Number(product.current_stock) || 0) + (Number(next.quantity) || 0),
-                                   });
-                                 } else {
-                                   // Apenas registra o término — preserva estoque e início do uso.
-                                   await onUpdateProduct({
-                                     id: product.id,
-                                     finished_at: v,
-                                   });
-                                 }
-                               } else {
+                               if (!v) {
                                  await onUpdateProduct({ id: product.id, finished_at: null as any });
+                                 return;
+                               }
+
+                               // 1) Identifica o ciclo ativo (compra em uso)
+                               let activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at);
+                               if (!activePurchase) {
+                                 activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
+                               }
+
+                               // 2) Apura janela do ciclo e atendimentos concluídos
+                               const cycleStart = activePurchase?.started_using_at || product.started_using_at;
+                               const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
+                               const endDate = parseISO(v + 'T23:59:59');
+                               const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
+                               const cycleAppointments = appointments.filter(a => {
+                                 if (a.status !== 'completed') return false;
+                                 if (!linkedServiceIds.includes(a.service_id)) return false;
+                                 const t = new Date(a.start_time);
+                                 if (startDate && t < startDate) return false;
+                                 return t <= endDate;
+                               });
+                               const totalApts = cycleAppointments.length;
+
+                               // 3) Para cada vínculo em modo estimado, calcula média e persiste
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method !== 'estimated') continue;
+                                 const containerInStockUnit = convertQuantity(
+                                   Number(sp.container_amount || 0),
+                                   sp.container_unit || product.unit,
+                                   product.unit
+                                 ) ?? Number(sp.container_amount || 0);
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 if (aptsThis > 0 && containerInStockUnit > 0) {
+                                   const avg = containerInStockUnit / aptsThis;
+                                   await updateServiceProduct.mutateAsync({
+                                     id: sp.id,
+                                     quantity_per_use: avg,
+                                     estimated_appointments: aptsThis,
+                                   } as any);
+                                 }
+                               }
+
+                               // 4) Calcula quanto deduzir do estoque total
+                               // Soma os "containers" dos vínculos estimados que tiveram uso neste ciclo (uma vez cada)
+                               const containerDeductions = new Map<string, number>();
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method !== 'estimated') continue;
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 if (aptsThis <= 0) continue;
+                                 const key = `${sp.container_amount}-${sp.container_unit}`;
+                                 const inStockUnit = convertQuantity(
+                                   Number(sp.container_amount || 0),
+                                   sp.container_unit || product.unit,
+                                   product.unit
+                                 ) ?? Number(sp.container_amount || 0);
+                                 // mantém o maior (assume mesmo recipiente compartilhado)
+                                 if (!containerDeductions.has(key) || (containerDeductions.get(key) || 0) < inStockUnit) {
+                                   containerDeductions.set(key, inStockUnit);
+                                 }
+                               }
+                               const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
+
+                               // Para vínculos exatos: deduzir qty_per_use * atendimentos
+                               let exactDeduction = 0;
+                               for (const sp of productServiceLinks) {
+                                 if (sp.tracking_method === 'estimated') continue;
+                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
+                                 exactDeduction += aptsThis * Number(sp.quantity_per_use || 0);
+                               }
+
+                               const totalDeduction = estimatedDeduction + exactDeduction;
+                               const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+
+                               // 5) Fecha a compra ativa com o término
+                               if (activePurchase && onUpdatePurchase) {
+                                 await onUpdatePurchase({
+                                   id: activePurchase.id,
+                                   finished_at: v,
+                                   started_using_at:
+                                     activePurchase.started_using_at
+                                     || product.started_using_at
+                                     || activePurchase.purchase_date
+                                     || v,
+                                 });
+                               }
+
+                               // 6) Limpa início/término do produto e atualiza estoque.
+                               //    Se ainda há estoque, inicia automaticamente um novo ciclo na data de hoje.
+                               const today = new Date().toISOString().slice(0, 10);
+                               const next = productPurchases.find(
+                                 p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
+                               );
+
+                               if (next && onUpdatePurchase) {
+                                 // Promove próxima compra como novo ciclo
+                                 await onUpdatePurchase({ id: next.id, started_using_at: today });
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: today,
+                                   current_stock: newStock + (Number(next.quantity) || 0),
+                                 });
+                               } else if (newStock > 0) {
+                                 // Inicia automaticamente um novo ciclo com o estoque restante
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: today,
+                                   current_stock: newStock,
+                                 });
+                               } else {
+                                 // Estoque esgotado: limpa ambas as datas para o usuário registrar nova compra
+                                 await onUpdateProduct({
+                                   id: product.id,
+                                   finished_at: null as any,
+                                   started_using_at: null as any,
+                                   current_stock: 0,
+                                 });
                                }
                              }}
                              className="h-9"
@@ -1343,48 +1415,31 @@ export function ProductDetailDialog({
                     </div>
 
                     {knowsQuantity === 'no' ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantidade no recipiente em uso
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              value={containerAmount}
-                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
-                              min="0"
-                              step="0.01"
-                              className="flex-1"
-                            />
-                            <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
-                              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_UNITS.map(u => (
-                                  <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Ex: 1 L de um galão de 5 L
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantos atendimentos dura?
-                          </Label>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Quantidade no recipiente em uso
+                        </Label>
+                        <div className="flex gap-2">
                           <Input
                             type="number"
-                            value={estimatedAppointments}
-                            onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                            min="1"
-                            placeholder="Ex: 30"
+                            value={containerAmount}
+                            onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                            min="0"
+                            step="0.01"
+                            className="flex-1"
                           />
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Média estimada de atendimentos
-                          </p>
+                          <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_UNITS.map(u => (
+                                <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Ex: 500 mL de um galão de 5 L. A média por atendimento será calculada automaticamente quando você preencher o término do uso.
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1608,42 +1663,31 @@ export function ProductDetailDialog({
                         </div>
 
                         {knowsQuantity === 'no' ? (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs text-muted-foreground mb-1 block">
-                                Quantidade no recipiente em uso
-                              </Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="number"
-                                  value={containerAmount}
-                                  onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
-                                  min="0"
-                                  step="0.01"
-                                  className="flex-1"
-                                />
-                                <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
-                                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {PRODUCT_UNITS.map(u => (
-                                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground mb-1 block">
-                                Quantos atendimentos dura?
-                              </Label>
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">
+                              Quantidade no recipiente em uso
+                            </Label>
+                            <div className="flex gap-2">
                               <Input
                                 type="number"
-                                value={estimatedAppointments}
-                                onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                                min="1"
-                                placeholder="Ex: 30 atendimentos"
+                                value={containerAmount}
+                                onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                                min="0"
+                                step="0.01"
+                                className="flex-1"
                               />
+                              <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {PRODUCT_UNITS.map(u => (
+                                    <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              A média por sessão será calculada automaticamente quando você preencher o término do uso.
+                            </p>
                           </div>
                         ) : (
                           <div className="space-y-2">

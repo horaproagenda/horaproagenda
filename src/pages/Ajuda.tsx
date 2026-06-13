@@ -12,9 +12,13 @@ import {
   Calendar, Users, Briefcase, DollarSign, Package, 
   BarChart3, Settings, FileText, Clock, CreditCard,
   Building2, UserCog, Check, X, ChevronDown, ChevronRight,
-  HelpCircle, Bell, Shield, ClipboardList
+  HelpCircle, Bell, Shield, ClipboardList, Sparkles, Rocket,
+  MessageCircle, Wrench, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CHANGELOG, CURRENT_CHANGELOG } from "@/lib/changelog";
+import { APP_VERSION_LABEL, APP_VERSION } from "@/lib/version";
+
 
 const Ajuda = () => {
   const [activeTab, setActiveTab] = useLocalStorage('ajuda-tab', 'modules');

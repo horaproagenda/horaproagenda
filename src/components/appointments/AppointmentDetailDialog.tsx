@@ -397,6 +397,9 @@ export function AppointmentDetailDialog({
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
   const [seriesCount, setSeriesCount] = useState(0);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState('');
   const [seriesIndex, setSeriesIndex] = useState(0);
   
   // Excess payment handling (when amount paid > amount owed)

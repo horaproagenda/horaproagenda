@@ -116,8 +116,8 @@ export async function bootVersionGuard(): Promise<void> {
     /* storage indisponível — segue */
   }
 
-  // Em dev não faz sentido (HMR cuida disso)
-  if (import.meta.env?.DEV) return;
+  // Always run — even in dev/preview a stale SW can serve old bundles.
+  // The check is cheap (one fetch + string compare) and harmless when versions match.
 
   try {
     const localScripts = Array.from(

@@ -59,8 +59,14 @@ createRoot(document.getElementById("root")!).render(
 scheduleFormRestore();
 logVersionEvent('watcher_started', { boot: true });
 
-// Register PWA service worker after React is mounted
-if ('serviceWorker' in navigator) {
+// Register PWA service worker after React is mounted — skip in Lovable preview/dev
+const isLovablePreview =
+  location.hostname.includes('lovable.app') ||
+  location.hostname.endsWith('.lovableproject.com') ||
+  location.hostname.endsWith('.lovableproject-dev.com') ||
+  location.hostname.endsWith('.beta.lovable.dev');
+
+if ('serviceWorker' in navigator && !isLovablePreview) {
   import('virtual:pwa-register').then(({ registerSW }) => {
     const updateSW = registerSW({
       immediate: true,

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { openWhatsappWithMessage, renderTemplate, adjustHourToQuietWindow } from '@/lib/whatsappLink';
+import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -126,20 +126,9 @@ export function WhatsappTemplatesSettings() {
       return;
     }
 
-    if (formData.quiet_hours_start >= formData.quiet_hours_end) {
-      toast.error('A janela de envio é inválida: o horário inicial deve ser menor que o final.');
-      return;
-    }
-
     const adjustedSendOffset = ['follow_up', 'birthday'].includes(formData.type)
-      ? (formData.type === 'birthday'
-          ? adjustHourToQuietWindow(formData.send_offset_hours, formData.quiet_hours_start, formData.quiet_hours_end)
-          : formData.send_offset_hours)
+      ? formData.send_offset_hours
       : null;
-
-    if (formData.type === 'birthday' && adjustedSendOffset !== formData.send_offset_hours) {
-      toast.info(`Horário ajustado para ${String(adjustedSendOffset).padStart(2,'0')}:00 para respeitar a janela permitida.`);
-    }
 
     const payload = {
       name: formData.name,
@@ -147,8 +136,9 @@ export function WhatsappTemplatesSettings() {
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: adjustedSendOffset,
-      quiet_hours_start: formData.quiet_hours_start,
-      quiet_hours_end: formData.quiet_hours_end,
+      // Janela de envio é definida globalmente por profissional (coluna do WhatsApp em Configurações).
+      quiet_hours_start: null,
+      quiet_hours_end: null,
       professional_id: targetProfId,
       is_active: formData.is_active,
     };
@@ -343,37 +333,12 @@ export function WhatsappTemplatesSettings() {
                   max={23}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se o horário estiver fora da janela permitida abaixo, a mensagem será enviada no horário limite mais próximo.
+                  A janela de envio permitida é definida no painel do WhatsApp (Configurações → WhatsApp). Mensagens fora da janela são ajustadas automaticamente.
                 </p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Não enviar antes das (0–23)</Label>
-                <Input
-                  type="number"
-                  value={formData.quiet_hours_start}
-                  onChange={(e) => setFormData({ ...formData, quiet_hours_start: Number(e.target.value) })}
-                  min={0}
-                  max={23}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Não enviar após as (1–24)</Label>
-                <Input
-                  type="number"
-                  value={formData.quiet_hours_end}
-                  onChange={(e) => setFormData({ ...formData, quiet_hours_end: Number(e.target.value) })}
-                  min={1}
-                  max={24}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground col-span-2">
-                Janela de envio permitida (ex: 8 às 20). Mensagens agendadas fora desta janela serão ajustadas para o
-                limite mais próximo.
-              </p>
-            </div>
+
 
             <div className="space-y-2">
               <Label>Mensagem</Label>
@@ -434,11 +399,6 @@ export function WhatsappTemplatesSettings() {
                       )}
                       {template.type === 'birthday' && template.send_offset_hours != null && (
                         <Badge variant="outline" className="text-xs">às {String(template.send_offset_hours).padStart(2,'0')}:00</Badge>
-                      )}
-                      {template.quiet_hours_start != null && template.quiet_hours_end != null && (
-                        <Badge variant="outline" className="text-xs">
-                          janela {String(template.quiet_hours_start).padStart(2,'0')}–{String(template.quiet_hours_end).padStart(2,'0')}h
-                        </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">{getProfName(template.professional_id)}</Badge>
                     </div>

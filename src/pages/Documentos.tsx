@@ -94,13 +94,11 @@ const Documentos = () => {
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       template.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
+    const cat = (template as any).category as string | undefined;
     if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'anamnese') return matchesSearch && template.title.toLowerCase().includes('anamnese');
-    if (activeTab === 'contracts') return matchesSearch && (
-      template.title.toLowerCase().includes('contrato') || 
-      template.title.toLowerCase().includes('termo')
-    );
+    if (activeTab === 'anamnese') return matchesSearch && cat === 'anamnese';
+    if (activeTab === 'contracts') return matchesSearch && (cat === 'contract' || cat === 'consent');
     return matchesSearch;
   });
 

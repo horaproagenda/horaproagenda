@@ -58,7 +58,7 @@ export type NameMaps = {
 
 export function resolveName(maps: NameMaps, field: keyof NameMaps, id: string): string {
   const map = maps[field];
-  return (map && map.get(id)) || id;
+  return (map && map.get(id)) || '—';
 }
 
 export function formatHistoryValue(field: string, value: unknown, maps: NameMaps = {}): string {
@@ -82,11 +82,12 @@ export function formatHistoryValue(field: string, value: unknown, maps: NameMaps
   }
   if (field === 'payment_methods' && Array.isArray(value)) {
     if (!value.length) return '—';
-    return value
+    const resolved = value
       .map(v =>
         typeof v === 'string' && UUID_RE.test(v) ? resolveName(maps, 'payment_methods', v) : String(v)
       )
-      .join(', ');
+      .filter(v => v !== '—' && v !== '');
+    return resolved.length ? resolved.join(', ') : '—';
   }
   if (
     (field === 'professional_id' ||
@@ -97,8 +98,18 @@ export function formatHistoryValue(field: string, value: unknown, maps: NameMaps
   ) {
     return resolveName(maps, field, value);
   }
-  if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    const resolved = value
+      .map(v => (typeof v === 'string' && UUID_RE.test(v) ? '—' : String(v)))
+      .filter(v => v !== '—' && v !== '');
+    return resolved.length ? resolved.join(', ') : '—';
+  }
+  if (typeof value === 'object') {
+    const json = JSON.stringify(value);
+    const cleaned = json.replace(UUID_RE, '—');
+    return cleaned;
+  }
+  if (typeof value === 'string' && UUID_RE.test(value)) return '—';
   return String(value);
 }
 
@@ -183,5 +194,5 @@ export function resolveAuthorName(
   professionalsByEmail: Map<string, string>
 ): string {
   if (!userEmail) return '';
-  return professionalsByEmail.get(userEmail.toLowerCase()) || userEmail;
+  return professionalsByEmail.get(userEmail.toLowerCase()) || 'Sistema';
 }

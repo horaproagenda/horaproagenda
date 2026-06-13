@@ -868,12 +868,24 @@ export default function PreencherDocumento() {
               </div>
             </ScrollArea>
 
-            <div className="border-t p-4 bg-muted/10">
-              <Button className="w-full gap-2" size="lg" onClick={() => setShowConfirmDialog(true)} disabled={saving}>
+            <div className="border-t p-4 bg-muted/10 space-y-3">
+              {validationError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Não foi possível enviar o documento</p>
+                    <p className="text-xs mt-1">{validationError}</p>
+                  </div>
+                </div>
+              )}
+              <Button className="w-full gap-2" size="lg" onClick={handleAttemptSubmit} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {saving ? 'Enviando...' : 'Enviar Documento'}
               </Button>
-              <p className="text-xs text-center text-muted-foreground mt-3">
+              <p className="text-xs text-center text-muted-foreground">
                 Ao enviar, você confirma que todas as informações foram revisadas e não poderão mais ser alteradas.
               </p>
             </div>

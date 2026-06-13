@@ -1350,13 +1350,14 @@ export function AppointmentDetailDialog({
                 </div>
 
                 <div>
-                  <Label className="text-xs">Serviço</Label>
+                  <Label className="text-[10px]">Serviço</Label>
                   <SearchableSelect
                     value={editServiceId || ''}
                     onChange={handleEditServiceChange}
                     placeholder="Selecione o serviço"
                     searchPlaceholder="Buscar serviço..."
                     emptyMessage="Nenhum serviço encontrado."
+                    className="h-8 text-xs"
                     options={(() => {
                       const list = activeServices.map((service) => ({
                         value: service.id,

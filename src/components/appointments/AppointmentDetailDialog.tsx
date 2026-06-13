@@ -680,12 +680,54 @@ export function AppointmentDetailDialog({
       toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
       return;
     }
+
+    // For package appointments being marked as "faltou" or "cancelado",
+    // ask whether to release the package session or consume it.
+    if (
+      !!appointment.package_appointment &&
+      (newStatus === 'missed' || newStatus === 'cancelled')
+    ) {
+      setPendingPackageOutcome({ newStatus });
+      return;
+    }
+
     setSelectedStatus(newStatus);
     updateAppointment.mutate({
       id: appointment.id,
       updates: { status: newStatus },
       expectedVersion: appointment.version,
     });
+  };
+
+  const handleConfirmPackageOutcome = async (mode: 'release' | 'consume') => {
+    if (!pendingPackageOutcome) return;
+    const newStatus = pendingPackageOutcome.newStatus;
+    try {
+      const { error } = await (supabase as any).rpc('set_appointment_status_with_package_mode', {
+        p_appointment_id: appointment.id,
+        p_status: newStatus,
+        p_mode: mode,
+        p_expected_version: appointment.version,
+      });
+      if (error) throw error;
+      setSelectedStatus(newStatus);
+      toast.success(
+        mode === 'release'
+          ? 'Aplicação disponibilizada novamente no pacote.'
+          : 'Aplicação baixada como feita.',
+      );
+      // Refresh dependent queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['service_packages'] }),
+        queryClient.invalidateQueries({ queryKey: ['client_packages'] }),
+        queryClient.invalidateQueries({ queryKey: ['package_appointments'] }),
+      ]);
+    } catch (err: any) {
+      toast.error('Erro ao atualizar agendamento: ' + (err?.message || 'desconhecido'));
+    } finally {
+      setPendingPackageOutcome(null);
+    }
   };
 
   const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;

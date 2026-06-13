@@ -138,6 +138,8 @@ export default function PreencherDocumento() {
   const [yesNoAnswers, setYesNoAnswers] = useState<Record<string, 'sim' | 'nao' | ''>>({});
   const [additionalInfo, setAdditionalInfo] = useState<Record<string, string>>({});
   const [checkboxAnswers, setCheckboxAnswers] = useState<Record<string, boolean>>({});
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
+  const [validationError, setValidationError] = useState<string | null>(null);
   // CPF authentication gate
   const [authenticated, setAuthenticated] = useState(false);
   const [cpfInput, setCpfInput] = useState('');

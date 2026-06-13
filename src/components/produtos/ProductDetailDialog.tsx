@@ -142,7 +142,7 @@ export function ProductDetailDialog({
   const [templateLinkSearch, setTemplateLinkSearch] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
-  const [estimatedAppointments, setEstimatedAppointments] = useState(30);
+  // estimatedAppointments removido do formulário — agora é calculado automaticamente ao preencher o término do uso
   const [containerAmount, setContainerAmount] = useState(1);
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
   const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');

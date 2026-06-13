@@ -139,6 +139,7 @@ export function ProductDetailDialog({
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
+  const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
@@ -320,6 +321,7 @@ export function ProductDetailDialog({
   useEffect(() => {
     if (product) {
       setContainerUnit(product.unit);
+      setQuantityPerUseUnit(product.unit);
     }
   }, [product?.id, product?.unit]);
 
@@ -342,10 +344,11 @@ export function ProductDetailDialog({
         notes: null,
       });
     } else {
+      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
       await onCreateServiceLink({
         service_id: selectedServiceId,
         product_id: product.id,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQty,
         tracking_method: 'exact',
         notes: null,
       });
@@ -377,10 +380,11 @@ export function ProductDetailDialog({
         notes: null,
       });
     } else {
+      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplateId,
         product_id: product.id,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQty,
         tracking_method: 'exact',
         notes: null,
       });
@@ -1301,11 +1305,22 @@ export function ProductDetailDialog({
                             onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
+                            className="flex-1"
                           />
-                          <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                            {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                          </span>
+                          <Select value={quantityPerUseUnit} onValueChange={(v: ProductUnit) => setQuantityPerUseUnit(v)}>
+                            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_UNITS.map(u => (
+                                <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        {quantityPerUseUnit !== product.unit && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Será convertido e salvo em {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} (unidade do estoque).
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1496,11 +1511,22 @@ export function ProductDetailDialog({
                                 onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
                                 min="0"
                                 step="0.01"
+                                className="flex-1"
                               />
-                              <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                                {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                              </span>
+                              <Select value={quantityPerUseUnit} onValueChange={(v: ProductUnit) => setQuantityPerUseUnit(v)}>
+                                <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {PRODUCT_UNITS.map(u => (
+                                    <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
+                            {quantityPerUseUnit !== product.unit && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Será convertido e salvo em {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} (unidade do estoque).
+                              </p>
+                            )}
                           </div>
                         )}
                       </>

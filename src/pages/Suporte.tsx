@@ -243,6 +243,15 @@ const Suporte = () => {
           </Card>
         </div>
       </PageTransition>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={whatsappPreviewPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar mensagem de suporte"
+        description="Revise e edite a mensagem antes de enviar ao suporte pelo WhatsApp."
+        onSent={handleWhatsappSent}
+      />
     </AppLayout>
   );
 };

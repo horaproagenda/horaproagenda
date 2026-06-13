@@ -12,9 +12,13 @@ import {
   Calendar, Users, Briefcase, DollarSign, Package, 
   BarChart3, Settings, FileText, Clock, CreditCard,
   Building2, UserCog, Check, X, ChevronDown, ChevronRight,
-  HelpCircle, Bell, Shield, ClipboardList
+  HelpCircle, Bell, Shield, ClipboardList, Sparkles, Rocket,
+  MessageCircle, Wrench, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CHANGELOG, CURRENT_CHANGELOG } from "@/lib/changelog";
+import { APP_VERSION_LABEL, APP_VERSION } from "@/lib/version";
+
 
 const Ajuda = () => {
   const [activeTab, setActiveTab] = useLocalStorage('ajuda-tab', 'modules');
@@ -102,6 +106,30 @@ const Ajuda = () => {
       ]
     },
     {
+      icon: <FileText className="h-4 w-4" />,
+      title: "Documentos",
+      description: "Contratos, Termos e Anamneses",
+      features: [
+        { name: "Modelos de Documento", description: "Crie modelos de Contrato, Termo de Consentimento ou Anamnese com campos variáveis (nome, CPF, data) preenchidos automaticamente." },
+        { name: "Modelos Prontos", description: "Use modelos pré-prontos da plataforma para começar rapidamente, com o tipo (contrato/termo/anamnese) já identificado corretamente." },
+        { name: "Preenchimento Público", description: "Gere um link único e envie ao cliente por WhatsApp. O cliente preenche e assina sem precisar criar conta — campos obrigatórios em vermelho bloqueiam o envio incompleto." },
+        { name: "Assinatura Digital", description: "O cliente assina pelo dedo/mouse e o documento é armazenado vinculado ao cadastro, com nome correto (Contrato, Termo, Anamnese) em todas as listagens." },
+        { name: "Prévia de Mensagem WhatsApp", description: "Antes de enviar, revise e edite a mensagem com instruções passo-a-passo para o cliente abrir e preencher o documento." },
+      ]
+    },
+    {
+      icon: <MessageCircle className="h-4 w-4" />,
+      title: "WhatsApp",
+      description: "Mensagens, automações e templates",
+      features: [
+        { name: "Conexão Evolution API", description: "Conecte sua conta de WhatsApp via QR Code direto pelas Configurações. O sistema mantém a conexão ativa com keep-alive automático." },
+        { name: "Lembretes Automáticos", description: "Confirmações 24h e 1h antes do atendimento, alertas de inadimplência e estoque baixo enviados automaticamente." },
+        { name: "Templates Personalizáveis", description: "Edite os modelos de mensagem com variáveis ({cliente}, {servico}, {data}, {hora}) e teste antes de salvar." },
+        { name: "Prévia Editável", description: "Em todos os pontos onde aparece 'Enviar no WhatsApp' você revisa e edita a mensagem antes do envio." },
+        { name: "Fila de Envio", description: "Mensagens são enfileiradas e reentregues automaticamente em caso de falha temporária de conexão." },
+      ]
+    },
+    {
       icon: <Bell className="h-4 w-4" />,
       title: "Lembretes",
       description: "Gestão de lembretes e tarefas",
@@ -109,18 +137,34 @@ const Ajuda = () => {
         { name: "Lembretes Personalizados", description: "Crie lembretes para qualquer tarefa com data, hora e prioridade (alta, média, baixa)." },
         { name: "Lembretes Recorrentes", description: "Configure lembretes que se repetem diariamente, semanalmente ou mensalmente." },
         { name: "Categorias", description: "Organize lembretes por categorias como financeiro, administrativo, pessoal, etc." },
-        { name: "Notificações", description: "Receba alertas quando os lembretes estiverem próximos do vencimento." },
+        { name: "Notificações", description: "Receba alertas quando os lembretes estiverem próximos do vencimento, com deep-link para a tela relacionada." },
       ]
     },
+    {
+      icon: <DollarSign className="h-4 w-4" />,
+      title: "Financeiro",
+      description: "Contas, recebíveis e comissões",
+      features: [
+        { name: "Contas a Pagar e Receber", description: "Cadastre despesas recorrentes, parcelamentos e receitas. Os lançamentos são sincronizados automaticamente com o caixa e os pacotes." },
+        { name: "Categorias", description: "Organize entradas e saídas por categoria com filtros avançados por período, status e profissional." },
+        { name: "Comissões", description: "Cálculo automático por percentual, valor fixo ou misto, com sobreposição por serviço. Marque como paga e gere recibo." },
+        { name: "Boletos Parcelados", description: "Crie parcelamentos em até 24x com sincronização de status (pago, em aberto, vencido)." },
+        { name: "Extrato com Saldo", description: "Visualize o extrato com saldo corrente acumulado para conciliação rápida." },
+      ]
+    },
+
     {
       icon: <ClipboardList className="h-4 w-4" />,
       title: "Relatórios",
       description: "Análises e estatísticas",
       features: [
+        { name: "Atendimentos por Profissional", description: "Tempo real: cada novo atendimento aparece automaticamente com data, cliente, serviço, valor e comissão. Totais (atendimentos, receita e comissões) atualizam sozinhos." },
         { name: "Aniversariantes", description: "Lista de clientes que fazem aniversário no período selecionado, ideal para ações de marketing." },
         { name: "Retornos Pendentes", description: "Clientes que precisam retornar baseado nos dias de retorno configurados nos serviços." },
         { name: "Clientes Inativos", description: "Identifique clientes que não comparecem há determinado período para ações de reativação." },
         { name: "Pacotes Ativos", description: "Acompanhe todos os pacotes vendidos, sessões utilizadas e restantes por cliente." },
+        { name: "Exportação", description: "Exporte qualquer relatório em CSV/Excel para análise externa ou contabilidade." },
+
       ]
     },
     {
@@ -187,12 +231,109 @@ const Ajuda = () => {
         <ScrollArea className="h-[calc(100vh-120px)]">
           <div className="space-y-4 pr-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4 h-9 bg-muted/50 p-1 gap-1">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Conteúdo atualizado automaticamente a cada nova versão do aplicativo.
+                </p>
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  {APP_VERSION_LABEL}
+                </Badge>
+              </div>
+              <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
+                <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 data-[state=active]:border-rose-500/40">Novidades</TabsTrigger>
                 <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
                 <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
                 <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Permissões</TabsTrigger>
                 <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
+
+            <TabsContent value="whats-new" className="space-y-3 page-enter">
+              {CURRENT_CHANGELOG && (
+                <Card className="card-hover border-rose-500/30">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-rose-500" />
+                        Versão atual — {CURRENT_CHANGELOG.version}
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-[10px]">{CURRENT_CHANGELOG.date}</Badge>
+                    </div>
+                    <CardDescription className="text-xs">Principais novidades desta versão</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {CURRENT_CHANGELOG.highlights.map((h, i) => (
+                        <div key={i} className="p-2 rounded-lg bg-rose-500/5 border border-rose-500/15 flex items-start gap-2">
+                          <Sparkles className="h-3.5 w-3.5 mt-0.5 text-rose-500 shrink-0" />
+                          <p className="text-xs">{h}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5 pt-1">
+                      {CURRENT_CHANGELOG.changes.map((c, i) => {
+                        const styleMap: Record<string, { cls: string; icon: JSX.Element }> = {
+                          'novo':       { cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30', icon: <Sparkles className="h-3 w-3" /> },
+                          'melhoria':   { cls: 'bg-sky-500/15 text-sky-700 border-sky-500/30',             icon: <Wrench className="h-3 w-3" /> },
+                          'correção':   { cls: 'bg-amber-500/15 text-amber-700 border-amber-500/30',       icon: <Check className="h-3 w-3" /> },
+                          'segurança':  { cls: 'bg-violet-500/15 text-violet-700 border-violet-500/30',    icon: <ShieldCheck className="h-3 w-3" /> },
+                        };
+                        const s = styleMap[c.type];
+                        return (
+                          <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                            <Badge variant="outline" className={cn("text-[10px] gap-1 capitalize shrink-0", s.cls)}>
+                              {s.icon}
+                              {c.type}
+                            </Badge>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">{c.description}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="card-hover">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Histórico de versões
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Veja o que mudou nas versões anteriores
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {CHANGELOG.filter(c => c.version !== APP_VERSION).map((entry) => (
+                    <Collapsible key={entry.version}>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/40 hover:bg-muted transition-colors cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">{entry.version}</Badge>
+                            <span className="text-[11px] text-muted-foreground">{entry.date}</span>
+                          </div>
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-3 py-2 space-y-1.5 bg-muted/20 rounded-b-lg -mt-1">
+                          {entry.changes.map((c, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <Badge variant="outline" className="text-[9px] capitalize shrink-0 h-4 px-1">
+                                {c.type}
+                              </Badge>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">{c.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
 
 
             <TabsContent value="modules" className="space-y-3 page-enter">

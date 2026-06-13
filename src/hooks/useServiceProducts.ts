@@ -43,7 +43,22 @@ export function useServiceProducts(serviceId?: string) {
       if (error) throw error;
       return data as ServiceProduct[];
     },
+    // Reprocessa "Consumo / Atendimentos restantes" a cada 1h para refletir agendamentos novos
+    refetchInterval: 60 * 60 * 1000,
+    refetchIntervalInBackground: false,
   });
+
+  // Invalidação imediata quando agendamentos mudam (criados, concluídos, cancelados, faltou, excluídos)
+  useEffect(() => {
+    const ch = supabase
+      .channel('service-products-apt-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['service_products'] });
+        queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   // Realtime sync — auto-recalc no PrecificacaoServicos quando alguém alterar
   // produtos vinculados em qualquer sessão.

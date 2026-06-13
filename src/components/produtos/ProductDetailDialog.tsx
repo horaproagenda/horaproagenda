@@ -136,8 +136,10 @@ export function ProductDetailDialog({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [serviceLinkSearch, setServiceLinkSearch] = useState('');
+  const [templateLinkSearch, setTemplateLinkSearch] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
   const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
@@ -342,35 +344,38 @@ export function ProductDetailDialog({
   }, [product?.id, product?.unit]);
 
   const handleAddServiceLink = async () => {
-    if (!product || !selectedServiceId) return;
+    if (!product || selectedServiceIds.length === 0) return;
 
     const useEstimated = knowsQuantity === 'no';
 
-    if (useEstimated) {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
-      await onCreateServiceLink({
-        service_id: selectedServiceId,
-        product_id: product.id,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: containerUnit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
-      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
-      await onCreateServiceLink({
-        service_id: selectedServiceId,
-        product_id: product.id,
-        quantity_per_use: normalizedQty,
-        tracking_method: 'exact',
-        notes: null,
-      });
+    for (const serviceId of selectedServiceIds) {
+      if (useEstimated) {
+        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        await onCreateServiceLink({
+          service_id: serviceId,
+          product_id: product.id,
+          quantity_per_use: calculatedQuantityPerUse,
+          estimated_appointments: estimatedAppointments,
+          container_amount: containerAmount,
+          container_unit: containerUnit,
+          tracking_method: 'estimated',
+          notes: null,
+        });
+      } else {
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        await onCreateServiceLink({
+          service_id: serviceId,
+          product_id: product.id,
+          quantity_per_use: normalizedQty,
+          tracking_method: 'exact',
+          notes: null,
+        });
+      }
     }
 
-    setSelectedServiceId('');
+    setSelectedServiceIds([]);
+    setServiceLinkSearch('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
@@ -378,35 +383,38 @@ export function ProductDetailDialog({
   };
 
   const handleAddTemplateLink = async () => {
-    if (!product || !selectedTemplateId) return;
+    if (!product || selectedTemplateIds.length === 0) return;
 
     const useEstimated = knowsQuantity === 'no';
 
-    if (useEstimated) {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-      const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplateId,
-        product_id: product.id,
-        quantity_per_use: calculatedQuantityPerUse,
-        estimated_appointments: estimatedAppointments,
-        container_amount: containerAmount,
-        container_unit: containerUnit,
-        tracking_method: 'estimated',
-        notes: null,
-      });
-    } else {
-      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
-      await createTemplateProduct.mutateAsync({
-        template_id: selectedTemplateId,
-        product_id: product.id,
-        quantity_per_use: normalizedQty,
-        tracking_method: 'exact',
-        notes: null,
-      });
+    for (const templateId of selectedTemplateIds) {
+      if (useEstimated) {
+        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
+        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        await createTemplateProduct.mutateAsync({
+          template_id: templateId,
+          product_id: product.id,
+          quantity_per_use: calculatedQuantityPerUse,
+          estimated_appointments: estimatedAppointments,
+          container_amount: containerAmount,
+          container_unit: containerUnit,
+          tracking_method: 'estimated',
+          notes: null,
+        });
+      } else {
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        await createTemplateProduct.mutateAsync({
+          template_id: templateId,
+          product_id: product.id,
+          quantity_per_use: normalizedQty,
+          tracking_method: 'exact',
+          notes: null,
+        });
+      }
     }
 
-    setSelectedTemplateId('');
+    setSelectedTemplateIds([]);
+    setTemplateLinkSearch('');
     setQuantityPerUse(0);
     setEstimatedAppointments(30);
     setContainerAmount(1);
@@ -1246,18 +1254,80 @@ export function ProductDetailDialog({
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um serviço para vincular" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableServicesToLink.map(s => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} - {s.category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Input
+                          placeholder="Buscar serviço..."
+                          value={serviceLinkSearch}
+                          onChange={(e) => setServiceLinkSearch(e.target.value)}
+                          className="h-9 flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-9"
+                          onClick={() => {
+                            const filtered = availableServicesToLink.filter(s =>
+                              !serviceLinkSearch ||
+                              s.name.toLowerCase().includes(serviceLinkSearch.toLowerCase()) ||
+                              (s.category || '').toLowerCase().includes(serviceLinkSearch.toLowerCase())
+                            );
+                            const allIds = filtered.map(s => s.id);
+                            const allSelected = allIds.every(id => selectedServiceIds.includes(id));
+                            setSelectedServiceIds(allSelected
+                              ? selectedServiceIds.filter(id => !allIds.includes(id))
+                              : Array.from(new Set([...selectedServiceIds, ...allIds]))
+                            );
+                          }}
+                        >
+                          Selecionar todos
+                        </Button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded-md border bg-background p-2 space-y-1">
+                        {availableServicesToLink
+                          .filter(s =>
+                            !serviceLinkSearch ||
+                            s.name.toLowerCase().includes(serviceLinkSearch.toLowerCase()) ||
+                            (s.category || '').toLowerCase().includes(serviceLinkSearch.toLowerCase())
+                          )
+                          .map(s => {
+                            const checked = selectedServiceIds.includes(s.id);
+                            return (
+                              <label
+                                key={s.id}
+                                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/60 cursor-pointer text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setSelectedServiceIds(e.target.checked
+                                      ? [...selectedServiceIds, s.id]
+                                      : selectedServiceIds.filter(id => id !== s.id)
+                                    );
+                                  }}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span className="flex-1 truncate">{s.name}</span>
+                                {s.category && (
+                                  <span className="text-muted-foreground text-[10px]">{s.category}</span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        {availableServicesToLink.length === 0 && (
+                          <div className="text-xs text-muted-foreground text-center py-3">
+                            Nenhum serviço disponível para vincular.
+                          </div>
+                        )}
+                      </div>
+                      {selectedServiceIds.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {selectedServiceIds.length} serviço(s) selecionado(s)
+                        </p>
+                      )}
+                    </div>
 
                     <div>
                       <Label className="text-xs text-muted-foreground mb-1 block">
@@ -1348,9 +1418,9 @@ export function ProductDetailDialog({
                     )}
                   </div>
                   
-                  <Button onClick={handleAddServiceLink} disabled={!selectedServiceId} className="w-full">
+                  <Button onClick={handleAddServiceLink} disabled={selectedServiceIds.length === 0} className="w-full">
                     <Link2 className="h-4 w-4 mr-1" />
-                    Vincular Produto ao Serviço
+                    Vincular Produto {selectedServiceIds.length > 1 ? `a ${selectedServiceIds.length} Serviços` : 'ao Serviço'}
                   </Button>
                 </div>
               )}
@@ -1449,18 +1519,71 @@ export function ProductDetailDialog({
 
                   <div className="grid grid-cols-1 gap-3">
                     {availableTemplatesToLink.length > 0 ? (
-                      <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um template de pacote" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableTemplatesToLink.map(t => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name} ({t.total_sessions} sessões)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Input
+                            placeholder="Buscar pacote..."
+                            value={templateLinkSearch}
+                            onChange={(e) => setTemplateLinkSearch(e.target.value)}
+                            className="h-9 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-9"
+                            onClick={() => {
+                              const filtered = availableTemplatesToLink.filter(t =>
+                                !templateLinkSearch ||
+                                t.name.toLowerCase().includes(templateLinkSearch.toLowerCase())
+                              );
+                              const allIds = filtered.map(t => t.id);
+                              const allSelected = allIds.every(id => selectedTemplateIds.includes(id));
+                              setSelectedTemplateIds(allSelected
+                                ? selectedTemplateIds.filter(id => !allIds.includes(id))
+                                : Array.from(new Set([...selectedTemplateIds, ...allIds]))
+                              );
+                            }}
+                          >
+                            Selecionar todos
+                          </Button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto rounded-md border bg-background p-2 space-y-1">
+                          {availableTemplatesToLink
+                            .filter(t =>
+                              !templateLinkSearch ||
+                              t.name.toLowerCase().includes(templateLinkSearch.toLowerCase())
+                            )
+                            .map(t => {
+                              const checked = selectedTemplateIds.includes(t.id);
+                              return (
+                                <label
+                                  key={t.id}
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/60 cursor-pointer text-xs"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setSelectedTemplateIds(e.target.checked
+                                        ? [...selectedTemplateIds, t.id]
+                                        : selectedTemplateIds.filter(id => id !== t.id)
+                                      );
+                                    }}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                  <span className="flex-1 truncate">{t.name}</span>
+                                  <span className="text-muted-foreground text-[10px]">{t.total_sessions} sessões</span>
+                                </label>
+                              );
+                            })}
+                        </div>
+                        {selectedTemplateIds.length > 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {selectedTemplateIds.length} pacote(s) selecionado(s)
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <div className="text-sm text-muted-foreground p-2 text-center">
                         {templates.length === 0
@@ -1557,9 +1680,9 @@ export function ProductDetailDialog({
                   </div>
                   
                   {availableTemplatesToLink.length > 0 && (
-                    <Button onClick={handleAddTemplateLink} disabled={!selectedTemplateId} className="w-full">
+                    <Button onClick={handleAddTemplateLink} disabled={selectedTemplateIds.length === 0} className="w-full">
                       <Gift className="h-4 w-4 mr-1" />
-                      Vincular Produto ao Template
+                      Vincular Produto {selectedTemplateIds.length > 1 ? `a ${selectedTemplateIds.length} Pacotes` : 'ao Pacote'}
                     </Button>
                   )}
                 </div>

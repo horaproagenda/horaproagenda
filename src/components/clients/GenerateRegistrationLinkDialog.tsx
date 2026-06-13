@@ -262,6 +262,13 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
           )}
         </div>
       </DialogContent>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar link de cadastro no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </Dialog>
   );
 }

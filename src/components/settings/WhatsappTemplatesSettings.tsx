@@ -338,13 +338,7 @@ export function WhatsappTemplatesSettings() {
               </div>
             )}
 
-                />
-              </div>
-              <p className="text-xs text-muted-foreground col-span-2">
-                Janela de envio permitida (ex: 8 às 20). Mensagens agendadas fora desta janela serão ajustadas para o
-                limite mais próximo.
-              </p>
-            </div>
+
 
             <div className="space-y-2">
               <Label>Mensagem</Label>

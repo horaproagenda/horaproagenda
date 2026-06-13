@@ -3,11 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
+import { useWhatsappInstanceCost } from "@/hooks/useWhatsappInstanceCost";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, MessageCircle } from "lucide-react";
 
 export function AssinaturaSection() {
   const { user } = useAuth();

@@ -16,6 +16,7 @@ import { useServicePackages } from '@/hooks/useServicePackages';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 interface ClientQuotesTabProps {
   quotes: Quote[];
@@ -61,6 +62,9 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
   const [notes, setNotes] = useState('');
   const [validDays, setValidDays] = useState('7');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const [whatsappPendingQuoteId, setWhatsappPendingQuoteId] = useState<string | null>(null);
   const { services } = useServices();
   const { packages } = useServicePackages();
 
@@ -177,16 +181,22 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
     }
   };
 
-  const sendViaWhatsApp = async (quote: Quote) => {
+  const sendViaWhatsApp = (quote: Quote) => {
     const message = generateQuoteMessage(quote);
-    openWhatsappWithMessage(clientPhone, message);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPendingQuoteId(quote.id);
+    setWhatsappPreviewOpen(true);
+  };
 
+  const handleWhatsappSent = async () => {
+    if (!whatsappPendingQuoteId) return;
     await onUpdateQuote({
-      id: quote.id,
+      id: whatsappPendingQuoteId,
       status: 'sent',
       sent_via: 'whatsapp',
       sent_at: new Date().toISOString(),
     });
+    setWhatsappPendingQuoteId(null);
   };
 
   const generateQuoteMessage = (quote: Quote) => {
@@ -354,6 +364,16 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
           )}
         </CardContent>
       </Card>
+
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={clientPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar orçamento no WhatsApp"
+        description="Revise e edite a mensagem do orçamento antes de enviar."
+        onSent={handleWhatsappSent}
+      />
     </div>
   );
 }

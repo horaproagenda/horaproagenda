@@ -84,6 +84,7 @@ import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
@@ -396,6 +397,9 @@ export function AppointmentDetailDialog({
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | ''>('');
   const [seriesCount, setSeriesCount] = useState(0);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState('');
   const [seriesIndex, setSeriesIndex] = useState(0);
   
   // Excess payment handling (when amount paid > amount owed)
@@ -1058,8 +1062,9 @@ export function AppointmentDetailDialog({
       return;
     }
     const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
-    openWhatsappWithMessage(phone, message);
-    toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.');
+    setWhatsappPreviewPhone(phone);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewOpen(true);
   };
 
   const addPaymentMethod = () => {
@@ -2683,6 +2688,16 @@ export function AppointmentDetailDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={whatsappPreviewPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar recibo no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa."
+        onSent={() => toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.')}
+      />
     </>
   );
 }

@@ -13,6 +13,7 @@ import {
   Bug, Lightbulb, AlertTriangle, Send, ExternalLink
 } from "lucide-react";
 import { buildWebWhatsappUrl, openWhatsappWithMessage } from "@/lib/whatsappLink";
+import { WhatsappPreviewDialog } from "@/components/shared/WhatsappPreviewDialog";
 
 const Suporte = () => {
   const [formData, setFormData] = useState({
@@ -23,6 +24,9 @@ const Suporte = () => {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState("");
+  const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,10 +47,15 @@ const Suporte = () => {
       `*Mensagem:*\n${formData.message}`;
     
     const whatsappNumber = "5511999999999";
-    openWhatsappWithMessage(whatsappNumber, whatsappMessage);
-    
-    toast.success("Redirecionando para o WhatsApp...");
+    setWhatsappPreviewPhone(whatsappNumber);
+    setWhatsappPreviewMessage(whatsappMessage);
+    setWhatsappPreviewOpen(true);
+
     setIsSubmitting(false);
+  };
+
+  const handleWhatsappSent = () => {
+    toast.success("Redirecionando para o WhatsApp...");
     setFormData({ name: "", email: "", type: "", subject: "", message: "" });
   };
 
@@ -234,6 +243,15 @@ const Suporte = () => {
           </Card>
         </div>
       </PageTransition>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={whatsappPreviewPhone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar mensagem de suporte"
+        description="Revise e edite a mensagem antes de enviar ao suporte pelo WhatsApp."
+        onSent={handleWhatsappSent}
+      />
     </AppLayout>
   );
 };

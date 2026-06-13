@@ -28,6 +28,7 @@ import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 interface Props {
   open: boolean;
@@ -49,6 +50,8 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -109,8 +112,9 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
 
   const handleWhatsApp = () => {
     const msg =
-      `Olá! Para iniciarmos o seu atendimento, preencha o seu cadastro pelo link abaixo (leva poucos minutos):\n\n${generatedUrl}`
-    openWhatsappWithMessage('', msg);
+      `Olá! Para iniciarmos o seu atendimento, preencha o seu cadastro pelo link abaixo (leva poucos minutos):\n\n${generatedUrl}`;
+    setWhatsappPreviewMessage(msg);
+    setWhatsappPreviewOpen(true);
   };
 
   const handleReset = () => {
@@ -258,6 +262,13 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
           )}
         </div>
       </DialogContent>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar link de cadastro no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </Dialog>
   );
 }

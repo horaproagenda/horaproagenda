@@ -37,6 +37,7 @@ import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
 import { supabase } from '@/integrations/supabase/client';
 import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 const formatBRL = (n: number | string | null | undefined): string => {
   const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
@@ -85,6 +86,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedDescription, setCopiedDescription] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
   const [businessSettings, setBusinessSettings] = useState<any | null>(null);
 
   const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);
@@ -241,12 +244,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
       '⚠️ O link é único e protegido. Não compartilhe com outras pessoas.',
     ];
     const message = lines.join('\n');
-
-    if (selectedClient?.phone) {
-      openWhatsappWithMessage(selectedClient.phone, message);
-    } else {
-      openWhatsappWithMessage('', message);
-    }
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewOpen(true);
   };
 
   const handleReset = () => {
@@ -416,6 +415,14 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
           )}
         </div>
       </DialogContent>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={selectedClient?.phone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar link no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </Dialog>
   );
 }

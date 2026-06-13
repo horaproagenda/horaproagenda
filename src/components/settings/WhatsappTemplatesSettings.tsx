@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWhatsappTemplates, WhatsappTemplate } from '@/hooks/useWhatsappTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -68,6 +69,8 @@ export function WhatsappTemplatesSettings() {
   const [isStaff, setIsStaff] = useState(false); // admin or receptionist
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
   const [ctxLoaded, setCtxLoaded] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -173,8 +176,8 @@ export function WhatsappTemplatesSettings() {
       appointmentDate: new Date(),
       appointmentTime: '14:30',
     });
-    const result = openWhatsappWithMessage('', message);
-    if (!result.ok) toast.error('Não foi possível abrir o WhatsApp.');
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewOpen(true);
   };
 
   const getTypeLabel = (type: string) => templateTypes.find(t => t.value === type)?.label || type;
@@ -188,6 +191,7 @@ export function WhatsappTemplatesSettings() {
   }, [formData.professional_id, templates, editingId]);
 
   return (
+    <>
     <Card className="lg:col-span-2">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -424,5 +428,13 @@ export function WhatsappTemplatesSettings() {
         )}
       </CardContent>
     </Card>
+    <WhatsappPreviewDialog
+      open={whatsappPreviewOpen}
+      onOpenChange={setWhatsappPreviewOpen}
+      initialMessage={whatsappPreviewMessage}
+      title="Testar mensagem no WhatsApp"
+      description="Revise e edite a mensagem antes de enviar o teste."
+    />
+    </>
   );
 }

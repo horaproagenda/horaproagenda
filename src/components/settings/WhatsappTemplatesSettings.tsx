@@ -428,5 +428,13 @@ export function WhatsappTemplatesSettings() {
         )}
       </CardContent>
     </Card>
+    <WhatsappPreviewDialog
+      open={whatsappPreviewOpen}
+      onOpenChange={setWhatsappPreviewOpen}
+      initialMessage={whatsappPreviewMessage}
+      title="Testar mensagem no WhatsApp"
+      description="Revise e edite a mensagem antes de enviar o teste."
+    />
+    </>
   );
 }

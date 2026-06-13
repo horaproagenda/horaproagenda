@@ -380,10 +380,11 @@ export function ProductDetailDialog({
         notes: null,
       });
     } else {
+      const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
       await createTemplateProduct.mutateAsync({
         template_id: selectedTemplateId,
         product_id: product.id,
-        quantity_per_use: quantityPerUse,
+        quantity_per_use: normalizedQty,
         tracking_method: 'exact',
         notes: null,
       });

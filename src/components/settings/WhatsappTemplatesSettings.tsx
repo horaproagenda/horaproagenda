@@ -400,11 +400,6 @@ export function WhatsappTemplatesSettings() {
                       {template.type === 'birthday' && template.send_offset_hours != null && (
                         <Badge variant="outline" className="text-xs">às {String(template.send_offset_hours).padStart(2,'0')}:00</Badge>
                       )}
-                      {template.quiet_hours_start != null && template.quiet_hours_end != null && (
-                        <Badge variant="outline" className="text-xs">
-                          janela {String(template.quiet_hours_start).padStart(2,'0')}–{String(template.quiet_hours_end).padStart(2,'0')}h
-                        </Badge>
-                      )}
                       <Badge variant="outline" className="text-xs">{getProfName(template.professional_id)}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">{template.message}</p>

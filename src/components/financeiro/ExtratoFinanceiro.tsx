@@ -352,75 +352,72 @@ export function ExtratoFinanceiro() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <ScrollArea className="h-[450px]">
-          <div className="min-w-[950px]">
-            <Table>
-              <TableHeader>
-                <TableRow className="h-8">
-                  <TableHead className="text-[10px] py-1 px-2">Data</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2">Origem</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2">Categoria</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2">Pagamento</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2 text-right">Bruto</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2 text-right">Desc.</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2 text-right">Taxa</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2 text-right">Líquido</TableHead>
-                  <TableHead className="text-[10px] py-1 px-2 text-right">Saldo</TableHead>
+        <DualScrollArea innerClassName="min-w-[950px]" maxHeight="450px">
+          <Table>
+            <TableHeader>
+              <TableRow className="h-8">
+                <TableHead className="text-[10px] py-1 px-2">Data</TableHead>
+                <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
+                <TableHead className="text-[10px] py-1 px-2">Origem</TableHead>
+                <TableHead className="text-[10px] py-1 px-2">Categoria</TableHead>
+                <TableHead className="text-[10px] py-1 px-2">Pagamento</TableHead>
+                <TableHead className="text-[10px] py-1 px-2 text-right">Bruto</TableHead>
+                <TableHead className="text-[10px] py-1 px-2 text-right">Desc.</TableHead>
+                <TableHead className="text-[10px] py-1 px-2 text-right">Taxa</TableHead>
+                <TableHead className="text-[10px] py-1 px-2 text-right">Líquido</TableHead>
+                <TableHead className="text-[10px] py-1 px-2 text-right">Saldo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entriesWithBalance.map((entry) => (
+                <TableRow key={entry.id} className="h-7">
+                  <TableCell className="text-[11px] py-1 px-2">
+                    {format(parseISO(entry.date), 'dd/MM/yy')}
+                  </TableCell>
+                  <TableCell className="text-[11px] py-1 px-2">
+                    <div className="flex items-center gap-1.5">
+                      {entry.type === 'income' ? (
+                        <ArrowUpCircle className="h-3 w-3 text-green-500 shrink-0" />
+                      ) : (
+                        <ArrowDownCircle className="h-3 w-3 text-red-500 shrink-0" />
+                      )}
+                      <span className="truncate max-w-[200px]">{entry.description}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-1 px-2">
+                    <Badge variant="outline" className={`text-[9px] h-4 px-1 ${sourceColor(entry.source)}`}>
+                      {sourceLabel(entry.source)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.category}</TableCell>
+                  <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.paymentMethod}</TableCell>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    R$ {entry.grossAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-[11px] py-1 px-2 text-right text-orange-600">
+                    {entry.discount > 0 ? `- R$ ${entry.discount.toFixed(2)}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-[11px] py-1 px-2 text-right text-yellow-600">
+                    {entry.cardFee > 0 ? `- R$ ${entry.cardFee.toFixed(2)}` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    R$ {entry.netAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${(entry.runningBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    R$ {(entry.runningBalance || 0).toFixed(2)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entriesWithBalance.map((entry) => (
-                  <TableRow key={entry.id} className="h-7">
-                    <TableCell className="text-[11px] py-1 px-2">
-                      {format(parseISO(entry.date), 'dd/MM/yy')}
-                    </TableCell>
-                    <TableCell className="text-[11px] py-1 px-2">
-                      <div className="flex items-center gap-1.5">
-                        {entry.type === 'income' ? (
-                          <ArrowUpCircle className="h-3 w-3 text-green-500 shrink-0" />
-                        ) : (
-                          <ArrowDownCircle className="h-3 w-3 text-red-500 shrink-0" />
-                        )}
-                        <span className="truncate max-w-[200px]">{entry.description}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-1 px-2">
-                      <Badge variant="outline" className={`text-[9px] h-4 px-1 ${sourceColor(entry.source)}`}>
-                        {sourceLabel(entry.source)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.category}</TableCell>
-                    <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.paymentMethod}</TableCell>
-                    <TableCell className={`text-[11px] py-1 px-2 text-right ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      R$ {entry.grossAmount.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-[11px] py-1 px-2 text-right text-orange-600">
-                      {entry.discount > 0 ? `- R$ ${entry.discount.toFixed(2)}` : '-'}
-                    </TableCell>
-                    <TableCell className="text-[11px] py-1 px-2 text-right text-yellow-600">
-                      {entry.cardFee > 0 ? `- R$ ${entry.cardFee.toFixed(2)}` : '-'}
-                    </TableCell>
-                    <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      R$ {entry.netAmount.toFixed(2)}
-                    </TableCell>
-                    <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${(entry.runningBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      R$ {(entry.runningBalance || 0).toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {entriesWithBalance.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8 text-xs">
-                      Nenhuma transação encontrada para o período selecionado
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+              ))}
+              {entriesWithBalance.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8 text-xs">
+                    Nenhuma transação encontrada para o período selecionado
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DualScrollArea>
       </CardContent>
     </Card>
   );

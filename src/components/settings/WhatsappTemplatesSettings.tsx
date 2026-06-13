@@ -23,16 +23,18 @@ const templateTypes = [
 ];
 
 const variablesHelp = [
-  { variable: '{{cliente}}', description: 'Nome completo do cliente' },
-  { variable: '{{primeiro_nome}}', description: 'Apenas o primeiro nome' },
-  { variable: '{{data}}', description: 'Data (dd/mm/aaaa)' },
-  { variable: '{{data_extenso}}', description: 'Data por extenso (ex: segunda-feira, 1 de junho de 2026)' },
-  { variable: '{{horario}}', description: 'Horário do agendamento' },
-  { variable: '{{servico}}', description: 'Nome do serviço' },
-  { variable: '{{profissional}}', description: 'Nome do profissional' },
+  { variable: '{cliente}', description: 'Nome completo do cliente' },
+  { variable: '{primeiro_nome}', description: 'Apenas o primeiro nome' },
+  { variable: '{data}', description: 'Data com ano (dd/mm/aaaa)' },
+  { variable: '{data_sem_ano}', description: 'Data sem ano (dd/mm)' },
+  { variable: '{data_extenso}', description: 'Data por extenso com ano' },
+  { variable: '{data_extenso_sem_ano}', description: 'Data por extenso sem ano' },
+  { variable: '{horario}', description: 'Horário do agendamento' },
+  { variable: '{servico}', description: 'Nome do serviço' },
+  { variable: '{profissional}', description: 'Nome do profissional' },
 ];
 
-const MAX_TEMPLATES_PER_PROFESSIONAL = 3;
+const MAX_TEMPLATES_PER_PROFESSIONAL = 4;
 
 type FormState = {
   name: string;

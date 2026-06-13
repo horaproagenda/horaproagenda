@@ -139,6 +139,7 @@ export function ProductDetailDialog({
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [quantityPerUse, setQuantityPerUse] = useState(0);
+  const [quantityPerUseUnit, setQuantityPerUseUnit] = useState<ProductUnit>('un');
   const [estimatedAppointments, setEstimatedAppointments] = useState(30);
   const [containerAmount, setContainerAmount] = useState(1);
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');

@@ -350,13 +350,13 @@ export function ProductDetailDialog({
 
     for (const serviceId of selectedServiceIds) {
       if (useEstimated) {
-        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
+        // Modo estimado: usuário só informa o recipiente em uso.
+        // A média por atendimento será calculada automaticamente ao preencher o término do uso.
         await onCreateServiceLink({
           service_id: serviceId,
           product_id: product.id,
-          quantity_per_use: calculatedQuantityPerUse,
-          estimated_appointments: estimatedAppointments,
+          quantity_per_use: 0,
+          estimated_appointments: null,
           container_amount: containerAmount,
           container_unit: containerUnit,
           tracking_method: 'estimated',
@@ -377,7 +377,6 @@ export function ProductDetailDialog({
     setSelectedServiceIds([]);
     setServiceLinkSearch('');
     setQuantityPerUse(0);
-    setEstimatedAppointments(30);
     setContainerAmount(1);
     setKnowsQuantity('yes');
   };
@@ -389,13 +388,11 @@ export function ProductDetailDialog({
 
     for (const templateId of selectedTemplateIds) {
       if (useEstimated) {
-        const normalizedContainer = convertQuantity(containerAmount, containerUnit, product.unit) ?? containerAmount;
-        const calculatedQuantityPerUse = estimatedAppointments > 0 ? normalizedContainer / estimatedAppointments : 0;
         await createTemplateProduct.mutateAsync({
           template_id: templateId,
           product_id: product.id,
-          quantity_per_use: calculatedQuantityPerUse,
-          estimated_appointments: estimatedAppointments,
+          quantity_per_use: 0,
+          estimated_appointments: null,
           container_amount: containerAmount,
           container_unit: containerUnit,
           tracking_method: 'estimated',
@@ -416,7 +413,6 @@ export function ProductDetailDialog({
     setSelectedTemplateIds([]);
     setTemplateLinkSearch('');
     setQuantityPerUse(0);
-    setEstimatedAppointments(30);
     setContainerAmount(1);
     setKnowsQuantity('yes');
   };

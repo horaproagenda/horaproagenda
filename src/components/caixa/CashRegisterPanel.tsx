@@ -56,6 +56,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -70,6 +71,7 @@ export function CashRegisterPanel() {
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
+  const { installments: allBoletos } = useAllBoletoInstallments();
 
   // Real-time sync for sales with agenda, financeiro, card fees and discounts
   useEffect(() => {
@@ -93,6 +95,10 @@ export function CashRegisterPanel() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
         queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+        queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
         queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
@@ -150,26 +156,45 @@ export function CashRegisterPanel() {
     };
   }, [transactions, currentOpenRegister]);
 
-  // Receivables by period - combining financial_entries AND pending appointments
+  // Receivables by period - combining financial_entries, pending appointments AND boletos.
+  // Sync rules (real-time via realtime channel above):
+  // - Appointments with payment baixa (cash transaction OR paid financial_entry) are excluded.
+  // - Boletos overdue or due within the selected period (and not paid) are always included.
+  // - financial_entries that mirror an appointment are deduped by appointment_id.
   const receivablesSummary = useMemo(() => {
     const { start, end } = getDateRange(receivablesPeriod);
-    
-    // Financial entries with pending status
+
+    // Build sets of "already paid" appointment ids from cash + financial_entries
+    const paidAppointmentIds = new Set<string>();
+    transactions.forEach((tx: any) => {
+      if (tx.type === 'income' && tx.reference_type === 'appointment' && tx.reference_id) {
+        paidAppointmentIds.add(tx.reference_id);
+      }
+    });
+    entries.forEach((e: any) => {
+      if (e.status === 'paid' && e.type === 'receivable' && e.appointment_id) {
+        paidAppointmentIds.add(e.appointment_id);
+      }
+    });
+
+    // Financial entries with pending/overdue status
     const periodReceivables = entries.filter(e => {
       if (e.type !== 'receivable' || (e.status !== 'pending' && e.status !== 'overdue')) return false;
+      // Skip if the underlying appointment was already paid via Caixa
+      if ((e as any).appointment_id && paidAppointmentIds.has((e as any).appointment_id)) return false;
       const date = parseISO(e.due_date);
       return isWithinInterval(date, { start, end });
     });
-    
-    // Appointments with pending payment status - exclude cancelled, missed and rescheduled
+
+    // Appointments with pending payment - exclude cancelled/missed/rescheduled AND already paid
     const pendingAppointments = appointments.filter(apt => {
       if (apt.payment_status !== 'pending') return false;
       if (apt.status === 'cancelled' || apt.status === 'missed' || apt.status === 'rescheduled') return false;
+      if (paidAppointmentIds.has(apt.id)) return false;
       const aptDate = parseISO(apt.start_time);
       return isWithinInterval(aptDate, { start, end });
     });
-    
-    // Convert pending appointments to receivable format
+
     const appointmentReceivables = pendingAppointments.map(apt => ({
       id: apt.id,
       appointment_id: apt.id,
@@ -185,14 +210,45 @@ export function CashRegisterPanel() {
     const appointmentIdsSet = new Set(appointmentReceivables.map(a => a.appointment_id));
     const filteredPeriodReceivables = periodReceivables.filter((e: any) => !e.appointment_id || !appointmentIdsSet.has(e.appointment_id));
 
-    const allReceivables = [...filteredPeriodReceivables, ...appointmentReceivables];
-    
+    // Boletos: include if overdue (any past date) OR due within selected period, and not paid/cancelled
+    const todayStart = startOfDay(new Date());
+    const boletoReceivables = (allBoletos || [])
+      .filter((b: any) => {
+        if (b.status !== 'pending' && b.status !== 'overdue') return false;
+        const due = parseISO(b.due_date);
+        const isOverdue = due < todayStart;
+        const isInPeriod = isWithinInterval(due, { start, end });
+        return isOverdue || isInPeriod;
+      })
+      .map((b: any) => {
+        const due = parseISO(b.due_date);
+        const isOverdue = due < todayStart;
+        return {
+          id: `boleto-${b.id}`,
+          boleto_id: b.id,
+          type: 'boleto' as const,
+          description: `Boleto ${b.installment_number}/${b.total_installments}${b.sale?.description ? ' — ' + b.sale.description : ''}`,
+          client: b.sale?.client || null,
+          due_date: b.due_date,
+          amount: Number(b.amount || 0),
+          status: (isOverdue ? 'overdue' : 'pending') as 'pending' | 'overdue',
+        };
+      });
+
+    // Sort: overdue first, then by due_date ascending
+    const allReceivables = [...filteredPeriodReceivables, ...appointmentReceivables, ...boletoReceivables]
+      .sort((a: any, b: any) => {
+        if (a.status === 'overdue' && b.status !== 'overdue') return -1;
+        if (b.status === 'overdue' && a.status !== 'overdue') return 1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+
     return {
       entries: allReceivables,
       total: allReceivables.reduce((sum, e) => sum + Number(e.amount), 0),
       count: allReceivables.length,
     };
-  }, [entries, appointments, receivablesPeriod]);
+  }, [entries, appointments, transactions, allBoletos, receivablesPeriod]);
 
   // Sales summary by period - fetch service/package names
   const salesSummary = useMemo(() => {
@@ -634,7 +690,23 @@ export function CashRegisterPanel() {
                         </TableCell>
                         <TableCell className="text-right py-1 px-2">
                           {(() => {
-                            const aptId = (entry as any).appointment_id || (entry.type === 'appointment' ? entry.id : null);
+                            const e: any = entry;
+                            const aptId = e.appointment_id || (e.type === 'appointment' ? e.id : null);
+                            const boletoId = e.boleto_id || (e.type === 'boleto' ? e.id : null);
+                            if (boletoId) {
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                                  onClick={() => navigate(`/financeiro?tab=formas-pagamento&boleto=${e.boleto_id || boletoId.replace('boleto-', '')}`)}
+                                  title="Abrir boleto no financeiro"
+                                >
+                                  <DollarSign className="h-3 w-3 mr-1" />
+                                  Pagar
+                                </Button>
+                              );
+                            }
                             if (aptId) {
                               return (
                                 <Button

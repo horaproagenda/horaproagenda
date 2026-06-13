@@ -519,6 +519,16 @@ export default function PreencherDocumento() {
     doc.save(removeAccents(`${template.title} - ${client?.name || 'Documento'}.pdf`));
   };
 
+  const clearMissing = (fieldKey: string) => {
+    if (!missingFields.has(fieldKey)) return;
+    setMissingFields((prev) => {
+      const next = new Set(prev);
+      next.delete(fieldKey);
+      if (next.size === 0) setValidationError(null);
+      return next;
+    });
+  };
+
   const renderToken = (token: DocumentFieldToken, lineIndex: number, tokenIndex: number) => {
     switch (token.type) {
       case 'text':
@@ -532,55 +542,93 @@ export default function PreencherDocumento() {
             </span>
           );
         }
+        const isMissing = missingFields.has(token.fieldKey);
         return (
           <Input
             key={`${lineIndex}-${tokenIndex}`}
+            data-field-key={token.fieldKey}
+            aria-invalid={isMissing}
             value={value}
-            onChange={(event) => setFormData(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            onChange={(event) => {
+              setFormData(prev => ({ ...prev, [token.fieldKey]: event.target.value }));
+              if (event.target.value.trim()) clearMissing(token.fieldKey);
+            }}
             placeholder={token.label || token.name}
-            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+            className={`inline-flex h-9 min-w-[180px] w-[220px] align-middle ${
+              isMissing ? 'border-destructive ring-2 ring-destructive/40 focus-visible:ring-destructive' : ''
+            }`}
           />
         );
       }
-      case 'yesno':
+      case 'yesno': {
+        const isMissing = missingFields.has(token.fieldKey);
         return (
-          <RadioGroup
+          <div
             key={`${lineIndex}-${tokenIndex}`}
-            value={yesNoAnswers[token.fieldKey] || ''}
-            onValueChange={(value) => setYesNoAnswers(prev => ({ ...prev, [token.fieldKey]: value as 'sim' | 'nao' }))}
-            className="inline-flex flex-row items-center gap-4 align-middle"
+            data-field-key={token.fieldKey}
+            className={`inline-flex flex-row items-center gap-4 align-middle rounded-md px-2 py-1 transition-colors ${
+              isMissing ? 'border border-destructive ring-2 ring-destructive/40 bg-destructive/5' : ''
+            }`}
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="sim" id={`${token.fieldKey}-sim`} />
-              <Label htmlFor={`${token.fieldKey}-sim`} className="cursor-pointer">Sim</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="nao" id={`${token.fieldKey}-nao`} />
-              <Label htmlFor={`${token.fieldKey}-nao`} className="cursor-pointer">Não</Label>
-            </div>
-          </RadioGroup>
+            <RadioGroup
+              value={yesNoAnswers[token.fieldKey] || ''}
+              onValueChange={(value) => {
+                setYesNoAnswers(prev => ({ ...prev, [token.fieldKey]: value as 'sim' | 'nao' }));
+                clearMissing(token.fieldKey);
+              }}
+              className="inline-flex flex-row items-center gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="sim" id={`${token.fieldKey}-sim`} />
+                <Label htmlFor={`${token.fieldKey}-sim`} className={`cursor-pointer ${isMissing ? 'text-destructive font-medium' : ''}`}>Sim</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="nao" id={`${token.fieldKey}-nao`} />
+                <Label htmlFor={`${token.fieldKey}-nao`} className={`cursor-pointer ${isMissing ? 'text-destructive font-medium' : ''}`}>Não</Label>
+              </div>
+            </RadioGroup>
+          </div>
         );
-      case 'freeText':
+      }
+      case 'freeText': {
+        const isMissing = missingFields.has(token.fieldKey);
         return (
           <Textarea
             key={`${lineIndex}-${tokenIndex}`}
+            data-field-key={token.fieldKey}
+            aria-invalid={isMissing}
             value={additionalInfo[token.fieldKey] || ''}
-            onChange={(event) => setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            onChange={(event) => {
+              setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }));
+              if (event.target.value.trim()) clearMissing(token.fieldKey);
+            }}
             placeholder="Digite sua resposta aqui..."
             rows={3}
-            className="mt-2 min-h-[96px] w-full resize-none"
+            className={`mt-2 min-h-[96px] w-full resize-none ${
+              isMissing ? 'border-destructive ring-2 ring-destructive/40 focus-visible:ring-destructive' : ''
+            }`}
           />
         );
-      case 'blankField':
+      }
+      case 'blankField': {
+        const isMissing = missingFields.has(token.fieldKey);
         return (
           <Input
             key={`${lineIndex}-${tokenIndex}`}
+            data-field-key={token.fieldKey}
+            aria-invalid={isMissing}
             value={additionalInfo[token.fieldKey] || ''}
-            onChange={(event) => setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }))}
+            onChange={(event) => {
+              setAdditionalInfo(prev => ({ ...prev, [token.fieldKey]: event.target.value }));
+              if (event.target.value.trim()) clearMissing(token.fieldKey);
+            }}
             placeholder="Digite sua resposta..."
-            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+            className={`inline-flex h-9 min-w-[180px] w-[220px] align-middle ${
+              isMissing ? 'border-destructive ring-2 ring-destructive/40 focus-visible:ring-destructive' : ''
+            }`}
           />
         );
+      }
       case 'checkbox': {
         const checked = !!checkboxAnswers[token.fieldKey];
         return (

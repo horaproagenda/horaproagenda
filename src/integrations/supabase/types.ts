@@ -4746,6 +4746,44 @@ export type Database = {
       }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
+      set_appointment_status_with_package_mode: {
+        Args: {
+          p_appointment_id: string
+          p_expected_version?: number
+          p_mode: string
+          p_status: string
+        }
+        Returns: {
+          amount_paid: number | null
+          client_id: string
+          composite_group_id: string | null
+          composite_sequence_order: number | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          end_time: string
+          id: string
+          notes: string | null
+          package_appointment_id: string | null
+          payment_methods: string[] | null
+          payment_status: string | null
+          professional_id: string | null
+          recurring_group_id: string | null
+          room_id: string | null
+          service_id: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_document_fill_by_token:
         | {
             Args: {

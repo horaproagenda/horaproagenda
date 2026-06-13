@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -156,6 +156,7 @@ export function AppointmentDetailDialog({
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
+  const queryClient = useQueryClient();
   const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
@@ -417,6 +418,13 @@ export function AppointmentDetailDialog({
     recurring_group_id?: string;
   }>(null);
 
+  // Confirmation when changing status to "missed" or "cancelled" on a package appointment:
+  // user chooses whether to release the package session (make it available again)
+  // or consume it (mark as done because the client missed/cancelled).
+  const [pendingPackageOutcome, setPendingPackageOutcome] = useState<null | {
+    newStatus: AppointmentStatus;
+  }>(null);
+
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
     if (isClientCreditPaymentMethod(methodName)) return false;
@@ -673,12 +681,54 @@ export function AppointmentDetailDialog({
       toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
       return;
     }
+
+    // For package appointments being marked as "faltou" or "cancelado",
+    // ask whether to release the package session or consume it.
+    if (
+      !!appointment.package_appointment &&
+      (newStatus === 'missed' || newStatus === 'cancelled')
+    ) {
+      setPendingPackageOutcome({ newStatus });
+      return;
+    }
+
     setSelectedStatus(newStatus);
     updateAppointment.mutate({
       id: appointment.id,
       updates: { status: newStatus },
       expectedVersion: appointment.version,
     });
+  };
+
+  const handleConfirmPackageOutcome = async (mode: 'release' | 'consume') => {
+    if (!pendingPackageOutcome) return;
+    const newStatus = pendingPackageOutcome.newStatus;
+    try {
+      const { error } = await (supabase as any).rpc('set_appointment_status_with_package_mode', {
+        p_appointment_id: appointment.id,
+        p_status: newStatus,
+        p_mode: mode,
+        p_expected_version: appointment.version,
+      });
+      if (error) throw error;
+      setSelectedStatus(newStatus);
+      toast.success(
+        mode === 'release'
+          ? 'Aplicação disponibilizada novamente no pacote.'
+          : 'Aplicação baixada como feita.',
+      );
+      // Refresh dependent queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['service_packages'] }),
+        queryClient.invalidateQueries({ queryKey: ['client_packages'] }),
+        queryClient.invalidateQueries({ queryKey: ['package_appointments'] }),
+      ]);
+    } catch (err: any) {
+      toast.error('Erro ao atualizar agendamento: ' + (err?.message || 'desconhecido'));
+    } finally {
+      setPendingPackageOutcome(null);
+    }
   };
 
   const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;
@@ -2175,6 +2225,35 @@ export function AppointmentDetailDialog({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingPropagation(null)}>Não alterar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPropagation}>Sim, ajustar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Package outcome confirmation: when marking a package appointment as "missed" or "cancelled" */}
+      <AlertDialog
+        open={!!pendingPackageOutcome}
+        onOpenChange={(o) => { if (!o) setPendingPackageOutcome(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingPackageOutcome?.newStatus === 'missed' ? 'Cliente faltou' : 'Atendimento cancelado'} — o que fazer com a aplicação do pacote?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de um pacote. Escolha o destino desta aplicação:
+              <br /><br />
+              <strong>Disponibilizar aplicação</strong>: a sessão volta a ficar disponível no pacote para ser reagendada.<br /><br />
+              <strong>Baixar como feita</strong>: a aplicação é consumida do pacote (não retorna ao saldo), pois o cliente {pendingPackageOutcome?.newStatus === 'missed' ? 'faltou' : 'cancelou'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel onClick={() => setPendingPackageOutcome(null)}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={() => handleConfirmPackageOutcome('release')}>
+              Disponibilizar aplicação
+            </Button>
+            <AlertDialogAction onClick={() => handleConfirmPackageOutcome('consume')}>
+              Baixar como feita
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

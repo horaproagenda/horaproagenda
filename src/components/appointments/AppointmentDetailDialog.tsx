@@ -156,6 +156,7 @@ export function AppointmentDetailDialog({
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
+  const queryClient = useQueryClient();
   const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();

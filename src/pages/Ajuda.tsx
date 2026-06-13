@@ -106,6 +106,30 @@ const Ajuda = () => {
       ]
     },
     {
+      icon: <FileText className="h-4 w-4" />,
+      title: "Documentos",
+      description: "Contratos, Termos e Anamneses",
+      features: [
+        { name: "Modelos de Documento", description: "Crie modelos de Contrato, Termo de Consentimento ou Anamnese com campos variáveis (nome, CPF, data) preenchidos automaticamente." },
+        { name: "Modelos Prontos", description: "Use modelos pré-prontos da plataforma para começar rapidamente, com o tipo (contrato/termo/anamnese) já identificado corretamente." },
+        { name: "Preenchimento Público", description: "Gere um link único e envie ao cliente por WhatsApp. O cliente preenche e assina sem precisar criar conta — campos obrigatórios em vermelho bloqueiam o envio incompleto." },
+        { name: "Assinatura Digital", description: "O cliente assina pelo dedo/mouse e o documento é armazenado vinculado ao cadastro, com nome correto (Contrato, Termo, Anamnese) em todas as listagens." },
+        { name: "Prévia de Mensagem WhatsApp", description: "Antes de enviar, revise e edite a mensagem com instruções passo-a-passo para o cliente abrir e preencher o documento." },
+      ]
+    },
+    {
+      icon: <MessageCircle className="h-4 w-4" />,
+      title: "WhatsApp",
+      description: "Mensagens, automações e templates",
+      features: [
+        { name: "Conexão Evolution API", description: "Conecte sua conta de WhatsApp via QR Code direto pelas Configurações. O sistema mantém a conexão ativa com keep-alive automático." },
+        { name: "Lembretes Automáticos", description: "Confirmações 24h e 1h antes do atendimento, alertas de inadimplência e estoque baixo enviados automaticamente." },
+        { name: "Templates Personalizáveis", description: "Edite os modelos de mensagem com variáveis ({cliente}, {servico}, {data}, {hora}) e teste antes de salvar." },
+        { name: "Prévia Editável", description: "Em todos os pontos onde aparece 'Enviar no WhatsApp' você revisa e edita a mensagem antes do envio." },
+        { name: "Fila de Envio", description: "Mensagens são enfileiradas e reentregues automaticamente em caso de falha temporária de conexão." },
+      ]
+    },
+    {
       icon: <Bell className="h-4 w-4" />,
       title: "Lembretes",
       description: "Gestão de lembretes e tarefas",
@@ -113,9 +137,22 @@ const Ajuda = () => {
         { name: "Lembretes Personalizados", description: "Crie lembretes para qualquer tarefa com data, hora e prioridade (alta, média, baixa)." },
         { name: "Lembretes Recorrentes", description: "Configure lembretes que se repetem diariamente, semanalmente ou mensalmente." },
         { name: "Categorias", description: "Organize lembretes por categorias como financeiro, administrativo, pessoal, etc." },
-        { name: "Notificações", description: "Receba alertas quando os lembretes estiverem próximos do vencimento." },
+        { name: "Notificações", description: "Receba alertas quando os lembretes estiverem próximos do vencimento, com deep-link para a tela relacionada." },
       ]
     },
+    {
+      icon: <DollarSign className="h-4 w-4" />,
+      title: "Financeiro",
+      description: "Contas, recebíveis e comissões",
+      features: [
+        { name: "Contas a Pagar e Receber", description: "Cadastre despesas recorrentes, parcelamentos e receitas. Os lançamentos são sincronizados automaticamente com o caixa e os pacotes." },
+        { name: "Categorias", description: "Organize entradas e saídas por categoria com filtros avançados por período, status e profissional." },
+        { name: "Comissões", description: "Cálculo automático por percentual, valor fixo ou misto, com sobreposição por serviço. Marque como paga e gere recibo." },
+        { name: "Boletos Parcelados", description: "Crie parcelamentos em até 24x com sincronização de status (pago, em aberto, vencido)." },
+        { name: "Extrato com Saldo", description: "Visualize o extrato com saldo corrente acumulado para conciliação rápida." },
+      ]
+    },
+
     {
       icon: <ClipboardList className="h-4 w-4" />,
       title: "Relatórios",

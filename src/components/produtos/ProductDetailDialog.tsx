@@ -1305,11 +1305,22 @@ export function ProductDetailDialog({
                             onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
+                            className="flex-1"
                           />
-                          <span className="flex items-center text-sm text-muted-foreground px-2 border rounded-md bg-muted">
-                            {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                          </span>
+                          <Select value={quantityPerUseUnit} onValueChange={(v: ProductUnit) => setQuantityPerUseUnit(v)}>
+                            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_UNITS.map(u => (
+                                <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        {quantityPerUseUnit !== product.unit && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Será convertido e salvo em {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} (unidade do estoque).
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

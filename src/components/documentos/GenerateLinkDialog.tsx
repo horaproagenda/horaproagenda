@@ -415,6 +415,14 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
           )}
         </div>
       </DialogContent>
+      <WhatsappPreviewDialog
+        open={whatsappPreviewOpen}
+        onOpenChange={setWhatsappPreviewOpen}
+        phone={selectedClient?.phone}
+        initialMessage={whatsappPreviewMessage}
+        title="Enviar link no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </Dialog>
   );
 }

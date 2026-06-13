@@ -111,8 +111,11 @@ export function RelatorioConsolidado() {
       });
     });
 
-    // Financial entries — skip those mirroring cash transactions
+    // Financial entries — only realized (paid) ones, skipping mirrors of cash transactions
     entries.forEach((entry) => {
+      // Only show movements that were effectively realized/registered
+      if (entry.status !== 'paid') return;
+
       const desc = entry.description || '';
       const lowerDesc = desc.toLowerCase();
 
@@ -123,8 +126,7 @@ export function RelatorioConsolidado() {
 
       const paymentMethodName = entry.payment_method?.name || '';
       const dedupKey = makeKey(entry.paid_date || entry.due_date, Number(entry.amount), paymentMethodName);
-      // Only dedup PAID entries by amount/date/method — keep pending/overdue visible
-      if (entry.status === 'paid' && cashKeys.has(dedupKey)) return;
+      if (cashKeys.has(dedupKey)) return;
 
       result.push({
         id: `fin-${entry.id}`,
@@ -136,6 +138,7 @@ export function RelatorioConsolidado() {
         status: entry.status,
       });
     });
+
 
     // Client credit transactions (separate source, never duplicated)
     creditTransactions.forEach((tx: any) => {

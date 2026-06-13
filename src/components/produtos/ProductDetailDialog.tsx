@@ -1339,48 +1339,31 @@ export function ProductDetailDialog({
                     </div>
 
                     {knowsQuantity === 'no' ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantidade no recipiente em uso
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              value={containerAmount}
-                              onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
-                              min="0"
-                              step="0.01"
-                              className="flex-1"
-                            />
-                            <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
-                              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PRODUCT_UNITS.map(u => (
-                                  <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Ex: 1 L de um galão de 5 L
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">
-                            Quantos atendimentos dura?
-                          </Label>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Quantidade no recipiente em uso
+                        </Label>
+                        <div className="flex gap-2">
                           <Input
                             type="number"
-                            value={estimatedAppointments}
-                            onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 1)}
-                            min="1"
-                            placeholder="Ex: 30"
+                            value={containerAmount}
+                            onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
+                            min="0"
+                            step="0.01"
+                            className="flex-1"
                           />
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Média estimada de atendimentos
-                          </p>
+                          <Select value={containerUnit} onValueChange={(v: ProductUnit) => setContainerUnit(v)}>
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_UNITS.map(u => (
+                                <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Ex: 500 mL de um galão de 5 L. A média por atendimento será calculada automaticamente quando você preencher o término do uso.
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">

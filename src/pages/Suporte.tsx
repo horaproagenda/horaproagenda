@@ -24,6 +24,9 @@ const Suporte = () => {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState("");
+  const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

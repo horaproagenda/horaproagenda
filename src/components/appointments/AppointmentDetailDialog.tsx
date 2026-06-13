@@ -97,6 +97,21 @@ import {
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
 
+const UUID_RE_GLOBAL = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+function sanitizeDisplayText(text: string): string {
+  return text
+    .replace(UUID_RE_GLOBAL, '')
+    .replace(/\s+/g, ' ')
+    .replace(/,\s*,/g, ',')
+    .replace(/•\s*•/g, '•')
+    .replace(/:\s*—\s*→\s*—/g, '')
+    .replace(/\s*→\s*—/g, '')
+    .replace(/—\s*→\s*/g, '')
+    .replace(/•\s*$/, '')
+    .replace(/^•\s*/, '')
+    .trim();
+}
+
 interface AppointmentDetailDialogProps {
   appointment: Appointment | null;
   professionals: Professional[];
@@ -2093,10 +2108,10 @@ export function AppointmentDetailDialog({
                 ) : appointmentHistory.filter((event) => event.kind === 'change' || event.kind === 'payment' || event.kind === 'credit').map((event) => (
                   <div key={event.id} className={`p-2 rounded-md border text-sm ${event.kind === 'credit' ? 'border-primary/30 bg-primary/5' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium">{event.title}</p>
+                      <p className="font-medium">{sanitizeDisplayText(event.title)}</p>
                       <span className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM HH:mm')}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                    <p className="text-xs text-muted-foreground">{sanitizeDisplayText(event.description)}</p>
                     {event.kind === 'credit' && event.amount ? (
                       <p className="text-xs font-semibold text-primary mt-1">Valor usado: {formatCurrency(event.amount)}</p>
                     ) : null}
@@ -2109,13 +2124,13 @@ export function AppointmentDetailDialog({
                 ) : appointmentHistory.filter((event) => event.kind === 'credit').map((event) => (
                   <div key={event.id} className="p-2 rounded-md border border-primary/30 bg-primary/5 text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-primary">{event.title}</p>
+                      <p className="font-medium text-primary">{sanitizeDisplayText(event.title)}</p>
                       <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(event.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
-                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                    <p className="text-xs text-muted-foreground">{sanitizeDisplayText(event.description)}</p>
                   </div>
                 ))}
               </TabsContent>
@@ -2125,10 +2140,10 @@ export function AppointmentDetailDialog({
                 ) : appointmentHistory.filter((event) => event.kind === 'refund').map((event) => (
                   <div key={event.id} className="p-2 rounded-md border border-destructive/20 bg-destructive/5 text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-destructive">{event.title}</p>
+                      <p className="font-medium text-destructive">{sanitizeDisplayText(event.title)}</p>
                       <span className="font-semibold">{formatCurrency(event.amount || 0)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {event.description}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')} • {sanitizeDisplayText(event.description)}</p>
                   </div>
                 ))}
               </TabsContent>

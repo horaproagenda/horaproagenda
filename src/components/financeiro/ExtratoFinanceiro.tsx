@@ -94,8 +94,10 @@ export function ExtratoFinanceiro() {
   const unifiedEntries = useMemo(() => {
     const unified: UnifiedEntry[] = [];
 
-    // Build a dedup key set from cash transactions (canonical)
+    // Build dedup sets from cash transactions (canonical source)
     const cashKeys = new Set<string>();
+    const cashAppointmentIds = new Set<string>();
+    const cashSaleIds = new Set<string>();
     const makeKey = (date: string, amount: number, method: string | null | undefined) => {
       const day = (date || '').slice(0, 10);
       const amt = Math.round(Number(amount || 0) * 100);
@@ -114,6 +116,12 @@ export function ExtratoFinanceiro() {
                         tx.category === 'product_sale' || tx.category === 'product_purchase';
 
       cashKeys.add(makeKey(tx.created_at, grossAmount, tx.payment_method_name));
+      if (tx.reference_type === 'appointment' && tx.reference_id) {
+        cashAppointmentIds.add(tx.reference_id);
+      }
+      if ((tx.reference_type === 'single_sale' || tx.reference_type === 'sale') && tx.reference_id) {
+        cashSaleIds.add(tx.reference_id);
+      }
 
       unified.push({
         id: `cash-${tx.id}`,
@@ -140,6 +148,11 @@ export function ExtratoFinanceiro() {
 
       // Skip auto-mirrored caixa entries (created by useCashTransactions sync)
       if (lowerDesc.startsWith('caixa:')) return;
+
+      // Skip if linked to an appointment/sale that already has a cash transaction
+      if (entry.appointment_id && cashAppointmentIds.has(entry.appointment_id)) return;
+      const saleIdMatch = desc.match(/\[sale:([a-f0-9-]+)\]/i);
+      if (saleIdMatch && cashSaleIds.has(saleIdMatch[1])) return;
 
       const isIncome = entry.type === 'receivable';
       const grossAmount = Number(entry.amount);

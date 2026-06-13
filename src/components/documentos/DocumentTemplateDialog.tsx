@@ -264,6 +264,29 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
 
                 <FormField
                   control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Tipo de documento *</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="anamnese" className="text-xs">Anamnese</SelectItem>
+                          <SelectItem value="contract" className="text-xs">Contrato</SelectItem>
+                          <SelectItem value="consent" className="text-xs">Termo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>

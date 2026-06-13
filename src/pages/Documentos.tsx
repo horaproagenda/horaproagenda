@@ -94,13 +94,11 @@ const Documentos = () => {
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       template.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
+    const cat = (template as any).category as string | undefined;
     if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'anamnese') return matchesSearch && template.title.toLowerCase().includes('anamnese');
-    if (activeTab === 'contracts') return matchesSearch && (
-      template.title.toLowerCase().includes('contrato') || 
-      template.title.toLowerCase().includes('termo')
-    );
+    if (activeTab === 'anamnese') return matchesSearch && cat === 'anamnese';
+    if (activeTab === 'contracts') return matchesSearch && (cat === 'contract' || cat === 'consent');
     return matchesSearch;
   });
 
@@ -139,10 +137,13 @@ const Documentos = () => {
     setDialogOpen(true);
   };
 
-  const getTemplateType = (title: string): keyof typeof templateTypeConfig => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('facial')) return 'facial';
-    if (lowerTitle.includes('corporal')) return 'corporal';
+  const getTemplateType = (template: any): keyof typeof templateTypeConfig => {
+    const cat = template?.category as string | undefined;
+    if (cat === 'anamnese') return 'anamnese';
+    if (cat === 'contract') return 'contract';
+    if (cat === 'consent') return 'consent';
+    // Fallback by title for legacy rows
+    const lowerTitle = (template?.title || '').toLowerCase();
     if (lowerTitle.includes('anamnese')) return 'anamnese';
     if (lowerTitle.includes('contrato')) return 'contract';
     if (lowerTitle.includes('termo') || lowerTitle.includes('consent')) return 'consent';
@@ -230,7 +231,7 @@ const Documentos = () => {
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {filteredTemplates.map(template => {
-                      const type = getTemplateType(template.title);
+                      const type = getTemplateType(template);
                       const config = templateTypeConfig[type];
                       const Icon = config.icon;
                       

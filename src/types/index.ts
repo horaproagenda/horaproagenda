@@ -184,6 +184,8 @@ export interface PackageAppointment {
   package?: ServicePackage;
 }
 
+export type DocumentTemplateCategory = 'anamnese' | 'contract' | 'consent';
+
 export interface DocumentTemplate {
   id: string;
   title: string;
@@ -191,6 +193,7 @@ export interface DocumentTemplate {
   content: string;
   variables: string[];
   is_active: boolean;
+  category: DocumentTemplateCategory;
   created_at: string;
   updated_at: string;
 }
@@ -258,7 +261,7 @@ export interface AppointmentEditLock {
   updated_at: string;
 }
 
-export type DocumentType = 'anamnese' | 'contract' | 'quote' | 'photo' | 'other';
+export type DocumentType = 'anamnese' | 'contract' | 'consent' | 'quote' | 'photo' | 'other';
 
 export interface ClientDocument {
   id: string;

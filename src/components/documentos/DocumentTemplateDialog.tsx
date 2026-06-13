@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Form,
@@ -32,6 +33,7 @@ const templateSchema = z.object({
   content: z.string().trim().min(10, 'Conteúdo deve ter pelo menos 10 caracteres'),
   variables: z.string().optional(),
   is_active: z.boolean(),
+  category: z.enum(['anamnese', 'contract', 'consent']),
 });
 
 type FormData = z.infer<typeof templateSchema>;
@@ -153,6 +155,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
       content: '',
       variables: '',
       is_active: true,
+      category: 'anamnese',
     },
   });
 
@@ -164,6 +167,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         content: template.content,
         variables: template.variables?.join(', ') || '',
         is_active: template.is_active,
+        category: (template.category as 'anamnese' | 'contract' | 'consent') || 'anamnese',
       });
       return;
     }
@@ -174,6 +178,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
       content: '',
       variables: '',
       is_active: true,
+      category: 'anamnese',
     });
   }, [template, open, form]);
 
@@ -190,6 +195,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         content: data.content,
         variables: variablesArray,
         is_active: data.is_active,
+        category: data.category,
       });
     } finally {
       setIsLoading(false);
@@ -255,6 +261,29 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Tipo de documento *</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="anamnese" className="text-xs">Anamnese</SelectItem>
+                          <SelectItem value="contract" className="text-xs">Contrato</SelectItem>
+                          <SelectItem value="consent" className="text-xs">Termo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

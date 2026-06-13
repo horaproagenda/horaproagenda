@@ -3,13 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { DocumentTemplate } from '@/types';
 import { toast } from 'sonner';
 
+export type TemplateCategory = 'anamnese' | 'contract' | 'consent';
+
 export interface TemplateFormData {
   title: string;
   description?: string | null;
   content: string;
   variables?: string[];
   is_active?: boolean;
-  category?: string;
+  category?: TemplateCategory;
 }
 
 export function useDocumentTemplatesManagement() {
@@ -38,7 +40,8 @@ export function useDocumentTemplatesManagement() {
           content: data.content,
           variables: data.variables || [],
           is_active: data.is_active ?? true,
-        })
+          category: data.category ?? 'anamnese',
+        } as any)
         .select()
         .single();
       
@@ -65,7 +68,8 @@ export function useDocumentTemplatesManagement() {
           content: data.content,
           variables: data.variables || [],
           is_active: data.is_active ?? true,
-        })
+          ...(data.category ? { category: data.category } : {}),
+        } as any)
         .eq('id', id);
       
       if (error) throw error;
@@ -109,7 +113,8 @@ export function useDocumentTemplatesManagement() {
           content: template.content,
           variables: template.variables || [],
           is_active: true,
-        })
+          category: (template as any).category ?? 'anamnese',
+        } as any)
         .select()
         .single();
       

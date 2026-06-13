@@ -1558,6 +1558,7 @@ export type Database = {
       }
       document_templates: {
         Row: {
+          category: string
           content: string
           created_at: string
           description: string | null
@@ -1569,6 +1570,7 @@ export type Database = {
           variables: string[] | null
         }
         Insert: {
+          category?: string
           content: string
           created_at?: string
           description?: string | null
@@ -1580,6 +1582,7 @@ export type Database = {
           variables?: string[] | null
         }
         Update: {
+          category?: string
           content?: string
           created_at?: string
           description?: string | null
@@ -4830,7 +4833,13 @@ export type Database = {
         | "cancelled"
         | "missed"
         | "rescheduled"
-      document_type: "anamnese" | "contract" | "quote" | "photo" | "other"
+      document_type:
+        | "anamnese"
+        | "contract"
+        | "quote"
+        | "photo"
+        | "other"
+        | "consent"
       quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
       treatment_stage: "before" | "during" | "after"
     }
@@ -4984,7 +4993,14 @@ export const Constants = {
         "missed",
         "rescheduled",
       ],
-      document_type: ["anamnese", "contract", "quote", "photo", "other"],
+      document_type: [
+        "anamnese",
+        "contract",
+        "quote",
+        "photo",
+        "other",
+        "consent",
+      ],
       quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
       treatment_stage: ["before", "during", "after"],
     },

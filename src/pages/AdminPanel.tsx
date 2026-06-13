@@ -103,19 +103,28 @@ export default function AdminPanel() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detailLog, setDetailLog] = useState<AccessLog | null>(null);
 
+  const defaultStartDate = useMemo(() => {
+    const now = new Date();
+    const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return format(firstDayPrevMonth, 'yyyy-MM-dd');
+  }, []);
+
   const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ['admin_access_logs', filters],
+    queryKey: ['admin_access_logs', filters, defaultStartDate],
     queryFn: async () => {
       let query = supabase
         .from('access_logs' as never)
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(2000);
+        .limit(500);
+
+      // Sempre limita ao mês anterior + atual para evitar sobrecarga
+      const start = filters.startDate || defaultStartDate;
+      query = query.gte('created_at', `${start}T00:00:00`);
 
       if (filters.module !== 'all') query = query.eq('module', filters.module);
       if (filters.action !== 'all') query = query.eq('action', filters.action);
       if (filters.user) query = query.ilike('user_email', `%${filters.user}%`);
-      if (filters.startDate) query = query.gte('created_at', `${filters.startDate}T00:00:00`);
       if (filters.endDate) query = query.lte('created_at', `${filters.endDate}T23:59:59`);
 
       const { data, error } = await query;
@@ -339,7 +348,7 @@ export default function AdminPanel() {
                   Registros ({filteredLogs.length})
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Sincronizado em tempo real. Mostra quem acessou, sobre qual registro (alvo) e — em "Visualizar ação" — o resumo do que foi exibido ou alterado.
+                  Sincronizado em tempo real. Exibe registros do mês anterior e atual. Use os filtros de data para expandir o período.
                 </CardDescription>
               </CardHeader>
               <CardContent>

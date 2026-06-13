@@ -355,7 +355,7 @@ export function WhatsappTemplatesSettings() {
               <Textarea
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Ex: Oi {{primeiro_nome}}, lembrando do seu horário em {{data_extenso}} às {{horario}}."
+                placeholder="Ex: Oi {primeiro_nome}, lembrando do seu horário em {data_extenso} às {horario}."
                 rows={8}
                 className="font-mono text-sm"
               />

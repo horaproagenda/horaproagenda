@@ -204,8 +204,9 @@ export function WhatsappTemplatesSettings() {
             <div>
               <CardTitle className="text-lg">Mensagens WhatsApp</CardTitle>
               <CardDescription>
-                Até {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens por profissional. O envio é feito pelo WhatsApp do
-                navegador/aparelho do profissional (igual ao envio de documentos).
+                Até {MAX_TEMPLATES_PER_PROFESSIONAL} mensagens por profissional. Uma delas é a de
+                <strong> Aniversário</strong> (envio em hora preferencial); as demais usam horas antes do
+                agendamento. O envio é feito pelo WhatsApp do navegador/aparelho do profissional.
               </CardDescription>
             </div>
           </div>

@@ -86,6 +86,8 @@ export function GenerateLinkDialog({ open, onOpenChange, template, preSelectedCl
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedDescription, setCopiedDescription] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
   const [businessSettings, setBusinessSettings] = useState<any | null>(null);
 
   const activeProfessionals = useMemo(() => professionals.filter(p => p.is_active), [professionals]);

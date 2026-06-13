@@ -50,6 +50,8 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
 
   useEffect(() => {
     if (!open) return;

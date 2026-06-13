@@ -57,6 +57,8 @@ export function useProductConsumption(startDate?: Date, endDate?: Date) {
       
       return data || [];
     },
+    refetchInterval: 60 * 60 * 1000, // 1h
+    refetchIntervalInBackground: false,
   });
 
   const createConsumption = useMutation({

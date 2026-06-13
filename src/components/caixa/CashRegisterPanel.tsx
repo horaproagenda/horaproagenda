@@ -56,6 +56,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';

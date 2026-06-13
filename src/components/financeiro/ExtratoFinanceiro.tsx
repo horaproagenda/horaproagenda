@@ -3,6 +3,7 @@ import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay, isWit
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { DualScrollArea } from '@/components/ui/dual-scroll-area';
 import { Input } from '@/components/ui/input';
 import {
   Select,

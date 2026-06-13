@@ -348,7 +348,7 @@ export default function AdminPanel() {
                   Registros ({filteredLogs.length})
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Sincronizado em tempo real. Mostra quem acessou, sobre qual registro (alvo) e — em "Visualizar ação" — o resumo do que foi exibido ou alterado.
+                  Sincronizado em tempo real. Exibe registros do mês anterior e atual. Use os filtros de data para expandir o período.
                 </CardDescription>
               </CardHeader>
               <CardContent>

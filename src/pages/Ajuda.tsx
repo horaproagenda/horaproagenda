@@ -231,12 +231,109 @@ const Ajuda = () => {
         <ScrollArea className="h-[calc(100vh-120px)]">
           <div className="space-y-4 pr-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4 h-9 bg-muted/50 p-1 gap-1">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Conteúdo atualizado automaticamente a cada nova versão do aplicativo.
+                </p>
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  {APP_VERSION_LABEL}
+                </Badge>
+              </div>
+              <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
+                <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 data-[state=active]:border-rose-500/40">Novidades</TabsTrigger>
                 <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
                 <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
                 <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Permissões</TabsTrigger>
                 <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
+
+            <TabsContent value="whats-new" className="space-y-3 page-enter">
+              {CURRENT_CHANGELOG && (
+                <Card className="card-hover border-rose-500/30">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-rose-500" />
+                        Versão atual — {CURRENT_CHANGELOG.version}
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-[10px]">{CURRENT_CHANGELOG.date}</Badge>
+                    </div>
+                    <CardDescription className="text-xs">Principais novidades desta versão</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {CURRENT_CHANGELOG.highlights.map((h, i) => (
+                        <div key={i} className="p-2 rounded-lg bg-rose-500/5 border border-rose-500/15 flex items-start gap-2">
+                          <Sparkles className="h-3.5 w-3.5 mt-0.5 text-rose-500 shrink-0" />
+                          <p className="text-xs">{h}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5 pt-1">
+                      {CURRENT_CHANGELOG.changes.map((c, i) => {
+                        const styleMap: Record<string, { cls: string; icon: JSX.Element }> = {
+                          'novo':       { cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30', icon: <Sparkles className="h-3 w-3" /> },
+                          'melhoria':   { cls: 'bg-sky-500/15 text-sky-700 border-sky-500/30',             icon: <Wrench className="h-3 w-3" /> },
+                          'correção':   { cls: 'bg-amber-500/15 text-amber-700 border-amber-500/30',       icon: <Check className="h-3 w-3" /> },
+                          'segurança':  { cls: 'bg-violet-500/15 text-violet-700 border-violet-500/30',    icon: <ShieldCheck className="h-3 w-3" /> },
+                        };
+                        const s = styleMap[c.type];
+                        return (
+                          <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                            <Badge variant="outline" className={cn("text-[10px] gap-1 capitalize shrink-0", s.cls)}>
+                              {s.icon}
+                              {c.type}
+                            </Badge>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">{c.description}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="card-hover">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Histórico de versões
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Veja o que mudou nas versões anteriores
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {CHANGELOG.filter(c => c.version !== APP_VERSION).map((entry) => (
+                    <Collapsible key={entry.version}>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/40 hover:bg-muted transition-colors cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">{entry.version}</Badge>
+                            <span className="text-[11px] text-muted-foreground">{entry.date}</span>
+                          </div>
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-3 py-2 space-y-1.5 bg-muted/20 rounded-b-lg -mt-1">
+                          {entry.changes.map((c, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <Badge variant="outline" className="text-[9px] capitalize shrink-0 h-4 px-1">
+                                {c.type}
+                              </Badge>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">{c.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
 
 
             <TabsContent value="modules" className="space-y-3 page-enter">

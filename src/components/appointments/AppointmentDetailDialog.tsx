@@ -2229,6 +2229,35 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Package outcome confirmation: when marking a package appointment as "missed" or "cancelled" */}
+      <AlertDialog
+        open={!!pendingPackageOutcome}
+        onOpenChange={(o) => { if (!o) setPendingPackageOutcome(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingPackageOutcome?.newStatus === 'missed' ? 'Cliente faltou' : 'Atendimento cancelado'} — o que fazer com a aplicação do pacote?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de um pacote. Escolha o destino desta aplicação:
+              <br /><br />
+              <strong>Disponibilizar aplicação</strong>: a sessão volta a ficar disponível no pacote para ser reagendada.<br /><br />
+              <strong>Baixar como feita</strong>: a aplicação é consumida do pacote (não retorna ao saldo), pois o cliente {pendingPackageOutcome?.newStatus === 'missed' ? 'faltou' : 'cancelou'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel onClick={() => setPendingPackageOutcome(null)}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={() => handleConfirmPackageOutcome('release')}>
+              Disponibilizar aplicação
+            </Button>
+            <AlertDialogAction onClick={() => handleConfirmPackageOutcome('consume')}>
+              Baixar como feita
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Reverse Payment Confirmation Dialog */}
 
       <AlertDialog open={confirmReverseOpen} onOpenChange={setConfirmReverseOpen}>

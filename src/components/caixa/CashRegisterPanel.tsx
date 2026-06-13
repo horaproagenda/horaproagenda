@@ -71,6 +71,7 @@ export function CashRegisterPanel() {
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
+  const { installments: allBoletos } = useAllBoletoInstallments();
 
   // Real-time sync for sales with agenda, financeiro, card fees and discounts
   useEffect(() => {

@@ -1519,18 +1519,71 @@ export function ProductDetailDialog({
 
                   <div className="grid grid-cols-1 gap-3">
                     {availableTemplatesToLink.length > 0 ? (
-                      <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um template de pacote" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableTemplatesToLink.map(t => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name} ({t.total_sessions} sessões)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Input
+                            placeholder="Buscar pacote..."
+                            value={templateLinkSearch}
+                            onChange={(e) => setTemplateLinkSearch(e.target.value)}
+                            className="h-9 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-9"
+                            onClick={() => {
+                              const filtered = availableTemplatesToLink.filter(t =>
+                                !templateLinkSearch ||
+                                t.name.toLowerCase().includes(templateLinkSearch.toLowerCase())
+                              );
+                              const allIds = filtered.map(t => t.id);
+                              const allSelected = allIds.every(id => selectedTemplateIds.includes(id));
+                              setSelectedTemplateIds(allSelected
+                                ? selectedTemplateIds.filter(id => !allIds.includes(id))
+                                : Array.from(new Set([...selectedTemplateIds, ...allIds]))
+                              );
+                            }}
+                          >
+                            Selecionar todos
+                          </Button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto rounded-md border bg-background p-2 space-y-1">
+                          {availableTemplatesToLink
+                            .filter(t =>
+                              !templateLinkSearch ||
+                              t.name.toLowerCase().includes(templateLinkSearch.toLowerCase())
+                            )
+                            .map(t => {
+                              const checked = selectedTemplateIds.includes(t.id);
+                              return (
+                                <label
+                                  key={t.id}
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/60 cursor-pointer text-xs"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setSelectedTemplateIds(e.target.checked
+                                        ? [...selectedTemplateIds, t.id]
+                                        : selectedTemplateIds.filter(id => id !== t.id)
+                                      );
+                                    }}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                  <span className="flex-1 truncate">{t.name}</span>
+                                  <span className="text-muted-foreground text-[10px]">{t.total_sessions} sessões</span>
+                                </label>
+                              );
+                            })}
+                        </div>
+                        {selectedTemplateIds.length > 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {selectedTemplateIds.length} pacote(s) selecionado(s)
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <div className="text-sm text-muted-foreground p-2 text-center">
                         {templates.length === 0

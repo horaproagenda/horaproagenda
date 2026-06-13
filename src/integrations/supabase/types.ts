@@ -4231,6 +4231,24 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_pricing_config: {
+        Row: {
+          id: boolean
+          updated_at: string
+          usd_to_brl_rate: number
+        }
+        Insert: {
+          id?: boolean
+          updated_at?: string
+          usd_to_brl_rate?: number
+        }
+        Update: {
+          id?: boolean
+          updated_at?: string
+          usd_to_brl_rate?: number
+        }
+        Relationships: []
+      }
       whatsapp_queue: {
         Row: {
           client_id: string | null
@@ -4671,6 +4689,16 @@ export type Database = {
         Returns: {
           clinic_cnpj: string
           twilio_from_number: string
+        }[]
+      }
+      get_whatsapp_instance_cost_brl: {
+        Args: { qty: number }
+        Returns: {
+          qty_out: number
+          rate: number
+          total_brl: number
+          unit_brl: number
+          unit_usd: number
         }[]
       }
       get_whatsapp_unit_price: { Args: { qty: number }; Returns: number }

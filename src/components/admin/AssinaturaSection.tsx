@@ -3,11 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
+import { useWhatsappInstanceCost } from "@/hooks/useWhatsappInstanceCost";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles } from "lucide-react";
+import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, MessageCircle } from "lucide-react";
 
 export function AssinaturaSection() {
   const { user } = useAuth();
@@ -147,125 +148,206 @@ export function AssinaturaSection() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {PLANS.map((plan) => {
-          const isCurrent = currentPriceId === plan.priceId;
-          const isSelected = selectedPriceId === plan.priceId;
-          const isMonthly = billingMonths === 1;
-          const totalCycle = periodTotal(plan.priceBRL, billingMonths);
-          const effectiveMonthly = totalCycle / billingMonths;
-          return (
-            <Card
-              key={plan.priceId}
-              className={`cursor-pointer transition-all hover:shadow-lg ${
-                isSelected ? 'ring-2 ring-primary shadow-lg' : ''
-              } ${isCurrent ? 'border-green-500/60' : ''}`}
-              onClick={() => setSelectedPriceId(plan.priceId)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{plan.name}</CardTitle>
-                  {isCurrent && <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">Atual</Badge>}
-                  {isSelected && !isCurrent && (
-                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
-                <CardDescription className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {plan.seats} {plan.seats === 1 ? 'usuário' : 'usuários'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
-                    <span className="text-sm text-muted-foreground">/mês</span>
-                    {!isMonthly && (
-                      <span className="text-xs text-muted-foreground line-through">
-                        {formatBRL(plan.priceBRL)}
-                      </span>
-                    )}
-                  </div>
-                  {!isMonthly ? (
-                    <div className="text-xs text-muted-foreground">
-                      {formatBRL(totalCycle)} a cada {billingMonths} meses (renovação automática)
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      {formatBRL(plan.priceBRL / plan.seats)} por usuário/mês
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {PLANS.map((plan) => (
+          <PlanCard
+            key={plan.priceId}
+            plan={plan}
+            billingMonths={billingMonths}
+            isCurrent={currentPriceId === plan.priceId}
+            isSelected={selectedPriceId === plan.priceId}
+            onSelect={() => setSelectedPriceId(plan.priceId)}
+          />
+        ))}
       </div>
 
       {selectedPriceId && (
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>Resumo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(() => {
-              const plan = PLANS.find(p => p.priceId === selectedPriceId)!;
-              const period = BILLING_PERIODS.find(b => b.months === billingMonths)!;
-              const total = periodTotal(plan.priceBRL, billingMonths);
-              const fullPrice = plan.priceBRL * billingMonths;
-              const saved = fullPrice - total;
-              const isMonthly = billingMonths === 1;
-              return (
-                <>
-                  <div className="flex justify-between"><span>Plano</span><span className="font-medium">{plan.name}</span></div>
-                  <div className="flex justify-between"><span>Usuários</span><span className="font-medium">{plan.seats}</span></div>
-                  <div className="flex justify-between"><span>Período</span><span className="font-medium">{period.label}{period.badge ? ` ${period.badge}` : ''}</span></div>
-                  {!isMonthly && (
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Sem desconto</span>
-                      <span className="line-through">{formatBRL(fullPrice)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-3">
-                    <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
-                    <span>{formatBRL(total)}</span>
-                  </div>
-                  {!isMonthly && saved > 0 && (
-                    <div className="text-xs text-emerald-600 text-right">
-                      Você economiza {formatBRL(saved)} por ciclo
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground text-center border-t pt-2">
-                    Renovação automática a cada {billingMonths === 1 ? 'mês' : `${billingMonths} meses`}.
-                    Cancele a qualquer momento em "Gerenciar assinatura".
-                  </div>
-                </>
-              );
-            })()}
-            <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
-              <span className="flex items-center gap-1">
-                <CreditCard className="h-3.5 w-3.5" />
-                Cartão (cobrança recorrente)
-              </span>
-            </div>
-            <Button className="w-full" size="lg" onClick={handleCheckout} disabled={isLoading}>
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  {isActive
-                    ? 'Trocar de plano'
-                    : billingMonths === 1
-                      ? 'Assinar agora'
-                      : `Assinar (a cada ${billingMonths} meses)`}
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+        <SubscriptionSummary
+          plan={PLANS.find(p => p.priceId === selectedPriceId)!}
+          billingMonths={billingMonths}
+          isActive={isActive}
+          isLoading={isLoading}
+          onCheckout={handleCheckout}
+        />
       )}
     </div>
   );
 }
+
+interface PlanCardProps {
+  plan: typeof PLANS[number];
+  billingMonths: number;
+  isCurrent: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: PlanCardProps) {
+  const isMonthly = billingMonths === 1;
+  const totalCycle = periodTotal(plan.priceBRL, billingMonths);
+  const effectiveMonthly = totalCycle / billingMonths;
+  const { data: whatsappCost } = useWhatsappInstanceCost(plan.seats);
+  const waMonthly = whatsappCost?.totalBrl ?? 0;
+  const waCycle = waMonthly * billingMonths;
+  const grandTotalCycle = totalCycle + waCycle;
+  const grandTotalMonthly = effectiveMonthly + waMonthly;
+
+  return (
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-lg ${
+        isSelected ? 'ring-2 ring-primary shadow-lg' : ''
+      } ${isCurrent ? 'border-green-500/60' : ''}`}
+      onClick={onSelect}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{plan.name}</CardTitle>
+          {isCurrent && <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">Atual</Badge>}
+          {isSelected && !isCurrent && (
+            <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+              <Check className="h-4 w-4 text-primary-foreground" />
+            </div>
+          )}
+        </div>
+        <CardDescription className="flex items-center gap-1">
+          <Users className="h-4 w-4" />
+          {plan.seats} {plan.seats === 1 ? 'usuário' : 'usuários'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
+            <span className="text-sm text-muted-foreground">/mês</span>
+            {!isMonthly && (
+              <span className="text-xs text-muted-foreground line-through">
+                {formatBRL(plan.priceBRL)}
+              </span>
+            )}
+          </div>
+
+          {waMonthly > 0 && (
+            <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+              <div className="flex items-center gap-1 font-medium">
+                <MessageCircle className="h-3 w-3" />
+                + {formatBRL(waMonthly)}/mês em instâncias WhatsApp
+              </div>
+              <div className="text-muted-foreground">
+                {plan.seats} × {formatBRL(whatsappCost!.unitBrl)} (1 inst./profissional)
+              </div>
+            </div>
+          )}
+
+          <div className="border-t pt-1.5 text-xs">
+            {isMonthly ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total mensal</span>
+                <span className="font-semibold tabular-nums">{formatBRL(grandTotalMonthly)}</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total mensal equivalente</span>
+                  <span className="font-semibold tabular-nums">{formatBRL(grandTotalMonthly)}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {formatBRL(grandTotalCycle)} a cada {billingMonths} meses
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface SubscriptionSummaryProps {
+  plan: typeof PLANS[number];
+  billingMonths: number;
+  isActive: boolean | undefined;
+  isLoading: boolean;
+  onCheckout: () => void;
+}
+
+function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheckout }: SubscriptionSummaryProps) {
+  const period = BILLING_PERIODS.find(b => b.months === billingMonths)!;
+  const planTotal = periodTotal(plan.priceBRL, billingMonths);
+  const fullPrice = plan.priceBRL * billingMonths;
+  const saved = fullPrice - planTotal;
+  const isMonthly = billingMonths === 1;
+  const { data: whatsappCost } = useWhatsappInstanceCost(plan.seats);
+  const waMonthly = whatsappCost?.totalBrl ?? 0;
+  const waCycle = waMonthly * billingMonths;
+  const grandTotal = planTotal + waCycle;
+
+  return (
+    <Card className="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Resumo</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex justify-between"><span>Plano</span><span className="font-medium">{plan.name}</span></div>
+        <div className="flex justify-between"><span>Usuários</span><span className="font-medium">{plan.seats}</span></div>
+        <div className="flex justify-between"><span>Período</span><span className="font-medium">{period.label}{period.badge ? ` ${period.badge}` : ''}</span></div>
+        {!isMonthly && (
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Plano sem desconto</span>
+            <span className="line-through">{formatBRL(fullPrice)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm">
+          <span>Plano {isMonthly ? '(mensal)' : `(${billingMonths} meses)`}</span>
+          <span className="font-medium tabular-nums">{formatBRL(planTotal)}</span>
+        </div>
+        {waMonthly > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+              Instâncias WhatsApp ({plan.seats} × {formatBRL(whatsappCost!.unitBrl)}/mês)
+            </span>
+            <span className="font-medium tabular-nums">{formatBRL(waCycle)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-lg font-bold border-t pt-3">
+          <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
+          <span className="tabular-nums">{formatBRL(grandTotal)}</span>
+        </div>
+        {!isMonthly && saved > 0 && (
+          <div className="text-xs text-emerald-600 text-right">
+            Você economiza {formatBRL(saved)} no plano por ciclo
+          </div>
+        )}
+        {waMonthly > 0 && (
+          <div className="text-[11px] text-muted-foreground border-t pt-2">
+            As instâncias do WhatsApp são cobradas por profissional ativo. O valor exibido considera a faixa de volume vigente e a taxa USD→BRL configurada pelo administrador.
+          </div>
+        )}
+        <div className="text-xs text-muted-foreground text-center border-t pt-2">
+          Renovação automática a cada {billingMonths === 1 ? 'mês' : `${billingMonths} meses`}.
+          Cancele a qualquer momento em "Gerenciar assinatura".
+        </div>
+        <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
+          <span className="flex items-center gap-1">
+            <CreditCard className="h-3.5 w-3.5" />
+            Cartão (cobrança recorrente)
+          </span>
+        </div>
+        <Button className="w-full" size="lg" onClick={onCheckout} disabled={isLoading}>
+          {isLoading ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              {isActive
+                ? 'Trocar de plano'
+                : billingMonths === 1
+                  ? 'Assinar agora'
+                  : `Assinar (a cada ${billingMonths} meses)`}
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+

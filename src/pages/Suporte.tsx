@@ -47,10 +47,15 @@ const Suporte = () => {
       `*Mensagem:*\n${formData.message}`;
     
     const whatsappNumber = "5511999999999";
-    openWhatsappWithMessage(whatsappNumber, whatsappMessage);
-    
-    toast.success("Redirecionando para o WhatsApp...");
+    setWhatsappPreviewPhone(whatsappNumber);
+    setWhatsappPreviewMessage(whatsappMessage);
+    setWhatsappPreviewOpen(true);
+
     setIsSubmitting(false);
+  };
+
+  const handleWhatsappSent = () => {
+    toast.success("Redirecionando para o WhatsApp...");
     setFormData({ name: "", email: "", type: "", subject: "", message: "" });
   };
 

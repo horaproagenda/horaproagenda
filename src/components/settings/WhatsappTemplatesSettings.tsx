@@ -69,6 +69,8 @@ export function WhatsappTemplatesSettings() {
   const [isStaff, setIsStaff] = useState(false); // admin or receptionist
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
   const [ctxLoaded, setCtxLoaded] = useState(false);
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
 
   useEffect(() => {
     (async () => {

@@ -124,7 +124,7 @@ export function ProductDetailDialog({
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
   const { templates } = usePackageTemplates();
-  const { serviceProducts } = useServiceProducts();
+  const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
 

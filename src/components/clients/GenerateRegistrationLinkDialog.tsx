@@ -112,8 +112,9 @@ export function GenerateRegistrationLinkDialog({ open, onOpenChange }: Props) {
 
   const handleWhatsApp = () => {
     const msg =
-      `Olá! Para iniciarmos o seu atendimento, preencha o seu cadastro pelo link abaixo (leva poucos minutos):\n\n${generatedUrl}`
-    openWhatsappWithMessage('', msg);
+      `Olá! Para iniciarmos o seu atendimento, preencha o seu cadastro pelo link abaixo (leva poucos minutos):\n\n${generatedUrl}`;
+    setWhatsappPreviewMessage(msg);
+    setWhatsappPreviewOpen(true);
   };
 
   const handleReset = () => {

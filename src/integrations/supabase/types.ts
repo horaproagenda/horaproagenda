@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       access_logs: {
         Row: {
+          account_owner_id: string
           action: string
           created_at: string
           fields_changed: string[] | null
@@ -32,6 +33,7 @@ export type Database = {
           user_role: string | null
         }
         Insert: {
+          account_owner_id: string
           action: string
           created_at?: string
           fields_changed?: string[] | null
@@ -48,6 +50,7 @@ export type Database = {
           user_role?: string | null
         }
         Update: {
+          account_owner_id?: string
           action?: string
           created_at?: string
           fields_changed?: string[] | null
@@ -178,6 +181,7 @@ export type Database = {
       }
       appointment_additional_items: {
         Row: {
+          account_owner_id: string
           appointment_id: string
           created_at: string
           created_by: string | null
@@ -193,6 +197,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id: string
           created_at?: string
           created_by?: string | null
@@ -208,6 +213,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string
           created_at?: string
           created_by?: string | null
@@ -255,6 +261,7 @@ export type Database = {
       }
       appointment_edit_locks: {
         Row: {
+          account_owner_id: string
           appointment_id: string
           created_at: string
           expires_at: string
@@ -267,6 +274,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id: string
           created_at?: string
           expires_at?: string
@@ -279,6 +287,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string
           created_at?: string
           expires_at?: string
@@ -294,6 +303,7 @@ export type Database = {
       }
       appointment_product_consumption: {
         Row: {
+          account_owner_id: string
           appointment_id: string
           created_at: string
           id: string
@@ -303,6 +313,7 @@ export type Database = {
           source_type: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string
           created_at?: string
           id?: string
@@ -312,6 +323,7 @@ export type Database = {
           source_type: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string
           created_at?: string
           id?: string
@@ -339,6 +351,7 @@ export type Database = {
       }
       appointment_reminder_log: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           channel: string
           error: string | null
@@ -349,6 +362,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string | null
           channel: string
           error?: string | null
@@ -359,6 +373,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           channel?: string
           error?: string | null
@@ -525,6 +540,7 @@ export type Database = {
       }
       audit_logs: {
         Row: {
+          account_owner_id: string
           action: string
           created_at: string
           id: string
@@ -537,6 +553,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_owner_id: string
           action: string
           created_at?: string
           id?: string
@@ -549,6 +566,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_owner_id?: string
           action?: string
           created_at?: string
           id?: string
@@ -565,6 +583,7 @@ export type Database = {
       banks: {
         Row: {
           account_number: string | null
+          account_owner_id: string
           agency: string | null
           bank_code: string | null
           created_at: string
@@ -578,6 +597,7 @@ export type Database = {
         }
         Insert: {
           account_number?: string | null
+          account_owner_id: string
           agency?: string | null
           bank_code?: string | null
           created_at?: string
@@ -591,6 +611,7 @@ export type Database = {
         }
         Update: {
           account_number?: string | null
+          account_owner_id?: string
           agency?: string | null
           bank_code?: string | null
           created_at?: string
@@ -606,6 +627,7 @@ export type Database = {
       }
       boleto_audit_log: {
         Row: {
+          account_owner_id: string
           boleto_installment_id: string | null
           created_at: string
           event_source: string
@@ -621,6 +643,7 @@ export type Database = {
           sale_id: string | null
         }
         Insert: {
+          account_owner_id: string
           boleto_installment_id?: string | null
           created_at?: string
           event_source: string
@@ -636,6 +659,7 @@ export type Database = {
           sale_id?: string | null
         }
         Update: {
+          account_owner_id?: string
           boleto_installment_id?: string | null
           created_at?: string
           event_source?: string
@@ -662,6 +686,7 @@ export type Database = {
       }
       boleto_installments: {
         Row: {
+          account_owner_id: string
           amount: number
           beneficiary_snapshot: Json | null
           created_at: string
@@ -685,6 +710,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           amount?: number
           beneficiary_snapshot?: Json | null
           created_at?: string
@@ -708,6 +734,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           amount?: number
           beneficiary_snapshot?: Json | null
           created_at?: string
@@ -841,6 +868,7 @@ export type Database = {
       }
       card_brand_fees: {
         Row: {
+          account_owner_id: string
           card_brand_id: string
           created_at: string
           fee_percentage: number
@@ -849,6 +877,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           card_brand_id: string
           created_at?: string
           fee_percentage?: number
@@ -857,6 +886,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           card_brand_id?: string
           created_at?: string
           fee_percentage?: number
@@ -876,6 +906,7 @@ export type Database = {
       }
       card_brands: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           fee_behavior: string
@@ -888,6 +919,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           fee_behavior?: string
@@ -900,6 +932,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           fee_behavior?: string
@@ -915,6 +948,7 @@ export type Database = {
       }
       cash_register_entries: {
         Row: {
+          account_owner_id: string
           affects_cash: boolean | null
           amount: number | null
           client_id: string | null
@@ -925,6 +959,7 @@ export type Database = {
           single_sale_id: string | null
         }
         Insert: {
+          account_owner_id: string
           affects_cash?: boolean | null
           amount?: number | null
           client_id?: string | null
@@ -935,6 +970,7 @@ export type Database = {
           single_sale_id?: string | null
         }
         Update: {
+          account_owner_id?: string
           affects_cash?: boolean | null
           amount?: number | null
           client_id?: string | null
@@ -948,6 +984,7 @@ export type Database = {
       }
       cash_registers: {
         Row: {
+          account_owner_id: string
           bank_deposits: Json | null
           cash_amount: number | null
           check_amount: number | null
@@ -971,6 +1008,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           bank_deposits?: Json | null
           cash_amount?: number | null
           check_amount?: number | null
@@ -994,6 +1032,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           bank_deposits?: Json | null
           cash_amount?: number | null
           check_amount?: number | null
@@ -1020,6 +1059,7 @@ export type Database = {
       }
       cash_transactions: {
         Row: {
+          account_owner_id: string
           amount: number
           bank_id: string | null
           card_fee_amount: number | null
@@ -1037,6 +1077,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           amount?: number
           bank_id?: string | null
           card_fee_amount?: number | null
@@ -1054,6 +1095,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           amount?: number
           bank_id?: string | null
           card_fee_amount?: number | null
@@ -1089,6 +1131,7 @@ export type Database = {
       }
       client_credit_transactions: {
         Row: {
+          account_owner_id: string
           amount: number
           appointment_id: string | null
           client_id: string
@@ -1103,6 +1146,7 @@ export type Database = {
           transaction_type: string
         }
         Insert: {
+          account_owner_id: string
           amount?: number
           appointment_id?: string | null
           client_id: string
@@ -1117,6 +1161,7 @@ export type Database = {
           transaction_type: string
         }
         Update: {
+          account_owner_id?: string
           amount?: number
           appointment_id?: string | null
           client_id?: string
@@ -1142,6 +1187,7 @@ export type Database = {
       }
       client_documents: {
         Row: {
+          account_owner_id: string
           client_id: string
           content: string | null
           created_at: string
@@ -1158,6 +1204,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           client_id: string
           content?: string | null
           created_at?: string
@@ -1174,6 +1221,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           client_id?: string
           content?: string | null
           created_at?: string
@@ -1208,6 +1256,7 @@ export type Database = {
       }
       client_registration_links: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           created_client_id: string | null
@@ -1221,6 +1270,7 @@ export type Database = {
           used_at: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           created_client_id?: string | null
@@ -1234,6 +1284,7 @@ export type Database = {
           used_at?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           created_client_id?: string | null
@@ -1265,6 +1316,7 @@ export type Database = {
       }
       client_services: {
         Row: {
+          account_owner_id: string
           amount_paid: number
           appointment_id: string | null
           client_id: string
@@ -1280,6 +1332,7 @@ export type Database = {
           used_at: string | null
         }
         Insert: {
+          account_owner_id: string
           amount_paid?: number
           appointment_id?: string | null
           client_id: string
@@ -1295,6 +1348,7 @@ export type Database = {
           used_at?: string | null
         }
         Update: {
+          account_owner_id?: string
           amount_paid?: number
           appointment_id?: string | null
           client_id?: string
@@ -1342,6 +1396,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          account_owner_id: string
           address_city: string | null
           address_complement: string | null
           address_neighborhood: string | null
@@ -1369,6 +1424,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           address_city?: string | null
           address_complement?: string | null
           address_neighborhood?: string | null
@@ -1396,6 +1452,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           address_city?: string | null
           address_complement?: string | null
           address_neighborhood?: string | null
@@ -1473,6 +1530,7 @@ export type Database = {
       }
       dismissed_notifications: {
         Row: {
+          account_owner_id: string
           dismissed_at: string
           id: string
           notification_id: string
@@ -1480,6 +1538,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_owner_id: string
           dismissed_at?: string
           id?: string
           notification_id: string
@@ -1487,6 +1546,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          account_owner_id?: string
           dismissed_at?: string
           id?: string
           notification_id?: string
@@ -1497,6 +1557,7 @@ export type Database = {
       }
       document_fill_links: {
         Row: {
+          account_owner_id: string
           client_id: string | null
           created_at: string
           expires_at: string | null
@@ -1511,6 +1572,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           client_id?: string | null
           created_at?: string
           expires_at?: string | null
@@ -1525,6 +1587,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           client_id?: string | null
           created_at?: string
           expires_at?: string | null
@@ -1564,6 +1627,7 @@ export type Database = {
       }
       document_templates: {
         Row: {
+          account_owner_id: string
           category: string
           content: string
           created_at: string
@@ -1576,6 +1640,7 @@ export type Database = {
           variables: string[] | null
         }
         Insert: {
+          account_owner_id: string
           category?: string
           content: string
           created_at?: string
@@ -1588,6 +1653,7 @@ export type Database = {
           variables?: string[] | null
         }
         Update: {
+          account_owner_id?: string
           category?: string
           content?: string
           created_at?: string
@@ -1621,6 +1687,7 @@ export type Database = {
       }
       equipment: {
         Row: {
+          account_owner_id: string
           created_at: string
           description: string | null
           id: string
@@ -1631,6 +1698,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1641,6 +1709,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1654,6 +1723,7 @@ export type Database = {
       }
       financial_categories: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -1666,6 +1736,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1678,6 +1749,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1693,6 +1765,7 @@ export type Database = {
       }
       financial_entries: {
         Row: {
+          account_owner_id: string
           amount: number
           appointment_id: string | null
           bank_id: string | null
@@ -1724,6 +1797,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           amount?: number
           appointment_id?: string | null
           bank_id?: string | null
@@ -1755,6 +1829,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           amount?: number
           appointment_id?: string | null
           bank_id?: string | null
@@ -1846,6 +1921,7 @@ export type Database = {
       }
       goals: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           current_value: number
@@ -1863,6 +1939,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           current_value?: number
@@ -1880,6 +1957,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           current_value?: number
@@ -2067,6 +2145,7 @@ export type Database = {
       }
       package_appointments: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           created_at: string
           id: string
@@ -2082,6 +2161,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string | null
           created_at?: string
           id?: string
@@ -2097,6 +2177,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           created_at?: string
           id?: string
@@ -2130,6 +2211,7 @@ export type Database = {
       }
       package_template_products: {
         Row: {
+          account_owner_id: string
           container_amount: number | null
           container_unit: string | null
           created_at: string
@@ -2143,6 +2225,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -2156,6 +2239,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -2187,6 +2271,7 @@ export type Database = {
       }
       package_template_steps: {
         Row: {
+          account_owner_id: string
           created_at: string
           id: string
           interval_after_days: number
@@ -2196,6 +2281,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           id?: string
           interval_after_days?: number
@@ -2205,6 +2291,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           id?: string
           interval_after_days?: number
@@ -2217,6 +2304,7 @@ export type Database = {
       }
       package_templates: {
         Row: {
+          account_owner_id: string
           category: string | null
           created_at: string
           description: string | null
@@ -2235,6 +2323,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           category?: string | null
           created_at?: string
           description?: string | null
@@ -2253,6 +2342,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           category?: string | null
           created_at?: string
           description?: string | null
@@ -2289,6 +2379,7 @@ export type Database = {
       }
       payment_methods: {
         Row: {
+          account_owner_id: string
           card_fee: number | null
           created_at: string
           created_by: string | null
@@ -2303,6 +2394,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           card_fee?: number | null
           created_at?: string
           created_by?: string | null
@@ -2317,6 +2409,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           card_fee?: number | null
           created_at?: string
           created_by?: string | null
@@ -2475,6 +2568,7 @@ export type Database = {
       }
       product_daily_consumption: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           consumption_date: string
           created_at: string
@@ -2489,6 +2583,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string | null
           consumption_date?: string
           created_at?: string
@@ -2503,6 +2598,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           consumption_date?: string
           created_at?: string
@@ -2549,6 +2645,7 @@ export type Database = {
       }
       product_purchases: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           duration_days: number | null
@@ -2567,6 +2664,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           duration_days?: number | null
@@ -2585,6 +2683,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           duration_days?: number | null
@@ -2621,6 +2720,7 @@ export type Database = {
       }
       products: {
         Row: {
+          account_owner_id: string
           brand: string | null
           category: string | null
           created_at: string
@@ -2649,6 +2749,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           brand?: string | null
           category?: string | null
           created_at?: string
@@ -2677,6 +2778,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           brand?: string | null
           category?: string | null
           created_at?: string
@@ -2716,6 +2818,7 @@ export type Database = {
       }
       professional_absences: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           end_time: string
@@ -2727,6 +2830,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           end_time: string
@@ -2738,6 +2842,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           end_time?: string
@@ -2882,6 +2987,7 @@ export type Database = {
       }
       professional_service_commissions: {
         Row: {
+          account_owner_id: string
           commission_fixed_value: number | null
           commission_percentage: number | null
           commission_type: string
@@ -2892,6 +2998,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           commission_fixed_value?: number | null
           commission_percentage?: number | null
           commission_type?: string
@@ -2902,6 +3009,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           commission_fixed_value?: number | null
           commission_percentage?: number | null
           commission_type?: string
@@ -3133,6 +3241,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          account_owner_id: string
           client_id: string
           created_at: string
           id: string
@@ -3147,6 +3256,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          account_owner_id: string
           client_id: string
           created_at?: string
           id?: string
@@ -3161,6 +3271,7 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          account_owner_id?: string
           client_id?: string
           created_at?: string
           id?: string
@@ -3186,6 +3297,7 @@ export type Database = {
       }
       reminders: {
         Row: {
+          account_owner_id: string
           category: string | null
           completed_at: string | null
           created_at: string
@@ -3205,6 +3317,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           category?: string | null
           completed_at?: string | null
           created_at?: string
@@ -3224,6 +3337,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           category?: string | null
           completed_at?: string | null
           created_at?: string
@@ -3270,6 +3384,7 @@ export type Database = {
       }
       rooms: {
         Row: {
+          account_owner_id: string
           capacity: number | null
           created_at: string
           description: string | null
@@ -3281,6 +3396,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           capacity?: number | null
           created_at?: string
           description?: string | null
@@ -3292,6 +3408,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           capacity?: number | null
           created_at?: string
           description?: string | null
@@ -3306,6 +3423,7 @@ export type Database = {
       }
       service_packages: {
         Row: {
+          account_owner_id: string
           auto_schedule: boolean
           category: string | null
           client_id: string | null
@@ -3335,6 +3453,7 @@ export type Database = {
           whatsapp_reminder: boolean
         }
         Insert: {
+          account_owner_id: string
           auto_schedule?: boolean
           category?: string | null
           client_id?: string | null
@@ -3364,6 +3483,7 @@ export type Database = {
           whatsapp_reminder?: boolean
         }
         Update: {
+          account_owner_id?: string
           auto_schedule?: boolean
           category?: string | null
           client_id?: string | null
@@ -3432,6 +3552,7 @@ export type Database = {
       }
       service_products: {
         Row: {
+          account_owner_id: string
           container_amount: number | null
           container_unit: string | null
           created_at: string
@@ -3445,6 +3566,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -3458,6 +3580,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -3489,6 +3612,7 @@ export type Database = {
       }
       services: {
         Row: {
+          account_owner_id: string
           category: string
           component_service_ids: string[]
           created_at: string
@@ -3507,6 +3631,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           category: string
           component_service_ids?: string[]
           created_at?: string
@@ -3525,6 +3650,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           category?: string
           component_service_ids?: string[]
           created_at?: string
@@ -3561,6 +3687,7 @@ export type Database = {
       }
       single_sales: {
         Row: {
+          account_owner_id: string
           bank_id: string | null
           card_fee_amount: number | null
           client_id: string | null
@@ -3584,6 +3711,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           bank_id?: string | null
           card_fee_amount?: number | null
           client_id?: string | null
@@ -3607,6 +3735,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           bank_id?: string | null
           card_fee_amount?: number | null
           client_id?: string | null
@@ -3693,6 +3822,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          account_owner_id: string
           address: string | null
           cnpj: string | null
           company_name: string | null
@@ -3712,6 +3842,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           address?: string | null
           cnpj?: string | null
           company_name?: string | null
@@ -3731,6 +3862,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           address?: string | null
           cnpj?: string | null
           company_name?: string | null
@@ -3792,6 +3924,7 @@ export type Database = {
       }
       treatment_photos: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           client_id: string
           created_at: string
@@ -3803,6 +3936,7 @@ export type Database = {
           taken_at: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string | null
           client_id: string
           created_at?: string
@@ -3814,6 +3948,7 @@ export type Database = {
           taken_at?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           client_id?: string
           created_at?: string
@@ -4118,6 +4253,7 @@ export type Database = {
       }
       waitlist: {
         Row: {
+          account_owner_id: string
           client_id: string
           created_at: string
           created_by: string | null
@@ -4133,6 +4269,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -4148,6 +4285,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           client_id?: string
           created_at?: string
           created_by?: string | null
@@ -4188,6 +4326,7 @@ export type Database = {
       }
       whatsapp_logs: {
         Row: {
+          account_owner_id: string
           created_at: string | null
           detail: Json | null
           event: string | null
@@ -4195,6 +4334,7 @@ export type Database = {
           queue_id: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string | null
           detail?: Json | null
           event?: string | null
@@ -4202,6 +4342,7 @@ export type Database = {
           queue_id?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string | null
           detail?: Json | null
           event?: string | null
@@ -4212,6 +4353,7 @@ export type Database = {
       }
       whatsapp_messages: {
         Row: {
+          account_owner_id: string
           body: string | null
           created_at: string | null
           direction: string | null
@@ -4224,6 +4366,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_owner_id: string
           body?: string | null
           created_at?: string | null
           direction?: string | null
@@ -4236,6 +4379,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_owner_id?: string
           body?: string | null
           created_at?: string | null
           direction?: string | null
@@ -4269,6 +4413,7 @@ export type Database = {
       }
       whatsapp_queue: {
         Row: {
+          account_owner_id: string
           client_id: string | null
           created_at: string | null
           document_path: string | null
@@ -4283,6 +4428,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_owner_id: string
           client_id?: string | null
           created_at?: string | null
           document_path?: string | null
@@ -4297,6 +4443,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_owner_id?: string
           client_id?: string | null
           created_at?: string | null
           document_path?: string | null
@@ -4314,6 +4461,7 @@ export type Database = {
       }
       whatsapp_send_queue: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           attempts: number
           body: string
@@ -4333,6 +4481,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id: string
           appointment_id?: string | null
           attempts?: number
           body: string
@@ -4352,6 +4501,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           attempts?: number
           body?: string
@@ -4389,6 +4539,7 @@ export type Database = {
       }
       whatsapp_templates: {
         Row: {
+          account_owner_id: string
           created_at: string
           created_by: string | null
           hours_before: number | null
@@ -4405,6 +4556,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          account_owner_id: string
           created_at?: string
           created_by?: string | null
           hours_before?: number | null
@@ -4421,6 +4573,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           hours_before?: number | null
@@ -4575,6 +4728,7 @@ export type Database = {
           _type: Database["public"]["Enums"]["document_type"]
         }
         Returns: {
+          account_owner_id: string
           client_id: string
           content: string | null
           created_at: string
@@ -4608,6 +4762,7 @@ export type Database = {
           _taken_at?: string
         }
         Returns: {
+          account_owner_id: string
           appointment_id: string | null
           client_id: string
           created_at: string

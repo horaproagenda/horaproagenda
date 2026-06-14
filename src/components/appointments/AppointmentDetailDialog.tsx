@@ -68,6 +68,7 @@ import {
   Send,
   FileText,
   RotateCcw,
+  MessageCircle,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';

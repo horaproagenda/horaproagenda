@@ -1049,6 +1049,63 @@ export function AppointmentDetailDialog({
     toast.success('Recibo gerado para download.');
   };
 
+  const [whatsappPreviewTitle, setWhatsappPreviewTitle] = useState('Enviar no WhatsApp');
+  const [whatsappPreviewDescription, setWhatsappPreviewDescription] = useState<string | undefined>(undefined);
+
+  const handleSendReminder = async () => {
+    const phone = (appointment.client?.phone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sem telefone cadastrado.');
+      return;
+    }
+    // Try to load an active reminder template for this professional (or global)
+    let templateMessage: string | null = null;
+    let includeButtons = false;
+    try {
+      const { data } = await (supabase as any)
+        .from('whatsapp_templates')
+        .select('message, include_confirmation_buttons, professional_id, is_active, type')
+        .in('type', ['reminder', 'confirmation'])
+        .eq('is_active', true);
+      const list = (data || []) as Array<any>;
+      const match = list.find(t => t.professional_id === appointment.professional_id)
+        || list.find(t => !t.professional_id)
+        || list[0];
+      if (match) {
+        templateMessage = match.message;
+        includeButtons = !!match.include_confirmation_buttons;
+      }
+    } catch {
+      // ignore — falls back to default below
+    }
+
+    const fallback =
+      `Olá {primeiro_nome}! 👋\n\nPassando para lembrar do seu agendamento:\n📅 *{servico}*\n🗓️ {data_extenso}\n⏰ {horario}\n\nPor favor, confirme sua presença.`;
+    const tpl = templateMessage || fallback;
+    const useButtons = templateMessage ? includeButtons : true;
+
+    const message = renderTemplate(tpl, {
+      clientName: safeClient.name,
+      serviceName: appointment.service?.name || 'seu agendamento',
+      professionalName: dialogProfessional?.name,
+      appointmentDate: appointment.start_time,
+      appointmentTime: format(new Date(appointment.start_time), 'HH:mm'),
+      confirmationToken: (appointment as any)?.confirmation_token || null,
+      includeConfirmationButtons: useButtons,
+    });
+
+    setWhatsappPreviewPhone(phone);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewTitle('Enviar lembrete no WhatsApp');
+    setWhatsappPreviewDescription(
+      useButtons
+        ? 'Revise a mensagem. O cliente poderá confirmar ou cancelar pelos links — a agenda é atualizada automaticamente.'
+        : 'Revise e edite a mensagem antes de enviar para o WhatsApp.'
+    );
+    setWhatsappPreviewOpen(true);
+  };
+
+
   const handleSendReceipt = async () => {
     const phone = appointment.client?.phone?.replace(/\D/g, '');
     if (!phone) {

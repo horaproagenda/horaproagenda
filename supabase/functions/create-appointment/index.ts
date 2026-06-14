@@ -509,6 +509,7 @@ serve(async (req) => {
         status: body.status || 'scheduled',
         created_by: userId,
         updated_by: userId,
+        account_owner_id: callerOwner,
       })
       .select()
       .single();

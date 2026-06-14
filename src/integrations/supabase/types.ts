@@ -372,6 +372,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          account_owner_id: string | null
           amount_paid: number | null
           client_id: string
           composite_group_id: string | null
@@ -396,6 +397,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          account_owner_id?: string | null
           amount_paid?: number | null
           client_id: string
           composite_group_id?: string | null
@@ -420,6 +422,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          account_owner_id?: string | null
           amount_paid?: number | null
           client_id?: string
           composite_group_id?: string | null
@@ -739,6 +742,7 @@ export type Database = {
       }
       business_settings: {
         Row: {
+          account_owner_id: string | null
           auto_complete_appointments: boolean
           automation_gap_finder: boolean | null
           automation_occupancy_dashboard: boolean | null
@@ -770,6 +774,7 @@ export type Database = {
           work_sundays: boolean
         }
         Insert: {
+          account_owner_id?: string | null
           auto_complete_appointments?: boolean
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -801,6 +806,7 @@ export type Database = {
           work_sundays?: boolean
         }
         Update: {
+          account_owner_id?: string | null
           auto_complete_appointments?: boolean
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -2754,6 +2760,7 @@ export type Database = {
       }
       professional_credentials: {
         Row: {
+          account_owner_id: string | null
           must_change_password: boolean
           password_changed_at: string | null
           professional_id: string
@@ -2764,6 +2771,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_owner_id?: string | null
           must_change_password?: boolean
           password_changed_at?: string | null
           professional_id: string
@@ -2774,6 +2782,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_owner_id?: string | null
           must_change_password?: boolean
           password_changed_at?: string | null
           professional_id?: string
@@ -2921,6 +2930,7 @@ export type Database = {
       }
       professional_whatsapp_credentials: {
         Row: {
+          account_owner_id: string | null
           api_url: string | null
           created_at: string
           id: string
@@ -2933,6 +2943,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_owner_id?: string | null
           api_url?: string | null
           created_at?: string
           id?: string
@@ -2945,6 +2956,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_owner_id?: string | null
           api_url?: string | null
           created_at?: string
           id?: string
@@ -2968,6 +2980,7 @@ export type Database = {
       }
       professionals: {
         Row: {
+          account_owner_id: string | null
           agenda_color: string | null
           app_role: string | null
           avatar_url: string | null
@@ -3002,6 +3015,7 @@ export type Database = {
           whatsapp_from_number: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
@@ -3036,6 +3050,7 @@ export type Database = {
           whatsapp_from_number?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
@@ -3073,7 +3088,7 @@ export type Database = {
       }
       profiles: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           avatar_url: string | null
           created_at: string
           deactivated_at: string | null
@@ -3087,7 +3102,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           avatar_url?: string | null
           created_at?: string
           deactivated_at?: string | null
@@ -3101,7 +3116,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           avatar_url?: string | null
           created_at?: string
           deactivated_at?: string | null
@@ -4025,16 +4040,19 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          account_owner_id: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          account_owner_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          account_owner_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -4607,6 +4625,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      current_account_owner_id: { Args: never; Returns: string }
       delete_appointment_cascade: {
         Args: { _appointment_id: string }
         Returns: Json
@@ -4621,6 +4640,10 @@ export type Database = {
         Returns: undefined
       }
       get_account_owner: { Args: { _user_id: string }; Returns: string }
+      get_account_owner_for_user: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       get_agenda_package_integrity_report: { Args: never; Returns: Json }
       get_client_outstanding_balance: {
         Args: { _client_id: string }
@@ -4820,6 +4843,7 @@ export type Database = {
           p_status: string
         }
         Returns: {
+          account_owner_id: string | null
           amount_paid: number | null
           client_id: string
           composite_group_id: string | null

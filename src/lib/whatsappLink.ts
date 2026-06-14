@@ -159,6 +159,10 @@ export interface TemplateRenderContext {
   professionalName?: string;
   appointmentDate?: Date | string | null;
   appointmentTime?: string | null;
+  /** Token único do agendamento para gerar links de confirmar/cancelar. */
+  confirmationToken?: string | null;
+  /** Adiciona ao final da mensagem um bloco com botões de Confirmar/Cancelar. */
+  includeConfirmationButtons?: boolean;
 }
 
 function firstName(full?: string): string {

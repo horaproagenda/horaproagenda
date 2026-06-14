@@ -472,12 +472,11 @@ serve(async (req) => {
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').maybeSingle();
           if (existing) continue;
 
-          const message = renderTemplate(tpl.message, {
-            cliente: (apt as any).client?.name || 'cliente',
-            data: fmtDate(start), horario: fmtTime(start),
-            servico: (apt as any).service?.name || 'atendimento',
-            profissional: (apt as any).professional?.name || '',
-          });
+          const message = maybeAppendButtons(
+            renderTemplate(tpl.message, buildVars(apt, start)),
+            tpl,
+            apt,
+          );
           const payload = {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'reminder', hours_before: h, provider: 'whatsapp',

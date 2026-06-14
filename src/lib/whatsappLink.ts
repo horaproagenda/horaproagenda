@@ -252,8 +252,8 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
   });
 
   if (ctx.includeConfirmationButtons && ctx.confirmationToken) {
-    const block = `\n\n👉 *Confirmar presença:* ${confirmUrl}\n❌ *Cancelar:* ${cancelUrl}\n\nResponda esta mensagem com *CONFIRMAR* ou *CANCELAR* se preferir.`;
-    if (!rendered.includes(confirmUrl)) rendered += block;
+    const block = `\n\nResponda esta mensagem com *CONFIRMAR* para confirmar sua presença ou *CANCELAR* para desmarcar.`;
+    if (!rendered.includes('CONFIRMAR') || !rendered.includes('CANCELAR')) rendered += block;
   }
 
   return rendered;

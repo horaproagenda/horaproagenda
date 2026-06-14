@@ -77,6 +77,25 @@ export function WhatsappTemplatesSettings() {
   const [ctxLoaded, setCtxLoaded] = useState(false);
   const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
   const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const messageRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const insertVariable = (variable: string) => {
+    const el = messageRef.current;
+    const current = formData.message || '';
+    if (!el) {
+      setFormData((p) => ({ ...p, message: current + (current && !current.endsWith(' ') ? ' ' : '') + variable }));
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + variable + current.slice(end);
+    setFormData((p) => ({ ...p, message: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + variable.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   useEffect(() => {
     (async () => {

@@ -52,6 +52,7 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
 const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
 const ContaInativa = lazy(() => import("./pages/ContaInativa"));
+const ConfirmarAgendamento = lazy(() => import("./pages/ConfirmarAgendamento"));
 
 // Fallback minimalista enquanto o chunk da rota carrega.
 function RouteFallback() {

@@ -106,6 +106,14 @@ describe('renderTemplate', () => {
     });
     expect(out).toBe('Ana - Limpeza');
   });
+  it('supports variables saved with spaces or accents', () => {
+    const out = renderTemplate('Olá {primeiro nome}, dia {data sem ano} às {horário}', {
+      clientName: 'Maria Aparecida Silva',
+      appointmentDate: '2026-06-01',
+      appointmentTime: '14:30',
+    });
+    expect(out).toBe('Olá Maria, dia 01/06 às 14:30');
+  });
 });
 
 describe('adjustHourToQuietWindow', () => {

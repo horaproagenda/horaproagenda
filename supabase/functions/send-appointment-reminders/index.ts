@@ -383,7 +383,7 @@ serve(async (req) => {
     const pickTpl = (type: string, professional_id: string | null) => {
       const list = tplByType(type);
       const own = list.find((t: any) => t.professional_id === professional_id);
-      return own || list.find((t: any) => t.professional_id == null) || null;
+      return own || list.find((t: any) => t.professional_id == null) || list[0] || null;
     };
 
     // Load all professionals' quiet hours into a map

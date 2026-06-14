@@ -266,20 +266,7 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
         {!isMonthly && (
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Plano sem desconto</span>
-            <span className="line-through">{formatBRL(fullPrice)}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-sm">
-          <span>Plano {isMonthly ? '(mensal)' : `(${billingMonths} meses)`}</span>
-          <span className="font-medium tabular-nums">{formatBRL(planTotal)}</span>
-        </div>
-        {waMonthly > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="flex items-center gap-1">
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-              Instâncias WhatsApp ({plan.seats} × {formatBRL(whatsappCost!.unitBrl)}/mês)
-            </span>
-            <span className="font-medium tabular-nums">{formatBRL(waCycle)}</span>
+            <span className="line-through">{formatBRL(fullPrice + waCycle)}</span>
           </div>
         )}
         <div className="flex justify-between text-lg font-bold border-t pt-3">
@@ -289,11 +276,6 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
         {!isMonthly && saved > 0 && (
           <div className="text-xs text-emerald-600 text-right">
             Você economiza {formatBRL(saved)} no plano por ciclo
-          </div>
-        )}
-        {waMonthly > 0 && (
-          <div className="text-[11px] text-muted-foreground border-t pt-2">
-            As instâncias do WhatsApp são cobradas por profissional ativo. O valor exibido considera a faixa de volume vigente e a taxa USD→BRL configurada pelo administrador.
           </div>
         )}
         <div className="text-xs text-muted-foreground text-center border-t pt-2">

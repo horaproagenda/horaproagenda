@@ -1386,6 +1386,18 @@ export function AppointmentDetailDialog({
                     <span className="truncate">{dialogProfessional.name}</span>
                   </div>
                 )}
+                {!!appointment.client?.phone && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendReminder}
+                    className="h-7 px-2 text-xs gap-1 border-green-600/40 text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Enviar lembrete no WhatsApp
+                  </Button>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 {isLockedByOther && (

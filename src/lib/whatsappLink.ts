@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildAppointmentConfirmUrl } from '@/lib/publicRoutes';
 
 /** Normalizes phone for WhatsApp links (digits only, with country code). Adds 55 if Brazilian and missing. */
 export function normalizePhoneForWaMe(phone: string): string {

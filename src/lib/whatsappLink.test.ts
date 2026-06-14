@@ -24,9 +24,9 @@ describe('normalizePhoneForWaMe', () => {
 });
 
 describe('buildWebWhatsappUrl', () => {
-  it('builds a canonical wa.me link with phone and encoded message', () => {
+  it('builds a direct WhatsApp Web link with phone and encoded message', () => {
     const url = buildWebWhatsappUrl('11987654321', 'Olá, tudo bem?');
-    expect(url).toMatch(/^https:\/\/wa\.me\/5511987654321\?text=/);
+    expect(url).toMatch(/^https:\/\/web\.whatsapp\.com\/send\?phone=5511987654321&text=/);
     expect(url).toContain(encodeURIComponent('Olá, tudo bem?'));
   });
 });
@@ -44,19 +44,19 @@ describe('openWhatsappWithMessage', () => {
     sessionStorage.clear();
   });
 
-  it('opens wa.me directly (no api.whatsapp.com) on desktop', () => {
+  it('opens WhatsApp Web directly (no api.whatsapp.com) on desktop', () => {
     vi.spyOn(window, 'open').mockReturnValue({} as Window);
 
     const result = openWhatsappWithMessage('11987654321', 'oi');
 
     expect(result.ok).toBe(true);
-    expect(result.route).toBe('wa.me');
+    expect(result.route).toBe('web.whatsapp.com');
     expect(window.open).toHaveBeenCalledTimes(1);
     expect(window.open).toHaveBeenCalledWith(
-      'https://wa.me/5511987654321?text=oi',
+      'https://web.whatsapp.com/send?phone=5511987654321&text=oi',
       '_blank',
     );
-    expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).toContain('wa.me');
+    expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).toContain('web.whatsapp.com');
     expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).not.toContain('api.whatsapp.com');
   });
 

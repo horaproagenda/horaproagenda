@@ -103,6 +103,14 @@ serve(async (req) => {
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Resolve caller tenant for cross-tenant safety on service-role queries.
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('account_owner_id')
+      .eq('id', userId)
+      .maybeSingle();
+    const callerOwner = (callerProfile as any)?.account_owner_id || userId;
+
     const body = await req.json() as PaymentRequest;
     const errors: ValidationError[] = [];
 
@@ -175,6 +183,7 @@ serve(async (req) => {
         )
       `)
       .eq('id', body.appointment_id)
+      .eq('account_owner_id', callerOwner)
       .single();
 
     console.log('Appointment query result:', { data: appointment, error: aptError });

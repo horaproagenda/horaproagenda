@@ -259,13 +259,22 @@ export function WhatsappTemplatesSettings() {
         <div className="rounded-lg bg-muted/50 p-3">
           <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
           <p className="text-xs text-muted-foreground mb-2">
-            Use apenas <strong>um colchete</strong> ao redor da variável, ex.: <code>{'{primeiro_nome}'}</code>.
+            Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
           </p>
           <div className="flex flex-wrap gap-2">
             {variablesHelp.map(v => (
-              <Badge key={v.variable} variant="outline" className="text-xs">
-                {v.variable} — {v.description}
-              </Badge>
+              <button
+                type="button"
+                key={v.variable}
+                onClick={() => insertVariable(v.variable)}
+                disabled={!isCreating && !editingId}
+                className="text-xs"
+                title={v.description}
+              >
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
+                  {v.variable} — {v.description}
+                </Badge>
+              </button>
             ))}
           </div>
         </div>

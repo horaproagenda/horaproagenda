@@ -1122,6 +1122,8 @@ export function AppointmentDetailDialog({
     const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
     setWhatsappPreviewPhone(phone);
     setWhatsappPreviewMessage(message);
+    setWhatsappPreviewTitle('Enviar recibo no WhatsApp');
+    setWhatsappPreviewDescription('Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa.');
     setWhatsappPreviewOpen(true);
   };
 

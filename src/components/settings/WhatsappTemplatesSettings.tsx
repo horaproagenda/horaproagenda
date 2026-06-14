@@ -112,6 +112,7 @@ export function WhatsappTemplatesSettings() {
       quiet_hours_end: template.quiet_hours_end ?? 20,
       professional_id: template.professional_id ?? '',
       is_active: template.is_active,
+      include_confirmation_buttons: !!template.include_confirmation_buttons,
     });
   };
 

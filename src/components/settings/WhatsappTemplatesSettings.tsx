@@ -389,6 +389,7 @@ export function WhatsappTemplatesSettings() {
             <div className="space-y-2">
               <Label>Mensagem</Label>
               <Textarea
+                ref={messageRef}
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 placeholder="Ex: Oi {primeiro_nome}, lembrando do seu horário em {data_extenso} às {horario}."
@@ -396,6 +397,21 @@ export function WhatsappTemplatesSettings() {
                 className="font-mono text-sm"
               />
             </div>
+
+            {(formData.type === 'reminder' || formData.type === 'confirmation') && (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3 bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Incluir botões de Confirmar / Cancelar</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Acrescenta automaticamente um link de <strong>Confirmar</strong> e <strong>Cancelar</strong> no final da mensagem. Quando o cliente clica, o agendamento é atualizado na sua agenda em tempo real.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.include_confirmation_buttons}
+                  onCheckedChange={(c) => setFormData({ ...formData, include_confirmation_buttons: c })}
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">

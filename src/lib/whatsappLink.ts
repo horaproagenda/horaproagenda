@@ -175,6 +175,15 @@ function firstName(full?: string): string {
   return full.trim().split(/\s+/)[0] || '';
 }
 
+function normalizeTemplateKey(key: string): string {
+  return String(key || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
+
 function fullExtendedDate(d: Date): string {
   // Ex: "segunda-feira, 1 de junho de 2026"
   return format(d, "EEEE',' d 'de' MMMM 'de' yyyy", { locale: ptBR });
@@ -211,21 +220,34 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
   const vars: Record<string, string> = {
     cliente: ctx.clientName || '',
     nome: ctx.clientName || '',
+    nome_cliente: ctx.clientName || '',
+    cliente_nome: ctx.clientName || '',
+    client: ctx.clientName || '',
+    client_name: ctx.clientName || '',
     primeiro_nome: firstName(ctx.clientName),
+    primeironome: firstName(ctx.clientName),
     servico: ctx.serviceName || '',
+    servico_nome: ctx.serviceName || '',
+    service: ctx.serviceName || '',
+    service_name: ctx.serviceName || '',
     profissional: ctx.professionalName || '',
+    professional: ctx.professionalName || '',
+    professional_name: ctx.professionalName || '',
     data: date ? shortDate(date) : '',
     data_sem_ano: date ? shortDateNoYear(date) : '',
+    datasemano: date ? shortDateNoYear(date) : '',
     data_extenso: date ? fullExtendedDate(date) : '',
     data_extenso_sem_ano: date ? fullExtendedDateNoYear(date) : '',
     horario: ctx.appointmentTime || '',
+    hora: ctx.appointmentTime || '',
+    time: ctx.appointmentTime || '',
     link_confirmar: confirmUrl,
     link_cancelar: cancelUrl,
     link_agendamento: linkAgendamento,
   };
 
-  let rendered = template.replace(/\{\{?\s*([a-zA-Z_]+)\s*\}?\}/g, (_m, key) => {
-    const v = vars[String(key).toLowerCase()];
+  let rendered = template.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_\s-]+)\s*\}?\}/g, (_m, key) => {
+    const v = vars[normalizeTemplateKey(key)];
     return v !== undefined ? v : _m;
   });
 

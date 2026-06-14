@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { renderTemplate } from '@/lib/whatsappLink';
 
 interface WhatsAppConnectionStatus {
   configured: boolean;
@@ -147,11 +148,12 @@ Caso precise reagendar, entre em contato conosco.
 Até breve! ✨`;
 
     const message = template 
-      ? template
-          .replace('{nome}', clientName)
-          .replace('{servico}', serviceName)
-          .replace('{data}', appointmentDate)
-          .replace('{horario}', appointmentTime)
+      ? renderTemplate(template, {
+          clientName,
+          serviceName,
+          appointmentDate,
+          appointmentTime,
+        })
       : defaultTemplate;
 
     return sendMessage(clientPhone, message);
@@ -171,7 +173,7 @@ Como presente especial, preparamos uma surpresa para você. Entre em contato par
 Um grande abraço! 🎁`;
 
     const message = template 
-      ? template.replace('{nome}', clientName)
+      ? renderTemplate(template, { clientName })
       : defaultTemplate;
 
     return sendMessage(clientPhone, message);

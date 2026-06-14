@@ -26,16 +26,29 @@ function fmtTime(d: Date) {
 function firstName(full: string): string {
   return String(full || '').trim().split(/\s+/)[0] || '';
 }
+function normalizeTemplateKey(key: string): string {
+  return String(key || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
   const map: Record<string, string> = {
     cliente: vars.cliente || '',
     nome: vars.cliente || '',
+    nome_cliente: vars.cliente || '',
+    cliente_nome: vars.cliente || '',
     name: vars.cliente || '',
     client: vars.cliente || '',
+    client_name: vars.cliente || '',
     primeiro_nome: firstName(vars.cliente || ''),
+    primeironome: firstName(vars.cliente || ''),
     data: vars.data || '',
     date: vars.data || '',
     data_sem_ano: vars.data_sem_ano || '',
+    datasemano: vars.data_sem_ano || '',
     data_extenso: vars.data_extenso || '',
     data_extenso_sem_ano: vars.data_extenso_sem_ano || '',
     horario: vars.horario || '',
@@ -51,8 +64,8 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
     link_cancelar: vars.link_cancelar || '',
     link_agendamento: vars.link_agendamento || '',
   };
-  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_]+)\s*\}?\}/g, (full, key) => {
-    const k = String(key).toLowerCase();
+  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_\s-]+)\s*\}?\}/g, (full, key) => {
+    const k = normalizeTemplateKey(key);
     return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : full;
   });
 }
@@ -162,6 +175,37 @@ async function enqueueRetry(
   }
 }
 
+function hasTemplatePlaceholders(body: string): boolean {
+  return /\{\{?\s*[a-zA-ZÀ-ÿ_\s-]+\s*\}?\}/.test(body || '');
+}
+
+async function rebuildQueuedBodyIfNeeded(supabase: any, row: any): Promise<string> {
+  if (!row.appointment_id || !row.template_type || !hasTemplatePlaceholders(row.body)) return row.body;
+  const { data: apt } = await supabase
+    .from('appointments')
+    .select('id, start_time, end_time, confirmation_token, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+    .eq('id', row.appointment_id)
+    .maybeSingle();
+  if (!apt) return row.body;
+
+  const { data: templates } = await supabase
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('is_active', true)
+    .eq('type', row.template_type);
+  const tpl = (templates || []).find((t: any) => t.professional_id === apt.professional_id)
+    || (templates || []).find((t: any) => t.professional_id == null)
+    || null;
+  const when = row.template_type === 'follow_up'
+    ? new Date((apt as any).end_time || (apt as any).start_time)
+    : new Date((apt as any).start_time);
+  return maybeAppendButtons(
+    renderTemplate(tpl?.message || row.body, buildVars(apt, when)),
+    tpl,
+    apt,
+  );
+}
+
 async function processQueue(supabase: any, summary: any) {
   const { data: pending } = await supabase
     .from('whatsapp_send_queue')
@@ -194,9 +238,10 @@ async function processQueue(supabase: any, summary: any) {
     }
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
-      await ultramsgSendText({ to: row.to_phone, body: row.body }, creds);
+      const body = await rebuildQueuedBodyIfNeeded(supabase, row);
+      await ultramsgSendText({ to: row.to_phone, body }, creds);
       await supabase.from('whatsapp_send_queue').update({
-        status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
+        body, status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);
       if (row.appointment_id && row.provider) {
         await supabase.from('appointment_reminder_log').insert({
@@ -309,14 +354,14 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  let catchup = false;
+  let catchup = true;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
-      catchup = body?.catchup === true;
+      catchup = body?.catchup !== false;
     } else {
       const url = new URL(req.url);
-      catchup = url.searchParams.get('catchup') === 'true';
+      catchup = url.searchParams.get('catchup') !== 'false';
     }
   } catch (_) { /* ignore */ }
   const summary: any = { catchup, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
@@ -338,7 +383,14 @@ serve(async (req) => {
     const pickTpl = (type: string, professional_id: string | null) => {
       const list = tplByType(type);
       const own = list.find((t: any) => t.professional_id === professional_id);
-      return own || list.find((t: any) => t.professional_id == null) || null;
+      return own || list.find((t: any) => t.professional_id == null) || list[0] || null;
+    };
+    const pickTpls = (type: string, professional_id: string | null) => {
+      const list = tplByType(type);
+      const own = list.filter((t: any) => t.professional_id === professional_id);
+      if (own.length > 0) return own;
+      const global = list.filter((t: any) => t.professional_id == null);
+      return global.length > 0 ? global : list;
     };
 
     // Load all professionals' quiet hours into a map
@@ -448,9 +500,11 @@ serve(async (req) => {
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
-          const tpl = pickTpl('reminder', profId);
-          if (!tpl) continue;
+          const applicableTpls = pickTpls('reminder', profId);
+          if (applicableTpls.length === 0) continue;
+          for (const tpl of applicableTpls) {
           const h = Number(tpl.hours_before);
+          if (!Number.isFinite(h) || h <= 0) continue;
 
           // Banda padrão: disparo dentro de ~30 min
           const triggerMs = start.getTime() - h * 3600_000;
@@ -490,6 +544,7 @@ serve(async (req) => {
             });
             summary.sent++; summary.byType.reminder++;
           }
+          }
         }
       }
     }
@@ -515,9 +570,11 @@ serve(async (req) => {
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
-          const tpl = pickTpl('confirmation', profId);
-          if (!tpl) continue;
+          const applicableTpls = pickTpls('confirmation', profId);
+          if (applicableTpls.length === 0) continue;
+          for (const tpl of applicableTpls) {
           const h = Number(tpl.hours_before);
+          if (!Number.isFinite(h) || h <= 0) continue;
 
           const triggerMs = start.getTime() - h * 3600_000;
           const hoursUntilTrigger = (triggerMs - now) / 3600_000;
@@ -554,6 +611,7 @@ serve(async (req) => {
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
             });
             summary.sent++; summary.byType.confirmation++;
+          }
           }
         }
       }

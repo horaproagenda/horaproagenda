@@ -33,7 +33,7 @@ export type Database = {
           user_role: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           action: string
           created_at?: string
           fields_changed?: string[] | null
@@ -197,7 +197,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id: string
           created_at?: string
           created_by?: string | null
@@ -274,7 +274,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id: string
           created_at?: string
           expires_at?: string
@@ -313,7 +313,7 @@ export type Database = {
           source_type: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string
           created_at?: string
           id?: string
@@ -362,7 +362,7 @@ export type Database = {
           status: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string | null
           channel: string
           error?: string | null
@@ -412,7 +412,7 @@ export type Database = {
           version: number
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount_paid?: number | null
           client_id: string
           composite_group_id?: string | null
@@ -553,7 +553,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           action: string
           created_at?: string
           id?: string
@@ -597,7 +597,7 @@ export type Database = {
         }
         Insert: {
           account_number?: string | null
-          account_owner_id: string
+          account_owner_id?: string
           agency?: string | null
           bank_code?: string | null
           created_at?: string
@@ -643,7 +643,7 @@ export type Database = {
           sale_id: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           boleto_installment_id?: string | null
           created_at?: string
           event_source: string
@@ -710,7 +710,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount?: number
           beneficiary_snapshot?: Json | null
           created_at?: string
@@ -801,7 +801,7 @@ export type Database = {
           work_sundays: boolean
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           auto_complete_appointments?: boolean
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -877,7 +877,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           card_brand_id: string
           created_at?: string
           fee_percentage?: number
@@ -919,7 +919,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           fee_behavior?: string
@@ -959,7 +959,7 @@ export type Database = {
           single_sale_id: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           affects_cash?: boolean | null
           amount?: number | null
           client_id?: string | null
@@ -1008,7 +1008,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           bank_deposits?: Json | null
           cash_amount?: number | null
           check_amount?: number | null
@@ -1077,7 +1077,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount?: number
           bank_id?: string | null
           card_fee_amount?: number | null
@@ -1146,7 +1146,7 @@ export type Database = {
           transaction_type: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount?: number
           appointment_id?: string | null
           client_id: string
@@ -1204,7 +1204,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           client_id: string
           content?: string | null
           created_at?: string
@@ -1270,7 +1270,7 @@ export type Database = {
           used_at: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           created_client_id?: string | null
@@ -1332,7 +1332,7 @@ export type Database = {
           used_at: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount_paid?: number
           appointment_id?: string | null
           client_id: string
@@ -1424,7 +1424,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           address_city?: string | null
           address_complement?: string | null
           address_neighborhood?: string | null
@@ -1538,7 +1538,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           dismissed_at?: string
           id?: string
           notification_id: string
@@ -1572,7 +1572,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           client_id?: string | null
           created_at?: string
           expires_at?: string | null
@@ -1640,7 +1640,7 @@ export type Database = {
           variables: string[] | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           category?: string
           content: string
           created_at?: string
@@ -1698,7 +1698,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1736,7 +1736,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1797,7 +1797,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           amount?: number
           appointment_id?: string | null
           bank_id?: string | null
@@ -1939,7 +1939,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           current_value?: number
@@ -2161,7 +2161,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string | null
           created_at?: string
           id?: string
@@ -2225,7 +2225,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -2281,7 +2281,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           id?: string
           interval_after_days?: number
@@ -2323,7 +2323,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           category?: string | null
           created_at?: string
           description?: string | null
@@ -2394,7 +2394,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           card_fee?: number | null
           created_at?: string
           created_by?: string | null
@@ -2583,7 +2583,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string | null
           consumption_date?: string
           created_at?: string
@@ -2664,7 +2664,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           duration_days?: number | null
@@ -2749,7 +2749,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           brand?: string | null
           category?: string | null
           created_at?: string
@@ -2830,7 +2830,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           end_time: string
@@ -2876,7 +2876,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           must_change_password?: boolean
           password_changed_at?: string | null
           professional_id: string
@@ -2998,7 +2998,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           commission_fixed_value?: number | null
           commission_percentage?: number | null
           commission_type?: string
@@ -3051,7 +3051,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           api_url?: string | null
           created_at?: string
           id?: string
@@ -3123,7 +3123,7 @@ export type Database = {
           whatsapp_from_number: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
@@ -3210,7 +3210,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           avatar_url?: string | null
           created_at?: string
           deactivated_at?: string | null
@@ -3256,7 +3256,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           client_id: string
           created_at?: string
           id?: string
@@ -3317,7 +3317,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           category?: string | null
           completed_at?: string | null
           created_at?: string
@@ -3396,7 +3396,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           capacity?: number | null
           created_at?: string
           description?: string | null
@@ -3453,7 +3453,7 @@ export type Database = {
           whatsapp_reminder: boolean
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           auto_schedule?: boolean
           category?: string | null
           client_id?: string | null
@@ -3566,7 +3566,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           container_amount?: number | null
           container_unit?: string | null
           created_at?: string
@@ -3631,7 +3631,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           category: string
           component_service_ids?: string[]
           created_at?: string
@@ -3711,7 +3711,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           bank_id?: string | null
           card_fee_amount?: number | null
           client_id?: string | null
@@ -3842,7 +3842,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           address?: string | null
           cnpj?: string | null
           company_name?: string | null
@@ -3936,7 +3936,7 @@ export type Database = {
           taken_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string | null
           client_id: string
           created_at?: string
@@ -4181,7 +4181,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -4269,7 +4269,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -4334,7 +4334,7 @@ export type Database = {
           queue_id: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string | null
           detail?: Json | null
           event?: string | null
@@ -4366,7 +4366,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           body?: string | null
           created_at?: string | null
           direction?: string | null
@@ -4428,7 +4428,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           client_id?: string | null
           created_at?: string | null
           document_path?: string | null
@@ -4481,7 +4481,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           appointment_id?: string | null
           attempts?: number
           body: string
@@ -4556,7 +4556,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           created_at?: string
           created_by?: string | null
           hours_before?: number | null

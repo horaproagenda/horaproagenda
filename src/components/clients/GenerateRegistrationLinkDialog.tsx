@@ -27,7 +27,6 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useDocumentTemplates } from '@/hooks/useDocumentTemplates';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 interface Props {

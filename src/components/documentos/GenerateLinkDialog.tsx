@@ -36,7 +36,6 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
 import { supabase } from '@/integrations/supabase/client';
 import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 const formatBRL = (n: number | string | null | undefined): string => {

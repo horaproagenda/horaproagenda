@@ -401,6 +401,8 @@ export function AppointmentDetailDialog({
   const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
   const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
   const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState('');
+  const [whatsappPreviewTitle, setWhatsappPreviewTitle] = useState('Enviar no WhatsApp');
+  const [whatsappPreviewDescription, setWhatsappPreviewDescription] = useState<string | undefined>(undefined);
   const [seriesIndex, setSeriesIndex] = useState(0);
   
   // Excess payment handling (when amount paid > amount owed)
@@ -1049,8 +1051,8 @@ export function AppointmentDetailDialog({
     toast.success('Recibo gerado para download.');
   };
 
-  const [whatsappPreviewTitle, setWhatsappPreviewTitle] = useState('Enviar no WhatsApp');
-  const [whatsappPreviewDescription, setWhatsappPreviewDescription] = useState<string | undefined>(undefined);
+
+
 
   const handleSendReminder = async () => {
     const phone = (appointment.client?.phone || '').replace(/\D/g, '');

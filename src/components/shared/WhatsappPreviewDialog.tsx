@@ -10,9 +10,10 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { MessageCircle, Copy, Check } from 'lucide-react';
+import { MessageCircle, Copy, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { Input } from '@/components/ui/input';
+import { useWhatsapp } from '@/hooks/useWhatsapp';
 
 interface WhatsappPreviewDialogProps {
   open: boolean;
@@ -42,21 +43,25 @@ export function WhatsappPreviewDialog({
   onSent,
 }: WhatsappPreviewDialogProps) {
   const [message, setMessage] = useState(initialMessage);
+  const [recipientPhone, setRecipientPhone] = useState(phone || '');
   const [copied, setCopied] = useState(false);
+  const { sendMessage, isLoading } = useWhatsapp();
 
   useEffect(() => {
     if (open) {
       setMessage(initialMessage);
+      setRecipientPhone(phone || '');
       setCopied(false);
     }
-  }, [open, initialMessage]);
+  }, [open, initialMessage, phone]);
 
-  const handleSend = () => {
-    const result = openWhatsappWithMessage(phone || '', message);
-    if (!result.ok) {
-      toast.error('Não foi possível abrir o WhatsApp.');
+  const handleSend = async () => {
+    if (!recipientPhone.trim()) {
+      toast.error('Informe o número de WhatsApp do destinatário.');
       return;
     }
+    const result = await sendMessage(recipientPhone, message);
+    if (!result) return;
     onSent?.(message);
     onOpenChange(false);
   };
@@ -84,11 +89,18 @@ export function WhatsappPreviewDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          {phone && (
-            <p className="text-xs text-muted-foreground">
-              Destinatário: <span className="font-medium text-foreground">{phone}</span>
-            </p>
-          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="whatsapp-preview-phone" className="text-sm">
+              WhatsApp do destinatário
+            </Label>
+            <Input
+              id="whatsapp-preview-phone"
+              value={recipientPhone}
+              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="(11) 99999-9999"
+              inputMode="tel"
+            />
+          </div>
           <Label htmlFor="whatsapp-preview-message" className="text-sm">
             Mensagem
           </Label>
@@ -113,9 +125,9 @@ export function WhatsappPreviewDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSend} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
-            <MessageCircle className="h-4 w-4" />
-            Enviar no WhatsApp
+          <Button onClick={handleSend} disabled={isLoading} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+            Enviar direto
           </Button>
         </DialogFooter>
       </DialogContent>

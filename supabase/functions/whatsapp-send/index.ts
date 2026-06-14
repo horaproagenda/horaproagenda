@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgSendText, normalizeBrPhone, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { evolutionSendText, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,6 +74,19 @@ serve(async (req) => {
       if (!ok) {
         return new Response(JSON.stringify({ success: false, error: 'Você só pode enviar para clientes vinculados a você.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
+    const evolution = getEvolutionConfig();
+    if (evolution.configured) {
+      try {
+        const result = await evolutionSendText({ to: phone, body: message });
+        return new Response(JSON.stringify({
+          success: true, provider: 'evolution', route: 'evolution-api',
+          data: result, instance: evolution.instance, source: 'global',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } catch (e) {
+        console.warn('Evolution send failed, falling back to UltraMsg:', e);
       }
     }
 

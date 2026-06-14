@@ -84,7 +84,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
-import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
+import { renderTemplate } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';

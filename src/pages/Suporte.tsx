@@ -12,7 +12,7 @@ import {
   MessageSquare, Mail, Phone, Clock, HelpCircle, 
   Bug, Lightbulb, AlertTriangle, Send, ExternalLink
 } from "lucide-react";
-import { buildWebWhatsappUrl, openWhatsappWithMessage } from "@/lib/whatsappLink";
+import { buildWebWhatsappUrl } from "@/lib/whatsappLink";
 import { WhatsappPreviewDialog } from "@/components/shared/WhatsappPreviewDialog";
 
 const Suporte = () => {

@@ -385,6 +385,13 @@ serve(async (req) => {
       const own = list.find((t: any) => t.professional_id === professional_id);
       return own || list.find((t: any) => t.professional_id == null) || list[0] || null;
     };
+    const pickTpls = (type: string, professional_id: string | null) => {
+      const list = tplByType(type);
+      const own = list.filter((t: any) => t.professional_id === professional_id);
+      if (own.length > 0) return own;
+      const global = list.filter((t: any) => t.professional_id == null);
+      return global.length > 0 ? global : list;
+    };
 
     // Load all professionals' quiet hours into a map
     const { data: profsRaw } = await supabase.from('professionals').select('id, user_id, quiet_hours_start, quiet_hours_end');

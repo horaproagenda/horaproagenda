@@ -1,71 +1,62 @@
+## Contexto
+
+O app é multi-tenant: várias clínicas independentes usam o mesmo banco Supabase. Hoje, várias tabelas críticas **não têm `account_owner_id`**, e as RLS policies só checam `has_role('admin')` globalmente. Resultado: um admin da Clínica A consegue ler/editar dados da Clínica B. O scanner Wiz/Supabase apontou exatamente isso.
 
 ## Objetivo
 
-Mudar o modelo de cobrança das instâncias WhatsApp:
-1. **Compra sob demanda**: nenhuma instância no pool é cobrada enquanto estiver "livre". A cobrança da instância só começa no momento em que ela é vinculada a um profissional.
-2. **Faixas de desconto por volume**: o Super Admin configura preços por quantidade de instâncias **ativas (em uso)** — quanto mais instâncias em uso, menor o custo unitário.
+Isolar 100% dos dados por `account_owner_id` (o dono da conta = clínica), sem quebrar o app em produção.
 
-> Observação: a UltraMsg não tem API pública para "comprar" instância programaticamente. O fluxo real continua sendo: admin cadastra instâncias no pool (sem custo até serem usadas), e o **billing only starts** quando o sistema atribui uma a um profissional. O custo exibido no painel reflete apenas instâncias em uso, aplicando a faixa de desconto vigente.
+## Tabelas afetadas (faltam `account_owner_id` ou RLS por tenant)
 
-## Mudanças
+Críticas (PII / financeiro / operação):
+- `business_settings`
+- `user_roles`
+- `professional_whatsapp_credentials`
+- `professional_credentials`
+- `appointments`
+- `professionals` (tem `user_id`, falta `account_owner_id` direto)
 
-### 1. Banco de dados (migration)
+Já isoladas indiretamente (confirmar via auditoria):
+- `clients`, `services`, `service_packages`, `products`, `financial_entries`, `cash_*`, `client_documents`, etc.
 
-- `ultramsg_instance_pool`:
-  - Nova coluna `activated_at TIMESTAMPTZ NULL` — preenchida quando a instância passa para `assigned`. É a partir dessa data que o sistema considera a instância sendo cobrada.
-  - `monthly_cost_usd` deixa de ser o "preço fixo" — vira fallback caso não exista faixa configurada.
+## Estratégia (segura, sem downtime)
 
-- Nova tabela `whatsapp_volume_pricing_tiers`:
-  ```text
-  id uuid pk
-  min_quantity int  (ex: 1, 5, 10, 25)
-  max_quantity int nullable  (null = "em diante")
-  unit_price_usd numeric(10,2)
-  active bool default true
-  created_at, updated_at
-  ```
-  Grants para `authenticated` (leitura) e `service_role` (tudo). RLS: leitura para admin; escrita apenas admin via `has_role`.
+Executar em **3 migrações**, cada uma idempotente e reversível:
 
-- Função `claim_ultramsg_pool_instance` atualizada para também setar `activated_at = now()` quando faz claim.
+### Migração 1 — Backfill estrutural
+1. `ALTER TABLE ... ADD COLUMN account_owner_id uuid` nas 6 tabelas críticas (nullable inicialmente).
+2. Função helper `public.get_account_owner_for_user(uuid)` (SECURITY DEFINER) que resolve `account_owner_id` a partir de `profiles.account_owner_id` (fallback = próprio id).
+3. Backfill:
+   - `business_settings.account_owner_id` = `user_id` resolvido via profiles
+   - `user_roles.account_owner_id` = idem
+   - `professional_whatsapp_credentials.account_owner_id` = via `professionals.user_id → profiles`
+   - `professional_credentials.account_owner_id` = idem
+   - `appointments.account_owner_id` = via `professionals.user_id → profiles`
+   - `professionals.account_owner_id` = via `user_id → profiles`
+4. Trigger `BEFORE INSERT` em cada tabela: se `account_owner_id IS NULL`, preencher automaticamente a partir de `auth.uid()` via `get_account_owner_for_user()`.
 
-- Trigger ao mudar status de `assigned` → `free`/`disabled`: limpa `activated_at` (encerra cobrança).
+### Migração 2 — Tornar `NOT NULL` + RLS por tenant
+1. `ALTER COLUMN account_owner_id SET NOT NULL` (após verificar 0 nulls).
+2. Função helper `public.current_account_owner_id()` (SECURITY DEFINER, STABLE) — retorna o `account_owner_id` do `auth.uid()` corrente.
+3. Reescrever **todas as policies** das 6 tabelas para combinar `has_role(...)` **+** `account_owner_id = current_account_owner_id()`.
+4. Index em `account_owner_id` em todas as 6 tabelas.
 
-- Seed inicial das faixas:
-  - 1–4 inst.: US$ 9,00
-  - 5–9 inst.: US$ 8,00
-  - 10–24 inst.: US$ 7,00
-  - 25+ inst.: US$ 6,00
+### Migração 3 — Realtime + edge functions
+1. Confirmar publicação Realtime já filtra por RLS (automático no Supabase) — apenas testar.
+2. Auditar edge functions (`admin-create-professional`, `whatsapp-claim-pool-instance`, `admin-set-user-permissions`, `admin-toggle-user-active`, `admin-delete-user`, `complete-signup`, `whatsapp-connect`) para sempre escopar queries por `account_owner_id` do caller, e nunca confiar em `professional_id` recebido do client sem validar tenant.
 
-### 2. Painel Super Admin (`WhatsappPoolCostPanel.tsx`)
+## Marcação das findings
 
-- Cards de custo passam a calcular usando faixa vigente baseada em **instâncias em uso (assigned)**:
-  - "Custo mensal estimado": apenas `assigned` × `unit_price_usd` da faixa.
-  - Remove card "pool inteiro" (já não faz sentido — pool ocioso não custa).
-  - Card novo: "Faixa atual" mostrando ex.: "5–9 inst · US$ 8,00/unid".
+Após cada migração executada e validada, marcar como `mark_as_fixed` as findings correspondentes no scanner.
 
-- Nova seção colapsável **"Faixas de desconto"**:
-  - Tabela editável (min_qty, max_qty, preço, ativo) com Add/Edit/Delete.
-  - Botão "Restaurar padrão" reseta para o seed.
+## Riscos & mitigação
 
-- Lista de instâncias mostra `activated_at` ("em uso desde dd/mm/yyyy") nas atribuídas.
+- **Risco:** backfill incorreto deixa linhas órfãs → mitigação: query de verificação no fim da Migração 1 que aborta se houver `NULL`.
+- **Risco:** policies novas bloqueiam super-admin → mitigação: super-admin (`is_super_admin()` via allowlist) bypass em todas as policies.
+- **Risco:** edge functions com `service_role` quebram → mitigação: revisão manual + teste após Migração 2.
 
-- Texto explicativo atualizado: "Instâncias livres não geram custo. Cobrança inicia quando vinculadas a um profissional."
+## Entrega
 
-### 3. Edge function `whatsapp-claim-pool-instance`
+Vou começar pela **Migração 1** (estrutural + backfill + trigger de autopreenchimento). Você revisa, aprova, e seguimos para a 2 e 3.
 
-- Sem mudança de lógica de negócio — a função RPC já cuidará do `activated_at`. Apenas garantir que a resposta retorne o timestamp.
-
-### 4. UI lateral (não-admin)
-
-- Nenhum cliente final vê esse custo. Já está oculto.
-
-## Detalhes técnicos
-
-- O cálculo de "qual faixa aplicar" roda no client (painel) e numa RPC `get_whatsapp_unit_price(qty int) returns numeric` para ser reaproveitada por relatórios futuros.
-- Realtime: assinar `ultramsg_instance_pool` e `whatsapp_volume_pricing_tiers` para o painel atualizar sem refresh.
-- Conversão USD→BRL continua via `localStorage` (`super-admin:usd-brl-rate`).
-
-## Fora do escopo
-
-- Compra automática real na UltraMsg (sem API pública). Admin segue adicionando instâncias manualmente — só que agora não há custo até o uso.
-- Histórico de cobrança mês a mês (poderia ser próximo passo se você quiser fatura mensal por profissional).
+Confirma para eu disparar a Migração 1?

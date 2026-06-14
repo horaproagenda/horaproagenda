@@ -15,7 +15,7 @@ export function normalizePhoneForWaMe(phone: string): string {
  * Build a canonical wa.me URL. This is the official WhatsApp click-to-chat link
  * that correctly routes to the installed app on mobile or to WhatsApp Web on
  * desktop without triggering the "Conexão bloqueada" screen that appears when
- * web.whatsapp.com/send is opened directly without an active session/referrer.
+ * wa.me is opened directly without an active session/referrer.
  */
 export function buildWebWhatsappUrl(phone: string, message: string): string {
   const digits = normalizePhoneForWaMe(phone);
@@ -107,7 +107,7 @@ export function openWhatsappWithMessage(
   const webUrl = buildWebWhatsappUrl(phone, message);
   const appUrl = buildWhatsappAppUrl(phone, message);
   const preferNativeApp = options.preferNativeApp ?? shouldPreferNativeWhatsapp();
-  const primaryRoute: WhatsappOpenRoute = preferNativeApp ? 'whatsapp://send' : 'web.whatsapp.com/send';
+  const primaryRoute: WhatsappOpenRoute = preferNativeApp ? 'whatsapp://send' : 'wa.me';
   const primaryUrl = preferNativeApp ? appUrl : webUrl;
 
   try {
@@ -140,7 +140,7 @@ export function openWhatsappWithMessage(
       // Best-effort only.
     }
     recordWhatsappRoute(
-      'web.whatsapp.com/send',
+      'wa.me',
       fallback ? 'opened' : 'failed',
       webUrl,
       'Exceção ao abrir WhatsApp; usando WhatsApp Web direto',
@@ -149,7 +149,7 @@ export function openWhatsappWithMessage(
 
     return {
       ok: !!fallback,
-      route: fallback ? 'web.whatsapp.com/send' : null,
+      route: fallback ? 'wa.me' : null,
       url: fallback ? webUrl : null,
       fallbackUrl: webUrl,
       fallbackScheduled: false,

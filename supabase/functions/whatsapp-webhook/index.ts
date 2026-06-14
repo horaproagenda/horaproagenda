@@ -38,7 +38,13 @@ serve(async (req) => {
 
   try {
     const expectedToken = Deno.env.get('ULTRAMSG_WEBHOOK_TOKEN');
-    if (expectedToken) {
+    if (!expectedToken) {
+      console.error('[ultramsg-webhook] ULTRAMSG_WEBHOOK_TOKEN not configured — rejecting');
+      return new Response(JSON.stringify({ ok: false, error: 'Webhook token not configured' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    {
       const url = new URL(req.url);
       const incoming =
         url.searchParams.get('token') ||
@@ -51,6 +57,7 @@ serve(async (req) => {
         });
       }
     }
+
 
     const payload = await req.json().catch(() => ({} as any));
     console.log('[ultramsg-webhook] event:', JSON.stringify(payload).slice(0, 1000));
@@ -85,10 +92,43 @@ serve(async (req) => {
       if (phone && intent) {
         // Find the most recent upcoming or recent appointment for this phone.
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, phone')
-          .limit(500);
+        // Tenant scope: resolve account_owner_id from the receiving instance
+        const instanceId = String(
+          (payload as any)?.instanceId ||
+          (payload as any)?.instance_id ||
+          data?.instanceId ||
+          data?.instance_id || ''
+        ).trim();
+
+        const tenantOwners = new Set<string>();
+        if (instanceId) {
+          const { data: poolRow } = await supabase
+            .from('ultramsg_instance_pool')
+            .select('assigned_professional_id')
+            .eq('instance_id', instanceId)
+            .maybeSingle();
+          if (poolRow?.assigned_professional_id) {
+            const { data: prof } = await supabase
+              .from('professionals')
+              .select('account_owner_id')
+              .eq('id', poolRow.assigned_professional_id)
+              .maybeSingle();
+            if (prof?.account_owner_id) tenantOwners.add(prof.account_owner_id);
+          }
+          const { data: credRows } = await supabase
+            .from('professional_whatsapp_credentials')
+            .select('account_owner_id')
+            .eq('instance_id', instanceId);
+          for (const r of credRows || []) {
+            if ((r as any).account_owner_id) tenantOwners.add((r as any).account_owner_id);
+          }
+        }
+
+        let clientsQuery = supabase.from('clients').select('id, phone, account_owner_id').limit(500);
+        if (tenantOwners.size > 0) {
+          clientsQuery = clientsQuery.in('account_owner_id', Array.from(tenantOwners));
+        }
+        const { data: clients } = await clientsQuery;
         const matchClient = (clients || []).find((c: any) => normalizePhone(c.phone || '') === phone);
 
         if (matchClient) {

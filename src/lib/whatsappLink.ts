@@ -25,7 +25,7 @@ export function buildWebWhatsappUrl(phone: string, message: string): string {
     : `https://wa.me/?text=${text}`;
 }
 
-export type WhatsappOpenRoute = 'whatsapp://send' | 'web.whatsapp.com/send';
+export type WhatsappOpenRoute = 'whatsapp://send' | 'wa.me';
 
 export interface WhatsappRouteLog {
   route: WhatsappOpenRoute;

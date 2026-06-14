@@ -48,6 +48,7 @@ type FormState = {
   quiet_hours_end: number;
   professional_id: string;
   is_active: boolean;
+  include_confirmation_buttons: boolean;
 };
 
 const initialForm: FormState = {
@@ -60,6 +61,7 @@ const initialForm: FormState = {
   quiet_hours_end: 20,
   professional_id: '',
   is_active: true,
+  include_confirmation_buttons: false,
 };
 
 export function WhatsappTemplatesSettings() {

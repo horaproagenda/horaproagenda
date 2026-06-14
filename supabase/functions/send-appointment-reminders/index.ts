@@ -354,14 +354,14 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  let catchup = false;
+  let catchup = true;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
-      catchup = body?.catchup === true;
+      catchup = body?.catchup !== false;
     } else {
       const url = new URL(req.url);
-      catchup = url.searchParams.get('catchup') === 'true';
+      catchup = url.searchParams.get('catchup') !== 'false';
     }
   } catch (_) { /* ignore */ }
   const summary: any = { catchup, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgStatus, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { evolutionStatus, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +17,23 @@ serve(async (req) => {
       const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
       professional_id = body?.professional_id;
     } catch { /* ignore */ }
+
+    const evolution = getEvolutionConfig();
+    if (evolution.configured) {
+      const st = await evolutionStatus();
+      return new Response(JSON.stringify({
+        configured: st.configured,
+        connected: st.connected,
+        provider: 'evolution',
+        source: 'global',
+        instance: st.instance ?? null,
+        state: st.state ?? null,
+        error: st.error,
+        message: st.connected
+          ? 'WhatsApp conectado via Evolution API'
+          : (st.error || 'WhatsApp não conectado'),
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const supabaseService = createClient(
       Deno.env.get('SUPABASE_URL')!,

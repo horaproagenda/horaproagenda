@@ -12,20 +12,20 @@ export function normalizePhoneForWaMe(phone: string): string {
 }
 
 /**
- * Build a canonical wa.me URL. This is the official WhatsApp click-to-chat link
- * that correctly routes to the installed app on mobile or to WhatsApp Web on
- * desktop without triggering the "Conexão bloqueada" screen that appears when
- * wa.me is opened directly without an active session/referrer.
+ * Build the direct desktop WhatsApp Web URL.
+ * `wa.me` can redirect some browsers to api.whatsapp.com, which is exactly the
+ * blocked page reported by users. Opening web.whatsapp.com directly avoids that
+ * intermediate API page and restores the previous desktop behavior.
  */
 export function buildWebWhatsappUrl(phone: string, message: string): string {
   const digits = normalizePhoneForWaMe(phone);
   const text = encodeURIComponent(message || '');
   return digits
-    ? `https://wa.me/${digits}${text ? `?text=${text}` : ''}`
-    : `https://wa.me/?text=${text}`;
+    ? `https://web.whatsapp.com/send?phone=${digits}${text ? `&text=${text}` : ''}`
+    : `https://web.whatsapp.com/send${text ? `?text=${text}` : ''}`;
 }
 
-export type WhatsappOpenRoute = 'whatsapp://send' | 'wa.me';
+export type WhatsappOpenRoute = 'whatsapp://send' | 'web.whatsapp.com';
 
 export interface WhatsappRouteLog {
   route: WhatsappOpenRoute;
@@ -107,7 +107,7 @@ export function openWhatsappWithMessage(
   const webUrl = buildWebWhatsappUrl(phone, message);
   const appUrl = buildWhatsappAppUrl(phone, message);
   const preferNativeApp = options.preferNativeApp ?? shouldPreferNativeWhatsapp();
-  const primaryRoute: WhatsappOpenRoute = preferNativeApp ? 'whatsapp://send' : 'wa.me';
+  const primaryRoute: WhatsappOpenRoute = preferNativeApp ? 'whatsapp://send' : 'web.whatsapp.com';
   const primaryUrl = preferNativeApp ? appUrl : webUrl;
 
   try {
@@ -140,7 +140,7 @@ export function openWhatsappWithMessage(
       // Best-effort only.
     }
     recordWhatsappRoute(
-      'wa.me',
+      'web.whatsapp.com',
       fallback ? 'opened' : 'failed',
       webUrl,
       'Exceção ao abrir WhatsApp; usando WhatsApp Web direto',
@@ -149,7 +149,7 @@ export function openWhatsappWithMessage(
 
     return {
       ok: !!fallback,
-      route: fallback ? 'wa.me' : null,
+      route: fallback ? 'web.whatsapp.com' : null,
       url: fallback ? webUrl : null,
       fallbackUrl: webUrl,
       fallbackScheduled: false,

@@ -119,6 +119,7 @@ const App = () => {
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />
                 <Route path="/cadastro-cliente/:token" element={<CadastroCliente />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
+                <Route path="/c/:token" element={<ConfirmarAgendamento />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
                 <Route path="/conta-inativa" element={<ContaInativa />} />

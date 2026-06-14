@@ -11,13 +11,18 @@ export function normalizePhoneForWaMe(phone: string): string {
   return digits;
 }
 
-/** Build a web.whatsapp.com URL for browsers already logged into WhatsApp Web. */
+/**
+ * Build a canonical wa.me URL. This is the official WhatsApp click-to-chat link
+ * that correctly routes to the installed app on mobile or to WhatsApp Web on
+ * desktop without triggering the "Conexão bloqueada" screen that appears when
+ * web.whatsapp.com/send is opened directly without an active session/referrer.
+ */
 export function buildWebWhatsappUrl(phone: string, message: string): string {
   const digits = normalizePhoneForWaMe(phone);
   const text = encodeURIComponent(message || '');
   return digits
-    ? `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
-    : `https://web.whatsapp.com/send?text=${text}`;
+    ? `https://wa.me/${digits}${text ? `?text=${text}` : ''}`
+    : `https://wa.me/?text=${text}`;
 }
 
 export type WhatsappOpenRoute = 'whatsapp://send' | 'web.whatsapp.com/send';

@@ -2091,6 +2091,7 @@ export type Database = {
       }
       package_appointment_history: {
         Row: {
+          account_owner_id: string
           appointment_id: string | null
           change_reason: string
           changed_by: string | null
@@ -2105,6 +2106,7 @@ export type Database = {
           previous_status: string | null
         }
         Insert: {
+          account_owner_id?: string
           appointment_id?: string | null
           change_reason?: string
           changed_by?: string | null
@@ -2119,6 +2121,7 @@ export type Database = {
           previous_status?: string | null
         }
         Update: {
+          account_owner_id?: string
           appointment_id?: string | null
           change_reason?: string
           changed_by?: string | null
@@ -2433,6 +2436,7 @@ export type Database = {
       }
       payments_audit: {
         Row: {
+          account_owner_id: string | null
           amount: number | null
           client_id: string | null
           created_at: string | null
@@ -2444,6 +2448,7 @@ export type Database = {
           single_sale_id: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           amount?: number | null
           client_id?: string | null
           created_at?: string | null
@@ -2455,6 +2460,7 @@ export type Database = {
           single_sale_id?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           amount?: number | null
           client_id?: string | null
           created_at?: string | null

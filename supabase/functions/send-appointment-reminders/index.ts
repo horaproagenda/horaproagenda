@@ -26,16 +26,29 @@ function fmtTime(d: Date) {
 function firstName(full: string): string {
   return String(full || '').trim().split(/\s+/)[0] || '';
 }
+function normalizeTemplateKey(key: string): string {
+  return String(key || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
   const map: Record<string, string> = {
     cliente: vars.cliente || '',
     nome: vars.cliente || '',
+    nome_cliente: vars.cliente || '',
+    cliente_nome: vars.cliente || '',
     name: vars.cliente || '',
     client: vars.cliente || '',
+    client_name: vars.cliente || '',
     primeiro_nome: firstName(vars.cliente || ''),
+    primeironome: firstName(vars.cliente || ''),
     data: vars.data || '',
     date: vars.data || '',
     data_sem_ano: vars.data_sem_ano || '',
+    datasemano: vars.data_sem_ano || '',
     data_extenso: vars.data_extenso || '',
     data_extenso_sem_ano: vars.data_extenso_sem_ano || '',
     horario: vars.horario || '',
@@ -51,8 +64,8 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
     link_cancelar: vars.link_cancelar || '',
     link_agendamento: vars.link_agendamento || '',
   };
-  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_]+)\s*\}?\}/g, (full, key) => {
-    const k = String(key).toLowerCase();
+  return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_\s-]+)\s*\}?\}/g, (full, key) => {
+    const k = normalizeTemplateKey(key);
     return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : full;
   });
 }

@@ -500,9 +500,11 @@ serve(async (req) => {
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
-          const tpl = pickTpl('reminder', profId);
-          if (!tpl) continue;
+          const applicableTpls = pickTpls('reminder', profId);
+          if (applicableTpls.length === 0) continue;
+          for (const tpl of applicableTpls) {
           const h = Number(tpl.hours_before);
+          if (!Number.isFinite(h) || h <= 0) continue;
 
           // Banda padrão: disparo dentro de ~30 min
           const triggerMs = start.getTime() - h * 3600_000;
@@ -541,6 +543,7 @@ serve(async (req) => {
               appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
             });
             summary.sent++; summary.byType.reminder++;
+          }
           }
         }
       }

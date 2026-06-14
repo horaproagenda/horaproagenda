@@ -216,45 +216,19 @@ function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: Plan
       <CardContent>
         <div className="space-y-2">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
+            <span className="text-2xl font-bold">{formatBRL(grandTotalMonthly)}</span>
             <span className="text-sm text-muted-foreground">/mês</span>
             {!isMonthly && (
               <span className="text-xs text-muted-foreground line-through">
-                {formatBRL(plan.priceBRL)}
+                {formatBRL(plan.priceBRL + waMonthly)}
               </span>
             )}
           </div>
-
-          {waMonthly > 0 && (
-            <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
-              <div className="flex items-center gap-1 font-medium">
-                <MessageCircle className="h-3 w-3" />
-                + {formatBRL(waMonthly)}/mês em instâncias WhatsApp
-              </div>
-              <div className="text-muted-foreground">
-                {plan.seats} × {formatBRL(whatsappCost!.unitBrl)} (1 inst./profissional)
-              </div>
+          {!isMonthly && (
+            <div className="border-t pt-1.5 text-[10px] text-muted-foreground">
+              {formatBRL(grandTotalCycle)} a cada {billingMonths} meses
             </div>
           )}
-
-          <div className="border-t pt-1.5 text-xs">
-            {isMonthly ? (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total mensal</span>
-                <span className="font-semibold tabular-nums">{formatBRL(grandTotalMonthly)}</span>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total mensal equivalente</span>
-                  <span className="font-semibold tabular-nums">{formatBRL(grandTotalMonthly)}</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {formatBRL(grandTotalCycle)} a cada {billingMonths} meses
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>
@@ -292,20 +266,7 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
         {!isMonthly && (
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Plano sem desconto</span>
-            <span className="line-through">{formatBRL(fullPrice)}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-sm">
-          <span>Plano {isMonthly ? '(mensal)' : `(${billingMonths} meses)`}</span>
-          <span className="font-medium tabular-nums">{formatBRL(planTotal)}</span>
-        </div>
-        {waMonthly > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="flex items-center gap-1">
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-              Instâncias WhatsApp ({plan.seats} × {formatBRL(whatsappCost!.unitBrl)}/mês)
-            </span>
-            <span className="font-medium tabular-nums">{formatBRL(waCycle)}</span>
+            <span className="line-through">{formatBRL(fullPrice + waCycle)}</span>
           </div>
         )}
         <div className="flex justify-between text-lg font-bold border-t pt-3">
@@ -315,11 +276,6 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
         {!isMonthly && saved > 0 && (
           <div className="text-xs text-emerald-600 text-right">
             Você economiza {formatBRL(saved)} no plano por ciclo
-          </div>
-        )}
-        {waMonthly > 0 && (
-          <div className="text-[11px] text-muted-foreground border-t pt-2">
-            As instâncias do WhatsApp são cobradas por profissional ativo. O valor exibido considera a faixa de volume vigente e a taxa USD→BRL configurada pelo administrador.
           </div>
         )}
         <div className="text-xs text-muted-foreground text-center border-t pt-2">

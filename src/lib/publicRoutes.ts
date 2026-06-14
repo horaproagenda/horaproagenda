@@ -14,6 +14,7 @@ export const CLIENT_REGISTRATION_ROUTE = '/cadastro-cliente/:token';
 export const DOCUMENT_FILL_ROUTE = '/preencher-documento/:slug';
 export const DOCUMENT_FILL_ROUTE_LEGACY = '/preencher-documento';
 export const UNSUBSCRIBE_ROUTE = '/unsubscribe';
+export const APPOINTMENT_CONFIRM_ROUTE = '/c/:token';
 
 /** Lista usada pelos testes para validar que `App.tsx` registra todas elas. */
 export const PUBLIC_ROUTES = [
@@ -21,6 +22,7 @@ export const PUBLIC_ROUTES = [
   DOCUMENT_FILL_ROUTE,
   DOCUMENT_FILL_ROUTE_LEGACY,
   UNSUBSCRIBE_ROUTE,
+  APPOINTMENT_CONFIRM_ROUTE,
 ] as const;
 
 /** Base canônica para URLs públicas compartilhadas (WhatsApp, e-mail, etc.). */
@@ -37,4 +39,9 @@ export function getPublicBaseUrl(): string {
 
 export function buildClientRegistrationUrl(token: string): string {
   return `${getPublicBaseUrl()}/cadastro-cliente/${token}`;
+}
+
+export function buildAppointmentConfirmUrl(token: string, action?: 'confirm' | 'cancel'): string {
+  const base = `${getPublicBaseUrl()}/c/${token}`;
+  return action ? `${base}?a=${action}` : base;
 }

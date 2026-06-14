@@ -68,6 +68,7 @@ import {
   Send,
   FileText,
   RotateCcw,
+  MessageCircle,
 } from 'lucide-react';
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
@@ -83,7 +84,7 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
+import { openWhatsappWithMessage, renderTemplate } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -1048,6 +1049,63 @@ export function AppointmentDetailDialog({
     toast.success('Recibo gerado para download.');
   };
 
+  const [whatsappPreviewTitle, setWhatsappPreviewTitle] = useState('Enviar no WhatsApp');
+  const [whatsappPreviewDescription, setWhatsappPreviewDescription] = useState<string | undefined>(undefined);
+
+  const handleSendReminder = async () => {
+    const phone = (appointment.client?.phone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sem telefone cadastrado.');
+      return;
+    }
+    // Try to load an active reminder template for this professional (or global)
+    let templateMessage: string | null = null;
+    let includeButtons = false;
+    try {
+      const { data } = await (supabase as any)
+        .from('whatsapp_templates')
+        .select('message, include_confirmation_buttons, professional_id, is_active, type')
+        .in('type', ['reminder', 'confirmation'])
+        .eq('is_active', true);
+      const list = (data || []) as Array<any>;
+      const match = list.find(t => t.professional_id === appointment.professional_id)
+        || list.find(t => !t.professional_id)
+        || list[0];
+      if (match) {
+        templateMessage = match.message;
+        includeButtons = !!match.include_confirmation_buttons;
+      }
+    } catch {
+      // ignore — falls back to default below
+    }
+
+    const fallback =
+      `Olá {primeiro_nome}! 👋\n\nPassando para lembrar do seu agendamento:\n📅 *{servico}*\n🗓️ {data_extenso}\n⏰ {horario}\n\nPor favor, confirme sua presença.`;
+    const tpl = templateMessage || fallback;
+    const useButtons = templateMessage ? includeButtons : true;
+
+    const message = renderTemplate(tpl, {
+      clientName: safeClient.name,
+      serviceName: appointment.service?.name || 'seu agendamento',
+      professionalName: dialogProfessional?.name,
+      appointmentDate: appointment.start_time,
+      appointmentTime: format(new Date(appointment.start_time), 'HH:mm'),
+      confirmationToken: (appointment as any)?.confirmation_token || null,
+      includeConfirmationButtons: useButtons,
+    });
+
+    setWhatsappPreviewPhone(phone);
+    setWhatsappPreviewMessage(message);
+    setWhatsappPreviewTitle('Enviar lembrete no WhatsApp');
+    setWhatsappPreviewDescription(
+      useButtons
+        ? 'Revise a mensagem. O cliente poderá confirmar ou cancelar pelos links — a agenda é atualizada automaticamente.'
+        : 'Revise e edite a mensagem antes de enviar para o WhatsApp.'
+    );
+    setWhatsappPreviewOpen(true);
+  };
+
+
   const handleSendReceipt = async () => {
     const phone = appointment.client?.phone?.replace(/\D/g, '');
     if (!phone) {
@@ -1064,6 +1122,8 @@ export function AppointmentDetailDialog({
     const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
     setWhatsappPreviewPhone(phone);
     setWhatsappPreviewMessage(message);
+    setWhatsappPreviewTitle('Enviar recibo no WhatsApp');
+    setWhatsappPreviewDescription('Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa.');
     setWhatsappPreviewOpen(true);
   };
 
@@ -1327,6 +1387,18 @@ export function AppointmentDetailDialog({
                     />
                     <span className="truncate">{dialogProfessional.name}</span>
                   </div>
+                )}
+                {!!appointment.client?.phone && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendReminder}
+                    className="h-7 px-2 text-xs gap-1 border-green-600/40 text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Enviar lembrete no WhatsApp
+                  </Button>
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
@@ -2694,9 +2766,9 @@ export function AppointmentDetailDialog({
         onOpenChange={setWhatsappPreviewOpen}
         phone={whatsappPreviewPhone}
         initialMessage={whatsappPreviewMessage}
-        title="Enviar recibo no WhatsApp"
-        description="Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa."
-        onSent={() => toast.info('WhatsApp aberto. Baixe o PDF e anexe na conversa.')}
+        title={whatsappPreviewTitle}
+        description={whatsappPreviewDescription}
+        onSent={() => toast.success('WhatsApp aberto. Confirme o envio da mensagem.')}
       />
     </>
   );

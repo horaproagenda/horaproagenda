@@ -392,6 +392,8 @@ export type Database = {
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null
+          confirmation_responded_at: string | null
+          confirmation_token: string | null
           created_at: string
           created_by: string | null
           discount_amount: number
@@ -417,6 +419,8 @@ export type Database = {
           client_id: string
           composite_group_id?: string | null
           composite_sequence_order?: number | null
+          confirmation_responded_at?: string | null
+          confirmation_token?: string | null
           created_at?: string
           created_by?: string | null
           discount_amount?: number
@@ -442,6 +446,8 @@ export type Database = {
           client_id?: string
           composite_group_id?: string | null
           composite_sequence_order?: number | null
+          confirmation_responded_at?: string | null
+          confirmation_token?: string | null
           created_at?: string
           created_by?: string | null
           discount_amount?: number
@@ -4544,6 +4550,7 @@ export type Database = {
           created_by: string | null
           hours_before: number | null
           id: string
+          include_confirmation_buttons: boolean
           is_active: boolean
           message: string
           name: string
@@ -4561,6 +4568,7 @@ export type Database = {
           created_by?: string | null
           hours_before?: number | null
           id?: string
+          include_confirmation_buttons?: boolean
           is_active?: boolean
           message: string
           name: string
@@ -4578,6 +4586,7 @@ export type Database = {
           created_by?: string | null
           hours_before?: number | null
           id?: string
+          include_confirmation_buttons?: boolean
           is_active?: boolean
           message?: string
           name?: string
@@ -4699,6 +4708,10 @@ export type Database = {
       close_cash_register: {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
+      }
+      confirm_appointment_by_token: {
+        Args: { p_action: string; p_token: string }
+        Returns: Json
       }
       confirmar_codigo_whatsapp: {
         Args: { p_codigo: string; p_id: string }
@@ -5003,6 +5016,8 @@ export type Database = {
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null
+          confirmation_responded_at: string | null
+          confirmation_token: string | null
           created_at: string
           created_by: string | null
           discount_amount: number

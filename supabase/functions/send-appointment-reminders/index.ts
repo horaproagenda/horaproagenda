@@ -7,21 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PUBLIC_APP_BASE = (Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://agendalume.app').replace(/\/+$/, '');
+
 function fmtDate(d: Date) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+}
+function fmtDateNoYear(d: Date) {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+}
+function fmtDateExtenso(d: Date, withYear = true) {
+  return d.toLocaleDateString('pt-BR', withYear
+    ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' }
+    : { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' });
 }
 function fmtTime(d: Date) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 }
+function firstName(full: string): string {
+  return String(full || '').trim().split(/\s+/)[0] || '';
+}
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
-  // Aceita {{var}}, {var} e variações em maiúsculas/acentos comuns.
   const map: Record<string, string> = {
     cliente: vars.cliente || '',
     nome: vars.cliente || '',
     name: vars.cliente || '',
     client: vars.cliente || '',
+    primeiro_nome: firstName(vars.cliente || ''),
     data: vars.data || '',
     date: vars.data || '',
+    data_sem_ano: vars.data_sem_ano || '',
+    data_extenso: vars.data_extenso || '',
+    data_extenso_sem_ano: vars.data_extenso_sem_ano || '',
     horario: vars.horario || '',
     horário: vars.horario || '',
     hora: vars.horario || '',
@@ -31,13 +47,45 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
     service: vars.servico || '',
     profissional: vars.profissional || '',
     professional: vars.profissional || '',
+    link_confirmar: vars.link_confirmar || '',
+    link_cancelar: vars.link_cancelar || '',
+    link_agendamento: vars.link_agendamento || '',
   };
-  // Substitui {{var}} e {var} (case-insensitive, com ou sem espaços)
   return tpl.replace(/\{\{?\s*([a-zA-ZÀ-ÿ_]+)\s*\}?\}/g, (full, key) => {
     const k = String(key).toLowerCase();
     return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : full;
   });
 }
+
+function buildVars(apt: any, when: Date) {
+  const token = (apt as any).confirmation_token || '';
+  const confirmUrl = token ? `${PUBLIC_APP_BASE}/c/${token}?a=confirm` : '';
+  const cancelUrl = token ? `${PUBLIC_APP_BASE}/c/${token}?a=cancel` : '';
+  return {
+    cliente: (apt as any).client?.name || 'cliente',
+    data: fmtDate(when),
+    data_sem_ano: fmtDateNoYear(when),
+    data_extenso: fmtDateExtenso(when, true),
+    data_extenso_sem_ano: fmtDateExtenso(when, false),
+    horario: fmtTime(when),
+    servico: (apt as any).service?.name || 'atendimento',
+    profissional: (apt as any).professional?.name || '',
+    link_confirmar: confirmUrl,
+    link_cancelar: cancelUrl,
+    link_agendamento: token ? `${PUBLIC_APP_BASE}/c/${token}` : '',
+  };
+}
+
+function maybeAppendButtons(message: string, tpl: any, apt: any): string {
+  if (!tpl?.include_confirmation_buttons) return message;
+  const token = (apt as any).confirmation_token;
+  if (!token) return message;
+  const confirmUrl = `${PUBLIC_APP_BASE}/c/${token}?a=confirm`;
+  const cancelUrl = `${PUBLIC_APP_BASE}/c/${token}?a=cancel`;
+  if (message.includes(confirmUrl)) return message;
+  return `${message}\n\n👉 *Confirmar presença:* ${confirmUrl}\n❌ *Cancelar:* ${cancelUrl}\n\nResponda esta mensagem com *CONFIRMAR* ou *CANCELAR* se preferir.`;
+}
+
 
 function currentHourSP(): number {
   const now = new Date();
@@ -424,12 +472,11 @@ serve(async (req) => {
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').maybeSingle();
           if (existing) continue;
 
-          const message = renderTemplate(tpl.message, {
-            cliente: (apt as any).client?.name || 'cliente',
-            data: fmtDate(start), horario: fmtTime(start),
-            servico: (apt as any).service?.name || 'atendimento',
-            profissional: (apt as any).professional?.name || '',
-          });
+          const message = maybeAppendButtons(
+            renderTemplate(tpl.message, buildVars(apt, start)),
+            tpl,
+            apt,
+          );
           const payload = {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'reminder', hours_before: h, provider: 'whatsapp',
@@ -490,12 +537,11 @@ serve(async (req) => {
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').maybeSingle();
           if (existing) continue;
 
-          const message = renderTemplate(tpl.message, {
-            cliente: (apt as any).client?.name || 'cliente',
-            data: fmtDate(start), horario: fmtTime(start),
-            servico: (apt as any).service?.name || 'atendimento',
-            profissional: (apt as any).professional?.name || '',
-          });
+          const message = maybeAppendButtons(
+            renderTemplate(tpl.message, buildVars(apt, start)),
+            tpl,
+            apt,
+          );
           const payload = {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'confirmation', hours_before: h, provider: 'whatsapp_confirmation',
@@ -543,12 +589,11 @@ serve(async (req) => {
             .select('id').eq('appointment_id', apt.id).eq('hours_before', -off).eq('provider', 'whatsapp_followup').maybeSingle();
           if (existing) continue;
 
-          const message = renderTemplate(tpl.message, {
-            cliente: (apt as any).client?.name || 'cliente',
-            data: fmtDate(end), horario: fmtTime(end),
-            servico: (apt as any).service?.name || 'atendimento',
-            profissional: (apt as any).professional?.name || '',
-          });
+          const message = maybeAppendButtons(
+            renderTemplate(tpl.message, buildVars(apt, end)),
+            tpl,
+            apt,
+          );
           const payload = {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'follow_up', hours_before: -off, provider: 'whatsapp_followup',

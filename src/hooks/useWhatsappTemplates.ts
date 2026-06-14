@@ -13,6 +13,7 @@ export interface WhatsappTemplate {
   quiet_hours_end: number | null;
   professional_id: string | null;
   is_active: boolean;
+  include_confirmation_buttons?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Plus, Edit2, Trash2, Save, X, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,8 @@ const variablesHelp = [
   { variable: '{horario}', description: 'Horário do agendamento' },
   { variable: '{servico}', description: 'Nome do serviço' },
   { variable: '{profissional}', description: 'Nome do profissional' },
+  { variable: '{link_confirmar}', description: 'Link para o cliente confirmar' },
+  { variable: '{link_cancelar}', description: 'Link para o cliente cancelar' },
 ];
 
 const MAX_TEMPLATES_PER_PROFESSIONAL = 4;
@@ -46,6 +48,7 @@ type FormState = {
   quiet_hours_end: number;
   professional_id: string;
   is_active: boolean;
+  include_confirmation_buttons: boolean;
 };
 
 const initialForm: FormState = {
@@ -58,6 +61,7 @@ const initialForm: FormState = {
   quiet_hours_end: 20,
   professional_id: '',
   is_active: true,
+  include_confirmation_buttons: false,
 };
 
 export function WhatsappTemplatesSettings() {
@@ -73,6 +77,25 @@ export function WhatsappTemplatesSettings() {
   const [ctxLoaded, setCtxLoaded] = useState(false);
   const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
   const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
+  const messageRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const insertVariable = (variable: string) => {
+    const el = messageRef.current;
+    const current = formData.message || '';
+    if (!el) {
+      setFormData((p) => ({ ...p, message: current + (current && !current.endsWith(' ') ? ' ' : '') + variable }));
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + variable + current.slice(end);
+    setFormData((p) => ({ ...p, message: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + variable.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -108,6 +131,7 @@ export function WhatsappTemplatesSettings() {
       quiet_hours_end: template.quiet_hours_end ?? 20,
       professional_id: template.professional_id ?? '',
       is_active: template.is_active,
+      include_confirmation_buttons: !!template.include_confirmation_buttons,
     });
   };
 
@@ -146,6 +170,7 @@ export function WhatsappTemplatesSettings() {
       quiet_hours_end: null,
       professional_id: targetProfId,
       is_active: formData.is_active,
+      include_confirmation_buttons: formData.include_confirmation_buttons,
     };
     if (editingId) {
       updateTemplate.mutate({ id: editingId, ...payload });
@@ -177,6 +202,8 @@ export function WhatsappTemplatesSettings() {
       professionalName: professionals.find(p => p.id === formData.professional_id)?.name || 'Profissional',
       appointmentDate: new Date(),
       appointmentTime: '14:30',
+      confirmationToken: '00000000-0000-0000-0000-000000000000',
+      includeConfirmationButtons: formData.include_confirmation_buttons,
     });
     setWhatsappPreviewMessage(message);
     setWhatsappPreviewOpen(true);
@@ -232,13 +259,22 @@ export function WhatsappTemplatesSettings() {
         <div className="rounded-lg bg-muted/50 p-3">
           <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
           <p className="text-xs text-muted-foreground mb-2">
-            Use apenas <strong>um colchete</strong> ao redor da variável, ex.: <code>{'{primeiro_nome}'}</code>.
+            Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
           </p>
           <div className="flex flex-wrap gap-2">
             {variablesHelp.map(v => (
-              <Badge key={v.variable} variant="outline" className="text-xs">
-                {v.variable} — {v.description}
-              </Badge>
+              <button
+                type="button"
+                key={v.variable}
+                onClick={() => insertVariable(v.variable)}
+                disabled={!isCreating && !editingId}
+                className="text-xs"
+                title={v.description}
+              >
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
+                  {v.variable} — {v.description}
+                </Badge>
+              </button>
             ))}
           </div>
         </div>
@@ -353,6 +389,7 @@ export function WhatsappTemplatesSettings() {
             <div className="space-y-2">
               <Label>Mensagem</Label>
               <Textarea
+                ref={messageRef}
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 placeholder="Ex: Oi {primeiro_nome}, lembrando do seu horário em {data_extenso} às {horario}."
@@ -360,6 +397,21 @@ export function WhatsappTemplatesSettings() {
                 className="font-mono text-sm"
               />
             </div>
+
+            {(formData.type === 'reminder' || formData.type === 'confirmation') && (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3 bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Incluir botões de Confirmar / Cancelar</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Acrescenta automaticamente um link de <strong>Confirmar</strong> e <strong>Cancelar</strong> no final da mensagem. Quando o cliente clica, o agendamento é atualizado na sua agenda em tempo real.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.include_confirmation_buttons}
+                  onCheckedChange={(c) => setFormData({ ...formData, include_confirmation_buttons: c })}
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">

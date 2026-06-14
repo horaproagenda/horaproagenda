@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildAppointmentConfirmUrl } from '@/lib/publicRoutes';
 
 /** Normalizes phone for WhatsApp links (digits only, with country code). Adds 55 if Brazilian and missing. */
 export function normalizePhoneForWaMe(phone: string): string {
@@ -158,6 +159,10 @@ export interface TemplateRenderContext {
   professionalName?: string;
   appointmentDate?: Date | string | null;
   appointmentTime?: string | null;
+  /** Token único do agendamento para gerar links de confirmar/cancelar. */
+  confirmationToken?: string | null;
+  /** Adiciona ao final da mensagem um bloco com botões de Confirmar/Cancelar. */
+  includeConfirmationButtons?: boolean;
 }
 
 function firstName(full?: string): string {
@@ -194,6 +199,10 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
     if (isNaN(date.getTime())) date = null;
   }
 
+  const confirmUrl = ctx.confirmationToken ? buildAppointmentConfirmUrl(ctx.confirmationToken, 'confirm') : '';
+  const cancelUrl = ctx.confirmationToken ? buildAppointmentConfirmUrl(ctx.confirmationToken, 'cancel') : '';
+  const linkAgendamento = ctx.confirmationToken ? buildAppointmentConfirmUrl(ctx.confirmationToken) : '';
+
   const vars: Record<string, string> = {
     cliente: ctx.clientName || '',
     nome: ctx.clientName || '',
@@ -205,12 +214,22 @@ export function renderTemplate(template: string, ctx: TemplateRenderContext): st
     data_extenso: date ? fullExtendedDate(date) : '',
     data_extenso_sem_ano: date ? fullExtendedDateNoYear(date) : '',
     horario: ctx.appointmentTime || '',
+    link_confirmar: confirmUrl,
+    link_cancelar: cancelUrl,
+    link_agendamento: linkAgendamento,
   };
 
-  return template.replace(/\{\{?\s*([a-zA-Z_]+)\s*\}?\}/g, (_m, key) => {
+  let rendered = template.replace(/\{\{?\s*([a-zA-Z_]+)\s*\}?\}/g, (_m, key) => {
     const v = vars[String(key).toLowerCase()];
     return v !== undefined ? v : _m;
   });
+
+  if (ctx.includeConfirmationButtons && ctx.confirmationToken) {
+    const block = `\n\n👉 *Confirmar presença:* ${confirmUrl}\n❌ *Cancelar:* ${cancelUrl}\n\nResponda esta mensagem com *CONFIRMAR* ou *CANCELAR* se preferir.`;
+    if (!rendered.includes(confirmUrl)) rendered += block;
+  }
+
+  return rendered;
 }
 
 /**

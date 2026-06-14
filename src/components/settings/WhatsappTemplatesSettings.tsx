@@ -151,6 +151,7 @@ export function WhatsappTemplatesSettings() {
       quiet_hours_end: null,
       professional_id: targetProfId,
       is_active: formData.is_active,
+      include_confirmation_buttons: formData.include_confirmation_buttons,
     };
     if (editingId) {
       updateTemplate.mutate({ id: editingId, ...payload });

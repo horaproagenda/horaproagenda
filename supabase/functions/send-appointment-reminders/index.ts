@@ -175,6 +175,37 @@ async function enqueueRetry(
   }
 }
 
+function hasTemplatePlaceholders(body: string): boolean {
+  return /\{\{?\s*[a-zA-ZÀ-ÿ_\s-]+\s*\}?\}/.test(body || '');
+}
+
+async function rebuildQueuedBodyIfNeeded(supabase: any, row: any): Promise<string> {
+  if (!row.appointment_id || !row.template_type || !hasTemplatePlaceholders(row.body)) return row.body;
+  const { data: apt } = await supabase
+    .from('appointments')
+    .select('id, start_time, end_time, confirmation_token, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+    .eq('id', row.appointment_id)
+    .maybeSingle();
+  if (!apt) return row.body;
+
+  const { data: templates } = await supabase
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('is_active', true)
+    .eq('type', row.template_type);
+  const tpl = (templates || []).find((t: any) => t.professional_id === apt.professional_id)
+    || (templates || []).find((t: any) => t.professional_id == null)
+    || null;
+  const when = row.template_type === 'follow_up'
+    ? new Date((apt as any).end_time || (apt as any).start_time)
+    : new Date((apt as any).start_time);
+  return maybeAppendButtons(
+    renderTemplate(tpl?.message || row.body, buildVars(apt, when)),
+    tpl,
+    apt,
+  );
+}
+
 async function processQueue(supabase: any, summary: any) {
   const { data: pending } = await supabase
     .from('whatsapp_send_queue')
@@ -207,9 +238,10 @@ async function processQueue(supabase: any, summary: any) {
     }
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
-      await ultramsgSendText({ to: row.to_phone, body: row.body }, creds);
+      const body = await rebuildQueuedBodyIfNeeded(supabase, row);
+      await ultramsgSendText({ to: row.to_phone, body }, creds);
       await supabase.from('whatsapp_send_queue').update({
-        status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
+        body, status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);
       if (row.appointment_id && row.provider) {
         await supabase.from('appointment_reminder_log').insert({

@@ -51,7 +51,8 @@ export function useUserRoles() {
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role });
+        // account_owner_id is auto-filled by a BEFORE INSERT trigger.
+        .insert({ user_id: userId, role } as never);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -104,19 +104,26 @@ serve(async (req) => {
 
     if (errors.length) return new Response(JSON.stringify({ success: false, errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    // Duplicate checks
+    // Duplicate checks — scoped to the link's tenant to avoid cross-tenant enumeration.
+    const tenantOwner = (link as any).account_owner_id;
     const cleanPhone = body.phone.replace(/\D/g, '');
-    const { data: dupPhone } = await admin.from('clients').select('id').eq('phone', cleanPhone).maybeSingle();
+    let phoneQ = admin.from('clients').select('id').eq('phone', cleanPhone);
+    if (tenantOwner) phoneQ = phoneQ.eq('account_owner_id', tenantOwner);
+    const { data: dupPhone } = await phoneQ.maybeSingle();
     if (dupPhone) return new Response(JSON.stringify({ success: false, error: 'Este telefone já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     if (!isPJ && body.cpf) {
       const cleanCpf = body.cpf.replace(/\D/g, '');
-      const { data: dup } = await admin.from('clients').select('id').eq('cpf', cleanCpf).maybeSingle();
+      let q = admin.from('clients').select('id').eq('cpf', cleanCpf);
+      if (tenantOwner) q = q.eq('account_owner_id', tenantOwner);
+      const { data: dup } = await q.maybeSingle();
       if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CPF já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (isPJ && body.cnpj) {
       const cleanCnpj = body.cnpj.replace(/\D/g, '');
-      const { data: dup } = await admin.from('clients').select('id').eq('cnpj', cleanCnpj).maybeSingle();
+      let q = admin.from('clients').select('id').eq('cnpj', cleanCnpj);
+      if (tenantOwner) q = q.eq('account_owner_id', tenantOwner);
+      const { data: dup } = await q.maybeSingle();
       if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CNPJ já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

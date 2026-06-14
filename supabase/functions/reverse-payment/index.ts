@@ -62,6 +62,15 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Resolve caller tenant for cross-tenant safety on service-role queries.
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('account_owner_id')
+      .eq('id', userId)
+      .maybeSingle();
+    const callerOwner = (callerProfile as any)?.account_owner_id || userId;
+
     const body = await req.json() as ReverseRequest;
     if (!body.appointment_id) {
       return new Response(JSON.stringify({ success: false, error: 'appointment_id required' }), {
@@ -71,8 +80,9 @@ serve(async (req) => {
 
     const fetchAppointment = async (appointmentId: string) => supabase
       .from('appointments')
-      .select('id, client_id, amount_paid, payment_status, payment_methods, discount_amount, package_appointment_id, professional_id')
+      .select('id, client_id, amount_paid, payment_status, payment_methods, discount_amount, package_appointment_id, professional_id, account_owner_id')
       .eq('id', appointmentId)
+      .eq('account_owner_id', callerOwner)
       .maybeSingle();
 
     let { data: appointment, error: fetchError } = await fetchAppointment(body.appointment_id);

@@ -15,7 +15,6 @@ import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
-import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 
 interface ClientQuotesTabProps {

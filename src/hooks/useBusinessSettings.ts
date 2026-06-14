@@ -131,7 +131,8 @@ export function useBusinessSettings() {
         if (!settings?.id) {
           const { data, error } = await supabase
             .from('business_settings')
-            .insert(formattedUpdates)
+            // account_owner_id is auto-filled by a BEFORE INSERT trigger.
+            .insert(formattedUpdates as never)
             .select()
             .maybeSingle();
           if (error) throw error;

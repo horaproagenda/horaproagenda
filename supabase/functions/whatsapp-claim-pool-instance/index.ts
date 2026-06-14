@@ -40,7 +40,7 @@ serve(async (req) => {
     const isAdmin = (roles ?? []).some((r: any) => r.role === 'admin');
 
     const { data: ownProf } = await supabaseService
-      .from('professionals').select('id').eq('user_id', userId).maybeSingle();
+      .from('professionals').select('id, account_owner_id').eq('user_id', userId).maybeSingle();
 
     if (!professional_id) professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
@@ -48,6 +48,17 @@ serve(async (req) => {
     if (!isAdmin && professional_id !== ownProf?.id) {
       return json({ success: false, error: 'Sem permissão para reivindicar instância para outro profissional.' }, 403);
     }
+
+    // Tenant isolation: ensure target professional belongs to caller's account.
+    const { data: callerProfile } = await supabaseService
+      .from('profiles').select('account_owner_id').eq('id', userId).maybeSingle();
+    const callerOwner = callerProfile?.account_owner_id ?? userId;
+    const { data: targetProf } = await supabaseService
+      .from('professionals').select('account_owner_id').eq('id', professional_id).maybeSingle();
+    if (!targetProf || targetProf.account_owner_id !== callerOwner) {
+      return json({ success: false, error: 'Profissional não pertence à sua conta.' }, 403);
+    }
+
 
     // Already has manual credentials? Don't overwrite.
     const { data: existingCreds } = await supabaseService

@@ -372,7 +372,7 @@ export type Database = {
       }
       appointments: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           amount_paid: number | null
           client_id: string
           composite_group_id: string | null
@@ -397,7 +397,7 @@ export type Database = {
           version: number
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           amount_paid?: number | null
           client_id: string
           composite_group_id?: string | null
@@ -422,7 +422,7 @@ export type Database = {
           version?: number
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           amount_paid?: number | null
           client_id?: string
           composite_group_id?: string | null
@@ -742,7 +742,7 @@ export type Database = {
       }
       business_settings: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           auto_complete_appointments: boolean
           automation_gap_finder: boolean | null
           automation_occupancy_dashboard: boolean | null
@@ -774,7 +774,7 @@ export type Database = {
           work_sundays: boolean
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           auto_complete_appointments?: boolean
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -806,7 +806,7 @@ export type Database = {
           work_sundays?: boolean
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           auto_complete_appointments?: boolean
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -2760,7 +2760,7 @@ export type Database = {
       }
       professional_credentials: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           must_change_password: boolean
           password_changed_at: string | null
           professional_id: string
@@ -2771,7 +2771,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           must_change_password?: boolean
           password_changed_at?: string | null
           professional_id: string
@@ -2782,7 +2782,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           must_change_password?: boolean
           password_changed_at?: string | null
           professional_id?: string
@@ -2930,7 +2930,7 @@ export type Database = {
       }
       professional_whatsapp_credentials: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           api_url: string | null
           created_at: string
           id: string
@@ -2943,7 +2943,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           api_url?: string | null
           created_at?: string
           id?: string
@@ -2956,7 +2956,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           api_url?: string | null
           created_at?: string
           id?: string
@@ -2980,7 +2980,7 @@ export type Database = {
       }
       professionals: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           agenda_color: string | null
           app_role: string | null
           avatar_url: string | null
@@ -3015,7 +3015,7 @@ export type Database = {
           whatsapp_from_number: string | null
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
@@ -3050,7 +3050,7 @@ export type Database = {
           whatsapp_from_number?: string | null
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           agenda_color?: string | null
           app_role?: string | null
           avatar_url?: string | null
@@ -4040,19 +4040,19 @@ export type Database = {
       }
       user_roles: {
         Row: {
-          account_owner_id: string | null
+          account_owner_id: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
-          account_owner_id?: string | null
+          account_owner_id: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
-          account_owner_id?: string | null
+          account_owner_id?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -4843,7 +4843,7 @@ export type Database = {
           p_status: string
         }
         Returns: {
-          account_owner_id: string | null
+          account_owner_id: string
           amount_paid: number | null
           client_id: string
           composite_group_id: string | null

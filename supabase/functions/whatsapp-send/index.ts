@@ -79,11 +79,15 @@ serve(async (req) => {
 
     const evolution = getEvolutionConfig();
     if (evolution.configured) {
-      const result = await evolutionSendText({ to: phone, body: message });
-      return new Response(JSON.stringify({
-        success: true, provider: 'evolution', route: 'evolution-api',
-        data: result, instance: evolution.instance, source: 'global',
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      try {
+        const result = await evolutionSendText({ to: phone, body: message });
+        return new Response(JSON.stringify({
+          success: true, provider: 'evolution', route: 'evolution-api',
+          data: result, instance: evolution.instance, source: 'global',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } catch (e) {
+        console.warn('Evolution send failed, falling back to UltraMsg:', e);
+      }
     }
 
     // Pick credentials: explicit professional_id > caller's professional > global fallback

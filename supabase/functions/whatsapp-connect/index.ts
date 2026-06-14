@@ -60,14 +60,17 @@ serve(async (req) => {
 
     const evolution = getEvolutionConfig();
     if (evolution.configured) {
-      const result = await evolutionGetQrCode();
-      if (result.connected) {
-        return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
+      try {
+        const result = await evolutionGetQrCode();
+        if (result.connected) {
+          return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
+        }
+        if (result.qrcode) {
+          return json({ success: true, provider: 'evolution', qrcode: result.qrcode, pairingCode: result.pairingCode ?? null });
+        }
+      } catch (e) {
+        console.warn('Evolution connect failed, falling back to UltraMsg:', e);
       }
-      if (!result.qrcode) {
-        return json({ success: false, provider: 'evolution', error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.' });
-      }
-      return json({ success: true, provider: 'evolution', qrcode: result.qrcode, pairingCode: result.pairingCode ?? null });
     }
 
     // 1) Reserva instância se ainda não houver

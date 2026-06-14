@@ -52,23 +52,23 @@ serve(async (req) => {
 
     const evolution = getEvolutionConfig();
     if (evolution.configured) {
-      const result = await evolutionGetQrCode();
-      if (result.connected) {
-        return new Response(JSON.stringify({
-          success: true, connected: true, source: 'global', provider: 'evolution',
-          message: 'WhatsApp já está conectado',
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      try {
+        const result = await evolutionGetQrCode();
+        if (result.connected) {
+          return new Response(JSON.stringify({
+            success: true, connected: true, source: 'global', provider: 'evolution',
+            message: 'WhatsApp já está conectado',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        if (result.qrcode) {
+          return new Response(JSON.stringify({
+            success: true, qrcode: result.qrcode, pairingCode: result.pairingCode ?? null,
+            source: 'global', provider: 'evolution',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } catch (e) {
+        console.warn('Evolution QR failed, falling back to UltraMsg:', e);
       }
-      if (!result.qrcode) {
-        return new Response(JSON.stringify({
-          success: false, source: 'global', provider: 'evolution',
-          error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      return new Response(JSON.stringify({
-        success: true, qrcode: result.qrcode, pairingCode: result.pairingCode ?? null,
-        source: 'global', provider: 'evolution',
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);

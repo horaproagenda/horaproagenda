@@ -202,6 +202,8 @@ export function WhatsappTemplatesSettings() {
       professionalName: professionals.find(p => p.id === formData.professional_id)?.name || 'Profissional',
       appointmentDate: new Date(),
       appointmentTime: '14:30',
+      confirmationToken: '00000000-0000-0000-0000-000000000000',
+      includeConfirmationButtons: formData.include_confirmation_buttons,
     });
     setWhatsappPreviewMessage(message);
     setWhatsappPreviewOpen(true);

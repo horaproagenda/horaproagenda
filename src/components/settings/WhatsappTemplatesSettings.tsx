@@ -32,6 +32,8 @@ const variablesHelp = [
   { variable: '{horario}', description: 'Horário do agendamento' },
   { variable: '{servico}', description: 'Nome do serviço' },
   { variable: '{profissional}', description: 'Nome do profissional' },
+  { variable: '{link_confirmar}', description: 'Link para o cliente confirmar' },
+  { variable: '{link_cancelar}', description: 'Link para o cliente cancelar' },
 ];
 
 const MAX_TEMPLATES_PER_PROFESSIONAL = 4;

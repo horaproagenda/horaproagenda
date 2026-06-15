@@ -4985,6 +4985,10 @@ export type Database = {
       }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }
+      preview_package_appointment_cascade: {
+        Args: { _appointment_id: string; _new_start: string }
+        Returns: Json
+      }
       process_payment_low: {
         Args: {
           p_amount: number

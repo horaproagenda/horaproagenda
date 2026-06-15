@@ -159,16 +159,74 @@ export function PacotesFinanceiro() {
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      if (statusFilter === 'active' && r.isCancelled) return false;
+      // Por padrão oculta pacotes finalizados/cancelados para reduzir poluição.
+      // Mostre apenas se o usuário ativar "Mostrar finalizados" ou selecionar
+      // explicitamente esse status no filtro.
+      const isFinished = r.isCancelled || r.isCompleted;
+      if (
+        isFinished &&
+        !showFinished &&
+        statusFilter !== 'cancelled' &&
+        statusFilter !== 'completed'
+      ) {
+        return false;
+      }
+      if (statusFilter === 'active' && (r.isCancelled || r.isCompleted)) return false;
       if (statusFilter === 'cancelled' && !r.isCancelled) return false;
+      if (statusFilter === 'completed' && !r.isCompleted) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, statusFilter, dateFrom, dateTo]);
+  }, [rows, search, statusFilter, dateFrom, dateTo, showFinished]);
+
+  const hiddenFinishedCount = useMemo(() => {
+    if (showFinished || statusFilter === 'cancelled' || statusFilter === 'completed') return 0;
+    return rows.filter((r) => r.isCancelled || r.isCompleted).length;
+  }, [rows, showFinished, statusFilter]);
 
   const activeFilterCount =
-    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (showFinished ? 1 : 0);
+
+  const deletePackageMutation = useMutation({
+    mutationFn: async (row: PackageSaleRow) => {
+      if (!row.packageId) {
+        throw new Error('Pacote sem identificador válido.');
+      }
+      const { data, error } = await (supabase as any).rpc(
+        'delete_completed_or_cancelled_client_package',
+        { _package_id: row.packageId },
+      );
+      if (error) throw error;
+      const result = (data ?? {}) as { success?: boolean; error?: string };
+      if (result.success === false) {
+        throw new Error(result.error || 'Não foi possível apagar este pacote.');
+      }
+      return result;
+    },
+    onSuccess: () => {
+      toast.success('Pacote apagado. A agenda e o histórico do cliente foram sincronizados.');
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_details'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credit_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Erro ao apagar pacote.');
+    },
+  });
 
   const refundAmount = useMemo(() => {
     if (!selected) return 0;

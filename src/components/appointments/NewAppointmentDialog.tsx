@@ -449,11 +449,28 @@ export function NewAppointmentDialog({
     if (!appointmentTimes || !repeatServiceEnabled || serviceType !== 'service') return [];
     if (repeatCount < 2) return [];
 
+    const duration = selectedServiceData?.duration || 60;
     const dates: Date[] = [appointmentTimes.startTime];
+
+    // Helper: check whether a given start collides with siblings already placed
+    const collidesWithSiblings = (start: Date) => {
+      const end = new Date(start.getTime() + duration * 60_000);
+      return dates.some((d) => {
+        const dEnd = new Date(d.getTime() + duration * 60_000);
+        return start < dEnd && end > d;
+      });
+    };
 
     for (let i = 1; i < repeatCount; i++) {
       let futureDate = addDays(appointmentTimes.startTime, effectiveIntervalDays * i);
-      
+
+      // If a preferred weekday is set, jump to the next occurrence of that weekday
+      if (servicePreferredDayOfWeek !== null) {
+        const current = futureDate.getDay();
+        const diff = (servicePreferredDayOfWeek - current + 7) % 7;
+        if (diff !== 0) futureDate = addDays(futureDate, diff);
+      }
+
       // Skip non-work days
       while (!isWorkDay(futureDate)) {
         futureDate = addDays(futureDate, 1);
@@ -464,11 +481,21 @@ export function NewAppointmentDialog({
         futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
       }
 
+      // Avoid collisions with siblings already placed in the same series
+      let guard = 0;
+      while (collidesWithSiblings(futureDate) && guard++ < 60) {
+        futureDate = addDays(futureDate, 1);
+        while (!isWorkDay(futureDate)) futureDate = addDays(futureDate, 1);
+        if (preferredTime) {
+          futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
+        }
+      }
+
       dates.push(new Date(futureDate));
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay, settings?.timezone]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {

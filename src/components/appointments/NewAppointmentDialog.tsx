@@ -794,10 +794,8 @@ export function NewAppointmentDialog({
       return;
     }
 
-    // Block if there are conflicts
-    if (conflicts.length > 0) {
-      return;
-    }
+    // Conflitos de horário (sala/profissional) não bloqueiam mais o envio aqui:
+    // o backend valida e os indicadores inline nas listas de repetição mostram colisões.
 
     const holiday = getHolidayForDate(date);
     if (holiday && !holidayConfirmed) {

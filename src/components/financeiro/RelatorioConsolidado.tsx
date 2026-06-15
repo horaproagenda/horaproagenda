@@ -2,14 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign, Download, FileText } from 'lucide-react';
+import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
@@ -18,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { exportToCSV } from '@/lib/exportUtils';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -29,6 +34,13 @@ interface ConsolidatedEntry {
   amount: number;
   source: 'caixa' | 'financeiro' | 'credito_cliente';
   status: string;
+  // Metadata for cascade delete
+  cashTxId?: string | null;
+  financialEntryId?: string | null;
+  creditTxId?: string | null;
+  saleId?: string | null;
+  appointmentId?: string | null;
+  referenceType?: string | null;
 }
 
 type PeriodFilter = 'today' | 'week' | 'month' | 'quarter' | 'custom';

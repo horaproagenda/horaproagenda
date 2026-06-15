@@ -546,7 +546,11 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('reset-password', {
         body: { email: forgotEmail, newPassword },
       });
-      if (error) throw error;
+      if (error) {
+        let payload: { error?: string; code?: string } | null = null;
+        try { payload = await (error as any)?.context?.json?.(); } catch { /* ignore */ }
+        throw new Error(payload?.error || error.message || 'Erro ao alterar senha');
+      }
       if (data?.error) throw new Error(data.error);
       toast({ title: 'Senha alterada!', description: 'Faça login com a nova senha.' });
       setAuthView('login');

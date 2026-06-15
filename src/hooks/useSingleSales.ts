@@ -245,7 +245,7 @@ export function useSingleSales() {
         client_id: sale.client_id,
         created_by: user?.id,
         sale_id: saleData.id,
-      });
+      } as any);
 
       // 7. Deduzir estoque em tempo real para serviço/pacote vendido
       await deductStockForSale({

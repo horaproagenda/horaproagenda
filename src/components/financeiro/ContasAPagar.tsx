@@ -74,7 +74,7 @@ export function ContasAPagar() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    date: ['all'],
+    date: ['month'],
     status: ['all'],
   });
   const [payDialogOpen, setPayDialogOpen] = useState(false);

@@ -785,7 +785,7 @@ export function ContasAPagar() {
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-xs text-muted-foreground">
+                  <TableCell colSpan={batchMode ? 6 : 5} className="text-center py-8 text-xs text-muted-foreground">
                     Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
@@ -803,13 +803,7 @@ export function ContasAPagar() {
                       </TableCell>
                     )}
                     <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-xs py-2 max-w-[280px] truncate" title={entry.description}>{entry.description}</TableCell>
-                    <TableCell className="text-[11px] py-2 text-muted-foreground whitespace-nowrap">
-                      {entry.category?.name || '-'}
-                    </TableCell>
-                    <TableCell className="text-[11px] py-2 whitespace-nowrap">
-                      {entry.payment_method?.name || '-'}
-                    </TableCell>
+                    <TableCell className="text-xs py-2 max-w-[320px] truncate" title={entry.description}>{entry.description}</TableCell>
                     <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums whitespace-nowrap">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>

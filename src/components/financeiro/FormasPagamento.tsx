@@ -68,7 +68,7 @@ export function FormasPagamento() {
     { installment_number: 1, fee_percentage: 0 },
   ]);
   const [showAuditLog, setShowAuditLog] = useState(false);
-  const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('pending');
+  const [boletoFilter, setBoletoFilter] = useState<'all' | 'pending' | 'overdue' | 'paid'>('all');
   const [selectedBoletoIds, setSelectedBoletoIds] = useState<string[]>([]);
   const [detailClientKey, setDetailClientKey] = useState<string | null>(null);
   const [batchPaying, setBatchPaying] = useState(false);

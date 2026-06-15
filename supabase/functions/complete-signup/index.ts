@@ -190,7 +190,8 @@ serve(async (req) => {
         (createError as any)?.code === "email_exists"
       ) {
         // SECURITY: never overwrite an existing account's password during signup.
-        // Direct the user to login or password recovery instead.
+        // Direct the user to login or password recovery instead. Do NOT consume
+        // the verification code here so the user can retry if needed.
         return jsonResponse(
           {
             success: false,
@@ -208,6 +209,19 @@ serve(async (req) => {
     if (!userId) {
       return jsonResponse({ success: false, error: "Erro ao criar usuário." }, 500);
     }
+
+    // Mark the verification code as used ONLY after we successfully created
+    // the user. This prevents the code from being burned if user creation
+    // failed for any reason (so the user can retry without requesting a new
+    // code).
+    if (verifiedCodeId) {
+      await supabaseAdmin
+        .from("verification_codes")
+        .update({ used_at: new Date().toISOString() })
+        .eq("id", verifiedCodeId)
+        .is("used_at", null);
+    }
+
 
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: userId,

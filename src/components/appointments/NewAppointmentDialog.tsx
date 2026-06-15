@@ -126,6 +126,8 @@ export function NewAppointmentDialog({
   const [editablePreviewDates, setEditablePreviewDates] = useState<Date[]>([]);
   const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
+  // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
+  const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
@@ -393,10 +395,15 @@ export function NewAppointmentDialog({
     for (let i = 1; i < totalSessions; i++) {
       const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
+      // Sobrescreve com intervalo manual digitado pelo usuário, se válido
+      const manualOverride = parseInt(customIntervalDays, 10);
+      const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
       // Use the step's interval, falling back to previous step, package default, or 7 days
-      const intervalDays = packageSequenceSteps.length > 0
-        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
-        : Number(packageData?.interval_days || 7);
+      const intervalDays = hasManualOverride
+        ? manualOverride
+        : packageSequenceSteps.length > 0
+          ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+          : Number(packageData?.interval_days || 7);
       // Ensure minimum 1 day interval to prevent overlapping sessions
       const safeInterval = Math.max(intervalDays, 1);
       const futureDate = addDays(currentDate, safeInterval);
@@ -427,7 +434,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, settings?.timezone, settings?.work_sundays, settings?.work_saturdays]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -1920,9 +1927,27 @@ Até breve! ✨`;
                               </Select>
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Intervalo: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Intervalo (dias):</Label>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={2}
+                              className="h-8 w-16 text-xs text-center tabular-nums"
+                              placeholder={String(existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7)}
+                              value={customIntervalDays}
+                              onChange={(e) => {
+                                // Aceita apenas dígitos, no máximo 2
+                                const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                setCustomIntervalDays(v);
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {customIntervalDays
+                                ? `a cada ${customIntervalDays} dia${Number(customIntervalDays) === 1 ? '' : 's'}`
+                                : `padrão: a cada ${existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias`}
+                            </span>
+                          </div>
 
                           {/* Preview of scheduled dates with edit capability */}
                           {editablePreviewDates.length > 0 && date && time && (
@@ -1961,22 +1986,55 @@ Até breve! ✨`;
                                         </Badge>
                                         {editingDateIndex === index ? (
                                           <div className="flex items-center gap-1 flex-1">
+                                            <Popover open onOpenChange={(o) => { if (!o) setEditingDateIndex(null); }}>
+                                              <PopoverTrigger asChild>
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="h-7 flex-1 justify-start text-xs font-normal"
+                                                >
+                                                  <CalendarIcon className="h-3 w-3 mr-1" />
+                                                  {format(previewDate, "EEE, dd/MM/yyyy", { locale: ptBR })}
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                  mode="single"
+                                                  selected={previewDate}
+                                                  onSelect={(d) => {
+                                                    if (!d) return;
+                                                    const merged = new Date(d);
+                                                    merged.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
+                                                    updateEditableDate(index, merged);
+                                                  }}
+                                                  locale={ptBR}
+                                                  initialFocus
+                                                  className="p-3 pointer-events-auto"
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
                                             <Input
-                                              type="datetime-local"
-                                              className="h-7 text-xs flex-1"
-                                              value={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
+                                              type="time"
+                                              className="h-7 text-xs w-24"
+                                              value={format(previewDate, 'HH:mm')}
                                               onChange={(e) => {
-                                                const newDate = new Date(e.target.value);
-                                                if (!isNaN(newDate.getTime())) {
-                                                  updateEditableDate(index, newDate);
-                                                }
+                                                const [hh, mm] = e.target.value.split(':').map(Number);
+                                                if (isNaN(hh) || isNaN(mm)) return;
+                                                const merged = new Date(previewDate);
+                                                merged.setHours(hh, mm, 0, 0);
+                                                updateEditableDate(index, merged);
                                               }}
-                                              onBlur={() => setEditingDateIndex(null)}
-                                              onKeyDown={(e) => {
-                                                if (e.key === 'Enter') setEditingDateIndex(null);
-                                              }}
-                                              autoFocus
                                             />
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 px-2 text-xs"
+                                              onClick={() => setEditingDateIndex(null)}
+                                            >
+                                              OK
+                                            </Button>
                                           </div>
                                         ) : (
                                         <button

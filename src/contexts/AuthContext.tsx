@@ -135,6 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         err.code = 'email_exists';
         return { error: err };
       }
+      if (payload?.error) {
+        const err = new Error(payload.error) as Error & { code?: string };
+        if (payload.code) err.code = payload.code;
+        return { error: err };
+      }
       return { error: error as Error };
     }
 

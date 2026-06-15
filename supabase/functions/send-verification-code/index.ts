@@ -61,8 +61,10 @@ serve(async (req) => {
     }
 
     const { email, type }: VerificationRequest = await req.json();
+    const normalizedEmail = (email ?? "").toString().trim().toLowerCase();
+    const normalizedType = type === "login" ? "login" : "signup";
 
-    if (!email) {
+    if (!normalizedEmail) {
       throw new Error("Email é obrigatório");
     }
 
@@ -71,8 +73,8 @@ serve(async (req) => {
     });
 
     // SECURITY: signup requires a new email; password recovery requires an existing account.
-    if (type === 'signup') {
-      const exists = await authUserExistsByEmail(supabaseAdmin, email);
+    if (normalizedType === 'signup') {
+      const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
       if (exists) {
         return new Response(
           JSON.stringify({
@@ -82,8 +84,8 @@ serve(async (req) => {
           { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-    } else if (type === 'login') {
-      const exists = await authUserExistsByEmail(supabaseAdmin, email);
+    } else if (normalizedType === 'login') {
+      const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
       if (!exists) {
         return new Response(
           JSON.stringify({
@@ -127,7 +129,8 @@ serve(async (req) => {
     const { data: recent } = await supabaseClient
       .from("verification_codes")
       .select("id")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
+      .eq("type", normalizedType)
       .gte("created_at", sixtySecondsAgo)
       .limit(1)
       .maybeSingle();
@@ -139,19 +142,26 @@ serve(async (req) => {
       );
     }
 
+    // Não apague códigos recentes do mesmo e-mail: e-mails podem chegar fora de
+    // ordem. Mantemos todos os códigos não expirados por 10 min e aceitamos
+    // qualquer código correto, evitando falso "Código inválido".
     await supabaseClient
       .from("verification_codes")
       .delete()
-      .eq("email", email.toLowerCase());
+      .eq("email", normalizedEmail)
+      .eq("type", normalizedType)
+      .lt("expires_at", new Date().toISOString());
 
-    const { error: insertError } = await supabaseClient
+    const { data: insertedCode, error: insertError } = await supabaseClient
       .from("verification_codes")
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         code,
-        type,
+        type: normalizedType,
         expires_at: expiresAt.toISOString(),
-      });
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       console.error("Error inserting verification code:", insertError);
@@ -173,13 +183,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         templateName: 'verification-code',
-        recipientEmail: email,
-        idempotencyKey: `verification-${email.toLowerCase()}-${Date.now()}`,
-        templateData: { code, type },
+        recipientEmail: normalizedEmail,
+        idempotencyKey: `verification-${normalizedType}-${insertedCode?.id ?? Date.now()}`,
+        templateData: { code, type: normalizedType },
       }),
     });
 
     if (!sendResp.ok) {
+      if (insertedCode?.id) {
+        await supabaseClient.from("verification_codes").delete().eq("id", insertedCode.id);
+      }
       const errText = await sendResp.text().catch(() => "");
       console.error("Error sending email:", sendResp.status, errText);
       return new Response(

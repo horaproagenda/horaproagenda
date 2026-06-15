@@ -493,6 +493,17 @@ export function RelatorioConsolidado() {
                       )}>
                         {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} {formatCurrency(entry.amount)}
                       </TableCell>
+                      <TableCell className="py-1.5 text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Excluir movimentação e registros vinculados"
+                          onClick={() => setDeleteTarget(entry)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

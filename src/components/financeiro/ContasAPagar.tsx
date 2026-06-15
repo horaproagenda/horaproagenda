@@ -122,9 +122,9 @@ export function ContasAPagar() {
       id: 'date',
       label: 'Período',
       options: [
-        { value: 'all', label: 'Todos' },
-        { value: 'today', label: 'Hoje' },
         { value: 'month', label: 'Este mês' },
+        { value: 'today', label: 'Hoje' },
+        { value: 'all', label: 'Todos os meses' },
       ],
       multiSelect: false,
     },

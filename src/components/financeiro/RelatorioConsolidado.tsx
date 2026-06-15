@@ -436,7 +436,7 @@ export function RelatorioConsolidado() {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">
                       Nenhuma movimentação encontrada
                     </TableCell>
                   </TableRow>

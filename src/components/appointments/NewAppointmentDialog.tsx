@@ -1300,9 +1300,19 @@ Até breve! ✨`;
                         <Briefcase className="h-3 w-3" />
                         Serviços Pagos do Cliente
                       </div>
-                      {clientPaidServices
-                        .filter(s => !serviceSearch || s.service?.name?.toLowerCase().includes(serviceSearch.toLowerCase()))
-                        .map(paidService => (
+                      {Object.values(
+                        clientPaidServices
+                          .filter(s => !serviceSearch || s.service?.name?.toLowerCase().includes(serviceSearch.toLowerCase()))
+                          .reduce((acc: Record<string, { first: any; count: number; totalPaid: number }>, paidService: any) => {
+                            const key = paidService.service?.id || paidService.service_id;
+                            if (!acc[key]) {
+                              acc[key] = { first: paidService, count: 0, totalPaid: 0 };
+                            }
+                            acc[key].count += 1;
+                            acc[key].totalPaid += Number(paidService.amount_paid || 0);
+                            return acc;
+                          }, {})
+                      ).map(({ first: paidService, count, totalPaid }) => (
                           <div
                             key={`client-svc-${paidService.id}`}
                             className="px-2 py-1.5 hover:bg-green-500/10 cursor-pointer border-b border-border/50 bg-green-500/5"
@@ -1317,13 +1327,20 @@ Até breve! ✨`;
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-medium text-green-700 truncate">{paidService.service?.name}</span>
-                              <Badge className="text-[10px] h-5 px-1.5 bg-green-500 text-white flex-shrink-0">
-                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
-                                PAGO
-                              </Badge>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {count > 1 && (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700">
+                                    {count}x disponíveis
+                                  </Badge>
+                                )}
+                                <Badge className="text-[10px] h-5 px-1.5 bg-green-500 text-white">
+                                  <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                                  PAGO
+                                </Badge>
+                              </div>
                             </div>
                             <div className="text-[11px] text-muted-foreground">
-                              {formatDurationClock(paidService.service?.duration || 0)} • Valor pago: R$ {Number(paidService.amount_paid).toFixed(2)}
+                              {formatDurationClock(paidService.service?.duration || 0)} • {count > 1 ? `Total pago: R$ ${totalPaid.toFixed(2)} (${count}x)` : `Valor pago: R$ ${Number(paidService.amount_paid).toFixed(2)}`}
                             </div>
                           </div>
                         ))}

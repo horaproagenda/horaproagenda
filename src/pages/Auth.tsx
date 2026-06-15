@@ -339,35 +339,58 @@ function AuthInner() {
     try {
       const email = signupEmail.trim().toLowerCase();
       const code = signupCode.replace(/\D/g, '').trim();
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
-        body: { email, code },
-      });
-      if (verifyError) throw verifyError;
 
-      if (!verifyData?.valid) {
-        const next = signupCodeAttempts + 1;
-        setSignupCodeAttempts(next);
-        const remaining = OTP_MAX_ATTEMPTS - next;
-        if (remaining <= 0) {
-          setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
-          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
-        } else {
-          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
-        }
-        return;
-      }
-
+      // Verificação + criação atômica via complete-signup (passamos o code).
       const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
         cpf: signupCpf.replace(/\D/g, ''),
         cnpj: signupCnpj.replace(/\D/g, '') || undefined,
         city: signupCity.trim() || undefined,
         state: signupState.trim().toUpperCase() || undefined,
+        code,
       });
+
       if (signUpError) {
-        // A conta pode ter sido criada mas o login automático falhou.
-        // Tentamos mais uma vez antes de desistir.
-        const { error: retryError } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
-        if (retryError) throw signUpError;
+        const errCode = (signUpError as Error & { code?: string }).code;
+
+        // Conta já existe: tenta login direto com a senha digitada.
+        // Se bater (conta criada em tentativa anterior com a mesma senha),
+        // o usuário entra normalmente; se não, encaminhamos para o login.
+        if (errCode === 'email_exists') {
+          const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
+          if (!loginErr) {
+            toast({ title: 'Bem-vindo(a) de volta!', description: 'Sua conta já estava criada — você foi conectado.' });
+            navigate('/agenda', { replace: true });
+            return;
+          }
+          toast({
+            title: 'E-mail já cadastrado',
+            description: "Faça login com sua senha ou use 'Esqueci minha senha' para recuperá-la.",
+            variant: 'destructive',
+          });
+          setAuthView('login');
+          setLoginEmail(email);
+          resetSignupFlow();
+          return;
+        }
+
+        // Código inválido/expirado/sem código ativo — incrementa tentativas.
+        const msg = signUpError.message || '';
+        const isCodeError = /código|code/i.test(msg);
+        if (isCodeError) {
+          const next = signupCodeAttempts + 1;
+          setSignupCodeAttempts(next);
+          const remaining = OTP_MAX_ATTEMPTS - next;
+          if (remaining <= 0) {
+            setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
+            toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Código inválido', description: `${msg} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+          }
+          return;
+        }
+
+        toast({ title: 'Erro', description: msg || 'Erro ao criar conta', variant: 'destructive' });
+        return;
       }
 
       // Garante que existe uma sessão antes de prosseguir
@@ -386,6 +409,7 @@ function AuthInner() {
       setLoading(false);
     }
   };
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

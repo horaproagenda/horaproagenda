@@ -53,8 +53,10 @@ export function PacotesFinanceiro() {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled' | 'completed'>('all');
-  const [showFinished, setShowFinished] = useState(false);
+  // Pacotes finalizados e cancelados não são mais exibidos nesta página —
+  // só pacotes em andamento (com sessões ainda por usar).
+  const statusFilter = 'active' as const;
+  const showFinished = false;
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');

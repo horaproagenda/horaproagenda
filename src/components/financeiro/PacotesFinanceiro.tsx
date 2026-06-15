@@ -728,22 +728,37 @@ export function PacotesFinanceiro() {
                       <TableCell className="text-xs">
                         {r.isCancelled ? (
                           <Badge variant="destructive" className="text-[10px]">Cancelado</Badge>
+                        ) : r.isCompleted ? (
+                          <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Finalizado</Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Ativo</Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        {!r.isCancelled && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => openCancel(r)}
-                            title="Cancelar pacote"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1 justify-end">
+                          {!r.isCancelled && !r.isCompleted && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => openCancel(r)}
+                              title="Cancelar pacote / devolver dinheiro"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(r.isCancelled || r.isCompleted) && r.packageId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => { setDeleteTarget(r); setDeleteOpen(true); }}
+                              title="Apagar pacote definitivamente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

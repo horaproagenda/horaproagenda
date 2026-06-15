@@ -2149,7 +2149,7 @@ Até breve! ✨`;
 
               <div className="space-y-2">
                 <Label>Horário *</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <Label className="text-[11px] text-muted-foreground">Início</Label>
                     <div className="flex items-center gap-1">

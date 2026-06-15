@@ -1756,36 +1756,55 @@ Até breve! ✨`;
                                       )}
                                     >
                                       <span className="w-5 text-muted-foreground font-medium">{index + 1}.</span>
-                                      {editingServiceDateIndex === index ? (
-                                        <div className="flex-1 flex gap-2">
-                                          <Input
-                                            type="datetime-local"
-                                            className="h-7 text-xs"
-                                            defaultValue={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
-                                            onChange={(e) => {
-                                              const newDate = new Date(e.target.value);
-                                              if (!isNaN(newDate.getTime())) {
-                                                updateEditableServiceDate(index, newDate);
-                                              }
+                                      <Popover open={editingServiceDateIndex === index} onOpenChange={(o) => setEditingServiceDateIndex(o ? index : null)}>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
+                                              index === 0 ? "font-medium" : "text-muted-foreground",
+                                              hasConflict && "text-destructive"
+                                            )}
+                                          >
+                                            <span className="truncate">{format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
+                                            <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-2 z-50" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={previewDate}
+                                            onSelect={(d) => {
+                                              if (!d) return;
+                                              const next = new Date(d);
+                                              next.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
+                                              updateEditableServiceDate(index, next);
                                             }}
-                                            onBlur={() => setEditingServiceDateIndex(null)}
-                                            autoFocus
+                                            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || !isWorkDay(d)}
+                                            locale={ptBR}
+                                            initialFocus
+                                            className="pointer-events-auto"
                                           />
-                                        </div>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          className={cn(
-                                            "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
-                                            index === 0 ? "font-medium" : "text-muted-foreground",
-                                            hasConflict && "text-destructive"
-                                          )}
-                                          onClick={() => setEditingServiceDateIndex(index)}
-                                        >
-                                          <span className="truncate">{format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
-                                          <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
-                                        </button>
-                                      )}
+                                          <div className="mt-2 flex items-center gap-2 border-t pt-2">
+                                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                              type="time"
+                                              className="h-7 text-xs"
+                                              value={format(previewDate, 'HH:mm')}
+                                              onChange={(e) => {
+                                                const [h, m] = e.target.value.split(':').map(Number);
+                                                if (isNaN(h) || isNaN(m)) return;
+                                                const next = new Date(previewDate);
+                                                next.setHours(h, m, 0, 0);
+                                                updateEditableServiceDate(index, next);
+                                              }}
+                                            />
+                                            <span className="text-[11px] text-muted-foreground">
+                                              {format(previewDate, "EEEE", { locale: ptBR })}
+                                            </span>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
                                       {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
                                       {hasConflict && (
                                         <Badge variant="destructive" className="text-[10px] shrink-0">Conflito</Badge>

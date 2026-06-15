@@ -338,10 +338,12 @@ function AuthInner() {
     setLoading(true);
     try {
       const email = signupEmail.trim().toLowerCase();
+      const code = signupCode.replace(/\D/g, '').trim();
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
-        body: { email, code: signupCode },
+        body: { email, code },
       });
       if (verifyError) throw verifyError;
+
       if (!verifyData?.valid) {
         const next = signupCodeAttempts + 1;
         setSignupCodeAttempts(next);

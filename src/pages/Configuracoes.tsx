@@ -235,6 +235,9 @@ const Configuracoes = () => {
             </CardContent>
           </Card>
 
+          {/* Integridade do fluxo Financeiro × Agenda (admin) */}
+          {isAdmin && <SaleFlowIntegrityCard />}
+
           {/* Bulk Delete (apenas administradores) */}
           {isAdmin && <BulkDeleteDialog />}
 

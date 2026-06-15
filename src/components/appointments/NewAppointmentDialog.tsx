@@ -1927,9 +1927,27 @@ Até breve! ✨`;
                               </Select>
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Intervalo: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Intervalo (dias):</Label>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={2}
+                              className="h-8 w-16 text-xs text-center tabular-nums"
+                              placeholder={String(existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7)}
+                              value={customIntervalDays}
+                              onChange={(e) => {
+                                // Aceita apenas dígitos, no máximo 2
+                                const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                setCustomIntervalDays(v);
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {customIntervalDays
+                                ? `a cada ${customIntervalDays} dia${Number(customIntervalDays) === 1 ? '' : 's'}`
+                                : `padrão: a cada ${existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias`}
+                            </span>
+                          </div>
 
                           {/* Preview of scheduled dates with edit capability */}
                           {editablePreviewDates.length > 0 && date && time && (

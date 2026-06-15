@@ -104,32 +104,50 @@ serve(async (req) => {
       if (usedCode) {
         verifiedCodeId = usedCode.id;
       } else if (normalizedCode.length === 6) {
-        // Fallback: validate the active code directly here so verification +
-        // user creation happen atomically.
-        const { data: active } = await supabaseAdmin
+        // Fallback: match by code value across ANY unused signup code for this
+        // email (not just the latest). This avoids "Código inválido" when a
+        // delayed email or a resend race left more than one active code in the
+        // table — any matching, unexpired code is accepted.
+        const { data: matching } = await supabaseAdmin
           .from("verification_codes")
           .select("*")
           .eq("email", normalizedEmail)
           .eq("type", "signup")
+          .eq("code", normalizedCode)
           .is("used_at", null)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (!active) {
-          return jsonResponse({ success: false, error: "Nenhum código ativo. Solicite um novo código." }, 400);
-        }
-        if (new Date(active.expires_at).getTime() < Date.now()) {
-          await supabaseAdmin.from("verification_codes").delete().eq("id", active.id);
-          return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
-        }
-        if (((active.code ?? "").toString().trim()) !== normalizedCode) {
+
+        if (matching) {
+          if (new Date(matching.expires_at).getTime() < Date.now()) {
+            await supabaseAdmin.from("verification_codes").delete().eq("id", matching.id);
+            return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
+          }
+          verifiedCodeId = matching.id;
+        } else {
+          const { data: anyActive } = await supabaseAdmin
+            .from("verification_codes")
+            .select("id, attempts, expires_at")
+            .eq("email", normalizedEmail)
+            .eq("type", "signup")
+            .is("used_at", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!anyActive) {
+            return jsonResponse({ success: false, error: "Nenhum código ativo. Solicite um novo código." }, 400);
+          }
+          if (new Date(anyActive.expires_at).getTime() < Date.now()) {
+            await supabaseAdmin.from("verification_codes").delete().eq("id", anyActive.id);
+            return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
+          }
           await supabaseAdmin
             .from("verification_codes")
-            .update({ attempts: (active.attempts ?? 0) + 1 })
-            .eq("id", active.id);
+            .update({ attempts: (anyActive.attempts ?? 0) + 1 })
+            .eq("id", anyActive.id);
           return jsonResponse({ success: false, error: "Código inválido." }, 400);
         }
-        verifiedCodeId = active.id;
       } else {
         return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
       }

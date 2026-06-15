@@ -687,6 +687,25 @@ export function PacotesFinanceiro() {
         </Badge>
       </div>
 
+      {hiddenFinishedCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground">
+            {hiddenFinishedCount} pacote(s) finalizado(s) ou cancelado(s) estão ocultos para reduzir a poluição da lista.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-[10px]"
+            onClick={() => setShowFinished(true)}
+          >
+            Mostrar finalizados/cancelados
+          </Button>
+        </div>
+      )}
+
+
+
       <Card>
         <CardContent className="p-3">
           {isLoading ? (

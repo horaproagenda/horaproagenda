@@ -395,10 +395,15 @@ export function NewAppointmentDialog({
     for (let i = 1; i < totalSessions; i++) {
       const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
+      // Sobrescreve com intervalo manual digitado pelo usuário, se válido
+      const manualOverride = parseInt(customIntervalDays, 10);
+      const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
       // Use the step's interval, falling back to previous step, package default, or 7 days
-      const intervalDays = packageSequenceSteps.length > 0
-        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
-        : Number(packageData?.interval_days || 7);
+      const intervalDays = hasManualOverride
+        ? manualOverride
+        : packageSequenceSteps.length > 0
+          ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+          : Number(packageData?.interval_days || 7);
       // Ensure minimum 1 day interval to prevent overlapping sessions
       const safeInterval = Math.max(intervalDays, 1);
       const futureDate = addDays(currentDate, safeInterval);

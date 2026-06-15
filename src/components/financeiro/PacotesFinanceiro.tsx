@@ -45,6 +45,7 @@ interface PackageSaleRow {
   totalSessions: number;
   usedSessions: number;
   isCancelled: boolean;
+  isCompleted: boolean;
   refundedAmount: number;
 }
 

@@ -238,11 +238,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   const handleSubmitPackage = async (kind: 'common' | 'sequential') => {
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
-    if (!pkgName.trim()) { toast.error('Informe o nome do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }
     if (pkgSessions.some((r) => !r.date || !r.time)) { toast.error('Preencha data e horário de todas as sessões'); return; }
     const totalPrice = parseFloat(pkgTotalPrice.replace(',', '.')) || 0;
+    // Nome do pacote é derivado automaticamente do serviço selecionado
+    const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
 
     setSubmitting(true);
     try {
@@ -251,7 +252,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       const { data: pkg, error: pkgErr } = await supabase
         .from('service_packages')
         .insert({
-          name: pkgName.trim(),
+          name: derivedPkgName,
           client_id: clientId,
           service_id: serviceId,
           professional_id: professionalId || null,
@@ -305,7 +306,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           service_id: serviceId,
           professional_id: professionalId || null,
           package_appointment_id: pa.id,
-          notes: row.notes || `Sessão ${i + 1}/${total} — ${pkgName}`,
+          notes: row.notes || `Sessão ${i + 1}/${total} — ${derivedPkgName}`,
         });
 
         // Link back
@@ -317,7 +318,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           await createFinancialEntry({
             amount: amt,
             payment_date: row.payment_date || row.date,
-            description: `Sessão ${i + 1}/${total} — ${pkgName} (Histórico)`,
+            description: `Sessão ${i + 1}/${total} — ${derivedPkgName} (Histórico)`,
             appointment_id: apt.id,
           });
         }
@@ -329,7 +330,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         await createFinancialEntry({
           amount: totalPrice,
           payment_date: pkgPaymentDate || pkgSessions[0].date,
-          description: `Pacote ${pkgName} — ${clientName} (Histórico)`,
+          description: `Pacote ${derivedPkgName} — ${clientName} (Histórico)`,
         });
       }
 
@@ -546,7 +547,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="common" className="mt-0">
               <PackageForm
                 kind="common"
-                pkgName={pkgName} setPkgName={setPkgName}
+                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
@@ -558,7 +559,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="sequential" className="mt-0">
               <PackageForm
                 kind="sequential"
-                pkgName={pkgName} setPkgName={setPkgName}
+                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
@@ -637,7 +638,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 // ====== Sub-component: Package Form ======
 interface PackageFormProps {
   kind: 'common' | 'sequential';
-  pkgName: string; setPkgName: (v: string) => void;
+  
   pkgTotalSessions: string; setPkgTotalSessions: (v: string) => void;
   pkgTotalPrice: string; setPkgTotalPrice: (v: string) => void;
   pkgPaymentDate: string; setPkgPaymentDate: (v: string) => void;
@@ -650,7 +651,7 @@ interface PackageFormProps {
 
 function PackageForm(props: PackageFormProps) {
   const {
-    kind, pkgName, setPkgName, pkgTotalSessions, setPkgTotalSessions,
+    kind, pkgTotalSessions, setPkgTotalSessions,
     pkgTotalPrice, setPkgTotalPrice, pkgPaymentDate, setPkgPaymentDate,
     pkgIntervalDays, setPkgIntervalDays, pkgSessions,
     addSession, removeSession, updateSession,
@@ -659,10 +660,6 @@ function PackageForm(props: PackageFormProps) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="md:col-span-2">
-          <Label className="text-xs">Nome do pacote</Label>
-          <Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="Ex: Pacote Limpeza 4 sessões" className="h-9" />
-        </div>
         <div>
           <Label className="text-xs">Total de sessões</Label>
           <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />

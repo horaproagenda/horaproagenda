@@ -717,7 +717,22 @@ function PackageForm(props: PackageFormProps) {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Sessões realizadas ({pkgSessions.length})</Label>
+          <div className="space-y-0.5">
+            <Label className="text-xs">Sessões realizadas ({pkgSessions.filter((r) => r.date && r.time).length} de {parseInt(pkgTotalSessions) || pkgSessions.length})</Label>
+            {(() => {
+              const filled = pkgSessions.filter((r) => r.date && r.time).length;
+              const totalNum = parseInt(pkgTotalSessions) || pkgSessions.length;
+              const remaining = Math.max(0, totalNum - filled);
+              if (remaining > 0) {
+                return (
+                  <p className="text-[10px] text-muted-foreground">
+                    {remaining} sessão(ões) ficarão disponíveis para agendamento futuro.
+                  </p>
+                );
+              }
+              return null;
+            })()}
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={addSession} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" />Adicionar sessão
           </Button>

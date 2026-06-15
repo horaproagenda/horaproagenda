@@ -252,7 +252,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       const { data: pkg, error: pkgErr } = await supabase
         .from('service_packages')
         .insert({
-          name: pkgName.trim(),
+          name: derivedPkgName,
           client_id: clientId,
           service_id: serviceId,
           professional_id: professionalId || null,

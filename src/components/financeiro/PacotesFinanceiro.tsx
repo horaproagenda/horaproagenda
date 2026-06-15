@@ -583,10 +583,8 @@ export function PacotesFinanceiro() {
                   size="sm"
                   className="h-6 px-2 text-[10px] gap-1"
                   onClick={() => {
-                    setStatusFilter('all');
                     setDateFrom('');
                     setDateTo('');
-                    setShowFinished(false);
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -596,48 +594,6 @@ export function PacotesFinanceiro() {
             </div>
 
             <div className="space-y-3">
-              {/* Status */}
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                  Status do pacote
-                </p>
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-                >
-                  <SelectTrigger className="h-7 text-[11px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos (em andamento)</SelectItem>
-                    <SelectItem value="active">Ativos</SelectItem>
-                    <SelectItem value="completed">Finalizados</SelectItem>
-                    <SelectItem value="cancelled">Cancelados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 rounded border border-dashed border-muted-foreground/30 p-2">
-                <div className="space-y-0.5">
-                  <p className="text-[11px] font-medium">Mostrar finalizados/cancelados</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Por padrão são ocultados da lista para reduzir a poluição.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={showFinished ? 'default' : 'outline'}
-                  className="h-6 px-2 text-[10px]"
-                  onClick={() => setShowFinished((v) => !v)}
-                >
-                  {showFinished ? 'Ativo' : 'Inativo'}
-                </Button>
-              </div>
-
-
-              <Separator />
-
               {/* Data */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -672,22 +628,10 @@ export function PacotesFinanceiro() {
         </Badge>
       </div>
 
-      {hiddenFinishedCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">
-            {hiddenFinishedCount} pacote(s) finalizado(s) ou cancelado(s) estão ocultos para reduzir a poluição da lista.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-[10px]"
-            onClick={() => setShowFinished(true)}
-          >
-            Mostrar finalizados/cancelados
-          </Button>
-        </div>
-      )}
+
+
+
+
 
 
 

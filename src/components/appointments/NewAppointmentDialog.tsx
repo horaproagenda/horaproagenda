@@ -1986,22 +1986,55 @@ Até breve! ✨`;
                                         </Badge>
                                         {editingDateIndex === index ? (
                                           <div className="flex items-center gap-1 flex-1">
+                                            <Popover open onOpenChange={(o) => { if (!o) setEditingDateIndex(null); }}>
+                                              <PopoverTrigger asChild>
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="h-7 flex-1 justify-start text-xs font-normal"
+                                                >
+                                                  <CalendarIcon className="h-3 w-3 mr-1" />
+                                                  {format(previewDate, "EEE, dd/MM/yyyy", { locale: ptBR })}
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                  mode="single"
+                                                  selected={previewDate}
+                                                  onSelect={(d) => {
+                                                    if (!d) return;
+                                                    const merged = new Date(d);
+                                                    merged.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
+                                                    updateEditableDate(index, merged);
+                                                  }}
+                                                  locale={ptBR}
+                                                  initialFocus
+                                                  className="p-3 pointer-events-auto"
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
                                             <Input
-                                              type="datetime-local"
-                                              className="h-7 text-xs flex-1"
-                                              value={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
+                                              type="time"
+                                              className="h-7 text-xs w-24"
+                                              value={format(previewDate, 'HH:mm')}
                                               onChange={(e) => {
-                                                const newDate = new Date(e.target.value);
-                                                if (!isNaN(newDate.getTime())) {
-                                                  updateEditableDate(index, newDate);
-                                                }
+                                                const [hh, mm] = e.target.value.split(':').map(Number);
+                                                if (isNaN(hh) || isNaN(mm)) return;
+                                                const merged = new Date(previewDate);
+                                                merged.setHours(hh, mm, 0, 0);
+                                                updateEditableDate(index, merged);
                                               }}
-                                              onBlur={() => setEditingDateIndex(null)}
-                                              onKeyDown={(e) => {
-                                                if (e.key === 'Enter') setEditingDateIndex(null);
-                                              }}
-                                              autoFocus
                                             />
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 px-2 text-xs"
+                                              onClick={() => setEditingDateIndex(null)}
+                                            >
+                                              OK
+                                            </Button>
                                           </div>
                                         ) : (
                                         <button

@@ -151,15 +151,18 @@ serve(async (req) => {
       }
     }
 
-    // Block duplicate CPF across registrations
+    // Block duplicate CPF across registrations — but allow the SAME email to
+    // retry (idempotent recovery from a previous attempt that created the
+    // trial_registrations row and/or the auth user but failed to log in).
     const { data: cpfDup } = await supabaseAdmin
       .from("trial_registrations")
-      .select("id")
+      .select("id, email")
       .eq("cpf", cpfDigits)
       .maybeSingle();
-    if (cpfDup) {
+    if (cpfDup && (cpfDup.email ?? "").toLowerCase() !== normalizedEmail) {
       return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
     }
+
 
     const userMetadata = {
       full_name: fullName.trim(),

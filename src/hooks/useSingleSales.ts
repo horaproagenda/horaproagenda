@@ -337,6 +337,32 @@ export function useSingleSales() {
     },
   });
 
+  // Limpeza definitiva: apaga venda + boletos + pacote + agendamentos + financeiro + caixa
+  const purgeSale = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: id });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_services'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
+      toast.success('Venda removida e fluxo financeiro/agenda sincronizados.');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao remover venda: ' + (error.message || 'desconhecido'));
+    },
+  });
+
   const totalSales = sales.reduce((sum, s) => sum + Number(s.final_amount), 0);
 
   return {
@@ -346,5 +372,6 @@ export function useSingleSales() {
     refetch,
     createSale,
     deleteSale,
+    purgeSale,
   };
 }

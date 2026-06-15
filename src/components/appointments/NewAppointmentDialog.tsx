@@ -659,8 +659,20 @@ export function NewAppointmentDialog({
     return editableServiceDates.map((previewDate, index) => {
       const endTime = new Date(previewDate);
       endTime.setMinutes(endTime.getMinutes() + duration);
-      
+
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
+
+      // Detect overlap with siblings within the same series being created
+      editableServiceDates.forEach((other, otherIdx) => {
+        if (otherIdx === index) return;
+        const otherEnd = new Date(other.getTime() + duration * 60_000);
+        if (previewDate < otherEnd && endTime > other) {
+          dateConflicts.push({
+            type: 'series',
+            message: `Conflito com a sessão ${otherIdx + 1} desta série (${format(other, 'dd/MM HH:mm')})`,
+          } as ConflictInfo);
+        }
+      });
       
       // Find alternative if there are conflicts
       let suggestedDate: Date | null = null;

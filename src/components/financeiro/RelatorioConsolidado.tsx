@@ -430,6 +430,7 @@ export function RelatorioConsolidado() {
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Tipo</TableHead>
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Status</TableHead>
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide text-right">Valor</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide w-12 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

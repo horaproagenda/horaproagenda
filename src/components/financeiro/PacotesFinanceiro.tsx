@@ -161,34 +161,17 @@ export function PacotesFinanceiro() {
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      // Por padrão oculta pacotes finalizados/cancelados para reduzir poluição.
-      // Mostre apenas se o usuário ativar "Mostrar finalizados" ou selecionar
-      // explicitamente esse status no filtro.
-      const isFinished = r.isCancelled || r.isCompleted;
-      if (
-        isFinished &&
-        !showFinished &&
-        statusFilter !== 'cancelled' &&
-        statusFilter !== 'completed'
-      ) {
-        return false;
-      }
-      if (statusFilter === 'active' && (r.isCancelled || r.isCompleted)) return false;
-      if (statusFilter === 'cancelled' && !r.isCancelled) return false;
-      if (statusFilter === 'completed' && !r.isCompleted) return false;
+      // Pacotes finalizados/cancelados nunca aparecem aqui — apenas em andamento.
+      if (r.isCancelled || r.isCompleted) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, statusFilter, dateFrom, dateTo, showFinished]);
+  }, [rows, search, dateFrom, dateTo]);
 
-  const hiddenFinishedCount = useMemo(() => {
-    if (showFinished || statusFilter === 'cancelled' || statusFilter === 'completed') return 0;
-    return rows.filter((r) => r.isCancelled || r.isCompleted).length;
-  }, [rows, showFinished, statusFilter]);
+  const hiddenFinishedCount = 0;
 
-  const activeFilterCount =
-    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (showFinished ? 1 : 0);
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const deletePackageMutation = useMutation({
     mutationFn: async (row: PackageSaleRow) => {

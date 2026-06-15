@@ -306,7 +306,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           service_id: serviceId,
           professional_id: professionalId || null,
           package_appointment_id: pa.id,
-          notes: row.notes || `Sessão ${i + 1}/${total} — ${pkgName}`,
+          notes: row.notes || `Sessão ${i + 1}/${total} — ${derivedPkgName}`,
         });
 
         // Link back
@@ -318,7 +318,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           await createFinancialEntry({
             amount: amt,
             payment_date: row.payment_date || row.date,
-            description: `Sessão ${i + 1}/${total} — ${pkgName} (Histórico)`,
+            description: `Sessão ${i + 1}/${total} — ${derivedPkgName} (Histórico)`,
             appointment_id: apt.id,
           });
         }
@@ -330,7 +330,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         await createFinancialEntry({
           amount: totalPrice,
           payment_date: pkgPaymentDate || pkgSessions[0].date,
-          description: `Pacote ${pkgName} — ${clientName} (Histórico)`,
+          description: `Pacote ${derivedPkgName} — ${clientName} (Histórico)`,
         });
       }
 

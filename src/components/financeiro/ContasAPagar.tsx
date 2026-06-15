@@ -149,13 +149,13 @@ export function ContasAPagar() {
     const today = new Date();
     const dateFilter = selectedFilters.date || ['all'];
     const statusFilter = selectedFilters.status || ['all'];
-    
-    return payables.filter((entry) => {
+
+    const filtered = payables.filter((entry) => {
       if (!statusFilter.includes('all')) {
         if (statusFilter.includes('pending') && entry.status === 'paid') return false;
         if (statusFilter.includes('paid') && entry.status !== 'paid') return false;
       }
-      
+
       if (!dateFilter.includes('all')) {
         if (dateFilter.includes('today')) {
           const dueDate = parseISO(entry.due_date);
@@ -167,6 +167,9 @@ export function ContasAPagar() {
       }
       return true;
     });
+
+    // Sort by earliest due date first (overdue / próximos vencimentos no topo)
+    return filtered.sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [payables, selectedFilters]);
 
   const pendingFiltered = useMemo(() => filteredPayables.filter(e => e.status !== 'paid'), [filteredPayables]);

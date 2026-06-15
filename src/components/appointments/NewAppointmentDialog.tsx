@@ -1655,24 +1655,47 @@ Até breve! ✨`;
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Intervalo (dias)</Label>
-                              <Select
-                                value={serviceIntervalDays.toString()}
-                                onValueChange={(v) => setServiceIntervalDays(parseInt(v))}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[7, 14, 21, 28, 30, 45, 60, 90].map(days => (
-                                    <SelectItem key={days} value={days.toString()}>
-                                      A cada {days} dias
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={365}
+                                className="h-8 text-xs"
+                                value={serviceIntervalDays}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value);
+                                  if (!isNaN(v) && v >= 1 && v <= 365) setServiceIntervalDays(v);
+                                  else if (e.target.value === '') setServiceIntervalDays(1);
+                                }}
+                                placeholder="Ex.: 7, 14, 21..."
+                              />
                             </div>
                           </div>
-                          
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Dia da semana preferido</Label>
+                            <Select
+                              value={servicePreferredDayOfWeek === null ? '_any' : servicePreferredDayOfWeek.toString()}
+                              onValueChange={(v) => setServicePreferredDayOfWeek(v === '_any' ? null : parseInt(v))}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_any">Qualquer dia útil</SelectItem>
+                                <SelectItem value="1">Segunda-feira</SelectItem>
+                                <SelectItem value="2">Terça-feira</SelectItem>
+                                <SelectItem value="3">Quarta-feira</SelectItem>
+                                <SelectItem value="4">Quinta-feira</SelectItem>
+                                <SelectItem value="5">Sexta-feira</SelectItem>
+                                <SelectItem value="6">Sábado</SelectItem>
+                                <SelectItem value="0">Domingo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground">
+                              Quando definido, as repetições caem sempre neste dia da semana.
+                            </p>
+                          </div>
+
                           <div className="space-y-1">
                             <Label className="text-xs">Horário preferido</Label>
                             <Input

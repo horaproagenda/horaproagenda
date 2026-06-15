@@ -56,8 +56,9 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
+    const { email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
     const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedCode = (code ?? "").toString().replace(/\D/g, "").trim();
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
       return jsonResponse({ success: false, error: "Nome, e-mail e senha são obrigatórios." }, 400);
@@ -85,25 +86,55 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Email code must be verified within last 10 min
+    // Validate verification code atomically (accepts either a freshly-used code
+    // within the last 10 min OR an active code passed in `code`).
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { data: usedCode, error: codeError } = await supabaseAdmin
-      .from("verification_codes")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .eq("type", "signup")
-      .not("used_at", "is", null)
-      .gte("used_at", tenMinutesAgo)
-      .limit(1)
-      .maybeSingle();
+    let verifiedCodeId: string | null = null;
+    {
+      const { data: usedCode } = await supabaseAdmin
+        .from("verification_codes")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .eq("type", "signup")
+        .not("used_at", "is", null)
+        .gte("used_at", tenMinutesAgo)
+        .order("used_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (usedCode) {
+        verifiedCodeId = usedCode.id;
+      } else if (normalizedCode.length === 6) {
+        // Fallback: validate the active code directly here so verification +
+        // user creation happen atomically.
+        const { data: active } = await supabaseAdmin
+          .from("verification_codes")
+          .select("*")
+          .eq("email", normalizedEmail)
+          .eq("type", "signup")
+          .is("used_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!active) {
+          return jsonResponse({ success: false, error: "Nenhum código ativo. Solicite um novo código." }, 400);
+        }
+        if (new Date(active.expires_at).getTime() < Date.now()) {
+          await supabaseAdmin.from("verification_codes").delete().eq("id", active.id);
+          return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
+        }
+        if (((active.code ?? "").toString().trim()) !== normalizedCode) {
+          await supabaseAdmin
+            .from("verification_codes")
+            .update({ attempts: (active.attempts ?? 0) + 1 })
+            .eq("id", active.id);
+          return jsonResponse({ success: false, error: "Código inválido." }, 400);
+        }
+        verifiedCodeId = active.id;
+      } else {
+        return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
+      }
+    }
 
-    if (codeError) {
-      console.error("complete-signup verification lookup error:", codeError);
-      return jsonResponse({ success: false, error: "Erro ao validar o código de e-mail." }, 500);
-    }
-    if (!usedCode) {
-      return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
-    }
 
     // Phone code is optional — only verified when phone is provided
     if (phoneE164) {

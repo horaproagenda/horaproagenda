@@ -238,11 +238,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   const handleSubmitPackage = async (kind: 'common' | 'sequential') => {
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
-    if (!pkgName.trim()) { toast.error('Informe o nome do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }
     if (pkgSessions.some((r) => !r.date || !r.time)) { toast.error('Preencha data e horário de todas as sessões'); return; }
     const totalPrice = parseFloat(pkgTotalPrice.replace(',', '.')) || 0;
+    // Nome do pacote é derivado automaticamente do serviço selecionado
+    const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
 
     setSubmitting(true);
     try {

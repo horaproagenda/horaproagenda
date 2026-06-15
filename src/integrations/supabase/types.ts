@@ -1797,6 +1797,7 @@ export type Database = {
           recurring_day: number | null
           recurring_frequency: string | null
           root_entry_id: string | null
+          sale_id: string | null
           status: string
           type: string
           updated_at: string
@@ -1829,6 +1830,7 @@ export type Database = {
           recurring_day?: number | null
           recurring_frequency?: string | null
           root_entry_id?: string | null
+          sale_id?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -1861,6 +1863,7 @@ export type Database = {
           recurring_day?: number | null
           recurring_frequency?: string | null
           root_entry_id?: string | null
+          sale_id?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -1921,6 +1924,13 @@ export type Database = {
             columns: ["root_entry_id"]
             isOneToOne: false
             referencedRelation: "financial_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "single_sales"
             referencedColumns: ["id"]
           },
         ]
@@ -4673,6 +4683,7 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      audit_sale_flow_integrity: { Args: never; Returns: Json }
       authenticate_document_fill_link: {
         Args: { p_cpf: string; p_token: string }
         Returns: Json
@@ -5002,6 +5013,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_single_sale_cascade: { Args: { _sale_id: string }; Returns: Json }
       realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }
       recalculate_package_minimum_intervals: {
         Args: { _package_appointment_id: string }

@@ -17,6 +17,7 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
 import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferenciasSettings';
+import { SaleFlowIntegrityCard } from '@/components/settings/SaleFlowIntegrityCard';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
@@ -233,6 +234,9 @@ const Configuracoes = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Integridade do fluxo Financeiro × Agenda (admin) */}
+          {isAdmin && <SaleFlowIntegrityCard />}
 
           {/* Bulk Delete (apenas administradores) */}
           {isAdmin && <BulkDeleteDialog />}

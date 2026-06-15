@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { FinancialCategory } from './useFinancialCategories';
 import { PaymentMethod } from './usePaymentMethods';
 
@@ -39,11 +40,13 @@ export interface FinancialEntry {
 
 export function useFinancialEntries() {
   const queryClient = useQueryClient();
+  const accountOwnerId = useAccountOwnerId();
 
-  // Realtime sync for financial_entries
+  // Realtime sync for financial_entries (tenant-scoped)
   useEffect(() => {
+    if (!accountOwnerId) return;
     const channel = supabase
-      .channel('financial_entries_changes')
+      .channel(`financial_entries_changes-${accountOwnerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, () => {
         queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       })
@@ -52,7 +55,7 @@ export function useFinancialEntries() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 
   const { data: entries = [], isLoading, refetch } = useQuery({
     queryKey: ['financial_entries'],

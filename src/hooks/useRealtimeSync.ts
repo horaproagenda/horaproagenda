@@ -1,21 +1,25 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { toast } from 'sonner';
 
 /**
  * Hook para sincronização em tempo real COMPLETA entre todas as tabelas
- * 
+ *
  * ARQUITETURA:
  * - Usa Supabase Realtime (WebSocket) para detectar mudanças no banco
  * - Invalida cache do React Query → dispara refetch automático
  * - Latência típica: 50-200ms
  * - REFETCH AGRESSIVO: Invalida TODAS as queries relacionadas imediatamente
+ * - Canal segmentado por tenant (account_owner_id) para isolamento multi-tenant
  */
 export function useRealtimeSync() {
   const queryClient = useQueryClient();
+  const accountOwnerId = useAccountOwnerId();
 
   useEffect(() => {
+    if (!accountOwnerId) return;
     let lastRefresh = 0;
     
     // Função para invalidar TUDO de forma agressiva (throttled)
@@ -112,7 +116,7 @@ export function useRealtimeSync() {
 
     // Canal principal para TODAS as tabelas
     const mainChannel = supabase
-      .channel('realtime-sync-all-v2')
+      .channel(`realtime-sync-all-v2-${accountOwnerId}`)
       
       // ============ APPOINTMENTS ============
       .on(
@@ -674,5 +678,5 @@ export function useRealtimeSync() {
     return () => {
       supabase.removeChannel(mainChannel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 }

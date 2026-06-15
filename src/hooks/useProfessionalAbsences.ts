@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { useEffect } from 'react';
 
 export interface ProfessionalAbsence {
@@ -111,10 +112,12 @@ export function useProfessionalAbsences() {
     },
   });
 
-  // Real-time sync for absences - invalidate appointments when absences change
+  // Real-time sync for absences - invalidate appointments when absences change (tenant-scoped)
+  const accountOwnerId = useAccountOwnerId();
   useEffect(() => {
+    if (!accountOwnerId) return;
     const channel = supabase
-      .channel('absences-appointments-sync')
+      .channel(`absences-appointments-sync-${accountOwnerId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'professional_absences' },
@@ -128,7 +131,7 @@ export function useProfessionalAbsences() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 
   return {
     absences,

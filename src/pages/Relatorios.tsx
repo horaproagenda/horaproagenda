@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { AtendimentosPorProfissional } from '@/components/relatorios/AtendimentosPorProfissional';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -36,10 +37,12 @@ const Relatorios = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Realtime sync for reports
+  // Realtime sync for reports (tenant-scoped)
+  const accountOwnerId = useAccountOwnerId();
   useEffect(() => {
+    if (!accountOwnerId) return;
     const channel = supabase
-      .channel('reports_realtime')
+      .channel(`reports_realtime-${accountOwnerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
         queryClient.invalidateQueries({ queryKey: ['clients'] });
       })
@@ -57,7 +60,7 @@ const Relatorios = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 
   const today = new Date();
   const currentMonth = today.getMonth();

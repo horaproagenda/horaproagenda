@@ -57,12 +57,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Resolve caller's tenant (account_owner_id) for strict tenant scoping
+    const { data: callerProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('account_owner_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileError || !callerProfile?.account_owner_id) {
+      console.error('Profile lookup failed:', profileError);
+      return new Response(JSON.stringify({ error: 'Tenant context not found' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const callerOwner = callerProfile.account_owner_id;
+
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Mark overdue boleto installments
+    // 1. Mark overdue boleto installments — scoped to caller's tenant
     const { data: overdueInstallments, error: overdueError } = await supabase
       .from('boleto_installments')
       .update({ status: 'overdue', updated_at: new Date().toISOString() })
+      .eq('account_owner_id', callerOwner)
       .eq('status', 'pending')
       .lt('due_date', today)
       .select('id, sale_id');
@@ -86,12 +103,13 @@ Deno.serve(async (req) => {
     }
 
     const markedOverdue = overdueInstallments?.length || 0;
-    console.log(`Marked ${markedOverdue} boleto installments as overdue`);
+    console.log(`Marked ${markedOverdue} boleto installments as overdue for tenant ${callerOwner}`);
 
-    // 2. Mark overdue financial entries (receivable boletos)
+    // 2. Mark overdue financial entries (receivable boletos) — scoped to caller's tenant
     const { data: overdueEntries, error: entryError } = await supabase
       .from('financial_entries')
       .update({ status: 'overdue', updated_at: new Date().toISOString() })
+      .eq('account_owner_id', callerOwner)
       .eq('status', 'pending')
       .eq('type', 'receivable')
       .lt('due_date', today)
@@ -107,39 +125,45 @@ Deno.serve(async (req) => {
 
     // 3. Sync appointment payment notes for clients with overdue boletos
     const affectedSaleIds = [...new Set(overdueInstallments?.map(i => i.sale_id) || [])];
-    
+
     let updatedAppointments = 0;
     for (const saleId of affectedSaleIds) {
-      // Get client from sale
+      // Get client from sale — scoped to caller's tenant
       const { data: sale } = await supabase
         .from('single_sales')
-        .select('client_id')
+        .select('client_id, account_owner_id')
         .eq('id', saleId)
-        .single();
+        .eq('account_owner_id', callerOwner)
+        .maybeSingle();
 
       if (!sale?.client_id) continue;
 
-      // Get overdue count for this client
+      // Get overdue count for this client (tenant-scoped)
+      const { data: clientSales } = await supabase
+        .from('single_sales')
+        .select('id')
+        .eq('client_id', sale.client_id)
+        .eq('account_owner_id', callerOwner);
+
+      const saleIds = clientSales?.map(s => s.id) || [];
+      if (saleIds.length === 0) continue;
+
       const { count } = await supabase
         .from('boleto_installments')
         .select('*', { count: 'exact', head: true })
+        .eq('account_owner_id', callerOwner)
         .eq('status', 'overdue')
-        .in('sale_id', 
-          (await supabase
-            .from('single_sales')
-            .select('id')
-            .eq('client_id', sale.client_id)
-          ).data?.map(s => s.id) || []
-        );
+        .in('sale_id', saleIds);
 
       if (count && count > 0) {
-        // Update future appointments for this client with a note
+        // Update future appointments for this client with a note — tenant-scoped
         const { data: updated } = await supabase
           .from('appointments')
-          .update({ 
+          .update({
             notes: `⚠️ Cliente com ${count} boleto(s) em atraso`,
             updated_at: new Date().toISOString()
           })
+          .eq('account_owner_id', callerOwner)
           .eq('client_id', sale.client_id)
           .gte('date', today)
           .in('status', ['scheduled', 'confirmed'])

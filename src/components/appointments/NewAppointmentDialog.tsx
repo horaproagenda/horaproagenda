@@ -1713,7 +1713,12 @@ Até breve! ✨`;
                           <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
                             <div className="flex items-center gap-2">
                               <MessageCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-xs font-medium">Notificar por WhatsApp</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-medium">Enviar todos por WhatsApp</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  O cliente receberá uma mensagem com a lista completa dos {editableServiceDates.length || repeatCount} agendamentos.
+                                </span>
+                              </div>
                             </div>
                             <Switch
                               checked={sendWhatsappNotification}

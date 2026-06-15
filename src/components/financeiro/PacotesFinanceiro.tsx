@@ -108,6 +108,7 @@ export function PacotesFinanceiro() {
         const used = apps.filter((a: any) => a.status === 'completed' || a.status === 'missed').length;
         const total = s.package?.total_sessions || 0;
         const isCancelled = (s.notes || '').toUpperCase().includes('CANCELADO');
+        const isCompleted = total > 0 && used >= total;
         return {
           saleId: s.id,
           packageId: s.package_id || s.package?.id || null,
@@ -121,6 +122,7 @@ export function PacotesFinanceiro() {
           totalSessions: total,
           usedSessions: used,
           isCancelled,
+          isCompleted,
           refundedAmount: refundsBySale.get(s.id) || 0,
         };
       });

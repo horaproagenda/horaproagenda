@@ -294,7 +294,7 @@ export function useClientProfile(clientId: string) {
       supabase.removeChannel(photosChannel);
       supabase.removeChannel(boletoChannel);
     };
-  }, [clientId, queryClient]);
+  }, [clientId, queryClient, accountOwnerId]);
 
   // Fetch client details with assigned professional
   const { data: client, isLoading: clientLoading } = useQuery({

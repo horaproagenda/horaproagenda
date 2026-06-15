@@ -178,7 +178,12 @@ export function RelatorioConsolidado() {
       case 'week': return 'Esta Semana';
       case 'month': return 'Este Mês';
       case 'quarter': return 'Este Trimestre';
-      case 'custom': return format(parseISO(customDate), "dd/MM/yyyy", { locale: ptBR });
+      case 'custom': {
+        if (!customDate || !/^\d{4}-\d{2}-\d{2}$/.test(customDate)) return 'Personalizado';
+        const d = parseISO(customDate);
+        if (isNaN(d.getTime())) return 'Personalizado';
+        return format(d, "dd/MM/yyyy", { locale: ptBR });
+      }
       default: return 'Hoje';
     }
   };

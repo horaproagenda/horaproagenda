@@ -281,9 +281,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .single();
       if (pkgErr) throw pkgErr;
 
-      // 2. For each session: create package_appointment + appointment, link them
-      for (let i = 0; i < pkgSessions.length; i++) {
-        const row = pkgSessions[i];
+      // 2. For each filled session: create package_appointment + appointment, link them
+      for (let i = 0; i < filledSessions.length; i++) {
+        const row = filledSessions[i];
         const start = buildLocalISO(row.date, row.time);
         if (!start) continue;
         const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
@@ -300,7 +300,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         };
         if (kind === 'sequential') {
           paInsert.sequence_order = i + 1;
-          paInsert.interval_after_days = i < pkgSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
+          paInsert.interval_after_days = i < filledSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
         }
         const { data: pa, error: paErr } = await supabase
           .from('package_appointments')
@@ -334,15 +334,40 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         }
       }
 
+      // 2b. Cria placeholders 'pending' para as sessões restantes do pacote
+      // (ex.: pacote de 10 com apenas 5 realizadas → 5 ficam disponíveis para agendamento futuro)
+      if (remainingSessions > 0) {
+        const placeholders = Array.from({ length: remainingSessions }).map((_, k) => {
+          const idx = filledSessions.length + k;
+          const row: any = {
+            package_id: pkg.id,
+            session_number: idx + 1,
+            original_session_number: idx + 1,
+            status: 'pending',
+            service_id: serviceId,
+          };
+          if (kind === 'sequential') {
+            row.sequence_order = idx + 1;
+            row.interval_after_days = k < remainingSessions - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
+          }
+          return row;
+        });
+        const { error: placeholderErr } = await supabase
+          .from('package_appointments')
+          .insert(placeholders);
+        if (placeholderErr) throw placeholderErr;
+      }
+
       // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
-      const anyPerSession = pkgSessions.some((r) => parseFloat((r.amount_paid || '').replace(',', '.')) > 0);
+      const anyPerSession = filledSessions.some((r) => parseFloat((r.amount_paid || '').replace(',', '.')) > 0);
       if (totalPrice > 0 && !anyPerSession) {
         await createFinancialEntry({
           amount: totalPrice,
-          payment_date: pkgPaymentDate || pkgSessions[0].date,
+          payment_date: pkgPaymentDate || filledSessions[0].date,
           description: `Pacote ${derivedPkgName} — ${clientName} (Histórico)`,
         });
       }
+
 
       invalidateAll();
       toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);

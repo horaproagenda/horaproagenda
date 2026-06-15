@@ -244,6 +244,7 @@ export function useSingleSales() {
         payment_method_id: sale.payment_method_id,
         client_id: sale.client_id,
         created_by: user?.id,
+        sale_id: saleData.id,
       });
 
       // 7. Deduzir estoque em tempo real para serviço/pacote vendido

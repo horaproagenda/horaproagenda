@@ -72,29 +72,22 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // SECURITY: signup requires a new email; password recovery requires an existing account.
-    if (normalizedType === 'signup') {
-      const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
-      if (exists) {
-        return new Response(
-          JSON.stringify({
-            code: 'email_exists',
-            error: "Este e-mail já está cadastrado. Faça login ou use 'Esqueci minha senha' para recuperá-la.",
-          }),
-          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-    } else if (normalizedType === 'login') {
-      const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
-      if (!exists) {
-        return new Response(
-          JSON.stringify({
-            code: 'user_not_found',
-            error: 'Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo.',
-          }),
-          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
+    // SECURITY: avoid email enumeration. Always return an identical 200
+    // response regardless of whether the address is registered. When the
+    // request doesn't match the expected state (signup w/ existing email or
+    // login w/ unknown email) we silently skip the actual send.
+    const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
+    const shouldSkipSend =
+      (normalizedType === 'signup' && exists) ||
+      (normalizedType === 'login' && !exists);
+
+    if (shouldSkipSend) {
+      // Constant-time-ish small delay to dampen response-time enumeration.
+      await new Promise((r) => setTimeout(r, 200));
+      return new Response(
+        JSON.stringify({ success: true, message: "Código enviado para o e-mail" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const code = generateCode();

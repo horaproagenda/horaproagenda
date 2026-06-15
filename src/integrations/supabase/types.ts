@@ -4855,6 +4855,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      get_document_fill_link_token: {
+        Args: { _link_id: string }
+        Returns: string
+      }
       get_effective_business_settings: {
         Args: { _user_id?: string }
         Returns: Json

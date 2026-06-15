@@ -2067,88 +2067,92 @@ Até breve! ✨`;
 
               <div className="space-y-2">
                 <Label>Horário *</Label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="pl-9"
-                      placeholder="HH:MM"
-                    />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Início</Label>
+                    <div className="flex items-center gap-1">
+                      <div className="relative flex-1">
+                        <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={time}
+                          onChange={(e) => setTime(e.target.value)}
+                          className="pl-8 h-9"
+                          placeholder="HH:MM"
+                        />
+                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2 z-50" align="end">
+                          <p className="text-xs font-medium mb-2">Horários sugeridos</p>
+                          <ScrollArea className="h-[200px]">
+                            <div className="space-y-1">
+                              {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
+                                <Button
+                                  key={slot}
+                                  variant={time === slot ? "default" : "ghost"}
+                                  size="sm"
+                                  type="button"
+                                  className={cn(
+                                    "w-full justify-start text-left h-8",
+                                    !isAvailable && "opacity-50"
+                                  )}
+                                  onClick={() => {
+                                    setTime(slot);
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2 w-full">
+                                    {isAvailable ? (
+                                      <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                    ) : (
+                                      <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                                    )}
+                                    <span>{slot}</span>
+                                    {!isAvailable && (
+                                      <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
+                                    )}
+                                  </div>
+                                </Button>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="icon" type="button" className="shrink-0">
-                        <CalendarIcon className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-2 z-50" align="end">
-                      <p className="text-xs font-medium mb-2">Horários sugeridos</p>
-                      <ScrollArea className="h-[200px]">
-                        <div className="space-y-1">
-                          {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
-                            <Button
-                              key={slot}
-                              variant={time === slot ? "default" : "ghost"}
-                              size="sm"
-                              type="button"
-                              className={cn(
-                                "w-full justify-start text-left h-8",
-                                !isAvailable && "opacity-50"
-                              )}
-                              onClick={() => {
-                                setTime(slot);
-                              }}
-                            >
-                              <div className="flex items-center gap-2 w-full">
-                                {isAvailable ? (
-                                  <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                                ) : (
-                                  <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
-                                )}
-                                <span>{slot}</span>
-                                {!isAvailable && (
-                                  <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
-                                )}
-                              </div>
-                            </Button>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                {appointmentTimes && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-[11px] text-muted-foreground shrink-0">Término:</Label>
-                    <div className="relative flex-1">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground flex items-center justify-between">
+                      <span>Término</span>
+                      {endTimeOverride && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-primary hover:underline"
+                          onClick={() => setEndTimeOverride('')}
+                          title="Restaurar término automático"
+                        >
+                          Auto
+                        </button>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                       <Input
                         type="time"
-                        value={endTimeOverride || format(appointmentTimes.endTime, 'HH:mm')}
+                        value={endTimeOverride || (appointmentTimes ? format(appointmentTimes.endTime, 'HH:mm') : '')}
                         onChange={(e) => setEndTimeOverride(e.target.value)}
-                        className="pl-8 h-8 text-xs"
+                        className="pl-8 h-9"
                         placeholder="HH:MM"
+                        disabled={!appointmentTimes}
                       />
                     </div>
-                    {endTimeOverride && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-[10px]"
-                        onClick={() => setEndTimeOverride('')}
-                        title="Restaurar término automático"
-                      >
-                        Auto
-                      </Button>
-                    )}
                   </div>
-                )}
+                </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Digite o horário ou use o ícone de sugestões. O término é calculado pela duração, mas pode ser editado manualmente.
+                  O término é calculado pela duração do serviço, mas pode ser editado manualmente.
                 </p>
               </div>
             </div>

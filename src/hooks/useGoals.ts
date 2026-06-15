@@ -35,40 +35,40 @@ export interface CreateGoalInput {
 
 export function useGoals() {
   const queryClient = useQueryClient();
+  const accountOwnerId = useAccountOwnerId();
 
-  // Set up real-time subscriptions for automatic updates
+  // Set up real-time subscriptions for automatic updates (tenant-scoped)
   useEffect(() => {
-    // Subscribe to appointments changes
+    if (!accountOwnerId) return;
+
     const appointmentsChannel = supabase
-      .channel('goals-appointments-sync')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'appointments' 
+      .channel(`goals-appointments-sync-${accountOwnerId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointments'
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['goals'] });
       })
       .subscribe();
 
-    // Subscribe to single_sales changes (for revenue goals)
     const salesChannel = supabase
-      .channel('goals-sales-sync')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'single_sales' 
+      .channel(`goals-sales-sync-${accountOwnerId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'single_sales'
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['goals'] });
       })
       .subscribe();
 
-    // Subscribe to cash_transactions changes
     const transactionsChannel = supabase
-      .channel('goals-transactions-sync')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'cash_transactions' 
+      .channel(`goals-transactions-sync-${accountOwnerId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cash_transactions'
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['goals'] });
       })
@@ -79,7 +79,7 @@ export function useGoals() {
       supabase.removeChannel(salesChannel);
       supabase.removeChannel(transactionsChannel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 
   const { data: goals = [], isLoading, refetch } = useQuery({
     queryKey: ['goals'],

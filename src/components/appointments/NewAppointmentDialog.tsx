@@ -126,6 +126,8 @@ export function NewAppointmentDialog({
   const [editablePreviewDates, setEditablePreviewDates] = useState<Date[]>([]);
   const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
+  // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
+  const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);

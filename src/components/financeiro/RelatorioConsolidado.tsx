@@ -243,6 +243,84 @@ export function RelatorioConsolidado() {
     doc.save(`relatorio_consolidado_filtrado_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
+  // Cascade delete handler ---------------------------------------------------
+  const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<ConsolidatedEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const invalidateAllFinancial = () => {
+    const keys = [
+      'cash_transactions', 'financial_entries', 'single_sales', 'service_packages',
+      'client_packages', 'package_appointments', 'appointments', 'client-appointments',
+      'client_services', 'client_credit_transactions', 'client_credit_transactions_report',
+      'package-sales-financial', 'boleto_installments', 'boleto_installments_all',
+    ];
+    keys.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+  };
+
+  const performDelete = async (entry: ConsolidatedEntry) => {
+    // 1) Sale-linked → cascade via RPC
+    if (entry.saleId) {
+      const { error } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: entry.saleId });
+      if (error) throw error;
+      return;
+    }
+    // 2) Appointment payment → reverse-payment edge function
+    if (entry.appointmentId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/reverse-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ appointment_id: entry.appointmentId }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({} as any));
+        throw new Error(errBody.error || 'Falha ao reverter pagamento do agendamento');
+      }
+      return;
+    }
+    // 3) Cash transaction (no sale/appointment link) → delete the row directly
+    if (entry.cashTxId) {
+      const { error } = await supabase.from('cash_transactions').delete().eq('id', entry.cashTxId);
+      if (error) throw error;
+      return;
+    }
+    // 4) Financial entry (standalone) → delete the row directly
+    if (entry.financialEntryId) {
+      const { error } = await supabase.from('financial_entries').delete().eq('id', entry.financialEntryId);
+      if (error) throw error;
+      return;
+    }
+    // 5) Client credit transaction
+    if (entry.creditTxId) {
+      const { error } = await (supabase as any).from('client_credit_transactions').delete().eq('id', entry.creditTxId);
+      if (error) throw error;
+      return;
+    }
+    throw new Error('Movimentação sem identificador para exclusão.');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await performDelete(deleteTarget);
+      toast.success('Movimentação excluída. Registros vinculados também foram removidos.');
+      setDeleteTarget(null);
+      invalidateAllFinancial();
+    } catch (err: any) {
+      console.error('[RelatorioConsolidado] delete error', err);
+      toast.error(err?.message || 'Erro ao excluir movimentação.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
   return (
     <div className="space-y-4">
       {/* Os totais de Entradas, Saídas, Saldo do Período e Caixas abertos

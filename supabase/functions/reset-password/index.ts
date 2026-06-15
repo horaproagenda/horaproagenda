@@ -18,8 +18,9 @@ serve(async (req) => {
 
   try {
     const { email, newPassword }: ResetPasswordRequest = await req.json();
+    const normalizedEmail = (email ?? "").toString().trim().toLowerCase();
 
-    if (!email || !newPassword) {
+    if (!normalizedEmail || !newPassword) {
       throw new Error("Email e nova senha são obrigatórios");
     }
 
@@ -39,7 +40,7 @@ serve(async (req) => {
     const { data: usedCode, error: codeError } = await supabaseAdmin
       .from("verification_codes")
       .select("id")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .not("used_at", "is", null)
       .gte("used_at", fiveMinutesAgo)
       .limit(1)
@@ -51,23 +52,28 @@ serve(async (req) => {
     }
 
     if (!usedCode) {
-      console.error("No recently used verification code found for:", email);
+      console.error("No recently used verification code found for:", normalizedEmail);
       throw new Error("Código de verificação não encontrado ou expirado. Solicite um novo código.");
     }
 
-    // Find user by email
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error("Error listing users:", listError);
-      throw new Error("Erro ao buscar usuário");
+    // Find user by email — paginate because listUsers() returns 50 per page by default.
+    let user: { id: string; email?: string | null } | null = null;
+    const perPage = 1000;
+    for (let page = 1; page <= 50; page++) {
+      const { data, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (listError) {
+        console.error("Error listing users:", listError);
+        throw new Error("Erro ao buscar usuário");
+      }
+      const found = data.users.find((u) => (u.email ?? "").toLowerCase() === normalizedEmail);
+      if (found) { user = found; break; }
+      if (data.users.length < perPage) break;
     }
 
-    const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    
     if (!user) {
       throw new Error("Usuário não encontrado");
     }
+
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(

@@ -73,9 +73,9 @@ export function useClientProfile(clientId: string) {
         console.log('Sales subscription status:', status);
       });
 
-    // Subscribe to ALL appointments for this project (to catch new ones)
+    // Subscribe to ALL appointments INSERTs in this tenant (to catch new ones for this client)
     const allAppointmentsChannel = supabase
-      .channel(`all-appointments-realtime`)
+      .channel(`all-appointments-realtime-${accountOwnerId ?? 'pending'}`)
       .on(
         'postgres_changes',
         {

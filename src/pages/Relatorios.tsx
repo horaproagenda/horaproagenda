@@ -36,10 +36,12 @@ const Relatorios = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Realtime sync for reports
+  // Realtime sync for reports (tenant-scoped)
+  const accountOwnerId = useAccountOwnerId();
   useEffect(() => {
+    if (!accountOwnerId) return;
     const channel = supabase
-      .channel('reports_realtime')
+      .channel(`reports_realtime-${accountOwnerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
         queryClient.invalidateQueries({ queryKey: ['clients'] });
       })
@@ -57,7 +59,7 @@ const Relatorios = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 
   const today = new Date();
   const currentMonth = today.getMonth();

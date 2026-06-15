@@ -517,6 +517,35 @@ export function RelatorioConsolidado() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é definitiva. Todos os registros vinculados ao pagamento serão removidos:
+              <br />• Se for venda de serviço ou pacote: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• O lançamento no Caixa, no Financeiro e no perfil do cliente também serão apagados.
+              {deleteTarget && (
+                <span className="block mt-3 text-foreground font-medium">
+                  {deleteTarget.description} · {formatCurrency(deleteTarget.amount)}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

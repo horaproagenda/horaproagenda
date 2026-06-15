@@ -240,7 +240,17 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }
-    if (pkgSessions.some((r) => !r.date || !r.time)) { toast.error('Preencha data e horário de todas as sessões'); return; }
+    // Considera apenas as linhas efetivamente preenchidas (data + hora)
+    const filledSessions = pkgSessions.filter((r) => r.date && r.time);
+    if (filledSessions.length === 0) {
+      toast.error('Preencha pelo menos uma sessão com data e horário');
+      return;
+    }
+    if (filledSessions.length > total) {
+      toast.error(`Você preencheu ${filledSessions.length} sessões, mas o total do pacote é ${total}. Aumente o total ou remova sessões.`);
+      return;
+    }
+    const remainingSessions = Math.max(0, total - filledSessions.length);
     const totalPrice = parseFloat(pkgTotalPrice.replace(',', '.')) || 0;
     // Nome do pacote é derivado automaticamente do serviço selecionado
     const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
@@ -257,7 +267,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           service_id: serviceId,
           professional_id: professionalId || null,
           total_sessions: total,
-          sessions_scheduled: pkgSessions.length,
+          sessions_scheduled: filledSessions.length,
           total_price: totalPrice,
           duration: selectedService?.duration ?? 60,
           package_type: kind === 'sequential' ? 'sequential' : 'standard',
@@ -271,9 +281,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .single();
       if (pkgErr) throw pkgErr;
 
-      // 2. For each session: create package_appointment + appointment, link them
-      for (let i = 0; i < pkgSessions.length; i++) {
-        const row = pkgSessions[i];
+      // 2. For each filled session: create package_appointment + appointment, link them
+      for (let i = 0; i < filledSessions.length; i++) {
+        const row = filledSessions[i];
         const start = buildLocalISO(row.date, row.time);
         if (!start) continue;
         const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
@@ -290,7 +300,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         };
         if (kind === 'sequential') {
           paInsert.sequence_order = i + 1;
-          paInsert.interval_after_days = i < pkgSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
+          paInsert.interval_after_days = i < filledSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
         }
         const { data: pa, error: paErr } = await supabase
           .from('package_appointments')
@@ -324,15 +334,40 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         }
       }
 
+      // 2b. Cria placeholders 'pending' para as sessões restantes do pacote
+      // (ex.: pacote de 10 com apenas 5 realizadas → 5 ficam disponíveis para agendamento futuro)
+      if (remainingSessions > 0) {
+        const placeholders = Array.from({ length: remainingSessions }).map((_, k) => {
+          const idx = filledSessions.length + k;
+          const row: any = {
+            package_id: pkg.id,
+            session_number: idx + 1,
+            original_session_number: idx + 1,
+            status: 'pending',
+            service_id: serviceId,
+          };
+          if (kind === 'sequential') {
+            row.sequence_order = idx + 1;
+            row.interval_after_days = k < remainingSessions - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
+          }
+          return row;
+        });
+        const { error: placeholderErr } = await supabase
+          .from('package_appointments')
+          .insert(placeholders);
+        if (placeholderErr) throw placeholderErr;
+      }
+
       // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
-      const anyPerSession = pkgSessions.some((r) => parseFloat((r.amount_paid || '').replace(',', '.')) > 0);
+      const anyPerSession = filledSessions.some((r) => parseFloat((r.amount_paid || '').replace(',', '.')) > 0);
       if (totalPrice > 0 && !anyPerSession) {
         await createFinancialEntry({
           amount: totalPrice,
-          payment_date: pkgPaymentDate || pkgSessions[0].date,
+          payment_date: pkgPaymentDate || filledSessions[0].date,
           description: `Pacote ${derivedPkgName} — ${clientName} (Histórico)`,
         });
       }
+
 
       invalidateAll();
       toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);
@@ -682,7 +717,22 @@ function PackageForm(props: PackageFormProps) {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Sessões realizadas ({pkgSessions.length})</Label>
+          <div className="space-y-0.5">
+            <Label className="text-xs">Sessões realizadas ({pkgSessions.filter((r) => r.date && r.time).length} de {parseInt(pkgTotalSessions) || pkgSessions.length})</Label>
+            {(() => {
+              const filled = pkgSessions.filter((r) => r.date && r.time).length;
+              const totalNum = parseInt(pkgTotalSessions) || pkgSessions.length;
+              const remaining = Math.max(0, totalNum - filled);
+              if (remaining > 0) {
+                return (
+                  <p className="text-[10px] text-muted-foreground">
+                    {remaining} sessão(ões) ficarão disponíveis para agendamento futuro.
+                  </p>
+                );
+              }
+              return null;
+            })()}
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={addSession} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" />Adicionar sessão
           </Button>

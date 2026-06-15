@@ -55,8 +55,6 @@ export function PacotesFinanceiro() {
   const [search, setSearch] = useState('');
   // Pacotes finalizados e cancelados não são mais exibidos nesta página —
   // só pacotes em andamento (com sessões ainda por usar).
-  const statusFilter = 'active' as const;
-  const showFinished = false;
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');

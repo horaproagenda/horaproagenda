@@ -1220,6 +1220,7 @@ Até breve! ✨`;
     setRepeatServiceEnabled(false);
     setRepeatCount(4);
     setServiceIntervalDays(7);
+    setServicePreferredDayOfWeek(null);
     setServicePreviewDates([]);
     setEditableServiceDates([]);
     setEditingServiceDateIndex(null);

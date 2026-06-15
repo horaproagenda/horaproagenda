@@ -20,7 +20,11 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles, X, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';

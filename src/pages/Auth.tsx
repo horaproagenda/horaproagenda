@@ -503,8 +503,9 @@ function AuthInner() {
     setLoading(true);
     try {
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
-        body: { email: forgotEmail, code: resetCode },
+        body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim() },
       });
+
       if (verifyError) throw verifyError;
       if (!verifyData?.valid) {
         const next = resetCodeAttempts + 1;

@@ -10,6 +10,7 @@ interface CompleteSignupRequest {
   email: string;
   password: string;
   fullName: string;
+  code?: string;
   phone?: string;
   cpf?: string;
   companyName?: string;

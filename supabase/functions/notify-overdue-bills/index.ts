@@ -72,11 +72,27 @@ serve(async (req) => {
     // Use service role for data access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Resolve caller's tenant (account_owner_id) for strict tenant scoping
+    const { data: callerProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('account_owner_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileError || !callerProfile?.account_owner_id) {
+      console.error('Profile lookup failed:', profileError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Tenant context not found' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const callerOwner = callerProfile.account_owner_id;
+
     const ultramsgBase = (Deno.env.get('ULTRAMSG_API_URL') || 'https://api.ultramsg.com').replace(/\/+$/, '');
     const ultramsgInstance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
     const ultramsgToken = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
 
-    console.log('Starting overdue bills notification check...');
+    console.log('Starting overdue bills notification check for tenant:', callerOwner);
 
     // Check if WhatsApp (UltraMsg) is configured
     if (!ultramsgInstance || !ultramsgToken) {
@@ -94,13 +110,15 @@ serve(async (req) => {
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
 
-    // Find overdue receivable entries with client info
+    // Find overdue receivable entries with client info — scoped to caller's tenant
     const { data: overdueEntries, error: entriesError } = await supabase
       .from('financial_entries')
       .select(`
         *,
-        client:clients(id, name, phone)
+        client:clients!inner(id, name, phone, account_owner_id)
       `)
+      .eq('account_owner_id', callerOwner)
+      .eq('client.account_owner_id', callerOwner)
       .eq('type', 'receivable')
       .eq('status', 'pending')
       .lt('due_date', today)

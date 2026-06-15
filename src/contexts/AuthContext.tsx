@@ -127,10 +127,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
+      // Tenta extrair payload JSON do erro (FunctionsHttpError mantém o body)
+      let payload: any = null;
+      try { payload = await (error as any)?.context?.json?.(); } catch { /* ignore */ }
+      if (payload?.code === 'email_exists') {
+        const err = new Error(payload.error || 'E-mail já cadastrado') as Error & { code?: string };
+        err.code = 'email_exists';
+        return { error: err };
+      }
       return { error: error as Error };
     }
 
     if (!data?.success) {
+      if (data?.code === 'email_exists') {
+        const err = new Error(data.error || 'E-mail já cadastrado') as Error & { code?: string };
+        err.code = 'email_exists';
+        return { error: err };
+      }
       return { error: new Error(data?.error || 'Erro ao cadastrar') };
     }
 
@@ -138,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // signIn pode falhar — tentamos uma segunda vez após uma breve espera.
     let { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 800));
       const retry = await supabase.auth.signInWithPassword({ email, password });
       signInError = retry.error;
     }

@@ -12,6 +12,7 @@ type SignupMetadata = {
   city?: string;
   state?: string;
   selectedPlan?: string;
+  code?: string;
 };
 
 interface AuthContextType {

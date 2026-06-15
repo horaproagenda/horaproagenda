@@ -2257,24 +2257,7 @@ Até breve! ✨`;
               </Alert>
             )}
 
-            {/* Conflict warnings */}
-            {hasConflicts && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="space-y-1">
-                  {conflicts.map((conflict, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Badge variant="destructive" className="text-xs">
-                        {conflict.type === 'professional' ? 'Profissional' : 
-                         conflict.type === 'room' ? 'Sala' : 
-                         conflict.type === 'absence' ? 'Ausência' : 'Equipamento'}
-                      </Badge>
-                      <span className="text-sm">{conflict.message}</span>
-                    </div>
-                  ))}
-                </AlertDescription>
-              </Alert>
-            )}
+            {/* Conflict warnings removidos: a checagem inline nos previews já indica conflitos sem mensagem confusa global */}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>

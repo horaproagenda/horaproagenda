@@ -507,105 +507,27 @@ Até breve! ✨`;
         // Get following appointments (excluding the current one which will be updated separately)
         appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
       } else if (params.propagate_type === 'package' && params.package_id) {
-        // Fetch business settings once to respect open days/hours
-        const { data: bsRow } = await supabase
-          .from('business_settings')
-          .select('opening_time, closing_time, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, work_saturdays, work_sundays')
-          .limit(1)
-          .maybeSingle();
-        const businessCfg: BusinessHoursConfig = {
-          opening_time: bsRow?.opening_time || '08:00',
-          closing_time: bsRow?.closing_time || '20:00',
-          saturday_opening_time: bsRow?.saturday_opening_time,
-          saturday_closing_time: bsRow?.saturday_closing_time,
-          sunday_opening_time: bsRow?.sunday_opening_time,
-          sunday_closing_time: bsRow?.sunday_closing_time,
-          work_saturdays: bsRow?.work_saturdays,
-          work_sundays: bsRow?.work_sundays,
-        };
-
-        // Get all sessions of the package, in order
-        const { data: packageAppointments, error: fetchError } = await supabase
+        // NOTA: Para pacotes, a cascata é feita automaticamente pelo trigger
+        // `cascade_package_interval_from_appointment` no banco, que respeita o
+        // intervalo mínimo (21 dias) e mantém o MESMO horário escolhido para
+        // todas as sessões seguintes. NÃO fazemos cascata no frontend para
+        // evitar o bug em que `adjustToBusinessHours` jogava horários para 14h/16h
+        // (abertura do expediente) quando o horário escolhido coincidia com o
+        // fim do expediente.
+        const { data: refreshed } = await supabase
           .from('package_appointments')
-          .select(`
-            *,
-            appointment:appointments!package_appointments_appointment_id_fkey(*),
-            package:service_packages(interval_days)
-          `)
+          .select('id, appointment_id, scheduled_date, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
           .eq('package_id', params.package_id)
           .order('sequence_order', { ascending: true })
           .order('session_number', { ascending: true });
 
-        if (fetchError) throw fetchError;
-
-        const sessions = (packageAppointments || []).slice().sort(
-          (a: any, b: any) => (a.sequence_order ?? a.session_number ?? 0) - (b.sequence_order ?? b.session_number ?? 0)
+        const sourceIdx = (refreshed || []).findIndex(
+          (pa: any) => pa.appointment_id === params.appointment_id
         );
-
-        const currentIdx = sessions.findIndex(
-          (pa: any) => pa.appointment?.id === params.appointment_id || pa.appointment_id === params.appointment_id
-        );
-
-        if (currentIdx === -1) {
-          throw new Error('Sessão do pacote não encontrada');
-        }
-
-        const defaultInterval = sessions[currentIdx]?.package?.interval_days
-          || params.interval_days
-          || 7;
-
-        // Build a list of {session, intervalToNext} starting from the current
-        const followingPairs: Array<{ pa: any; intervalDaysFromPrevious: number }> = [];
-        for (let i = currentIdx + 1; i < sessions.length; i += 1) {
-          const previous = sessions[i - 1];
-          const intervalDaysFromPrevious = Number(previous?.interval_after_days) > 0
-            ? Number(previous.interval_after_days)
-            : defaultInterval;
-          followingPairs.push({ pa: sessions[i], intervalDaysFromPrevious });
-        }
-
-        // Update each following session preserving its own interval and time,
-        // adjusting to business hours/days.
-        let baseDate = params.new_start_time;
-        const updatedAppointments: any[] = [];
-
-        for (const { pa, intervalDaysFromPrevious } of followingPairs) {
-          let nextDate = addDays(baseDate, intervalDaysFromPrevious);
-          // Preserve the originally requested time
-          nextDate.setHours(params.new_start_time.getHours(), params.new_start_time.getMinutes(), 0, 0);
-
-          // Compute duration from existing appointment (or default to new range)
-          const originalStart = pa.appointment ? new Date(pa.appointment.start_time) : params.new_start_time;
-          const originalEnd = pa.appointment ? new Date(pa.appointment.end_time) : params.new_end_time;
-          const duration = originalEnd.getTime() - originalStart.getTime();
-
-          // Adjust to business hours / open days
-          nextDate = adjustToBusinessHours(nextDate, duration, businessCfg);
-          const newEnd = new Date(nextDate.getTime() + duration);
-
-          // Update the package_appointment scheduled_date even if no appointment is linked yet
-          await supabase
-            .from('package_appointments')
-            .update({ scheduled_date: nextDate.toISOString() })
-            .eq('id', pa.id);
-
-          if (pa.appointment && pa.appointment.id && !['completed', 'missed', 'cancelled'].includes(pa.appointment.status)) {
-            const { data: updated } = await supabase
-              .from('appointments')
-              .update({
-                start_time: nextDate.toISOString(),
-                end_time: newEnd.toISOString(),
-                updated_by: user.id,
-              })
-              .eq('id', pa.appointment.id)
-              .select()
-              .single();
-
-            if (updated) updatedAppointments.push(updated);
-          }
-
-          baseDate = nextDate;
-        }
+        const updatedAppointments = (refreshed || [])
+          .slice(sourceIdx >= 0 ? sourceIdx + 1 : 0)
+          .map((pa: any) => pa.appointment)
+          .filter((a: any) => a && !['completed', 'missed', 'cancelled'].includes(a.status));
 
         return { updated: updatedAppointments.length, appointments: updatedAppointments };
       }

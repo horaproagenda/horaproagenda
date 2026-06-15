@@ -4817,6 +4817,10 @@ export type Database = {
         Args: { _client_id: string }
         Returns: undefined
       }
+      delete_completed_or_cancelled_client_package: {
+        Args: { _package_id: string }
+        Returns: Json
+      }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
       force_delete_professional: {
         Args: { _professional_id: string }

@@ -20,7 +20,11 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Search, Package, XCircle, DollarSign, CheckCircle2, RotateCcw, Sparkles, X, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
@@ -41,6 +45,7 @@ interface PackageSaleRow {
   totalSessions: number;
   usedSessions: number;
   isCancelled: boolean;
+  isCompleted: boolean;
   refundedAmount: number;
 }
 
@@ -48,7 +53,10 @@ export function PacotesFinanceiro() {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled' | 'completed'>('all');
+  const [showFinished, setShowFinished] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -100,6 +108,7 @@ export function PacotesFinanceiro() {
         const used = apps.filter((a: any) => a.status === 'completed' || a.status === 'missed').length;
         const total = s.package?.total_sessions || 0;
         const isCancelled = (s.notes || '').toUpperCase().includes('CANCELADO');
+        const isCompleted = total > 0 && used >= total;
         return {
           saleId: s.id,
           packageId: s.package_id || s.package?.id || null,
@@ -113,6 +122,7 @@ export function PacotesFinanceiro() {
           totalSessions: total,
           usedSessions: used,
           isCancelled,
+          isCompleted,
           refundedAmount: refundsBySale.get(s.id) || 0,
         };
       });
@@ -149,16 +159,74 @@ export function PacotesFinanceiro() {
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      if (statusFilter === 'active' && r.isCancelled) return false;
+      // Por padrão oculta pacotes finalizados/cancelados para reduzir poluição.
+      // Mostre apenas se o usuário ativar "Mostrar finalizados" ou selecionar
+      // explicitamente esse status no filtro.
+      const isFinished = r.isCancelled || r.isCompleted;
+      if (
+        isFinished &&
+        !showFinished &&
+        statusFilter !== 'cancelled' &&
+        statusFilter !== 'completed'
+      ) {
+        return false;
+      }
+      if (statusFilter === 'active' && (r.isCancelled || r.isCompleted)) return false;
       if (statusFilter === 'cancelled' && !r.isCancelled) return false;
+      if (statusFilter === 'completed' && !r.isCompleted) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, statusFilter, dateFrom, dateTo]);
+  }, [rows, search, statusFilter, dateFrom, dateTo, showFinished]);
+
+  const hiddenFinishedCount = useMemo(() => {
+    if (showFinished || statusFilter === 'cancelled' || statusFilter === 'completed') return 0;
+    return rows.filter((r) => r.isCancelled || r.isCompleted).length;
+  }, [rows, showFinished, statusFilter]);
 
   const activeFilterCount =
-    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (showFinished ? 1 : 0);
+
+  const deletePackageMutation = useMutation({
+    mutationFn: async (row: PackageSaleRow) => {
+      if (!row.packageId) {
+        throw new Error('Pacote sem identificador válido.');
+      }
+      const { data, error } = await (supabase as any).rpc(
+        'delete_completed_or_cancelled_client_package',
+        { _package_id: row.packageId },
+      );
+      if (error) throw error;
+      const result = (data ?? {}) as { success?: boolean; error?: string };
+      if (result.success === false) {
+        throw new Error(result.error || 'Não foi possível apagar este pacote.');
+      }
+      return result;
+    },
+    onSuccess: () => {
+      toast.success('Pacote apagado. A agenda e o histórico do cliente foram sincronizados.');
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['package_details'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credit_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Erro ao apagar pacote.');
+    },
+  });
 
   const refundAmount = useMemo(() => {
     if (!selected) return 0;
@@ -533,6 +601,7 @@ export function PacotesFinanceiro() {
                     setStatusFilter('all');
                     setDateFrom('');
                     setDateTo('');
+                    setShowFinished(false);
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -555,12 +624,32 @@ export function PacotesFinanceiro() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Todos (em andamento)</SelectItem>
                     <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="completed">Finalizados</SelectItem>
                     <SelectItem value="cancelled">Cancelados</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex items-center justify-between gap-2 rounded border border-dashed border-muted-foreground/30 p-2">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-medium">Mostrar finalizados/cancelados</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Por padrão são ocultados da lista para reduzir a poluição.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showFinished ? 'default' : 'outline'}
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => setShowFinished((v) => !v)}
+                >
+                  {showFinished ? 'Ativo' : 'Inativo'}
+                </Button>
+              </div>
+
 
               <Separator />
 
@@ -597,6 +686,25 @@ export function PacotesFinanceiro() {
           <Package className="h-3 w-3 mr-1" /> {filtered.length} pacotes
         </Badge>
       </div>
+
+      {hiddenFinishedCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground">
+            {hiddenFinishedCount} pacote(s) finalizado(s) ou cancelado(s) estão ocultos para reduzir a poluição da lista.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-[10px]"
+            onClick={() => setShowFinished(true)}
+          >
+            Mostrar finalizados/cancelados
+          </Button>
+        </div>
+      )}
+
+
 
       <Card>
         <CardContent className="p-3">
@@ -639,22 +747,37 @@ export function PacotesFinanceiro() {
                       <TableCell className="text-xs">
                         {r.isCancelled ? (
                           <Badge variant="destructive" className="text-[10px]">Cancelado</Badge>
+                        ) : r.isCompleted ? (
+                          <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Finalizado</Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Ativo</Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        {!r.isCancelled && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => openCancel(r)}
-                            title="Cancelar pacote"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1 justify-end">
+                          {!r.isCancelled && !r.isCompleted && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => openCancel(r)}
+                              title="Cancelar pacote / devolver dinheiro"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(r.isCancelled || r.isCompleted) && r.packageId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => { setDeleteTarget(r); setDeleteOpen(true); }}
+                              title="Apagar pacote definitivamente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -796,6 +919,42 @@ export function PacotesFinanceiro() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Package Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar pacote definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-xs">
+              <span className="block">
+                {deleteTarget?.packageName} — {deleteTarget?.clientName}
+              </span>
+              <span className="block">
+                Esta ação remove o pacote, as aplicações vinculadas a ele e desvincula os
+                agendamentos históricos do cliente, mantendo o histórico de atendimentos
+                já realizados na agenda. Os lançamentos financeiros (receita e devolução)
+                são mantidos para auditoria.
+              </span>
+              <span className="block text-destructive">
+                Só é possível apagar pacotes já cancelados/devolvidos ou totalmente concluídos.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePackageMutation.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletePackageMutation.isPending || !deleteTarget}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget) deletePackageMutation.mutate(deleteTarget);
+              }}
+            >
+              {deletePackageMutation.isPending ? 'Apagando...' : 'Apagar pacote'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

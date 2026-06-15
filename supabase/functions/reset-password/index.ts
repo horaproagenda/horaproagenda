@@ -90,9 +90,10 @@ serve(async (req) => {
     await supabaseAdmin
       .from("verification_codes")
       .delete()
-      .eq("email", email.toLowerCase());
+      .eq("email", normalizedEmail);
 
-    console.log("Password updated successfully for:", email);
+    console.log("Password updated successfully for:", normalizedEmail);
+
 
     return new Response(
       JSON.stringify({ 

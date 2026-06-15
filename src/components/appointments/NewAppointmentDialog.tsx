@@ -70,7 +70,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment' | 'absence';
+  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series';
   message: string;
   appointment?: Appointment;
 }

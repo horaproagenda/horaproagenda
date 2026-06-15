@@ -4916,6 +4916,7 @@ export type Database = {
           twilio_from_number: string
         }[]
       }
+      get_user_account_owner_id: { Args: { _user_id: string }; Returns: string }
       get_whatsapp_instance_cost_brl: {
         Args: { qty: number }
         Returns: {

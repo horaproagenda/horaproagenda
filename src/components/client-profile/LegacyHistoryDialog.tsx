@@ -267,7 +267,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           service_id: serviceId,
           professional_id: professionalId || null,
           total_sessions: total,
-          sessions_scheduled: pkgSessions.length,
+          sessions_scheduled: filledSessions.length,
           total_price: totalPrice,
           duration: selectedService?.duration ?? 60,
           package_type: kind === 'sequential' ? 'sequential' : 'standard',

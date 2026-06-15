@@ -2,14 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, Calendar, DollarSign, Download, FileText } from 'lucide-react';
+import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
@@ -18,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { exportToCSV } from '@/lib/exportUtils';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -29,6 +34,13 @@ interface ConsolidatedEntry {
   amount: number;
   source: 'caixa' | 'financeiro' | 'credito_cliente';
   status: string;
+  // Metadata for cascade delete
+  cashTxId?: string | null;
+  financialEntryId?: string | null;
+  creditTxId?: string | null;
+  saleId?: string | null;
+  appointmentId?: string | null;
+  referenceType?: string | null;
 }
 
 type PeriodFilter = 'today' | 'week' | 'month' | 'quarter' | 'custom';
@@ -108,6 +120,10 @@ export function RelatorioConsolidado() {
         amount: Number(tx.amount),
         source: 'caixa' as const,
         status: 'paid',
+        cashTxId: tx.id,
+        referenceType: tx.reference_type || null,
+        saleId: (tx.reference_type === 'single_sale' || tx.reference_type === 'sale') ? (tx.reference_id || null) : null,
+        appointmentId: tx.reference_type === 'appointment' ? (tx.reference_id || null) : null,
       });
     });
 
@@ -128,6 +144,8 @@ export function RelatorioConsolidado() {
       const dedupKey = makeKey(entry.paid_date || entry.due_date, Number(entry.amount), paymentMethodName);
       if (cashKeys.has(dedupKey)) return;
 
+      const entrySaleId = (entry as any).sale_id || (saleIdMatch ? saleIdMatch[1] : null);
+
       result.push({
         id: `fin-${entry.id}`,
         date: entry.paid_date || entry.due_date,
@@ -136,6 +154,9 @@ export function RelatorioConsolidado() {
         amount: Number(entry.amount),
         source: 'financeiro' as const,
         status: entry.status,
+        financialEntryId: entry.id,
+        saleId: entrySaleId,
+        appointmentId: entry.appointment_id || null,
       });
     });
 
@@ -150,6 +171,7 @@ export function RelatorioConsolidado() {
         amount: Number(tx.amount || 0),
         source: 'credito_cliente' as const,
         status: 'paid',
+        creditTxId: tx.id,
       });
     });
 
@@ -220,6 +242,84 @@ export function RelatorioConsolidado() {
     });
     doc.save(`relatorio_consolidado_filtrado_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
+
+  // Cascade delete handler ---------------------------------------------------
+  const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<ConsolidatedEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const invalidateAllFinancial = () => {
+    const keys = [
+      'cash_transactions', 'financial_entries', 'single_sales', 'service_packages',
+      'client_packages', 'package_appointments', 'appointments', 'client-appointments',
+      'client_services', 'client_credit_transactions', 'client_credit_transactions_report',
+      'package-sales-financial', 'boleto_installments', 'boleto_installments_all',
+    ];
+    keys.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+  };
+
+  const performDelete = async (entry: ConsolidatedEntry) => {
+    // 1) Sale-linked → cascade via RPC
+    if (entry.saleId) {
+      const { error } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: entry.saleId });
+      if (error) throw error;
+      return;
+    }
+    // 2) Appointment payment → reverse-payment edge function
+    if (entry.appointmentId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/reverse-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ appointment_id: entry.appointmentId }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({} as any));
+        throw new Error(errBody.error || 'Falha ao reverter pagamento do agendamento');
+      }
+      return;
+    }
+    // 3) Cash transaction (no sale/appointment link) → delete the row directly
+    if (entry.cashTxId) {
+      const { error } = await supabase.from('cash_transactions').delete().eq('id', entry.cashTxId);
+      if (error) throw error;
+      return;
+    }
+    // 4) Financial entry (standalone) → delete the row directly
+    if (entry.financialEntryId) {
+      const { error } = await supabase.from('financial_entries').delete().eq('id', entry.financialEntryId);
+      if (error) throw error;
+      return;
+    }
+    // 5) Client credit transaction
+    if (entry.creditTxId) {
+      const { error } = await (supabase as any).from('client_credit_transactions').delete().eq('id', entry.creditTxId);
+      if (error) throw error;
+      return;
+    }
+    throw new Error('Movimentação sem identificador para exclusão.');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await performDelete(deleteTarget);
+      toast.success('Movimentação excluída. Registros vinculados também foram removidos.');
+      setDeleteTarget(null);
+      invalidateAllFinancial();
+    } catch (err: any) {
+      console.error('[RelatorioConsolidado] delete error', err);
+      toast.error(err?.message || 'Erro ao excluir movimentação.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
 
   return (
     <div className="space-y-4">
@@ -330,12 +430,13 @@ export function RelatorioConsolidado() {
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Tipo</TableHead>
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide">Status</TableHead>
                   <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide text-right">Valor</TableHead>
+                  <TableHead className="h-8 py-1.5 text-[10px] uppercase tracking-wide w-12 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">
                       Nenhuma movimentação encontrada
                     </TableCell>
                   </TableRow>
@@ -392,6 +493,17 @@ export function RelatorioConsolidado() {
                       )}>
                         {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} {formatCurrency(entry.amount)}
                       </TableCell>
+                      <TableCell className="py-1.5 text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Excluir movimentação e registros vinculados"
+                          onClick={() => setDeleteTarget(entry)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -405,6 +517,35 @@ export function RelatorioConsolidado() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é definitiva. Todos os registros vinculados ao pagamento serão removidos:
+              <br />• Se for venda de serviço ou pacote: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• O lançamento no Caixa, no Financeiro e no perfil do cliente também serão apagados.
+              {deleteTarget && (
+                <span className="block mt-3 text-foreground font-medium">
+                  {deleteTarget.description} · {formatCurrency(deleteTarget.amount)}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

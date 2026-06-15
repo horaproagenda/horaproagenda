@@ -53,8 +53,8 @@ export function PacotesFinanceiro() {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled' | 'completed'>('all');
-  const [showFinished, setShowFinished] = useState(false);
+  // Pacotes finalizados e cancelados não são mais exibidos nesta página —
+  // só pacotes em andamento (com sessões ainda por usar).
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -159,34 +159,17 @@ export function PacotesFinanceiro() {
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      // Por padrão oculta pacotes finalizados/cancelados para reduzir poluição.
-      // Mostre apenas se o usuário ativar "Mostrar finalizados" ou selecionar
-      // explicitamente esse status no filtro.
-      const isFinished = r.isCancelled || r.isCompleted;
-      if (
-        isFinished &&
-        !showFinished &&
-        statusFilter !== 'cancelled' &&
-        statusFilter !== 'completed'
-      ) {
-        return false;
-      }
-      if (statusFilter === 'active' && (r.isCancelled || r.isCompleted)) return false;
-      if (statusFilter === 'cancelled' && !r.isCancelled) return false;
-      if (statusFilter === 'completed' && !r.isCompleted) return false;
+      // Pacotes finalizados/cancelados nunca aparecem aqui — apenas em andamento.
+      if (r.isCancelled || r.isCompleted) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, statusFilter, dateFrom, dateTo, showFinished]);
+  }, [rows, search, dateFrom, dateTo]);
 
-  const hiddenFinishedCount = useMemo(() => {
-    if (showFinished || statusFilter === 'cancelled' || statusFilter === 'completed') return 0;
-    return rows.filter((r) => r.isCancelled || r.isCompleted).length;
-  }, [rows, showFinished, statusFilter]);
+  
 
-  const activeFilterCount =
-    (statusFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (showFinished ? 1 : 0);
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const deletePackageMutation = useMutation({
     mutationFn: async (row: PackageSaleRow) => {
@@ -598,10 +581,8 @@ export function PacotesFinanceiro() {
                   size="sm"
                   className="h-6 px-2 text-[10px] gap-1"
                   onClick={() => {
-                    setStatusFilter('all');
                     setDateFrom('');
                     setDateTo('');
-                    setShowFinished(false);
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -611,48 +592,6 @@ export function PacotesFinanceiro() {
             </div>
 
             <div className="space-y-3">
-              {/* Status */}
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                  Status do pacote
-                </p>
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-                >
-                  <SelectTrigger className="h-7 text-[11px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos (em andamento)</SelectItem>
-                    <SelectItem value="active">Ativos</SelectItem>
-                    <SelectItem value="completed">Finalizados</SelectItem>
-                    <SelectItem value="cancelled">Cancelados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 rounded border border-dashed border-muted-foreground/30 p-2">
-                <div className="space-y-0.5">
-                  <p className="text-[11px] font-medium">Mostrar finalizados/cancelados</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Por padrão são ocultados da lista para reduzir a poluição.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={showFinished ? 'default' : 'outline'}
-                  className="h-6 px-2 text-[10px]"
-                  onClick={() => setShowFinished((v) => !v)}
-                >
-                  {showFinished ? 'Ativo' : 'Inativo'}
-                </Button>
-              </div>
-
-
-              <Separator />
-
               {/* Data */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -687,22 +626,10 @@ export function PacotesFinanceiro() {
         </Badge>
       </div>
 
-      {hiddenFinishedCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">
-            {hiddenFinishedCount} pacote(s) finalizado(s) ou cancelado(s) estão ocultos para reduzir a poluição da lista.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-[10px]"
-            onClick={() => setShowFinished(true)}
-          >
-            Mostrar finalizados/cancelados
-          </Button>
-        </div>
-      )}
+
+
+
+
 
 
 

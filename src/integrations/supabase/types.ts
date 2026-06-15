@@ -2025,6 +2025,7 @@ export type Database = {
       }
       messages: {
         Row: {
+          account_owner_id: string | null
           content: Json | null
           created_at: string | null
           direction: string
@@ -2038,6 +2039,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           content?: Json | null
           created_at?: string | null
           direction?: string
@@ -2051,6 +2053,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           content?: Json | null
           created_at?: string | null
           direction?: string
@@ -2475,6 +2478,7 @@ export type Database = {
       }
       phone_contacts: {
         Row: {
+          account_owner_id: string
           created_at: string | null
           display_name: string | null
           id: string
@@ -2482,6 +2486,7 @@ export type Database = {
           room_id: string
         }
         Insert: {
+          account_owner_id?: string
           created_at?: string | null
           display_name?: string | null
           id?: string
@@ -2489,6 +2494,7 @@ export type Database = {
           room_id?: string
         }
         Update: {
+          account_owner_id?: string
           created_at?: string | null
           display_name?: string | null
           id?: string
@@ -3372,6 +3378,7 @@ export type Database = {
       }
       room_members: {
         Row: {
+          account_owner_id: string
           created_at: string | null
           id: string
           role: string | null
@@ -3379,6 +3386,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_owner_id?: string
           created_at?: string | null
           id?: string
           role?: string | null
@@ -3386,6 +3394,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_owner_id?: string
           created_at?: string | null
           id?: string
           role?: string | null

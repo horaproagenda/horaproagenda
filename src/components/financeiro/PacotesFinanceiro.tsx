@@ -167,7 +167,7 @@ export function PacotesFinanceiro() {
     });
   }, [rows, search, dateFrom, dateTo]);
 
-  const hiddenFinishedCount = 0;
+  
 
   const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 

@@ -2278,7 +2278,7 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
                 {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
               </Button>

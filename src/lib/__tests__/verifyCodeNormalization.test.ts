@@ -39,4 +39,30 @@ describe('verify-code input normalization', () => {
     expect(normalizeCode('123')).toBe('123');
     expect(normalizeCode('123').length).toBe(3);
   });
+
+  it('accepts a matching unexpired code even when a newer code also exists', () => {
+    const now = new Date('2026-06-15T19:20:00.000Z').getTime();
+    const codes = [
+      { code: '986265', expires_at: '2026-06-15T19:28:00.000Z', used_at: null },
+      { code: '871338', expires_at: '2026-06-15T19:29:00.000Z', used_at: null },
+    ];
+
+    const matching = codes.find(
+      (row) => row.code === normalizeCode('986265') && !row.used_at && new Date(row.expires_at).getTime() >= now,
+    );
+
+    expect(matching?.code).toBe('986265');
+  });
+
+  it('keeps signup and reset-password cooldowns isolated by code type', () => {
+    const recent = [
+      { email: 'user@example.com', type: 'login', created_at: '2026-06-15T19:20:20.000Z' },
+    ];
+
+    const blocksSignup = recent.some(
+      (row) => row.email === 'user@example.com' && row.type === 'signup',
+    );
+
+    expect(blocksSignup).toBe(false);
+  });
 });

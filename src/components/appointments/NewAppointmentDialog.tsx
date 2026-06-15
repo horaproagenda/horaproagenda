@@ -1727,18 +1727,6 @@ Até breve! ✨`;
                               </div>
                             </div>
                           )}
-
-                          {/* WhatsApp notification option */}
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <MessageCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-xs">Notificar cliente via WhatsApp</span>
-                            </div>
-                            <Switch
-                              checked={sendWhatsappNotification}
-                              onCheckedChange={setSendWhatsappNotification}
-                            />
-                          </div>
                         </div>
                       )}
                     </div>

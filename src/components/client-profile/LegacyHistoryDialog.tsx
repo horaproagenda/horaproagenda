@@ -665,10 +665,6 @@ function PackageForm(props: PackageFormProps) {
           <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
         </div>
         <div>
-          <Label className="text-xs">Total de sessões</Label>
-          <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
-        </div>
-        <div>
           <Label className="text-xs">Valor total pago (R$)</Label>
           <Input type="text" inputMode="decimal" value={pkgTotalPrice} onChange={(e) => setPkgTotalPrice(e.target.value)} placeholder="0,00" className="h-9" />
         </div>

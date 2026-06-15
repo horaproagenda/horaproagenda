@@ -131,6 +131,7 @@ export function NewAppointmentDialog({
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
   const [repeatCount, setRepeatCount] = useState(4);
   const [serviceIntervalDays, setServiceIntervalDays] = useState(7);
+  const [servicePreferredDayOfWeek, setServicePreferredDayOfWeek] = useState<number | null>(null);
   const [servicePreviewDates, setServicePreviewDates] = useState<Date[]>([]);
   const [editableServiceDates, setEditableServiceDates] = useState<Date[]>([]);
   const [editingServiceDateIndex, setEditingServiceDateIndex] = useState<number | null>(null);

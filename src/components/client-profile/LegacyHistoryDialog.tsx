@@ -660,9 +660,9 @@ function PackageForm(props: PackageFormProps) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="md:col-span-2">
-          <Label className="text-xs">Nome do pacote</Label>
-          <Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="Ex: Pacote Limpeza 4 sessões" className="h-9" />
+        <div>
+          <Label className="text-xs">Total de sessões</Label>
+          <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
         </div>
         <div>
           <Label className="text-xs">Total de sessões</Label>

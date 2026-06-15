@@ -771,14 +771,12 @@ export function ContasAPagar() {
 
         <div className="w-full overflow-x-auto rounded-md border">
           <div className="max-h-[500px] overflow-y-auto">
-          <Table className="min-w-[860px]">
+          <Table className="min-w-[640px]">
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
                 <TableHead className="text-[11px]">Data</TableHead>
                 <TableHead className="text-[11px]">Descrição</TableHead>
-                <TableHead className="text-[11px]">Categoria</TableHead>
-                <TableHead className="text-[11px]">Forma Pgto</TableHead>
                 <TableHead className="text-[11px]">Valor</TableHead>
                 <TableHead className="text-[11px]">Status</TableHead>
                 <TableHead className="text-[11px] text-right">Ações</TableHead>

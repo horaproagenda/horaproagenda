@@ -70,7 +70,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment' | 'absence';
+  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series';
   message: string;
   appointment?: Appointment;
 }
@@ -131,6 +131,7 @@ export function NewAppointmentDialog({
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
   const [repeatCount, setRepeatCount] = useState(4);
   const [serviceIntervalDays, setServiceIntervalDays] = useState(7);
+  const [servicePreferredDayOfWeek, setServicePreferredDayOfWeek] = useState<number | null>(null);
   const [servicePreviewDates, setServicePreviewDates] = useState<Date[]>([]);
   const [editableServiceDates, setEditableServiceDates] = useState<Date[]>([]);
   const [editingServiceDateIndex, setEditingServiceDateIndex] = useState<number | null>(null);
@@ -448,11 +449,28 @@ export function NewAppointmentDialog({
     if (!appointmentTimes || !repeatServiceEnabled || serviceType !== 'service') return [];
     if (repeatCount < 2) return [];
 
+    const duration = selectedServiceData?.duration || 60;
     const dates: Date[] = [appointmentTimes.startTime];
+
+    // Helper: check whether a given start collides with siblings already placed
+    const collidesWithSiblings = (start: Date) => {
+      const end = new Date(start.getTime() + duration * 60_000);
+      return dates.some((d) => {
+        const dEnd = new Date(d.getTime() + duration * 60_000);
+        return start < dEnd && end > d;
+      });
+    };
 
     for (let i = 1; i < repeatCount; i++) {
       let futureDate = addDays(appointmentTimes.startTime, effectiveIntervalDays * i);
-      
+
+      // If a preferred weekday is set, jump to the next occurrence of that weekday
+      if (servicePreferredDayOfWeek !== null) {
+        const current = futureDate.getDay();
+        const diff = (servicePreferredDayOfWeek - current + 7) % 7;
+        if (diff !== 0) futureDate = addDays(futureDate, diff);
+      }
+
       // Skip non-work days
       while (!isWorkDay(futureDate)) {
         futureDate = addDays(futureDate, 1);
@@ -463,11 +481,21 @@ export function NewAppointmentDialog({
         futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
       }
 
+      // Avoid collisions with siblings already placed in the same series
+      let guard = 0;
+      while (collidesWithSiblings(futureDate) && guard++ < 60) {
+        futureDate = addDays(futureDate, 1);
+        while (!isWorkDay(futureDate)) futureDate = addDays(futureDate, 1);
+        if (preferredTime) {
+          futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
+        }
+      }
+
       dates.push(new Date(futureDate));
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, isWorkDay, settings?.timezone]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {
@@ -631,8 +659,20 @@ export function NewAppointmentDialog({
     return editableServiceDates.map((previewDate, index) => {
       const endTime = new Date(previewDate);
       endTime.setMinutes(endTime.getMinutes() + duration);
-      
+
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
+
+      // Detect overlap with siblings within the same series being created
+      editableServiceDates.forEach((other, otherIdx) => {
+        if (otherIdx === index) return;
+        const otherEnd = new Date(other.getTime() + duration * 60_000);
+        if (previewDate < otherEnd && endTime > other) {
+          dateConflicts.push({
+            type: 'series',
+            message: `Conflito com a sessão ${otherIdx + 1} desta série (${format(other, 'dd/MM HH:mm')})`,
+          } as ConflictInfo);
+        }
+      });
       
       // Find alternative if there are conflicts
       let suggestedDate: Date | null = null;
@@ -754,10 +794,8 @@ export function NewAppointmentDialog({
       return;
     }
 
-    // Block if there are conflicts
-    if (conflicts.length > 0) {
-      return;
-    }
+    // Conflitos de horário (sala/profissional) não bloqueiam mais o envio aqui:
+    // o backend valida e os indicadores inline nas listas de repetição mostram colisões.
 
     const holiday = getHolidayForDate(date);
     if (holiday && !holidayConfirmed) {
@@ -1182,6 +1220,7 @@ Até breve! ✨`;
     setRepeatServiceEnabled(false);
     setRepeatCount(4);
     setServiceIntervalDays(7);
+    setServicePreferredDayOfWeek(null);
     setServicePreviewDates([]);
     setEditableServiceDates([]);
     setEditingServiceDateIndex(null);
@@ -1615,24 +1654,47 @@ Até breve! ✨`;
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Intervalo (dias)</Label>
-                              <Select
-                                value={serviceIntervalDays.toString()}
-                                onValueChange={(v) => setServiceIntervalDays(parseInt(v))}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[7, 14, 21, 28, 30, 45, 60, 90].map(days => (
-                                    <SelectItem key={days} value={days.toString()}>
-                                      A cada {days} dias
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={365}
+                                className="h-8 text-xs"
+                                value={serviceIntervalDays}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value);
+                                  if (!isNaN(v) && v >= 1 && v <= 365) setServiceIntervalDays(v);
+                                  else if (e.target.value === '') setServiceIntervalDays(1);
+                                }}
+                                placeholder="Ex.: 7, 14, 21..."
+                              />
                             </div>
                           </div>
-                          
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Dia da semana preferido</Label>
+                            <Select
+                              value={servicePreferredDayOfWeek === null ? '_any' : servicePreferredDayOfWeek.toString()}
+                              onValueChange={(v) => setServicePreferredDayOfWeek(v === '_any' ? null : parseInt(v))}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_any">Qualquer dia útil</SelectItem>
+                                <SelectItem value="1">Segunda-feira</SelectItem>
+                                <SelectItem value="2">Terça-feira</SelectItem>
+                                <SelectItem value="3">Quarta-feira</SelectItem>
+                                <SelectItem value="4">Quinta-feira</SelectItem>
+                                <SelectItem value="5">Sexta-feira</SelectItem>
+                                <SelectItem value="6">Sábado</SelectItem>
+                                <SelectItem value="0">Domingo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground">
+                              Quando definido, as repetições caem sempre neste dia da semana.
+                            </p>
+                          </div>
+
                           <div className="space-y-1">
                             <Label className="text-xs">Horário preferido</Label>
                             <Input
@@ -1651,7 +1713,12 @@ Até breve! ✨`;
                           <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
                             <div className="flex items-center gap-2">
                               <MessageCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-xs font-medium">Notificar por WhatsApp</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-medium">Enviar todos por WhatsApp</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  O cliente receberá uma mensagem com a lista completa dos {editableServiceDates.length || repeatCount} agendamentos.
+                                </span>
+                              </div>
                             </div>
                             <Switch
                               checked={sendWhatsappNotification}
@@ -1693,36 +1760,55 @@ Até breve! ✨`;
                                       )}
                                     >
                                       <span className="w-5 text-muted-foreground font-medium">{index + 1}.</span>
-                                      {editingServiceDateIndex === index ? (
-                                        <div className="flex-1 flex gap-2">
-                                          <Input
-                                            type="datetime-local"
-                                            className="h-7 text-xs"
-                                            defaultValue={format(previewDate, "yyyy-MM-dd'T'HH:mm")}
-                                            onChange={(e) => {
-                                              const newDate = new Date(e.target.value);
-                                              if (!isNaN(newDate.getTime())) {
-                                                updateEditableServiceDate(index, newDate);
-                                              }
+                                      <Popover open={editingServiceDateIndex === index} onOpenChange={(o) => setEditingServiceDateIndex(o ? index : null)}>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
+                                              index === 0 ? "font-medium" : "text-muted-foreground",
+                                              hasConflict && "text-destructive"
+                                            )}
+                                          >
+                                            <span className="truncate">{format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
+                                            <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-2 z-50" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={previewDate}
+                                            onSelect={(d) => {
+                                              if (!d) return;
+                                              const next = new Date(d);
+                                              next.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
+                                              updateEditableServiceDate(index, next);
                                             }}
-                                            onBlur={() => setEditingServiceDateIndex(null)}
-                                            autoFocus
+                                            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || !isWorkDay(d)}
+                                            locale={ptBR}
+                                            initialFocus
+                                            className="pointer-events-auto"
                                           />
-                                        </div>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          className={cn(
-                                            "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
-                                            index === 0 ? "font-medium" : "text-muted-foreground",
-                                            hasConflict && "text-destructive"
-                                          )}
-                                          onClick={() => setEditingServiceDateIndex(index)}
-                                        >
-                                          <span className="truncate">{format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
-                                          <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
-                                        </button>
-                                      )}
+                                          <div className="mt-2 flex items-center gap-2 border-t pt-2">
+                                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                              type="time"
+                                              className="h-7 text-xs"
+                                              value={format(previewDate, 'HH:mm')}
+                                              onChange={(e) => {
+                                                const [h, m] = e.target.value.split(':').map(Number);
+                                                if (isNaN(h) || isNaN(m)) return;
+                                                const next = new Date(previewDate);
+                                                next.setHours(h, m, 0, 0);
+                                                updateEditableServiceDate(index, next);
+                                              }}
+                                            />
+                                            <span className="text-[11px] text-muted-foreground">
+                                              {format(previewDate, "EEEE", { locale: ptBR })}
+                                            </span>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
                                       {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
                                       {hasConflict && (
                                         <Badge variant="destructive" className="text-[10px] shrink-0">Conflito</Badge>
@@ -2067,7 +2153,7 @@ Até breve! ✨`;
 
               <div className="space-y-2">
                 <Label>Horário *</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <Label className="text-[11px] text-muted-foreground">Início</Label>
                     <div className="flex items-center gap-1">
@@ -2175,24 +2261,7 @@ Até breve! ✨`;
               </Alert>
             )}
 
-            {/* Conflict warnings */}
-            {hasConflicts && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="space-y-1">
-                  {conflicts.map((conflict, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Badge variant="destructive" className="text-xs">
-                        {conflict.type === 'professional' ? 'Profissional' : 
-                         conflict.type === 'room' ? 'Sala' : 
-                         conflict.type === 'absence' ? 'Ausência' : 'Equipamento'}
-                      </Badge>
-                      <span className="text-sm">{conflict.message}</span>
-                    </div>
-                  ))}
-                </AlertDescription>
-              </Alert>
-            )}
+            {/* Conflict warnings removidos: a checagem inline nos previews já indica conflitos sem mensagem confusa global */}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>
@@ -2213,7 +2282,7 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || hasConflicts || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
                 {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
               </Button>

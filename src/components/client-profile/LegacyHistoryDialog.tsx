@@ -240,7 +240,17 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }
-    if (pkgSessions.some((r) => !r.date || !r.time)) { toast.error('Preencha data e horário de todas as sessões'); return; }
+    // Considera apenas as linhas efetivamente preenchidas (data + hora)
+    const filledSessions = pkgSessions.filter((r) => r.date && r.time);
+    if (filledSessions.length === 0) {
+      toast.error('Preencha pelo menos uma sessão com data e horário');
+      return;
+    }
+    if (filledSessions.length > total) {
+      toast.error(`Você preencheu ${filledSessions.length} sessões, mas o total do pacote é ${total}. Aumente o total ou remova sessões.`);
+      return;
+    }
+    const remainingSessions = Math.max(0, total - filledSessions.length);
     const totalPrice = parseFloat(pkgTotalPrice.replace(',', '.')) || 0;
     // Nome do pacote é derivado automaticamente do serviço selecionado
     const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;

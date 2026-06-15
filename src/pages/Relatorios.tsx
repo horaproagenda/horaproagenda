@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { AtendimentosPorProfissional } from '@/components/relatorios/AtendimentosPorProfissional';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useLocalStorage } from '@/hooks/useLocalStorage';

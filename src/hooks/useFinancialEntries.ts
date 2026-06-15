@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { FinancialCategory } from './useFinancialCategories';
 import { PaymentMethod } from './usePaymentMethods';
 

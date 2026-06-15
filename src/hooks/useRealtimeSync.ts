@@ -678,5 +678,5 @@ export function useRealtimeSync() {
     return () => {
       supabase.removeChannel(mainChannel);
     };
-  }, [queryClient]);
+  }, [queryClient, accountOwnerId]);
 }

@@ -15,6 +15,17 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+async function authUserExistsByEmail(supabaseAdmin: ReturnType<typeof createClient>, email: string): Promise<boolean> {
+  const normalized = email.toLowerCase().trim();
+  for (let page = 1; page <= 100; page += 1) {
+    const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    if (list.users.some((u) => u.email?.toLowerCase().trim() === normalized)) return true;
+    if (list.users.length < 1000) return false;
+  }
+  return false;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,16 +70,9 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // SECURITY: para signup, bloqueia se já existir conta com este e-mail.
+    // SECURITY: signup requires a new email; password recovery requires an existing account.
     if (type === 'signup') {
-      const normalized = email.toLowerCase().trim();
-      let exists = false;
-      for (let page = 1; page <= 20 && !exists; page += 1) {
-        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-        if (listErr) break;
-        exists = list.users.some((u) => u.email?.toLowerCase() === normalized);
-        if (list.users.length < 1000) break;
-      }
+      const exists = await authUserExistsByEmail(supabaseAdmin, email);
       if (exists) {
         return new Response(
           JSON.stringify({
@@ -76,6 +80,17 @@ serve(async (req) => {
             error: "Este e-mail já está cadastrado. Faça login ou use 'Esqueci minha senha' para recuperá-la.",
           }),
           { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    } else if (type === 'login') {
+      const exists = await authUserExistsByEmail(supabaseAdmin, email);
+      if (!exists) {
+        return new Response(
+          JSON.stringify({
+            code: 'user_not_found',
+            error: 'Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo.',
+          }),
+          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     }

@@ -601,6 +601,7 @@ export function PacotesFinanceiro() {
                     setStatusFilter('all');
                     setDateFrom('');
                     setDateTo('');
+                    setShowFinished(false);
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -623,12 +624,32 @@ export function PacotesFinanceiro() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Todos (em andamento)</SelectItem>
                     <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="completed">Finalizados</SelectItem>
                     <SelectItem value="cancelled">Cancelados</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex items-center justify-between gap-2 rounded border border-dashed border-muted-foreground/30 p-2">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-medium">Mostrar finalizados/cancelados</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Por padrão são ocultados da lista para reduzir a poluição.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showFinished ? 'default' : 'outline'}
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => setShowFinished((v) => !v)}
+                >
+                  {showFinished ? 'Ativo' : 'Inativo'}
+                </Button>
+              </div>
+
 
               <Separator />
 

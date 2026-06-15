@@ -120,6 +120,10 @@ export function RelatorioConsolidado() {
         amount: Number(tx.amount),
         source: 'caixa' as const,
         status: 'paid',
+        cashTxId: tx.id,
+        referenceType: tx.reference_type || null,
+        saleId: (tx.reference_type === 'single_sale' || tx.reference_type === 'sale') ? (tx.reference_id || null) : null,
+        appointmentId: tx.reference_type === 'appointment' ? (tx.reference_id || null) : null,
       });
     });
 
@@ -140,6 +144,8 @@ export function RelatorioConsolidado() {
       const dedupKey = makeKey(entry.paid_date || entry.due_date, Number(entry.amount), paymentMethodName);
       if (cashKeys.has(dedupKey)) return;
 
+      const entrySaleId = (entry as any).sale_id || (saleIdMatch ? saleIdMatch[1] : null);
+
       result.push({
         id: `fin-${entry.id}`,
         date: entry.paid_date || entry.due_date,
@@ -148,6 +154,9 @@ export function RelatorioConsolidado() {
         amount: Number(entry.amount),
         source: 'financeiro' as const,
         status: entry.status,
+        financialEntryId: entry.id,
+        saleId: entrySaleId,
+        appointmentId: entry.appointment_id || null,
       });
     });
 
@@ -162,6 +171,7 @@ export function RelatorioConsolidado() {
         amount: Number(tx.amount || 0),
         source: 'credito_cliente' as const,
         status: 'paid',
+        creditTxId: tx.id,
       });
     });
 

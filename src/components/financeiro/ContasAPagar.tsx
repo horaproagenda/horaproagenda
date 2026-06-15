@@ -74,7 +74,7 @@ export function ContasAPagar() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    date: ['all'],
+    date: ['month'],
     status: ['all'],
   });
   const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -122,9 +122,9 @@ export function ContasAPagar() {
       id: 'date',
       label: 'Período',
       options: [
-        { value: 'all', label: 'Todos' },
-        { value: 'today', label: 'Hoje' },
         { value: 'month', label: 'Este mês' },
+        { value: 'today', label: 'Hoje' },
+        { value: 'all', label: 'Todos os meses' },
       ],
       multiSelect: false,
     },
@@ -149,13 +149,13 @@ export function ContasAPagar() {
     const today = new Date();
     const dateFilter = selectedFilters.date || ['all'];
     const statusFilter = selectedFilters.status || ['all'];
-    
-    return payables.filter((entry) => {
+
+    const filtered = payables.filter((entry) => {
       if (!statusFilter.includes('all')) {
         if (statusFilter.includes('pending') && entry.status === 'paid') return false;
         if (statusFilter.includes('paid') && entry.status !== 'paid') return false;
       }
-      
+
       if (!dateFilter.includes('all')) {
         if (dateFilter.includes('today')) {
           const dueDate = parseISO(entry.due_date);
@@ -167,6 +167,9 @@ export function ContasAPagar() {
       }
       return true;
     });
+
+    // Sort by earliest due date first (overdue / próximos vencimentos no topo)
+    return filtered.sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [payables, selectedFilters]);
 
   const pendingFiltered = useMemo(() => filteredPayables.filter(e => e.status !== 'paid'), [filteredPayables]);
@@ -768,14 +771,12 @@ export function ContasAPagar() {
 
         <div className="w-full overflow-x-auto rounded-md border">
           <div className="max-h-[500px] overflow-y-auto">
-          <Table className="min-w-[860px]">
+          <Table className="min-w-[640px]">
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
                 <TableHead className="text-[11px]">Data</TableHead>
                 <TableHead className="text-[11px]">Descrição</TableHead>
-                <TableHead className="text-[11px]">Categoria</TableHead>
-                <TableHead className="text-[11px]">Forma Pgto</TableHead>
                 <TableHead className="text-[11px]">Valor</TableHead>
                 <TableHead className="text-[11px]">Status</TableHead>
                 <TableHead className="text-[11px] text-right">Ações</TableHead>
@@ -784,7 +785,7 @@ export function ContasAPagar() {
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={batchMode ? 8 : 7} className="text-center py-8 text-xs text-muted-foreground">
+                  <TableCell colSpan={batchMode ? 6 : 5} className="text-center py-8 text-xs text-muted-foreground">
                     Nenhuma conta encontrada para o período selecionado
                   </TableCell>
                 </TableRow>
@@ -802,13 +803,7 @@ export function ContasAPagar() {
                       </TableCell>
                     )}
                     <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-xs py-2 max-w-[280px] truncate" title={entry.description}>{entry.description}</TableCell>
-                    <TableCell className="text-[11px] py-2 text-muted-foreground whitespace-nowrap">
-                      {entry.category?.name || '-'}
-                    </TableCell>
-                    <TableCell className="text-[11px] py-2 whitespace-nowrap">
-                      {entry.payment_method?.name || '-'}
-                    </TableCell>
+                    <TableCell className="text-xs py-2 max-w-[320px] truncate" title={entry.description}>{entry.description}</TableCell>
                     <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums whitespace-nowrap">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>

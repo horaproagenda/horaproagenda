@@ -11,16 +11,30 @@ interface VerifyRequest {
   code: string;
 }
 
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, code }: VerifyRequest = await req.json();
+    const body: VerifyRequest = await req.json();
+    const rawEmail = (body?.email ?? "").toString();
+    const rawCode = (body?.code ?? "").toString();
 
-    if (!email || !code) {
-      throw new Error("Email e código são obrigatórios");
+    // Normalize: trim and strip non-digits from code (defensive against pasted
+    // codes with spaces, dashes, or invisible characters).
+    const email = rawEmail.trim().toLowerCase();
+    const code = rawCode.replace(/\D/g, "").trim();
+
+    if (!email || code.length !== 6) {
+      console.warn("[verify-code] invalid input", { email, codeLen: code.length });
+      return jsonResponse({ valid: false, error: "Código inválido" });
     }
 
     const supabaseClient = createClient(
@@ -29,116 +43,79 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Find the most recent unused code for this email (don't filter by code -
-    // we want to count attempts even on wrong guesses)
+    // Look up the most recent active code for this email. We don't filter by
+    // code value yet so we can correctly distinguish "wrong code" from
+    // "no active code" and count brute-force attempts.
     const { data: latestCode, error: findError } = await supabaseClient
       .from("verification_codes")
       .select("*")
-      .eq("email", email.toLowerCase())
+      .eq("email", email)
       .is("used_at", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (findError || !latestCode) {
-      console.error("No active code:", findError);
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código inválido ou expirado" }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
+    if (findError) {
+      console.error("[verify-code] lookup error", findError);
+      return jsonResponse({ valid: false, error: "Erro ao validar código" }, 500);
     }
 
-    // Check expiry first
-    if (new Date(latestCode.expires_at) < new Date()) {
+    if (!latestCode) {
+      console.warn("[verify-code] no active code for email", { email });
+      return jsonResponse({
+        valid: false,
+        error: "Nenhum código ativo. Solicite um novo código.",
+      });
+    }
+
+    // Expiry check
+    if (new Date(latestCode.expires_at).getTime() < Date.now()) {
       await supabaseClient.from("verification_codes").delete().eq("id", latestCode.id);
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código expirado" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return jsonResponse({ valid: false, error: "Código expirado. Solicite um novo." });
     }
 
-    // Brute-force protection: lock after 5 wrong attempts
+    // Brute-force lockout
     const MAX_ATTEMPTS = 5;
     if ((latestCode.attempts ?? 0) >= MAX_ATTEMPTS) {
       await supabaseClient.from("verification_codes").delete().eq("id", latestCode.id);
-      return new Response(
-        JSON.stringify({ valid: false, error: "Muitas tentativas. Solicite um novo código." }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return jsonResponse({
+        valid: false,
+        error: "Muitas tentativas. Solicite um novo código.",
+      });
     }
 
-    // Wrong code? Increment attempts and reject
-    if (latestCode.code !== code) {
+    // Code mismatch — increment attempts
+    const storedCode = (latestCode.code ?? "").toString().trim();
+    if (storedCode !== code) {
+      const remaining = Math.max(0, MAX_ATTEMPTS - ((latestCode.attempts ?? 0) + 1));
       await supabaseClient
         .from("verification_codes")
         .update({ attempts: (latestCode.attempts ?? 0) + 1 })
         .eq("id", latestCode.id);
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código inválido" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const verificationData = latestCode;
-
-    // Check if code is expired
-    const expiresAt = new Date(verificationData.expires_at);
-    if (expiresAt < new Date()) {
-      // Delete expired code
-      await supabaseClient
-        .from("verification_codes")
-        .delete()
-        .eq("id", verificationData.id);
-
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código expirado" }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
-    }
-
-    // Check if already used
-    if (verificationData.used_at) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Código já utilizado" }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
+      console.warn("[verify-code] wrong code", { email, remaining });
+      return jsonResponse({ valid: false, error: "Código inválido" });
     }
 
     // Mark code as used
-    await supabaseClient
+    const { error: updateError } = await supabaseClient
       .from("verification_codes")
       .update({ used_at: new Date().toISOString() })
-      .eq("id", verificationData.id);
+      .eq("id", latestCode.id);
 
-    return new Response(
-      JSON.stringify({ 
-        valid: true, 
-        type: verificationData.type,
-        message: "Código verificado com sucesso" 
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    if (updateError) {
+      console.error("[verify-code] failed to mark used", updateError);
+      return jsonResponse({ valid: false, error: "Erro ao validar código" }, 500);
+    }
+
+    console.log("[verify-code] success", { email, type: latestCode.type });
+    return jsonResponse({
+      valid: true,
+      type: latestCode.type,
+      message: "Código verificado com sucesso",
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error in verify-code:", errorMessage);
-    return new Response(
-      JSON.stringify({ valid: false, error: errorMessage }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    console.error("[verify-code] unexpected error", errorMessage);
+    return jsonResponse({ valid: false, error: errorMessage }, 500);
   }
 });

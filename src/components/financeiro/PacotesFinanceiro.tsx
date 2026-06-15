@@ -919,6 +919,42 @@ export function PacotesFinanceiro() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Package Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar pacote definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-xs">
+              <span className="block">
+                {deleteTarget?.packageName} — {deleteTarget?.clientName}
+              </span>
+              <span className="block">
+                Esta ação remove o pacote, as aplicações vinculadas a ele e desvincula os
+                agendamentos históricos do cliente, mantendo o histórico de atendimentos
+                já realizados na agenda. Os lançamentos financeiros (receita e devolução)
+                são mantidos para auditoria.
+              </span>
+              <span className="block text-destructive">
+                Só é possível apagar pacotes já cancelados/devolvidos ou totalmente concluídos.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePackageMutation.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletePackageMutation.isPending || !deleteTarget}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget) deletePackageMutation.mutate(deleteTarget);
+              }}
+            >
+              {deletePackageMutation.isPending ? 'Apagando...' : 'Apagar pacote'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

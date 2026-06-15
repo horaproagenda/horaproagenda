@@ -547,7 +547,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="common" className="mt-0">
               <PackageForm
                 kind="common"
-                pkgName={pkgName} setPkgName={setPkgName}
+                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
@@ -559,7 +559,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="sequential" className="mt-0">
               <PackageForm
                 kind="sequential"
-                pkgName={pkgName} setPkgName={setPkgName}
+                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
@@ -638,7 +638,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 // ====== Sub-component: Package Form ======
 interface PackageFormProps {
   kind: 'common' | 'sequential';
-  pkgName: string; setPkgName: (v: string) => void;
+  
   pkgTotalSessions: string; setPkgTotalSessions: (v: string) => void;
   pkgTotalPrice: string; setPkgTotalPrice: (v: string) => void;
   pkgPaymentDate: string; setPkgPaymentDate: (v: string) => void;
@@ -651,7 +651,7 @@ interface PackageFormProps {
 
 function PackageForm(props: PackageFormProps) {
   const {
-    kind, pkgName, setPkgName, pkgTotalSessions, setPkgTotalSessions,
+    kind, pkgTotalSessions, setPkgTotalSessions,
     pkgTotalPrice, setPkgTotalPrice, pkgPaymentDate, setPkgPaymentDate,
     pkgIntervalDays, setPkgIntervalDays, pkgSessions,
     addSession, removeSession, updateSession,

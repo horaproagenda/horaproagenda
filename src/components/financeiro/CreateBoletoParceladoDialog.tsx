@@ -397,7 +397,10 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               .select('id')
               .single();
 
-            if (pkgError || !clientPackage) return;
+            if (pkgError || !clientPackage) {
+              console.error('[CreateBoletoParcelado] Falha ao criar pacote do cliente:', pkgError);
+              throw pkgError || new Error('Falha ao criar pacote do cliente para boleto parcelado');
+            }
 
             const templateSteps = template.package_type === 'sequential' && template.steps?.length
               ? template.steps

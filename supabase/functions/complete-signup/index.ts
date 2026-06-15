@@ -50,6 +50,43 @@ const jsonResponse = (body: Record<string, unknown>, status = 200) =>
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
+async function findAuthUserByEmail(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  normalizedEmail: string,
+): Promise<{ id: string; email?: string | null } | null> {
+  const { data: trial } = await supabaseAdmin
+    .from("trial_registrations")
+    .select("user_id, email")
+    .eq("email", normalizedEmail)
+    .not("user_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (trial?.user_id) return { id: trial.user_id, email: trial.email };
+
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("id, email")
+    .eq("email", normalizedEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (profile?.id) return { id: profile.id, email: profile.email };
+
+  const perPage = 1000;
+  for (let page = 1; page <= 100; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const found = data.users.find(
+      (u) => (u.email ?? "").toString().trim().toLowerCase() === normalizedEmail,
+    );
+    if (found) return found;
+    if (data.users.length < perPage) break;
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -132,15 +169,12 @@ serve(async (req) => {
             .eq("email", normalizedEmail)
             .eq("type", "signup")
             .is("used_at", null)
+            .gte("expires_at", new Date().toISOString())
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
           if (!anyActive) {
             return jsonResponse({ success: false, error: "Nenhum código ativo. Solicite um novo código." }, 400);
-          }
-          if (new Date(anyActive.expires_at).getTime() < Date.now()) {
-            await supabaseAdmin.from("verification_codes").delete().eq("id", anyActive.id);
-            return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
           }
           await supabaseAdmin
             .from("verification_codes")
@@ -210,21 +244,32 @@ serve(async (req) => {
         message.includes("exists") ||
         (createError as any)?.code === "email_exists"
       ) {
-        // SECURITY: never overwrite an existing account's password during signup.
-        // Direct the user to login or password recovery instead. Do NOT consume
-        // the verification code here so the user can retry if needed.
-        return jsonResponse(
-          {
-            success: false,
-            code: "email_exists",
-            error:
-              "Este e-mail já está cadastrado. Faça login com sua senha ou use a opção 'Esqueci minha senha' para recuperá-la.",
-          },
-          409,
-        );
+        const existingUser = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
+        const { data: existingTrial } = await supabaseAdmin
+          .from("trial_registrations")
+          .select("email, cpf, user_id")
+          .eq("email", normalizedEmail)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingUser?.id && existingTrial?.cpf === cpfDigits) {
+          userId = existingUser.id;
+        } else {
+          return jsonResponse(
+            {
+              success: false,
+              code: "email_exists",
+              error:
+                "Este e-mail já está cadastrado. Faça login com sua senha ou use a opção 'Esqueci minha senha' para recuperá-la.",
+            },
+            409,
+          );
+        }
       }
-      console.error("complete-signup create user error:", createError);
-      return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
+      if (!userId) {
+        console.error("complete-signup create user error:", createError);
+        return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
+      }
     }
 
     if (!userId) {

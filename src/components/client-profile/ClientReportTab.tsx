@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText } from 'lucide-react';
+import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';

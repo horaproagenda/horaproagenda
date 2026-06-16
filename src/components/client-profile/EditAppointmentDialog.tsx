@@ -60,6 +60,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
   const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [propagateDates, setPropagateDates] = useState(false);
+  const [showPropagateConfirm, setShowPropagateConfirm] = useState(false);
+
 
   const [originalDuration, setOriginalDuration] = useState<number>(0);
 

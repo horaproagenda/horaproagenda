@@ -435,9 +435,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
         </AlertDialogContent>
       </AlertDialog>
 
-          </div>
-        </DialogContent>
-      </Dialog>
+
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

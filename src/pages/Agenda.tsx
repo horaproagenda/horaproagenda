@@ -145,7 +145,7 @@ const Agenda = () => {
     ],
     metadata: { route: '/agenda' },
   });
-  const [searchTerm, setSearchTerm] = useLocalStorage<string>('agenda:searchTerm', '');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));

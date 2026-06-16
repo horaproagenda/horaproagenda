@@ -136,15 +136,72 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     }
   };
 
-  const handleSubmit = async () => {
-    if (!appointment) return;
+  // Auto-shift following package sessions away from conflicts (next available day, same time)
+  const autoResolveConflicts = async (packageId: string) => {
+    try {
+      const { data: paList } = await supabase
+        .from('package_appointments')
+        .select('id, appointment_id, session_number, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
+        .eq('package_id', packageId)
+        .order('sequence_order', { ascending: true })
+        .order('session_number', { ascending: true });
 
-    // Block save if there are conflicts and user wants to propagate
-    if (propagateDates && previewSessions && previewConflicts.length > 0) {
-      toast.error(`Existem ${previewConflicts.length} conflito(s). Ajuste o horário ou desmarque a propagação.`);
-      return;
+      let shifted = 0;
+      for (const pa of paList || []) {
+        const apt: any = (pa as any).appointment;
+        if (!apt || ['completed', 'missed', 'cancelled'].includes(apt.status)) continue;
+        if (apt.id === appointment!.id) continue;
+
+        // Check conflict using preview RPC: try shifting by +1 day until free (max 14 attempts)
+        let attempts = 0;
+        let curStart = new Date(apt.start_time);
+        let curEnd = new Date(apt.end_time);
+
+        while (attempts < 14) {
+          const { data: conflictsData } = await (supabase as any).rpc('check_appointment_conflict', {
+            _appointment_id: apt.id,
+            _start_time: curStart.toISOString(),
+            _end_time: curEnd.toISOString(),
+          }).maybeSingle?.() ?? { data: null };
+
+          // Fallback: just query appointments overlapping (excluding self)
+          const { data: overlap } = await supabase
+            .from('appointments')
+            .select('id')
+            .neq('id', apt.id)
+            .eq('professional_id', appointment!.professional_id)
+            .not('status', 'in', '(cancelled,missed,rescheduled)')
+            .lt('start_time', curEnd.toISOString())
+            .gt('end_time', curStart.toISOString())
+            .limit(1);
+
+          if (!overlap || overlap.length === 0) break;
+
+          // Shift +1 day
+          curStart = new Date(curStart.getTime() + 24 * 60 * 60 * 1000);
+          curEnd = new Date(curEnd.getTime() + 24 * 60 * 60 * 1000);
+          attempts++;
+        }
+
+        if (attempts > 0 && attempts < 14) {
+          await supabase
+            .from('appointments')
+            .update({ start_time: curStart.toISOString(), end_time: curEnd.toISOString() })
+            .eq('id', apt.id);
+          shifted++;
+          toast.warning(`Sessão #${pa.session_number}: choque detectado, reagendada para ${format(curStart, "dd/MM/yyyy 'às' HH:mm")}.`);
+        }
+      }
+      if (shifted > 0) {
+        toast.success(`${shifted} sessão(ões) reagendadas automaticamente para o próximo dia livre.`);
+      }
+    } catch (e) {
+      console.warn('[autoResolveConflicts] failed:', e);
     }
+  };
 
+  const performSave = async (propagate: boolean) => {
+    if (!appointment) return;
     setLoading(true);
     try {
       const start_time = new Date(`${date}T${startTime}`).toISOString();
@@ -160,8 +217,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
         },
       });
 
-      // Propagate dates to following appointments if checked
-      if (propagateDates && isRecurringOrPackage) {
+      if (propagate && isRecurringOrPackage) {
         const newStartTime = new Date(`${date}T${startTime}`);
         const newEndTime = new Date(`${date}T${endTime}`);
 
@@ -174,8 +230,6 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             recurring_group_id: appointment.recurring_group_id,
           });
         } else if (appointment.package_appointment?.package_id) {
-          // O banco já cascateou via trigger ao salvar o source. Aqui só
-          // refrescamos cache e damos feedback.
           await propagateSeriesDates.mutateAsync({
             appointment_id: appointment.id,
             new_start_time: newStartTime,
@@ -183,16 +237,31 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             propagate_type: 'package',
             package_id: appointment.package_appointment.package_id,
           });
+          // After cascade by trigger, auto-resolve any remaining conflicts
+          await autoResolveConflicts(appointment.package_appointment.package_id);
         }
       }
 
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating appointment:', error);
+      toast.error('Erro ao salvar agendamento');
     } finally {
       setLoading(false);
+      setShowPropagateConfirm(false);
     }
   };
+
+  const handleSubmit = async () => {
+    if (!appointment) return;
+    // For recurring/package, ask for confirmation about adjusting following sessions
+    if (isRecurringOrPackage) {
+      setShowPropagateConfirm(true);
+      return;
+    }
+    await performSave(false);
+  };
+
 
   const handleDelete = async () => {
     if (!appointment) return;

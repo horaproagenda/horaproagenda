@@ -123,12 +123,60 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
+  const [healingPackages, setHealingPackages] = useState(false);
   const { propagateSeriesDates } = useRecurringAppointments();
   const { deleteAppointment, updateAppointment } = useAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
+
+  const resolvedClientIdEarly = clientId || appointments[0]?.client_id || '';
+
+  // Auto-heal: when opening a client profile, try to relink orphan package appointments
+  // (e.g. created after a package was deleted/resold without proper service_id).
+  // Runs once per client per session to avoid loops.
+  useEffect(() => {
+    if (!resolvedClientIdEarly) return;
+    const key = `pkg-heal-${resolvedClientIdEarly}`;
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem(key)) return;
+    (async () => {
+      try {
+        await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1');
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+        queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', resolvedClientIdEarly] });
+      } catch (e) {
+        console.warn('[heal_client_package_appointments] skipped:', e);
+      }
+    })();
+  }, [resolvedClientIdEarly, queryClient]);
+
+  const handleManualHeal = async () => {
+    if (!resolvedClientIdEarly) return;
+    setHealingPackages(true);
+    try {
+      const { data, error } = await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
+      if (error) throw error;
+      const linked = (data?.linkedAppointments ?? 0) as number;
+      const svc = (data?.serviceFieldsFixed ?? 0) as number;
+      toast.success(`Pacotes reparados: ${linked} sessão(ões) vinculadas, ${svc} serviço(s) preenchidos.`);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', resolvedClientIdEarly] });
+    } catch (e: any) {
+      toast.error('Falha ao reparar pacotes: ' + (e.message || 'erro desconhecido'));
+    } finally {
+      setHealingPackages(false);
+    }
+  };
+
+
 
   // Filter data by selected month (or show all if 'all' selected)
   const filterByMonth = (dateStr: string) => {

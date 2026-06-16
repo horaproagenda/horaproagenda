@@ -60,6 +60,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
   const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [propagateDates, setPropagateDates] = useState(false);
+  const [showPropagateConfirm, setShowPropagateConfirm] = useState(false);
+
 
   const [originalDuration, setOriginalDuration] = useState<number>(0);
 
@@ -134,15 +136,72 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     }
   };
 
-  const handleSubmit = async () => {
-    if (!appointment) return;
+  // Auto-shift following package sessions away from conflicts (next available day, same time)
+  const autoResolveConflicts = async (packageId: string) => {
+    try {
+      const { data: paList } = await supabase
+        .from('package_appointments')
+        .select('id, appointment_id, session_number, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
+        .eq('package_id', packageId)
+        .order('sequence_order', { ascending: true })
+        .order('session_number', { ascending: true });
 
-    // Block save if there are conflicts and user wants to propagate
-    if (propagateDates && previewSessions && previewConflicts.length > 0) {
-      toast.error(`Existem ${previewConflicts.length} conflito(s). Ajuste o horário ou desmarque a propagação.`);
-      return;
+      let shifted = 0;
+      for (const pa of paList || []) {
+        const apt: any = (pa as any).appointment;
+        if (!apt || ['completed', 'missed', 'cancelled'].includes(apt.status)) continue;
+        if (apt.id === appointment!.id) continue;
+
+        // Check conflict using preview RPC: try shifting by +1 day until free (max 14 attempts)
+        let attempts = 0;
+        let curStart = new Date(apt.start_time);
+        let curEnd = new Date(apt.end_time);
+
+        while (attempts < 14) {
+          const { data: conflictsData } = await (supabase as any).rpc('check_appointment_conflict', {
+            _appointment_id: apt.id,
+            _start_time: curStart.toISOString(),
+            _end_time: curEnd.toISOString(),
+          }).maybeSingle?.() ?? { data: null };
+
+          // Fallback: just query appointments overlapping (excluding self)
+          const { data: overlap } = await supabase
+            .from('appointments')
+            .select('id')
+            .neq('id', apt.id)
+            .eq('professional_id', appointment!.professional_id)
+            .not('status', 'in', '(cancelled,missed,rescheduled)')
+            .lt('start_time', curEnd.toISOString())
+            .gt('end_time', curStart.toISOString())
+            .limit(1);
+
+          if (!overlap || overlap.length === 0) break;
+
+          // Shift +1 day
+          curStart = new Date(curStart.getTime() + 24 * 60 * 60 * 1000);
+          curEnd = new Date(curEnd.getTime() + 24 * 60 * 60 * 1000);
+          attempts++;
+        }
+
+        if (attempts > 0 && attempts < 14) {
+          await supabase
+            .from('appointments')
+            .update({ start_time: curStart.toISOString(), end_time: curEnd.toISOString() })
+            .eq('id', apt.id);
+          shifted++;
+          toast.warning(`Sessão #${pa.session_number}: choque detectado, reagendada para ${format(curStart, "dd/MM/yyyy 'às' HH:mm")}.`);
+        }
+      }
+      if (shifted > 0) {
+        toast.success(`${shifted} sessão(ões) reagendadas automaticamente para o próximo dia livre.`);
+      }
+    } catch (e) {
+      console.warn('[autoResolveConflicts] failed:', e);
     }
+  };
 
+  const performSave = async (propagate: boolean) => {
+    if (!appointment) return;
     setLoading(true);
     try {
       const start_time = new Date(`${date}T${startTime}`).toISOString();
@@ -158,8 +217,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
         },
       });
 
-      // Propagate dates to following appointments if checked
-      if (propagateDates && isRecurringOrPackage) {
+      if (propagate && isRecurringOrPackage) {
         const newStartTime = new Date(`${date}T${startTime}`);
         const newEndTime = new Date(`${date}T${endTime}`);
 
@@ -172,8 +230,6 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             recurring_group_id: appointment.recurring_group_id,
           });
         } else if (appointment.package_appointment?.package_id) {
-          // O banco já cascateou via trigger ao salvar o source. Aqui só
-          // refrescamos cache e damos feedback.
           await propagateSeriesDates.mutateAsync({
             appointment_id: appointment.id,
             new_start_time: newStartTime,
@@ -181,16 +237,31 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             propagate_type: 'package',
             package_id: appointment.package_appointment.package_id,
           });
+          // After cascade by trigger, auto-resolve any remaining conflicts
+          await autoResolveConflicts(appointment.package_appointment.package_id);
         }
       }
 
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating appointment:', error);
+      toast.error('Erro ao salvar agendamento');
     } finally {
       setLoading(false);
+      setShowPropagateConfirm(false);
     }
   };
+
+  const handleSubmit = async () => {
+    if (!appointment) return;
+    // For recurring/package, ask for confirmation about adjusting following sessions
+    if (isRecurringOrPackage) {
+      setShowPropagateConfirm(true);
+      return;
+    }
+    await performSave(false);
+  };
+
 
   const handleDelete = async () => {
     if (!appointment) return;
@@ -313,85 +384,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             )}
 
             {isRecurringOrPackage && (
-              <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="propagate-dates-edit"
-                    checked={propagateDates}
-                    onCheckedChange={(checked) => { setPropagateDates(!!checked); setPreviewSessions(null); }}
-                  />
-                  <label htmlFor="propagate-dates-edit" className="text-sm text-blue-700 dark:text-blue-300 cursor-pointer">
-                    Alterar datas/horários das próximas aplicações
-                  </label>
-                </div>
-
-                {propagateDates && isPackage && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full h-8 text-xs"
-                      onClick={handlePreview}
-                      disabled={previewLoading || !date || !startTime}
-                    >
-                      {previewLoading ? (
-                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Calculando…</>
-                      ) : (
-                        <><Eye className="h-3 w-3 mr-1" /> Pré-visualizar próximas aplicações</>
-                      )}
-                    </Button>
-
-                    {previewSessions && previewSessions.length > 0 && (
-                      <div className="space-y-1 mt-2 max-h-40 overflow-y-auto rounded border bg-background/60 p-2">
-                        <div className="text-[10px] uppercase text-muted-foreground mb-1">
-                          {previewSessions.filter(s => !s.is_source).length} sessão(ões) seguinte(s)
-                        </div>
-                        {previewSessions.filter(s => !s.is_source).map((s) => (
-                          <div
-                            key={s.package_appointment_id}
-                            className={`flex items-start gap-2 text-[11px] py-1 px-2 rounded ${
-                              s.conflict
-                                ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
-                                : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-                            }`}
-                          >
-                            {s.conflict ? (
-                              <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            ) : (
-                              <CheckCircle2 className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium tabular-nums">
-                                #{s.session_number || '-'} · {formatPreviewDate(s.new_start)}
-                                {!s.is_mutable && <span className="text-muted-foreground"> (já realizada)</span>}
-                              </div>
-                              {s.conflict && s.conflict_with && (
-                                <div className="text-[10px] truncate">⚠ Conflito com: {s.conflict_with}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewSessions && previewConflicts.length > 0 && (
-                      <div className="flex items-start gap-2 p-2 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 text-[11px]">
-                        <AlertTriangle className="h-3 w-3 mt-0.5" />
-                        <span>
-                          {previewConflicts.length} conflito(s). Altere o horário ou cancele/reagende
-                          o agendamento conflitante antes de salvar.
-                        </span>
-                      </div>
-                    )}
-
-                    {previewSessions && previewSessions.filter(s => !s.is_source).length === 0 && (
-                      <div className="text-[11px] text-muted-foreground">
-                        Não há aplicações seguintes editáveis neste pacote.
-                      </div>
-                    )}
-                  </>
-                )}
+              <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-700 dark:text-blue-300">
+                Ao salvar, você poderá optar por ajustar as próximas aplicações desta série/pacote.
               </div>
             )}
 
@@ -409,16 +403,39 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={loading || (propagateDates && isPackage && previewConflicts.length > 0)}
-              >
+              <Button onClick={handleSubmit} disabled={loading}>
                 {loading ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation: adjust following sessions */}
+      <AlertDialog open={showPropagateConfirm} onOpenChange={setShowPropagateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar próximas aplicações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de {isPackage ? 'um pacote' : 'uma série recorrente'}.
+              Deseja ajustar também as próximas aplicações respeitando o intervalo, horário escolhido,
+              dias de atendimento e disponibilidade do profissional? Caso alguma data conflite com outro
+              agendamento ou fora do expediente, ela será automaticamente reagendada para o próximo dia livre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={() => performSave(false)} disabled={loading}>
+              Só este agendamento
+            </Button>
+            <AlertDialogAction onClick={() => performSave(true)} disabled={loading}>
+              Sim, ajustar seguintes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

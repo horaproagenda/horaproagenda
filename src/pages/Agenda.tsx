@@ -1107,7 +1107,7 @@ const Agenda = () => {
         </Button>
       </div>
       
-      <ScrollArea className="h-[calc(100dvh-380px)] min-h-[180px] sm:h-[calc(100dvh-360px)] sm:min-h-[220px] rounded-b-xl border border-border/40 bg-card/30 pb-2">
+      <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
         <div className="space-y-0.5">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
@@ -1221,7 +1221,7 @@ const Agenda = () => {
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
   };
@@ -1290,7 +1290,7 @@ const Agenda = () => {
       </div>
 
       {/* Time slots grid - Scrollable on mobile */}
-      <ScrollArea className="h-[calc(100dvh-420px)] min-h-[180px] sm:h-[calc(100dvh-390px)] sm:min-h-[220px] rounded-b-xl border border-border/40 bg-card/30 pb-2">
+      <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
 
         <div className="space-y-0.5 min-w-[600px] sm:min-w-0">
           {timeSlots.map(time => (
@@ -1365,7 +1365,7 @@ const Agenda = () => {
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 
@@ -1526,7 +1526,7 @@ const Agenda = () => {
         </div>
 
         {/* Time slots grid */}
-        <ScrollArea className="h-[calc(100dvh-420px)] min-h-[180px] sm:h-[calc(100dvh-390px)] sm:min-h-[220px] rounded-b-xl border border-border/40 bg-card/30 pb-2">
+        <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
           <div className="space-y-0.5">
             {timeSlots.map(time => (
               <div 
@@ -1609,7 +1609,7 @@ const Agenda = () => {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     );
   };
@@ -1816,10 +1816,9 @@ const Agenda = () => {
       title="Agenda" 
       subtitle="Gerencie seus agendamentos"
     >
-      <div className="flex h-full">
+    <div className="flex h-full overflow-y-auto">
       {/* Main Agenda Content */}
-        <div className="flex-1 min-w-0 overflow-hidden">
-      {/* Clean Header Layout - Mobile First, Ultra Compact */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
       <div className="space-y-1.5 mb-2">
         {/* Row 1: Search + Actions - Single Line on Mobile */}
         <div className="flex items-center gap-1">

@@ -214,7 +214,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
 
   // Fetch package sessions that are still pending (not yet scheduled in agenda).
   // These appear in package counters ("2 aplicações para concluir") but had no row here.
-  const resolvedClientId = clientId || appointments[0]?.client_id || '';
+  const resolvedClientId = resolvedClientIdEarly;
   const { data: pendingPackageSessions = [] } = useQuery<PendingPackageSession[]>({
     queryKey: ['client-pending-package-sessions', resolvedClientId],
     enabled: !!resolvedClientId,

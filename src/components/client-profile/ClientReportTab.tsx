@@ -202,34 +202,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     .filter(Boolean)
     .join(', ');
 
-  // Fetch package sessions that are still pending (not yet scheduled in agenda).
-  // These appear in package counters ("2 aplicações para concluir") but had no row here.
-  const resolvedClientId = resolvedClientIdEarly;
-  const { data: pendingPackageSessions = [] } = useQuery<PendingPackageSession[]>({
-    queryKey: ['client-pending-package-sessions', resolvedClientId],
-    enabled: !!resolvedClientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('package_appointments')
-        .select(`
-          id, session_number, sequence_order, scheduled_date, status, appointment_id,
-          package:service_packages!inner(
-            id, name, total_sessions, interval_days, client_id,
-            professional:professionals(name),
-            room:rooms(name),
-            service:services(name),
-            equipment
-          )
-        `)
-        .is('appointment_id', null)
-        .not('status', 'in', '(completed,missed)')
-        .eq('package.client_id', resolvedClientId);
-      if (error) throw error;
-      return (data || []) as unknown as PendingPackageSession[];
-    },
-    staleTime: 15_000,
-  });
-
   const filteredAppointments = useMemo(() =>
     appointments.filter(a => {
       const matchesMonth = filterByMonth(a.start_time);
@@ -238,23 +210,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
     [appointments, selectedMonth, selectedStatus]
   );
-
-  const filteredPendingSessions = useMemo(() => {
-    if (selectedStatus !== 'all' && selectedStatus !== 'scheduled') return [];
-    return pendingPackageSessions
-      .filter(s => !!s.package)
-      .filter(s => {
-        if (selectedMonth === 'all') return true;
-        if (!s.scheduled_date) return false;
-        return filterByMonth(s.scheduled_date);
-      })
-      .sort((a, b) => {
-        const da = a.scheduled_date ? new Date(a.scheduled_date).getTime() : Number.MAX_SAFE_INTEGER;
-        const db = b.scheduled_date ? new Date(b.scheduled_date).getTime() : Number.MAX_SAFE_INTEGER;
-        if (da !== db) return da - db;
-        return (a.session_number || 0) - (b.session_number || 0);
-      });
-  }, [pendingPackageSessions, selectedMonth, selectedStatus]);
 
   // Fetch payment methods for mapping IDs to names
   const { data: paymentMethodsData = [] } = useQuery({

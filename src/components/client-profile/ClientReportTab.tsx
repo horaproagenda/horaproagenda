@@ -142,6 +142,9 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     if (typeof window !== 'undefined' && window.sessionStorage.getItem(key)) return;
     (async () => {
       try {
+        // 1) Auto-purge orphan "Pacote cancelado" appointments (permanent, real-time).
+        await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
+        // 2) Relink remaining orphan package appointments and fix missing service_id.
         await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
         if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1');
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
@@ -150,7 +153,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
         queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
         queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', resolvedClientIdEarly] });
       } catch (e) {
-        console.warn('[heal_client_package_appointments] skipped:', e);
+        console.warn('[auto purge/heal client packages] skipped:', e);
       }
     })();
   }, [resolvedClientIdEarly, queryClient]);
@@ -159,6 +162,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     if (!resolvedClientIdEarly) return;
     setHealingPackages(true);
     try {
+      await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
       const { data, error } = await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
       if (error) throw error;
       const linked = (data?.linkedAppointments ?? 0) as number;
@@ -176,24 +180,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     }
   };
 
-  const [purging, setPurging] = useState(false);
-  const handlePurgeOrphans = async () => {
-    if (!resolvedClientIdEarly) return;
-    if (!confirm('Apagar permanentemente todos os agendamentos órfãos de pacotes excluídos deste cliente? Esta ação não pode ser desfeita.')) return;
-    setPurging(true);
-    try {
-      const { data, error } = await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
-      if (error) throw error;
-      const deleted = (data?.deleted ?? 0) as number;
-      toast.success(deleted > 0 ? `${deleted} agendamento(s) órfão(s) apagado(s) permanentemente.` : 'Nenhum agendamento órfão encontrado.');
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-    } catch (e: any) {
-      toast.error('Falha ao limpar histórico: ' + (e.message || 'erro desconhecido'));
-    } finally {
-      setPurging(false);
-    }
-  };
 
 
 
@@ -541,17 +527,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
             Reparar pacotes
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handlePurgeOrphans}
-            disabled={purging || !resolvedClientIdEarly}
-            className="h-8 text-xs text-destructive hover:text-destructive"
-            title="Apagar permanentemente agendamentos órfãos de pacotes excluídos"
-          >
-            <Trash2 className={`h-3.5 w-3.5 mr-1 ${purging ? 'animate-pulse' : ''}`} />
-            Limpar órfãos
           </Button>
           <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1" />

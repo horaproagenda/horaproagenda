@@ -453,7 +453,7 @@ export function PacotesFinanceiro() {
       if (data.alreadyRegistered) {
         toast.info('Cancelamento já havia sido registrado anteriormente.');
       } else {
-        toast.success(`Pacote cancelado. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
+        toast.success(`Pacote excluído permanentemente. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
       }
       setCancelOpen(false);
       queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });

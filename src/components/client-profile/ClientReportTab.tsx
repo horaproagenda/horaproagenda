@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Appointment } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText } from 'lucide-react';
+import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -123,12 +123,60 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all'); // Status filter
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
+  const [healingPackages, setHealingPackages] = useState(false);
   const { propagateSeriesDates } = useRecurringAppointments();
   const { deleteAppointment, updateAppointment } = useAppointments();
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
+
+  const resolvedClientIdEarly = clientId || appointments[0]?.client_id || '';
+
+  // Auto-heal: when opening a client profile, try to relink orphan package appointments
+  // (e.g. created after a package was deleted/resold without proper service_id).
+  // Runs once per client per session to avoid loops.
+  useEffect(() => {
+    if (!resolvedClientIdEarly) return;
+    const key = `pkg-heal-${resolvedClientIdEarly}`;
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem(key)) return;
+    (async () => {
+      try {
+        await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1');
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+        queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', resolvedClientIdEarly] });
+      } catch (e) {
+        console.warn('[heal_client_package_appointments] skipped:', e);
+      }
+    })();
+  }, [resolvedClientIdEarly, queryClient]);
+
+  const handleManualHeal = async () => {
+    if (!resolvedClientIdEarly) return;
+    setHealingPackages(true);
+    try {
+      const { data, error } = await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
+      if (error) throw error;
+      const linked = (data?.linkedAppointments ?? 0) as number;
+      const svc = (data?.serviceFieldsFixed ?? 0) as number;
+      toast.success(`Pacotes reparados: ${linked} sessão(ões) vinculadas, ${svc} serviço(s) preenchidos.`);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions', resolvedClientIdEarly] });
+    } catch (e: any) {
+      toast.error('Falha ao reparar pacotes: ' + (e.message || 'erro desconhecido'));
+    } finally {
+      setHealingPackages(false);
+    }
+  };
+
+
 
   // Filter data by selected month (or show all if 'all' selected)
   const filterByMonth = (dateStr: string) => {
@@ -166,7 +214,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
 
   // Fetch package sessions that are still pending (not yet scheduled in agenda).
   // These appear in package counters ("2 aplicações para concluir") but had no row here.
-  const resolvedClientId = clientId || appointments[0]?.client_id || '';
+  const resolvedClientId = resolvedClientIdEarly;
   const { data: pendingPackageSessions = [] } = useQuery<PendingPackageSession[]>({
     queryKey: ['client-pending-package-sessions', resolvedClientId],
     enabled: !!resolvedClientId,
@@ -464,6 +512,17 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleManualHeal}
+            disabled={healingPackages || !resolvedClientIdEarly}
+            className="h-8 text-xs"
+            title="Vincular agendamentos órfãos a sessões de pacote e preencher serviços faltantes"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
+            Reparar pacotes
+          </Button>
           <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1" />
             CSV
@@ -473,6 +532,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             PDF
           </Button>
         </div>
+
       </div>
 
       {/* Compact Summary Cards */}

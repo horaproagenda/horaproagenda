@@ -293,120 +293,14 @@ export function useClientPackages(clientId: string | null) {
 
   const incrementPackageSession = useMutation({
     mutationFn: async ({ packageId, appointmentId }: { packageId: string; appointmentId: string }) => {
-      // Get the next pending session
-      const { data: pendingSession, error: fetchError } = await supabase
-        .from('package_appointments')
-        .select('*')
-        .eq('package_id', packageId)
-        .eq('status', 'pending')
-        .order('sequence_order', { ascending: true })
-        .order('session_number', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-      if (!pendingSession) throw new Error('Não há sessões pendentes neste pacote');
-
-      const { data: appointmentSchedule } = await supabase
-        .from('appointments')
-        .select('start_time')
-        .eq('id', appointmentId)
-        .single();
-
-      // Update the session with the appointment
-      const { error: updateSessionError } = await supabase
-        .from('package_appointments')
-        .update({
-          appointment_id: appointmentId,
-          status: 'scheduled',
-          scheduled_date: appointmentSchedule?.start_time || new Date().toISOString(),
-        })
-        .eq('id', pendingSession.id);
-
-      if (updateSessionError) throw updateSessionError;
-
-      // Get the package and current package-level payment state
-      const { data: pkgData } = await supabase
-        .from('service_packages')
-        .select('payment_methods, total_sessions, total_price, name')
-        .eq('id', packageId)
-        .single();
-
-      const { data: packagePaymentRows } = await supabase
-        .from('package_appointments')
-        .select('appointment:appointments!package_appointments_appointment_id_fkey(amount_paid, payment_methods)')
-        .eq('package_id', packageId)
-        .not('appointment_id', 'is', null);
-
-      const packageAppointments = (packagePaymentRows || [])
-        .map((row: any) => row.appointment)
-        .filter(Boolean);
-      const packageAmountPaid = Math.max(...packageAppointments.map((apt: any) => Number(apt.amount_paid || 0)), 0);
-      const packagePaymentMethods = [...new Set([
-        ...(pkgData?.payment_methods || []),
-        ...packageAppointments.flatMap((apt: any) => Array.isArray(apt.payment_methods) ? apt.payment_methods : []),
-      ])];
-      const packageTotalPrice = Number(pkgData?.total_price || 0);
-      const packagePaymentStatus = packageTotalPrice > 0 && packageAmountPaid >= packageTotalPrice
-        ? 'paid'
-        : packageAmountPaid > 0
-          ? 'partial'
-          : 'pending';
-      const totalSessions = pkgData?.total_sessions || 1;
-      const packageName = pkgData?.name || 'Pacote';
-
-      // Get the current appointment notes to preserve any user notes
-      const { data: currentAppointment } = await supabase
-        .from('appointments')
-        .select('notes')
-        .eq('id', appointmentId)
-        .single();
-
-      // Build the session label with correct session number
-      const sessionLabel = `${packageName} - Sessão ${pendingSession.session_number} de ${totalSessions}`;
-      
-      // Extract user notes if any (everything after the package name that's not a session label)
-      let userNotes = '';
-      if (currentAppointment?.notes) {
-        // Remove any existing session label pattern to get only user notes
-        const existingNotes = currentAppointment.notes;
-        const sessionLabelPattern = new RegExp(`^${packageName}(\\s*-\\s*Sessão\\s*\\d+\\s*de\\s*\\d+)?\\s*(-\\s*)?`, 'i');
-        userNotes = existingNotes.replace(sessionLabelPattern, '').trim();
-      }
-
-      // Combine session label with user notes
-      const finalNotes = userNotes ? `${sessionLabel} - ${userNotes}` : sessionLabel;
-
-      // Update the appointment to link to the package_appointment and update notes with correct session number
-      const { error: appointmentError } = await supabase
-        .from('appointments')
-        .update({
-          package_appointment_id: pendingSession.id,
-          service_id: pendingSession.service_id || null,
-          payment_status: packagePaymentStatus,
-          amount_paid: packageAmountPaid,
-          payment_methods: packagePaymentMethods,
-          notes: finalNotes,
-        })
-        .eq('id', appointmentId);
-
-      if (appointmentError) throw appointmentError;
-
-      // Increment the sessions_scheduled counter
-      const { data: pkg } = await supabase
-        .from('service_packages')
-        .select('sessions_scheduled')
-        .eq('id', packageId)
-        .single();
-
-      await supabase
-        .from('service_packages')
-        .update({
-          sessions_scheduled: (pkg?.sessions_scheduled || 0) + 1,
-        })
-        .eq('id', packageId);
-
-      return { ...pendingSession, session_number: pendingSession.session_number, total_sessions: totalSessions };
+      // Use RPC that links session + appointment atomically, fixes service_id,
+      // updates notes/status/payment and recalculates sessions_scheduled.
+      const { data, error } = await (supabase as any).rpc('link_package_session_to_appointment', {
+        _package_id: packageId,
+        _appointment_id: appointmentId,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client_packages'] });
@@ -418,6 +312,7 @@ export function useClientPackages(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
     },
   });
+
 
   return {
     clientPackages,

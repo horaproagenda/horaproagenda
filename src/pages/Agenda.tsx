@@ -1107,7 +1107,7 @@ const Agenda = () => {
         </Button>
       </div>
       
-      <ScrollArea className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2" style={{ maxHeight: 'none' }}>
+      <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
         <div className="space-y-0.5">
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
@@ -1221,7 +1221,7 @@ const Agenda = () => {
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
   };
@@ -1290,7 +1290,7 @@ const Agenda = () => {
       </div>
 
       {/* Time slots grid - Scrollable on mobile */}
-      <ScrollArea className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2" style={{ maxHeight: 'none' }}>
+      <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
 
         <div className="space-y-0.5 min-w-[600px] sm:min-w-0">
           {timeSlots.map(time => (
@@ -1365,7 +1365,7 @@ const Agenda = () => {
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 
@@ -1526,7 +1526,7 @@ const Agenda = () => {
         </div>
 
         {/* Time slots grid */}
-        <ScrollArea className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2" style={{ maxHeight: 'none' }}>
+        <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
           <div className="space-y-0.5">
             {timeSlots.map(time => (
               <div 
@@ -1609,7 +1609,7 @@ const Agenda = () => {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     );
   };

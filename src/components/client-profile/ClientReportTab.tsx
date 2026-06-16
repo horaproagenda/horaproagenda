@@ -586,7 +586,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       <Card>
         <CardContent className="p-3">
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Histórico Detalhado</h3>
-          {filteredAppointments.length === 0 && filteredPendingSessions.length === 0 ? (
+          {filteredAppointments.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-xs">Nenhum agendamento neste período</p>
@@ -694,47 +694,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {filteredPendingSessions.map(session => {
-                    const pkg = session.package!;
-                    const equipmentNames = getEquipmentNames(pkg.equipment || []);
-                    const totalSessions = pkg.total_sessions || 0;
-                    const seqNumber = session.session_number || session.sequence_order || 0;
-                    const applicationLabel = totalSessions
-                      ? `Aplicação ${seqNumber}/${totalSessions}`
-                      : `Aplicação ${seqNumber}`;
-                    return (
-                      <TableRow key={`pending-${session.id}`} className="hover:bg-muted/30 align-top bg-amber-50/30 dark:bg-amber-950/10">
-                        <TableCell className="text-xs py-2">
-                          <div className="font-medium leading-tight">{pkg.service?.name || pkg.name || '-'}</div>
-                          {pkg.name && <div className="text-[10px] text-primary font-medium leading-tight mt-0.5">Pacote: {pkg.name}</div>}
-                        </TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums text-muted-foreground">
-                          {session.scheduled_date ? format(new Date(`${session.scheduled_date.split('T')[0]}T12:00:00`), 'dd/MM/yyyy') : '—'}
-                        </TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap text-muted-foreground">—</TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap text-muted-foreground">—</TableCell>
-                        <TableCell className="text-xs py-2">{pkg.professional?.name || '-'}</TableCell>
-                        <TableCell className="text-xs py-2">{pkg.room?.name || '-'}</TableCell>
-                        <TableCell className="text-xs py-2">{equipmentNames || '-'}</TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">{applicationLabel}</Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap border-amber-400 text-amber-700 bg-amber-50">
-                            A agendar
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2 text-center">
-                          <span className="text-[10px] text-muted-foreground">—</span>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex justify-end items-center gap-1 whitespace-nowrap">
-                            <span className="text-[10px] text-muted-foreground">Agende pela Agenda</span>
                           </div>
                         </TableCell>
                       </TableRow>

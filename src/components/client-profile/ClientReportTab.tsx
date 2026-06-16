@@ -512,6 +512,17 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleManualHeal}
+            disabled={healingPackages || !resolvedClientIdEarly}
+            className="h-8 text-xs"
+            title="Vincular agendamentos órfãos a sessões de pacote e preencher serviços faltantes"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
+            Reparar pacotes
+          </Button>
           <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1" />
             CSV
@@ -521,6 +532,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             PDF
           </Button>
         </div>
+
       </div>
 
       {/* Compact Summary Cards */}

@@ -593,21 +593,16 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             </div>
           ) : (
             <ScrollArea className="h-[460px] rounded border">
-              <div className="min-w-[1180px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/40">
                     <TableHead className="text-[11px] py-2 h-auto min-w-[180px]">Serviço/Pacote</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Data</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Início</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Fim</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto min-w-[120px]">Profissional</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto">Sala</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto min-w-[140px]">Equipamento</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Aplicação</TableHead>
                     <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap min-w-[160px] text-center">Reagendar pacote</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto text-right min-w-[90px]">Ações</TableHead>
+                    <TableHead className="text-[11px] py-2 h-auto text-right min-w-[80px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -619,59 +614,35 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                     const serviceName = isPackage ? (appointment.service?.name || packageData?.service?.name || packageData?.name || '-') : (appointment.service?.name || '-');
                     const packageName = packageData?.name || null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
-                    const roomName = appointment.room?.name || packageData?.room?.name || appointment.service?.room?.name || '-';
-                    const equipmentList = appointment.service?.equipment?.length
-                      ? appointment.service.equipment
-                      : packageData?.equipment || [];
-                    const equipmentNames = getEquipmentNames(equipmentList);
-                    const packageId = packageData?.id;
-                    const canReajust = Boolean(packageId && appointment.package_appointment?.session_number);
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
                     const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
 
+                    // Row text color by status
+                    const statusTextClass =
+                      appointment.status === 'completed' ? 'text-success' :
+                      appointment.status === 'cancelled' ? 'text-destructive' :
+                      appointment.status === 'missed' ? 'text-warning' :
+                      appointment.status === 'rescheduled' ? 'text-primary' :
+                      'text-info';
+
                     return (
-                      <TableRow key={appointment.id} className="hover:bg-muted/30 align-top">
+                      <TableRow key={appointment.id} className={`hover:bg-muted/30 align-top ${statusTextClass}`}>
                         <TableCell className="text-xs py-2">
                           <div className="font-medium leading-tight">{serviceName}</div>
-                          {packageName && <div className="text-[10px] text-primary font-medium leading-tight mt-0.5">Pacote: {packageName}</div>}
+                          {packageName && <div className="text-[10px] font-medium leading-tight mt-0.5 opacity-80">Pacote: {packageName}</div>}
                         </TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.end_time), 'HH:mm')}</TableCell>
                         <TableCell className="text-xs py-2">{professionalName}</TableCell>
-                        <TableCell className="text-xs py-2">{roomName}</TableCell>
-                        <TableCell className="text-xs py-2">{equipmentNames || '-'}</TableCell>
                         <TableCell className="py-2">
                           {packageSession || recurringLabel ? (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap border-current ${statusTextClass}`}>
                               {packageSession ? applicationLabel : recurringLabel}
                             </Badge>
                           ) : '-'}
                         </TableCell>
                         <TableCell className="py-2">
                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>
-                        </TableCell>
-                        <TableCell className="py-2 text-center">
-                          {canReajust ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-[10px] px-2 whitespace-nowrap mx-auto"
-                              onClick={() => propagateSeriesDates.mutate({
-                                appointment_id: appointment.id,
-                                new_start_time: new Date(appointment.start_time),
-                                new_end_time: new Date(appointment.end_time),
-                                propagate_type: 'package',
-                                package_id: packageId,
-                                interval_days: packageData?.interval_days || undefined,
-                              })}
-                              disabled={propagateSeriesDates.isPending}
-                            >
-                              Reajustar seguintes
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">—</span>
-                          )}
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex justify-end items-center gap-1 whitespace-nowrap">
@@ -701,7 +672,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                   })}
                 </TableBody>
               </Table>
-              </div>
               <ScrollBar orientation="horizontal" />
               <ScrollBar orientation="vertical" />
             </ScrollArea>

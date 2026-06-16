@@ -437,51 +437,14 @@ export function PacotesFinanceiro() {
         })
         .eq('id', selected.saleId);
 
-      // 5. SOFT-CANCEL all linked appointments (preserve history) instead of hard delete
+      // 5. HARD PURGE — permanently delete the package and ALL linked records (appointments,
+      //    package_appointments, history, photos, additional items, consumption, client_services).
+      //    The refund cash_transaction and financial_entry above are preserved for audit (FK detached).
       if (selected.packageId) {
-        const { data: pkgApps } = await supabase
-          .from('package_appointments')
-          .select('id, appointment_id, status')
-          .eq('package_id', selected.packageId);
-
-        const appointmentIds = (pkgApps || [])
-          .map(p => p.appointment_id)
-          .filter(Boolean) as string[];
-
-        const cancelNote = `Pacote cancelado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} — Motivo: ${cancelReason.trim()}`;
-
-        if (appointmentIds.length > 0) {
-          // Fetch current statuses, then update only non-final ones (preserves history)
-          const { data: existingAppts } = await supabase
-            .from('appointments')
-            .select('id, status')
-            .in('id', appointmentIds);
-          const toCancel = (existingAppts || [])
-            .filter(a => !['completed', 'cancelled', 'missed'].includes(a.status as string))
-            .map(a => a.id);
-          if (toCancel.length > 0) {
-            await supabase
-              .from('appointments')
-              .update({ status: 'cancelled', notes: cancelNote })
-              .in('id', toCancel);
-          }
-        }
-
-        // Soft-cancel package_appointments — only those still pending/scheduled
-        await supabase
-          .from('package_appointments')
-          .update({
-            status: 'cancelled',
-            notes: cancelNote,
-          })
-          .eq('package_id', selected.packageId)
-          .in('status', ['pending', 'scheduled']);
-
-        // Deactivate package
-        await supabase
-          .from('service_packages')
-          .update({ is_active: false })
-          .eq('id', selected.packageId);
+        const { error: purgeErr } = await (supabase as any).rpc('hard_purge_service_package', {
+          _package_id: selected.packageId,
+        });
+        if (purgeErr) throw purgeErr;
       }
 
       return { refundAmount, alreadyRegistered: refundAlreadyRegistered && feAlreadyRegistered };
@@ -490,7 +453,7 @@ export function PacotesFinanceiro() {
       if (data.alreadyRegistered) {
         toast.info('Cancelamento já havia sido registrado anteriormente.');
       } else {
-        toast.success(`Pacote cancelado. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
+        toast.success(`Pacote excluído permanentemente. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
       }
       setCancelOpen(false);
       queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });

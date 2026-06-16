@@ -4928,6 +4928,10 @@ export type Database = {
         }[]
       }
       get_whatsapp_unit_price: { Args: { qty: number }; Returns: number }
+      hard_purge_service_package: {
+        Args: { _package_id: string }
+        Returns: Json
+      }
       has_permission: {
         Args: {
           _action: string
@@ -5029,6 +5033,10 @@ export type Database = {
           p_single_sale_id: string
         }
         Returns: undefined
+      }
+      purge_orphan_cancelled_appointments: {
+        Args: { _account_owner_id?: string; _client_id?: string }
+        Returns: Json
       }
       purge_single_sale_cascade: { Args: { _sale_id: string }; Returns: Json }
       realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }

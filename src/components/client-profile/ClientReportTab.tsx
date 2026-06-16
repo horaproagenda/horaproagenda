@@ -176,6 +176,25 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     }
   };
 
+  const [purging, setPurging] = useState(false);
+  const handlePurgeOrphans = async () => {
+    if (!resolvedClientIdEarly) return;
+    if (!confirm('Apagar permanentemente todos os agendamentos órfãos de pacotes excluídos deste cliente? Esta ação não pode ser desfeita.')) return;
+    setPurging(true);
+    try {
+      const { data, error } = await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
+      if (error) throw error;
+      const deleted = (data?.deleted ?? 0) as number;
+      toast.success(deleted > 0 ? `${deleted} agendamento(s) órfão(s) apagado(s) permanentemente.` : 'Nenhum agendamento órfão encontrado.');
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+    } catch (e: any) {
+      toast.error('Falha ao limpar histórico: ' + (e.message || 'erro desconhecido'));
+    } finally {
+      setPurging(false);
+    }
+  };
+
 
 
   // Filter data by selected month (or show all if 'all' selected)
@@ -522,6 +541,17 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
             Reparar pacotes
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handlePurgeOrphans}
+            disabled={purging || !resolvedClientIdEarly}
+            className="h-8 text-xs text-destructive hover:text-destructive"
+            title="Apagar permanentemente agendamentos órfãos de pacotes excluídos"
+          >
+            <Trash2 className={`h-3.5 w-3.5 mr-1 ${purging ? 'animate-pulse' : ''}`} />
+            Limpar órfãos
           </Button>
           <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1" />

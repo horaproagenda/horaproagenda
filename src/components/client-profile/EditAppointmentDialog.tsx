@@ -384,85 +384,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             )}
 
             {isRecurringOrPackage && (
-              <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="propagate-dates-edit"
-                    checked={propagateDates}
-                    onCheckedChange={(checked) => { setPropagateDates(!!checked); setPreviewSessions(null); }}
-                  />
-                  <label htmlFor="propagate-dates-edit" className="text-sm text-blue-700 dark:text-blue-300 cursor-pointer">
-                    Alterar datas/horários das próximas aplicações
-                  </label>
-                </div>
-
-                {propagateDates && isPackage && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full h-8 text-xs"
-                      onClick={handlePreview}
-                      disabled={previewLoading || !date || !startTime}
-                    >
-                      {previewLoading ? (
-                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Calculando…</>
-                      ) : (
-                        <><Eye className="h-3 w-3 mr-1" /> Pré-visualizar próximas aplicações</>
-                      )}
-                    </Button>
-
-                    {previewSessions && previewSessions.length > 0 && (
-                      <div className="space-y-1 mt-2 max-h-40 overflow-y-auto rounded border bg-background/60 p-2">
-                        <div className="text-[10px] uppercase text-muted-foreground mb-1">
-                          {previewSessions.filter(s => !s.is_source).length} sessão(ões) seguinte(s)
-                        </div>
-                        {previewSessions.filter(s => !s.is_source).map((s) => (
-                          <div
-                            key={s.package_appointment_id}
-                            className={`flex items-start gap-2 text-[11px] py-1 px-2 rounded ${
-                              s.conflict
-                                ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
-                                : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-                            }`}
-                          >
-                            {s.conflict ? (
-                              <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            ) : (
-                              <CheckCircle2 className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium tabular-nums">
-                                #{s.session_number || '-'} · {formatPreviewDate(s.new_start)}
-                                {!s.is_mutable && <span className="text-muted-foreground"> (já realizada)</span>}
-                              </div>
-                              {s.conflict && s.conflict_with && (
-                                <div className="text-[10px] truncate">⚠ Conflito com: {s.conflict_with}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewSessions && previewConflicts.length > 0 && (
-                      <div className="flex items-start gap-2 p-2 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 text-[11px]">
-                        <AlertTriangle className="h-3 w-3 mt-0.5" />
-                        <span>
-                          {previewConflicts.length} conflito(s). Altere o horário ou cancele/reagende
-                          o agendamento conflitante antes de salvar.
-                        </span>
-                      </div>
-                    )}
-
-                    {previewSessions && previewSessions.filter(s => !s.is_source).length === 0 && (
-                      <div className="text-[11px] text-muted-foreground">
-                        Não há aplicações seguintes editáveis neste pacote.
-                      </div>
-                    )}
-                  </>
-                )}
+              <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-700 dark:text-blue-300">
+                Ao salvar, você poderá optar por ajustar as próximas aplicações desta série/pacote.
               </div>
             )}
 
@@ -480,13 +403,38 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={loading || (propagateDates && isPackage && previewConflicts.length > 0)}
-              >
+              <Button onClick={handleSubmit} disabled={loading}>
                 {loading ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation: adjust following sessions */}
+      <AlertDialog open={showPropagateConfirm} onOpenChange={setShowPropagateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar próximas aplicações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de {isPackage ? 'um pacote' : 'uma série recorrente'}.
+              Deseja ajustar também as próximas aplicações respeitando o intervalo, horário escolhido,
+              dias de atendimento e disponibilidade do profissional? Caso alguma data conflite com outro
+              agendamento ou fora do expediente, ela será automaticamente reagendada para o próximo dia livre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={() => performSave(false)} disabled={loading}>
+              Só este agendamento
+            </Button>
+            <AlertDialogAction onClick={() => performSave(true)} disabled={loading}>
+              Sim, ajustar seguintes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
           </div>
         </DialogContent>
       </Dialog>

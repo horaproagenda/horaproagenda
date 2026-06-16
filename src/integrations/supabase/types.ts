@@ -5034,6 +5034,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_inactive_client_package_artifacts: {
+        Args: { _account_owner_id?: string; _client_id?: string }
+        Returns: Json
+      }
       purge_orphan_cancelled_appointments: {
         Args: { _account_owner_id?: string; _client_id?: string }
         Returns: Json

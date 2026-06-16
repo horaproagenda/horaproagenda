@@ -1817,7 +1817,8 @@ const Agenda = () => {
       subtitle="Gerencie seus agendamentos"
     >
     <div className="flex h-full overflow-y-auto">
-      {/* Clean Header Layout - Mobile First, Ultra Compact */}
+      {/* Main Agenda Content */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
       <div className="space-y-1.5 mb-2">
         {/* Row 1: Search + Actions - Single Line on Mobile */}
         <div className="flex items-center gap-1">

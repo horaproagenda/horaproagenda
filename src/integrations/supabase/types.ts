@@ -4944,7 +4944,15 @@ export type Database = {
         Returns: boolean
       }
       hash_identifier: { Args: { _value: string }; Returns: string }
+      heal_client_package_appointments: {
+        Args: { _client_id: string }
+        Returns: Json
+      }
       heal_legacy_data: { Args: never; Returns: Json }
+      heal_package_service_links: {
+        Args: { _package_id: string }
+        Returns: Json
+      }
       is_account_active: { Args: { _user_id: string }; Returns: boolean }
       is_identifier_blocked: {
         Args: {
@@ -4957,6 +4965,10 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       link_current_user_professional: { Args: never; Returns: string }
+      link_package_session_to_appointment: {
+        Args: { _appointment_id: string; _package_id: string }
+        Returns: Json
+      }
       list_account_seat_usage_admin: {
         Args: never
         Returns: {
@@ -5042,6 +5054,10 @@ export type Database = {
         Returns: undefined
       }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
+      resolve_service_id_for_package: {
+        Args: { _package_id: string; _sequence_order?: number }
+        Returns: string
+      }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
       set_appointment_status_with_package_mode: {
         Args: {

@@ -528,17 +528,6 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
             Reparar pacotes
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handlePurgeOrphans}
-            disabled={purging || !resolvedClientIdEarly}
-            className="h-8 text-xs text-destructive hover:text-destructive"
-            title="Apagar permanentemente agendamentos órfãos de pacotes excluídos"
-          >
-            <Trash2 className={`h-3.5 w-3.5 mr-1 ${purging ? 'animate-pulse' : ''}`} />
-            Limpar órfãos
-          </Button>
           <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1" />
             CSV

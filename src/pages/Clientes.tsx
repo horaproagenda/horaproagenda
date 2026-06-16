@@ -78,7 +78,7 @@ function NewClientButtonGroup({ onRefetch }: { onRefetch: () => void }) {
 
 const Clientes = () => {
   useLogAccessOnMount({ module: 'clientes', action: 'view', fieldsViewed: ['name', 'phone', 'email', 'cpf', 'birthdate', 'address', 'tags', 'last_appointment'] });
-  const [searchTerm, setSearchTerm] = useLocalStorage<string>('clientes:searchTerm', '');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('clientes:viewMode', 'grid');
   const [selectedFilters, setSelectedFilters] = useLocalStorage<Record<string, string[]>>('clientes:filters', {
     status: ['all'],

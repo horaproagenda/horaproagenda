@@ -67,24 +67,6 @@ interface ClientReportTabProps {
   onEditAppointment?: (appointment: Appointment) => void;
 }
 
-interface PendingPackageSession {
-  id: string;
-  session_number: number | null;
-  sequence_order: number | null;
-  scheduled_date: string | null;
-  status: string | null;
-  package: {
-    id: string;
-    name: string | null;
-    total_sessions: number | null;
-    interval_days: number | null;
-    professional?: { name: string | null } | null;
-    room?: { name: string | null } | null;
-    service?: { name: string | null } | null;
-    equipment?: string[] | null;
-  } | null;
-}
-
 const statusOptions = [
   { value: 'all', label: 'Todos' },
   { value: 'scheduled', label: 'Agendado' },
@@ -138,13 +120,15 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   // Runs once per client per session to avoid loops.
   useEffect(() => {
     if (!resolvedClientIdEarly) return;
-    const key = `pkg-heal-${resolvedClientIdEarly}`;
+    const key = `pkg-heal-v2-${resolvedClientIdEarly}`;
     if (typeof window !== 'undefined' && window.sessionStorage.getItem(key)) return;
     (async () => {
       try {
-        // 1) Auto-purge orphan "Pacote cancelado" appointments (permanent, real-time).
+        // 1) Auto-purge old inactive/cancelled package artifacts (permanent, real-time).
+        await (supabase as any).rpc('purge_inactive_client_package_artifacts', { _client_id: resolvedClientIdEarly });
+        // 2) Auto-purge orphan "Pacote cancelado" appointments (permanent, real-time).
         await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
-        // 2) Relink remaining orphan package appointments and fix missing service_id.
+        // 3) Relink remaining orphan package appointments and fix missing service_id.
         await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
         if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1');
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
@@ -162,6 +146,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     if (!resolvedClientIdEarly) return;
     setHealingPackages(true);
     try {
+      await (supabase as any).rpc('purge_inactive_client_package_artifacts', { _client_id: resolvedClientIdEarly });
       await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
       const { data, error } = await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
       if (error) throw error;

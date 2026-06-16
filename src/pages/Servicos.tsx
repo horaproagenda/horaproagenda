@@ -170,7 +170,7 @@ const Servicos: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<PackageTemplate | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useLocalStorage<string>('servicos:searchTerm', '');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Resume position
   const { savedState: resumeState, savePosition: savePos, restore: restorePos, dismiss: dismissPos } = useListPosition({ key: 'servicos' });

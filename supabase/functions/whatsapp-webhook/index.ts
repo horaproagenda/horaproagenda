@@ -76,18 +76,41 @@ serve(async (req) => {
     } catch { /* table may not exist */ }
 
     // Try to act on incoming text messages: detect confirm/cancel intent.
+    // Supports BOTH UltraMsg and Evolution API (v2/v6) payload shapes.
     const data = (payload?.data || payload?.message || payload || {}) as any;
-    const fromMe = data?.fromMe === true || data?.fromMe === 'true';
-    const incomingType = (data?.type || payload?.event_type || '').toString();
-    const isIncomingText =
-      !fromMe &&
-      (incomingType.includes('received') || incomingType === 'chat' || incomingType === 'text' || !!data?.body);
+
+    // Evolution: data.key.fromMe — UltraMsg: data.fromMe
+    const fromMe =
+      data?.fromMe === true || data?.fromMe === 'true' ||
+      data?.key?.fromMe === true || data?.key?.fromMe === 'true';
+
+    const incomingType = (
+      data?.type || payload?.event || payload?.event_type || ''
+    ).toString().toLowerCase();
+
+    // Evolution message text can be in several sub-objects.
+    const evoText =
+      data?.message?.conversation ||
+      data?.message?.extendedTextMessage?.text ||
+      data?.message?.imageMessage?.caption ||
+      data?.message?.videoMessage?.caption ||
+      data?.message?.buttonsResponseMessage?.selectedDisplayText ||
+      data?.message?.listResponseMessage?.title ||
+      data?.message?.templateButtonReplyMessage?.selectedDisplayText ||
+      '';
+
+    const bodyText: string = (data?.body || data?.text || data?.message?.text || evoText || '') as string;
+    const isIncomingText = !fromMe && !!bodyText;
+
+    console.log('[ultramsg-webhook] parsed', { fromMe, incomingType, hasBody: !!bodyText, preview: String(bodyText).slice(0, 60) });
 
     if (isIncomingText) {
-      const body: string = data.body || data.text || data.message || '';
-      const fromRaw: string = data.from || data.phone || data.author || data.chatId || '';
-      const phone = normalizePhone(fromRaw.replace(/@.*/, ''));
-      const intent = detectIntent(body);
+      const fromRaw: string =
+        data?.from || data?.phone || data?.author || data?.chatId ||
+        data?.key?.remoteJid || data?.remoteJid || '';
+      const phone = normalizePhone(String(fromRaw).replace(/@.*/, ''));
+      const intent = detectIntent(bodyText);
+      console.log('[ultramsg-webhook] intent detected', { phone, intent });
 
       if (phone && intent) {
         // Find the most recent upcoming or recent appointment for this phone.
@@ -96,8 +119,10 @@ serve(async (req) => {
         const instanceId = String(
           (payload as any)?.instanceId ||
           (payload as any)?.instance_id ||
+          (payload as any)?.instance ||
           data?.instanceId ||
-          data?.instance_id || ''
+          data?.instance_id ||
+          data?.instance || ''
         ).trim();
 
         const tenantOwners = new Set<string>();

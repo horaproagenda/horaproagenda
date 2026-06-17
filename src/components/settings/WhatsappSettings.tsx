@@ -230,7 +230,7 @@ export function WhatsappSettings() {
             >
               {professionals.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.name} {credsMap[p.id] ? '• conectado' : '• não conectado'}
+                  {p.name} {credsMap[p.id]?.is_active ? '• conectado' : '• desconectado'}
                 </option>
               ))}
             </select>

@@ -210,8 +210,6 @@ export function WhatsappSettings() {
           </div>
           {connected ? (
             <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Conectado</Badge>
-          ) : configured ? (
-            <Badge variant="outline">Aguardando QR Code</Badge>
           ) : (
             <Badge variant="outline">Desconectado</Badge>
           )}
@@ -232,7 +230,7 @@ export function WhatsappSettings() {
             >
               {professionals.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.name} {credsMap[p.id] ? '• conectado' : '• não conectado'}
+                  {p.name} {credsMap[p.id]?.is_active ? '• conectado' : '• desconectado'}
                 </option>
               ))}
             </select>

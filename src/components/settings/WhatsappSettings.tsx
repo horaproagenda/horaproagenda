@@ -210,8 +210,6 @@ export function WhatsappSettings() {
           </div>
           {connected ? (
             <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Conectado</Badge>
-          ) : configured ? (
-            <Badge variant="outline">Aguardando QR Code</Badge>
           ) : (
             <Badge variant="outline">Desconectado</Badge>
           )}

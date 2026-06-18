@@ -70,6 +70,19 @@ export function WhatsappSettings() {
     return status;
   }, [checkConnection]);
 
+  const syncSelectedConnectionStatus = useCallback((status: any) => {
+    if (!selectedProfId || !status) return;
+    setConnectionByProf(prev => ({
+      ...prev,
+      [selectedProfId]: {
+        configured: status.configured !== false,
+        connected: status.connected === true,
+        state: status.state ?? null,
+        checkedAt: new Date().toISOString(),
+      },
+    }));
+  }, [selectedProfId]);
+
   // Bootstrap
   useEffect(() => {
     (async () => {
@@ -164,6 +177,7 @@ export function WhatsappSettings() {
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],
+    onStatus: syncSelectedConnectionStatus,
   });
 
   useEffect(() => {

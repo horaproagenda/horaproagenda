@@ -66,6 +66,16 @@ export function WhatsappSettings() {
           checkedAt: new Date().toISOString(),
         },
       }));
+    } else {
+      setConnectionByProf(prev => ({
+        ...prev,
+        [professionalId]: {
+          configured: false,
+          connected: false,
+          state: null,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
     }
     return status;
   }, [checkConnection]);
@@ -162,7 +172,7 @@ export function WhatsappSettings() {
   const configured = selectedConnection ? selectedConnection.configured !== false : Boolean(selectedProfId && credsMap[selectedProfId]);
   const selectedStatusLabel = !selectedProfId
     ? 'Selecione um profissional'
-    : isLoading && !selectedConnection
+    : !selectedConnection
       ? 'Verificando'
       : connected
         ? 'Conectado'

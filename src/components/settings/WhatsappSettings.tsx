@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +14,19 @@ import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKee
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 
 type Professional = { id: string; name: string };
 type Creds = {
   professional_id: string;
   is_active: boolean;
   last_connected_at: string | null;
+};
+type ConnectionSnapshot = {
+  configured: boolean;
+  connected: boolean;
+  state?: string | null;
+  checkedAt: string;
 };
 
 /**
@@ -33,7 +40,7 @@ type Creds = {
  */
 export function WhatsappSettings() {
   const {
-    connectionStatus, checkConnection, getQRCode, qrCode, pairingCode, isLoading, isLoadingQR,
+    checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR,
   } = useWhatsapp();
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -44,6 +51,24 @@ export function WhatsappSettings() {
   const [quietHours, setQuietHours] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [connectionByProf, setConnectionByProf] = useState<Record<string, ConnectionSnapshot>>({});
+
+  const refreshConnection = useCallback(async (professionalId?: string) => {
+    if (!professionalId) return null;
+    const status = await checkConnection(professionalId);
+    if (status) {
+      setConnectionByProf(prev => ({
+        ...prev,
+        [professionalId]: {
+          configured: status.configured !== false,
+          connected: status.connected === true,
+          state: status.state ?? null,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
+    }
+    return status;
+  }, [checkConnection]);
 
   // Bootstrap
   useEffect(() => {
@@ -81,7 +106,8 @@ export function WhatsappSettings() {
 
   useEffect(() => {
     if (selectedProfId) {
-      void checkConnection(selectedProfId);
+      clearQRCode();
+      void refreshConnection(selectedProfId);
       (async () => {
         const { data } = await supabase
           .from('professionals')
@@ -94,7 +120,7 @@ export function WhatsappSettings() {
         });
       })();
     }
-  }, [selectedProfId, checkConnection]);
+  }, [selectedProfId, clearQRCode, refreshConnection]);
 
   const handleSaveQuietHours = async () => {
     if (!selectedProfId) return;
@@ -118,8 +144,30 @@ export function WhatsappSettings() {
     toast.success('Janela de envio salva.');
   };
 
-  const connected = connectionStatus?.connected === true;
-  const configured = connectionStatus?.configured !== false;
+  const selectedConnection = selectedProfId ? connectionByProf[selectedProfId] : null;
+  const connected = selectedConnection?.connected === true;
+  const configured = selectedConnection ? selectedConnection.configured !== false : Boolean(selectedProfId && credsMap[selectedProfId]);
+  const selectedStatusLabel = !selectedProfId
+    ? 'Selecione um profissional'
+    : isLoading && !selectedConnection
+      ? 'Verificando'
+      : connected
+        ? 'Conectado'
+        : 'Desconectado';
+
+  const professionalOptions = useMemo(() => professionals.map((p) => {
+    const status = connectionByProf[p.id];
+    const isSelectedChecking = p.id === selectedProfId && isLoading && !status;
+    return {
+      value: p.id,
+      label: p.name,
+      sublabel: isSelectedChecking
+        ? 'verificando'
+        : status
+          ? (status.connected ? 'conectado' : 'desconectado')
+          : 'status ao selecionar',
+    };
+  }), [professionals, connectionByProf, selectedProfId, isLoading]);
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],
@@ -138,7 +186,7 @@ export function WhatsappSettings() {
       setCredsMap(prev => ({ ...prev, [selectedProfId]: data as Creds }));
     })();
     return () => { cancelled = true; };
-  }, [connected, selectedProfId, connectionStatus?.state]);
+  }, [connected, selectedProfId, selectedConnection?.state]);
 
   const selectedName = useMemo(() => {
     if (!selectedProfId) return '';
@@ -172,7 +220,7 @@ export function WhatsappSettings() {
 
       if (data.connected) {
         toast.success('WhatsApp já está conectado.');
-        void checkConnection(selectedProfId);
+        void refreshConnection(selectedProfId);
         return;
       }
 
@@ -184,7 +232,11 @@ export function WhatsappSettings() {
       if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
 
       // Hidrata o hook useWhatsapp via getQRCode (que usa a mesma instância já reservada).
-      await getQRCode(selectedProfId);
+      const qrResult = await getQRCode(selectedProfId);
+      if ((qrResult as any)?.connected) {
+        await refreshConnection(selectedProfId);
+        return;
+      }
       toast.success('QR Code gerado. Escaneie no celular do profissional.');
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao conectar WhatsApp.');

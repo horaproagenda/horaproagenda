@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +14,19 @@ import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKee
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 
 type Professional = { id: string; name: string };
 type Creds = {
   professional_id: string;
   is_active: boolean;
   last_connected_at: string | null;
+};
+type ConnectionSnapshot = {
+  configured: boolean;
+  connected: boolean;
+  state?: string | null;
+  checkedAt: string;
 };
 
 /**
@@ -33,7 +40,7 @@ type Creds = {
  */
 export function WhatsappSettings() {
   const {
-    connectionStatus, checkConnection, getQRCode, qrCode, pairingCode, isLoading, isLoadingQR,
+    checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR,
   } = useWhatsapp();
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -44,6 +51,47 @@ export function WhatsappSettings() {
   const [quietHours, setQuietHours] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [connectionByProf, setConnectionByProf] = useState<Record<string, ConnectionSnapshot>>({});
+
+  const refreshConnection = useCallback(async (professionalId?: string) => {
+    if (!professionalId) return null;
+    const status = await checkConnection(professionalId);
+    if (status) {
+      setConnectionByProf(prev => ({
+        ...prev,
+        [professionalId]: {
+          configured: status.configured !== false,
+          connected: status.connected === true,
+          state: status.state ?? null,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
+    } else {
+      setConnectionByProf(prev => ({
+        ...prev,
+        [professionalId]: {
+          configured: false,
+          connected: false,
+          state: null,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
+    }
+    return status;
+  }, [checkConnection]);
+
+  const syncSelectedConnectionStatus = useCallback((status: any) => {
+    if (!selectedProfId || !status) return;
+    setConnectionByProf(prev => ({
+      ...prev,
+      [selectedProfId]: {
+        configured: status.configured !== false,
+        connected: status.connected === true,
+        state: status.state ?? null,
+        checkedAt: new Date().toISOString(),
+      },
+    }));
+  }, [selectedProfId]);
 
   // Bootstrap
   useEffect(() => {
@@ -81,7 +129,8 @@ export function WhatsappSettings() {
 
   useEffect(() => {
     if (selectedProfId) {
-      void checkConnection(selectedProfId);
+      clearQRCode();
+      void refreshConnection(selectedProfId);
       (async () => {
         const { data } = await supabase
           .from('professionals')
@@ -94,7 +143,7 @@ export function WhatsappSettings() {
         });
       })();
     }
-  }, [selectedProfId, checkConnection]);
+  }, [selectedProfId, clearQRCode, refreshConnection]);
 
   const handleSaveQuietHours = async () => {
     if (!selectedProfId) return;
@@ -118,11 +167,27 @@ export function WhatsappSettings() {
     toast.success('Janela de envio salva.');
   };
 
-  const connected = connectionStatus?.connected === true;
-  const configured = connectionStatus?.configured !== false;
+  const selectedConnection = selectedProfId ? connectionByProf[selectedProfId] : null;
+  const connected = selectedConnection?.connected === true;
+  const configured = selectedConnection ? selectedConnection.configured !== false : Boolean(selectedProfId && credsMap[selectedProfId]);
+  const selectedStatusLabel = !selectedProfId
+    ? 'Selecione um profissional'
+    : !selectedConnection
+      ? 'Verificando'
+      : connected
+        ? 'Conectado'
+        : 'Desconectado';
+
+  const professionalOptions = useMemo(() => professionals.map((p) => {
+    return {
+      value: p.id,
+      label: p.name,
+    };
+  }), [professionals]);
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],
+    onStatus: syncSelectedConnectionStatus,
   });
 
   useEffect(() => {
@@ -138,7 +203,7 @@ export function WhatsappSettings() {
       setCredsMap(prev => ({ ...prev, [selectedProfId]: data as Creds }));
     })();
     return () => { cancelled = true; };
-  }, [connected, selectedProfId, connectionStatus?.state]);
+  }, [connected, selectedProfId, selectedConnection?.state]);
 
   const selectedName = useMemo(() => {
     if (!selectedProfId) return '';
@@ -172,7 +237,7 @@ export function WhatsappSettings() {
 
       if (data.connected) {
         toast.success('WhatsApp já está conectado.');
-        void checkConnection(selectedProfId);
+        void refreshConnection(selectedProfId);
         return;
       }
 
@@ -184,7 +249,11 @@ export function WhatsappSettings() {
       if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
 
       // Hidrata o hook useWhatsapp via getQRCode (que usa a mesma instância já reservada).
-      await getQRCode(selectedProfId);
+      const qrResult = await getQRCode(selectedProfId);
+      if ((qrResult as any)?.connected) {
+        await refreshConnection(selectedProfId);
+        return;
+      }
       toast.success('QR Code gerado. Escaneie no celular do profissional.');
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao conectar WhatsApp.');
@@ -208,11 +277,14 @@ export function WhatsappSettings() {
               </CardDescription>
             </div>
           </div>
-          {connected ? (
-            <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Conectado</Badge>
-          ) : (
-            <Badge variant="outline">Desconectado</Badge>
-          )}
+          <Badge className={connected ? 'bg-green-500' : undefined} variant={connected ? 'default' : 'outline'}>
+            {isLoading && !selectedConnection ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : connected ? (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            ) : null}
+            {selectedStatusLabel}
+          </Badge>
         </div>
       </CardHeader>
 
@@ -223,17 +295,15 @@ export function WhatsappSettings() {
             <Label className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" /> Profissional
             </Label>
-            <select
+            <SearchableSelect
+              options={professionalOptions}
               value={selectedProfId}
-              onChange={(e) => setSelectedProfId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {professionals.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {credsMap[p.id]?.is_active ? '• conectado' : '• desconectado'}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedProfId}
+              placeholder="Selecione um profissional"
+              searchPlaceholder="Buscar profissional..."
+              emptyMessage="Nenhum profissional encontrado."
+              className="h-9 text-sm"
+            />
           </div>
         )}
 
@@ -257,7 +327,7 @@ export function WhatsappSettings() {
 
         {/* Botões de ação */}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => checkConnection(selectedProfId || undefined)} disabled={isLoading}>
+          <Button variant="outline" onClick={() => refreshConnection(selectedProfId || undefined)} disabled={isLoading || !selectedProfId}>
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>

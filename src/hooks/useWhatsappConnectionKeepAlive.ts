@@ -23,10 +23,10 @@ import { whatsappMessageQueue } from '@/lib/whatsappMessageQueue';
  */
 export function useWhatsappConnectionKeepAlive(
   professionalId: string | null | undefined,
-  options: { intervalMs?: number; enabled?: boolean } = {},
+  options: { intervalMs?: number; enabled?: boolean; onStatus?: (status: any) => void } = {},
 ) {
   const { checkConnection } = useWhatsapp();
-  const { intervalMs = 60_000, enabled = true } = options;
+  const { intervalMs = 60_000, enabled = true, onStatus } = options;
   const timerRef = useRef<number | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -65,6 +65,7 @@ export function useWhatsappConnectionKeepAlive(
       reconnectTimerRef.current = window.setTimeout(async () => {
         reconnectAttemptsRef.current = attempt;
         const status = await checkConnection(professionalId || undefined);
+        onStatus?.(status);
         if (status?.connected) {
           // Recuperou sozinho
           handleRecovered();
@@ -105,6 +106,7 @@ export function useWhatsappConnectionKeepAlive(
     const tick = async () => {
       if (document.visibilityState !== 'visible') return;
       const status = await checkConnection(professionalId || undefined);
+      onStatus?.(status);
       const isConnected = status?.connected === true;
 
       // Primeira leitura: apenas registra o estado base, sem alertas.
@@ -140,5 +142,5 @@ export function useWhatsappConnectionKeepAlive(
       cancelReconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [professionalId, enabled, intervalMs, checkConnection]);
+  }, [professionalId, enabled, intervalMs, checkConnection, onStatus]);
 }

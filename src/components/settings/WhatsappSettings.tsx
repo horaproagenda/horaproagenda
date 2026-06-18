@@ -156,18 +156,11 @@ export function WhatsappSettings() {
         : 'Desconectado';
 
   const professionalOptions = useMemo(() => professionals.map((p) => {
-    const status = connectionByProf[p.id];
-    const isSelectedChecking = p.id === selectedProfId && isLoading && !status;
     return {
       value: p.id,
       label: p.name,
-      sublabel: isSelectedChecking
-        ? 'verificando'
-        : status
-          ? (status.connected ? 'conectado' : 'desconectado')
-          : 'status ao selecionar',
     };
-  }), [professionals, connectionByProf, selectedProfId, isLoading]);
+  }), [professionals]);
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],

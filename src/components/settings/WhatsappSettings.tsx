@@ -260,11 +260,14 @@ export function WhatsappSettings() {
               </CardDescription>
             </div>
           </div>
-          {connected ? (
-            <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Conectado</Badge>
-          ) : (
-            <Badge variant="outline">Desconectado</Badge>
-          )}
+          <Badge className={connected ? 'bg-green-500' : undefined} variant={connected ? 'default' : 'outline'}>
+            {isLoading && !selectedConnection ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : connected ? (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            ) : null}
+            {selectedStatusLabel}
+          </Badge>
         </div>
       </CardHeader>
 
@@ -275,17 +278,15 @@ export function WhatsappSettings() {
             <Label className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" /> Profissional
             </Label>
-            <select
+            <SearchableSelect
+              options={professionalOptions}
               value={selectedProfId}
-              onChange={(e) => setSelectedProfId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {professionals.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {credsMap[p.id]?.is_active ? '• conectado' : '• desconectado'}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedProfId}
+              placeholder="Selecione um profissional"
+              searchPlaceholder="Buscar profissional..."
+              emptyMessage="Nenhum profissional encontrado."
+              className="h-9 text-sm"
+            />
           </div>
         )}
 
@@ -309,7 +310,7 @@ export function WhatsappSettings() {
 
         {/* Botões de ação */}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => checkConnection(selectedProfId || undefined)} disabled={isLoading}>
+          <Button variant="outline" onClick={() => refreshConnection(selectedProfId || undefined)} disabled={isLoading || !selectedProfId}>
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>

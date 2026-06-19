@@ -241,18 +241,27 @@ export function WhatsappSettings() {
         return;
       }
 
-      // Refresh credential flags (sem ler instance_id/token).
-      const { data: row } = await supabase
+      // Hidrata o QR vindo direto do whatsapp-connect (evita 2º round-trip).
+      if (data.qrcode) {
+        setQRCodeDirect(data.qrcode, data.pairingCode ?? null);
+      }
+
+      // Atualiza flags de credenciais em paralelo (não bloqueia a exibição do QR).
+      void supabase
         .from('professional_whatsapp_credentials')
         .select('professional_id, is_active, last_connected_at')
-        .eq('professional_id', selectedProfId).maybeSingle();
-      if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
+        .eq('professional_id', selectedProfId).maybeSingle()
+        .then(({ data: row }) => {
+          if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row as Creds }));
+        });
 
-      // Hidrata o hook useWhatsapp via getQRCode (que usa a mesma instância já reservada).
-      const qrResult = await getQRCode(selectedProfId);
-      if ((qrResult as any)?.connected) {
-        await refreshConnection(selectedProfId);
-        return;
+      // Fallback: se por algum motivo o connect não trouxe QR, busca via getQRCode.
+      if (!data.qrcode) {
+        const qrResult = await getQRCode(selectedProfId);
+        if ((qrResult as any)?.connected) {
+          await refreshConnection(selectedProfId);
+          return;
+        }
       }
       toast.success('QR Code gerado. Escaneie no celular do profissional.');
     } catch (e: any) {

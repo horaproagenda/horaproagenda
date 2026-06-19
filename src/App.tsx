@@ -15,6 +15,7 @@ import { useVersionWatcher } from "@/hooks/useVersionWatcher";
 import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
 import { useAutoHealing } from "@/hooks/useAutoHealing";
 import { useAgendaIntegrityAutoCheck } from "@/hooks/useAgendaIntegrityAutoCheck";
+import { useSaleFlowIntegrityAutoCheck } from "@/hooks/useSaleFlowIntegrityAutoCheck";
 import { useLayoutWatchdog } from "@/hooks/useLayoutWatchdog";
 
 // Eager: rotas críticas no boot (login, dashboard, 404)
@@ -91,6 +92,7 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   usePostUpdateDataHeal();
   useAutoHealing();
   useAgendaIntegrityAutoCheck();
+  useSaleFlowIntegrityAutoCheck();
   return <>{children}</>;
 }
 

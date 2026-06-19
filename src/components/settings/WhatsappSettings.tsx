@@ -40,7 +40,7 @@ type ConnectionSnapshot = {
  */
 export function WhatsappSettings() {
   const {
-    checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR,
+    checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
   } = useWhatsapp();
 
   const [isAdmin, setIsAdmin] = useState(false);

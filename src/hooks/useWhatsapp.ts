@@ -184,6 +184,16 @@ Um grande abraço! 🎁`;
     setPairingCode(null);
   }, []);
 
+  /**
+   * Permite hidratar QR Code/pairing code obtidos diretamente de outro
+   * endpoint (ex.: whatsapp-connect) sem precisar de uma segunda chamada
+   * a whatsapp-get-qrcode — economiza um round-trip e acelera o fluxo.
+   */
+  const setQRCodeDirect = useCallback((qr: string | null, pairing?: string | null) => {
+    setQrCode(qr ?? null);
+    setPairingCode(pairing ?? null);
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -196,5 +206,6 @@ Um grande abraço! 🎁`;
     isLoadingQR,
     getQRCode,
     clearQRCode,
+    setQRCodeDirect,
   };
 }

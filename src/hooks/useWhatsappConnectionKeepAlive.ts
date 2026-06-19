@@ -23,15 +23,28 @@ import { whatsappMessageQueue } from '@/lib/whatsappMessageQueue';
  */
 export function useWhatsappConnectionKeepAlive(
   professionalId: string | null | undefined,
-  options: { intervalMs?: number; enabled?: boolean; onStatus?: (status: any) => void } = {},
+  options: {
+    intervalMs?: number;
+    fastIntervalMs?: number;
+    enabled?: boolean;
+    onStatus?: (status: any) => void;
+  } = {},
 ) {
   const { checkConnection } = useWhatsapp();
-  const { intervalMs = 60_000, enabled = true, onStatus } = options;
+  const {
+    intervalMs = 60_000,
+    // Quando está aguardando conexão (QR pendente / instável), faz ping
+    // bem mais frequente para detectar autenticação em segundos.
+    fastIntervalMs = 4_000,
+    enabled = true,
+    onStatus,
+  } = options;
   const timerRef = useRef<number | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const wasConnectedRef = useRef<boolean | null>(null);
   const downToastIdRef = useRef<string | number | null>(null);
+  const currentDelayRef = useRef<number>(intervalMs);
 
   useEffect(() => {
     if (!enabled) return;
@@ -48,7 +61,6 @@ export function useWhatsappConnectionKeepAlive(
 
     const scheduleReconnect = () => {
       if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-        // Esgotou auto-reconexão: avisa para intervenção manual.
         if (downToastIdRef.current) toast.dismiss(downToastIdRef.current);
         downToastIdRef.current = toast.error(
           'WhatsApp continua desconectado após várias tentativas.',
@@ -61,13 +73,13 @@ export function useWhatsappConnectionKeepAlive(
         return;
       }
       const attempt = reconnectAttemptsRef.current + 1;
-      const delay = 5_000 * Math.pow(2, attempt - 1); // 5, 10, 20, 40, 80s
+      // Backoff mais curto para reconectar mais rápido: 2, 4, 8, 16, 32s.
+      const delay = 2_000 * Math.pow(2, attempt - 1);
       reconnectTimerRef.current = window.setTimeout(async () => {
         reconnectAttemptsRef.current = attempt;
         const status = await checkConnection(professionalId || undefined);
         onStatus?.(status);
         if (status?.connected) {
-          // Recuperou sozinho
           handleRecovered();
         } else {
           scheduleReconnect();
@@ -96,11 +108,20 @@ export function useWhatsappConnectionKeepAlive(
         downToastIdRef.current = null;
       }
       toast.success('WhatsApp reconectado.', {
-        description: 'A fila de mensagens voltou a processar normalmente.',
+        description: 'Reenviando mensagens que ficaram pendentes...',
         duration: 4_000,
       });
       cancelReconnect();
+      // Retoma a fila e reprocessa qualquer envio que falhou enquanto estava offline.
       whatsappMessageQueue.resume();
+      whatsappMessageQueue.retryFailed();
+    };
+
+    const setPollDelay = (delay: number) => {
+      if (currentDelayRef.current === delay && timerRef.current) return;
+      currentDelayRef.current = delay;
+      if (timerRef.current) window.clearInterval(timerRef.current);
+      timerRef.current = window.setInterval(() => { void tick(); }, delay);
     };
 
     const tick = async () => {
@@ -109,28 +130,32 @@ export function useWhatsappConnectionKeepAlive(
       onStatus?.(status);
       const isConnected = status?.connected === true;
 
-      // Primeira leitura: apenas registra o estado base, sem alertas.
+      // Ajusta a frequência: rápido enquanto aguarda autenticação, lento quando conectado.
+      setPollDelay(isConnected ? intervalMs : fastIntervalMs);
+
       if (wasConnectedRef.current === null) {
         wasConnectedRef.current = isConnected;
-        if (!isConnected && status?.configured) {
-          // Já entrou desconectado e tem credenciais: começa auto-reconexão.
+        if (isConnected) {
+          // Já entrou conectado: garante fila ativa e reenvia falhas pendentes.
+          whatsappMessageQueue.resume();
+          whatsappMessageQueue.retryFailed();
+        } else if (status?.configured) {
           handleDropped();
         }
         return;
       }
 
       if (wasConnectedRef.current && !isConnected) {
-        // Transição: estava conectado e caiu
         handleDropped();
       } else if (!wasConnectedRef.current && isConnected) {
-        // Transição: voltou a conectar
         handleRecovered();
       }
       wasConnectedRef.current = isConnected;
     };
 
     void tick();
-    timerRef.current = window.setInterval(() => { void tick(); }, intervalMs);
+    currentDelayRef.current = fastIntervalMs;
+    timerRef.current = window.setInterval(() => { void tick(); }, fastIntervalMs);
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void tick();
@@ -142,5 +167,5 @@ export function useWhatsappConnectionKeepAlive(
       cancelReconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [professionalId, enabled, intervalMs, checkConnection, onStatus]);
+  }, [professionalId, enabled, intervalMs, fastIntervalMs, checkConnection, onStatus]);
 }

@@ -804,11 +804,11 @@ export default function PreencherDocumento() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8 px-4">
       <Helmet>
         <title>{`${template.title} — Preencher documento`}</title>
-        <meta name="description" content={`Preencha o documento "${template.title}" do Lume Agenda online de forma segura.`} />
-        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/preencher-documento'} />
-        <meta property="og:title" content={`${template.title} — Lume Agenda`} />
-        <meta property="og:description" content="Preenchimento online de documentos do Lume Agenda." />
-        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://agendalume.app/preencher-documento'} />
+        <meta name="description" content={`Preencha o documento "${template.title}" do Hora Pro online de forma segura.`} />
+        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://horaproagenda.app/preencher-documento'} />
+        <meta property="og:title" content={`${template.title} — Hora Pro`} />
+        <meta property="og:description" content="Preenchimento online de documentos do Hora Pro." />
+        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://horaproagenda.app/preencher-documento'} />
         <meta name="robots" content="noindex,follow" />
       </Helmet>
       <h1 className="sr-only">{template.title}</h1>

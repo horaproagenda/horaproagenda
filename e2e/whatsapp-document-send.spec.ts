@@ -52,7 +52,7 @@ test('enviar documento envia pela instância WhatsApp conectada e registra a rot
           body: JSON.stringify({ phone: '(11) 98765-4321', client_id: 'client-1', message: documentMessage })
         });
         window.__whatsappSendResult = await response.json();
-        sessionStorage.setItem('agendalume:last-whatsapp-route', JSON.stringify({ route: window.__whatsappSendResult.route, status: 'sent', instance: window.__whatsappSendResult.instance }));
+        sessionStorage.setItem('horapro:last-whatsapp-route', JSON.stringify({ route: window.__whatsappSendResult.route, status: 'sent', instance: window.__whatsappSendResult.instance }));
       });
       </script>
     `,
@@ -75,7 +75,7 @@ test('enviar documento envia pela instância WhatsApp conectada e registra a rot
   expect(result.route).toBe('evolution-api');
   expect(result.provider).toBe('evolution');
 
-  const routeLog = await page.evaluate(() => sessionStorage.getItem('agendalume:last-whatsapp-route'));
+  const routeLog = await page.evaluate(() => sessionStorage.getItem('horapro:last-whatsapp-route'));
   expect(routeLog).toContain('evolution-api');
   expect(routeLog).toContain('sent');
   expect(routeLog).not.toContain('api.whatsapp.com');

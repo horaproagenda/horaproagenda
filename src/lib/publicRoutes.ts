@@ -27,12 +27,12 @@ export const PUBLIC_ROUTES = [
 
 /** Base canônica para URLs públicas compartilhadas (WhatsApp, e-mail, etc.). */
 export function getPublicBaseUrl(): string {
-  if (typeof window === 'undefined') return 'https://agendalume.app';
+  if (typeof window === 'undefined') return 'https://horaproagenda.app';
   const origin = window.location.origin;
   // Em previews do Lovable, sempre apontamos para o domínio publicado real
   // para que o link copiado funcione mesmo se o usuário estiver no preview.
   if (origin.includes('lovable.app') || origin.includes('lovable.dev')) {
-    return 'https://agendalume.app';
+    return 'https://horaproagenda.app';
   }
   return origin;
 }

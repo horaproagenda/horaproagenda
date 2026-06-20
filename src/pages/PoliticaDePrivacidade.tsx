@@ -4,18 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Helmet } from "react-helmet-async";
 
 export default function PoliticaDePrivacidade() {
-  const siteUrl = "https://agendalume.app";
-  const email = "suporte@agendalume.app";
+  const siteUrl = "https://horaproagenda.app";
+  const email = "suporte@horaproagenda.app";
 
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Política de Privacidade — Lume Agenda</title>
-        <meta name="description" content="Como a Lume Agenda coleta, usa e protege dados pessoais de profissionais e clientes (LGPD)." />
-        <link rel="canonical" href="https://agendalume.app/politica-de-privacidade" />
-        <meta property="og:title" content="Política de Privacidade — Lume Agenda" />
-        <meta property="og:description" content="Tratamento de dados pessoais na Lume Agenda em conformidade com a LGPD." />
-        <meta property="og:url" content="https://agendalume.app/politica-de-privacidade" />
+        <title>Política de Privacidade — Hora Pro</title>
+        <meta name="description" content="Como a Hora Pro coleta, usa e protege dados pessoais de profissionais e clientes (LGPD)." />
+        <link rel="canonical" href="https://horaproagenda.app/politica-de-privacidade" />
+        <meta property="og:title" content="Política de Privacidade — Hora Pro" />
+        <meta property="og:description" content="Tratamento de dados pessoais na Hora Pro em conformidade com a LGPD." />
+        <meta property="og:url" content="https://horaproagenda.app/politica-de-privacidade" />
       </Helmet>
       <main className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-6">
@@ -50,7 +50,7 @@ export default function PoliticaDePrivacidade() {
                 1. Introdução
               </h2>
               <p>
-                O <strong>Lume Agenda</strong> ({siteUrl}) leva a sério a privacidade dos seus dados. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informações pessoais e dos seus clientes, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
+                O <strong>Hora Pro</strong> ({siteUrl}) leva a sério a privacidade dos seus dados. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informações pessoais e dos seus clientes, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
               </p>
             </section>
 

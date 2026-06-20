@@ -4,18 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Helmet } from "react-helmet-async";
 
 export default function TermosDeServico() {
-  const siteUrl = "https://agendalume.app";
-  const email = "suporte@agendalume.app";
+  const siteUrl = "https://horaproagenda.app";
+  const email = "suporte@horaproagenda.app";
 
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Termos de Serviço — Lume Agenda</title>
-        <meta name="description" content="Termos de Serviço da Lume Agenda: condições de uso da plataforma de gestão para clínicas de estética." />
-        <link rel="canonical" href="https://agendalume.app/termos-de-servico" />
-        <meta property="og:title" content="Termos de Serviço — Lume Agenda" />
-        <meta property="og:description" content="Condições de uso da plataforma Lume Agenda." />
-        <meta property="og:url" content="https://agendalume.app/termos-de-servico" />
+        <title>Termos de Serviço — Hora Pro</title>
+        <meta name="description" content="Termos de Serviço da Hora Pro: condições de uso da plataforma de gestão para clínicas de estética." />
+        <link rel="canonical" href="https://horaproagenda.app/termos-de-servico" />
+        <meta property="og:title" content="Termos de Serviço — Hora Pro" />
+        <meta property="og:description" content="Condições de uso da plataforma Hora Pro." />
+        <meta property="og:url" content="https://horaproagenda.app/termos-de-servico" />
       </Helmet>
       <main className="max-w-3xl mx-auto px-4 py-12">
         <div className="mb-6">
@@ -50,7 +50,7 @@ export default function TermosDeServico() {
                 1. Aceitação dos Termos
               </h2>
               <p>
-                Ao acessar e utilizar o <strong>Lume Agenda</strong> ({siteUrl}), você concorda em cumprir e estar vinculado aos presentes Termos de Serviço. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.
+                Ao acessar e utilizar o <strong>Hora Pro</strong> ({siteUrl}), você concorda em cumprir e estar vinculado aos presentes Termos de Serviço. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.
               </p>
             </section>
 
@@ -59,7 +59,7 @@ export default function TermosDeServico() {
                 2. Descrição do Serviço
               </h2>
               <p>
-                O Lume Agenda é um sistema de gestão e agendamento voltado para clínicas de estética, spas e profissionais de beleza. Nossos serviços incluem, mas não se limitam a:
+                O Hora Pro é um sistema de gestão e agendamento voltado para clínicas de estética, spas e profissionais de beleza. Nossos serviços incluem, mas não se limitam a:
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Gerenciamento de agenda e horários de atendimento;</li>
@@ -76,7 +76,7 @@ export default function TermosDeServico() {
                 3. Cadastro e Conta
               </h2>
               <p>
-                Para utilizar o Lume Agenda, você deve criar uma conta fornecendo informações verdadeiras, completas e atualizadas. Você é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta. O compartilhamento de credenciais de acesso é estritamente proibido.
+                Para utilizar o Hora Pro, você deve criar uma conta fornecendo informações verdadeiras, completas e atualizadas. Você é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta. O compartilhamento de credenciais de acesso é estritamente proibido.
               </p>
             </section>
 
@@ -85,7 +85,7 @@ export default function TermosDeServico() {
                 4. Planos e Pagamentos
               </h2>
               <p>
-                O Lume Agenda oferece planos pagos com periodicidade mensal. Os valores e condições estão descritos no momento da contratação. Oferecemos um período de teste gratuito de 7 (sete) dias, durante o qual você pode avaliar o sistema sem custos. Após o término do período de teste, caso não haja cancelamento, será efetuada a cobrança recorrente do plano escolhido.
+                O Hora Pro oferece planos pagos com periodicidade mensal. Os valores e condições estão descritos no momento da contratação. Oferecemos um período de teste gratuito de 7 (sete) dias, durante o qual você pode avaliar o sistema sem custos. Após o término do período de teste, caso não haja cancelamento, será efetuada a cobrança recorrente do plano escolhido.
               </p>
             </section>
 
@@ -119,7 +119,7 @@ export default function TermosDeServico() {
                 7. Propriedade Intelectual
               </h2>
               <p>
-                Todo o conteúdo, design, marca, código e funcionalidades do Lume Agenda são de propriedade exclusiva da Lume Agenda ou de seus licenciadores. A contratação do serviço não confere ao usuário qualquer direito sobre a propriedade intelectual do sistema.
+                Todo o conteúdo, design, marca, código e funcionalidades do Hora Pro são de propriedade exclusiva da Hora Pro ou de seus licenciadores. A contratação do serviço não confere ao usuário qualquer direito sobre a propriedade intelectual do sistema.
               </p>
             </section>
 
@@ -137,7 +137,7 @@ export default function TermosDeServico() {
                 9. Limitação de Responsabilidade
               </h2>
               <p>
-                O Lume Agenda não será responsável por danos indiretos, incidentais, especiais ou consequenciais resultantes do uso ou da impossibilidade de uso do sistema. A responsidade máxima estará limitada ao valor pago pelo usuário nos 12 (doze) meses anteriores ao evento.
+                O Hora Pro não será responsável por danos indiretos, incidentais, especiais ou consequenciais resultantes do uso ou da impossibilidade de uso do sistema. A responsidade máxima estará limitada ao valor pago pelo usuário nos 12 (doze) meses anteriores ao evento.
               </p>
             </section>
 
@@ -146,7 +146,7 @@ export default function TermosDeServico() {
                 10. Alterações nos Termos
               </h2>
               <p>
-                Podemos atualizar estes Termos de Serviço periodicamente. Notificaremos os usuários sobre alterações significativas por e-mail ou por meio de aviso no sistema. O uso continuado do Lume Agenda após as alterações constitui aceitação dos novos termos.
+                Podemos atualizar estes Termos de Serviço periodicamente. Notificaremos os usuários sobre alterações significativas por e-mail ou por meio de aviso no sistema. O uso continuado do Hora Pro após as alterações constitui aceitação dos novos termos.
               </p>
             </section>
 

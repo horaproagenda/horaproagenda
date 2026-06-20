@@ -34,7 +34,7 @@ serve(async (req) => {
     if (customers.data.length === 0) throw new Error("No Stripe customer found");
     const customerId = customers.data[0].id;
 
-    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://agendalume.app";
+    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/assinatura`,

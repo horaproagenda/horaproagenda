@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const PUBLIC_APP_BASE = (Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://agendalume.app').replace(/\/+$/, '');
+const PUBLIC_APP_BASE = (Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://horaproagenda.app').replace(/\/+$/, '');
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });

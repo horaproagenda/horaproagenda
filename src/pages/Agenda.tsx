@@ -184,6 +184,8 @@ const Agenda = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showMobileAbsencePanel, setShowMobileAbsencePanel] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showAutomationsSheet, setShowAutomationsSheet] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
   const [mobileView, setMobileView] = useState<MobileViewType>('day');
   
   // Detect true smartphone for optimized mobile layout

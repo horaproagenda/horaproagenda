@@ -267,16 +267,18 @@ export function ProductDetailDialog({
           const t = new Date(a.start_time);
           return t >= start && t <= end && matchesProduct(a);
         }).length;
-        // Consumo do ciclo finalizado = quantidade comprada (assume-se totalmente consumida)
         const qtyConsumed = Number(p.quantity || 0);
         return { purchase: p, days, appointments: apts, qtyConsumed };
       });
 
     const lastCycle = finishedCycles[0] || null;
 
+    const activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at) || null;
+
     let currentDays = 0;
     let currentAppointments = 0;
     let currentConsumed = 0;
+    let initialQty = 0;
     if (product.started_using_at && !product.finished_at) {
       const start = parseISO(product.started_using_at + 'T00:00:00');
       currentDays = Math.max(0, differenceInDays(new Date(), start));
@@ -285,9 +287,7 @@ export function ProductDetailDialog({
         const t = new Date(a.start_time);
         return t >= start && matchesProduct(a);
       }).length;
-      // Consumo real do ciclo atual = saída de estoque (universal, independe de vínculo)
-      const activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at);
-      const initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
+      initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
       currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
     }
 
@@ -304,8 +304,48 @@ export function ProductDetailDialog({
       }
     }
 
-    return { finishedCycles, lastCycle, currentDays, currentAppointments, currentConsumed, nextPurchase, runningOutAlert };
+    // Detecta necessidade de iniciar manualmente: produto tem estoque, mas não está com ciclo ativo
+    // (ex.: término foi preenchido mas ainda há produto restante para uso).
+    const stock = Number(product.current_stock || 0);
+    const needsManualStart =
+      !product.started_using_at &&
+      stock > 0 &&
+      !nextPurchase &&
+      (finishedCycles.length > 0 || productPurchases.length > 0);
+
+    // Inconsistências: estoque negativo, ou consumo registrado ≠ variação do estoque
+    const inconsistencies: string[] = [];
+    if (stock < 0) {
+      inconsistencies.push(`Estoque negativo (${stock}). Verifique compras e baixas.`);
+    }
+    if (activePurchase && initialQty > 0) {
+      const expectedRemaining = initialQty - currentConsumed;
+      if (Math.abs(expectedRemaining - stock) > 0.001) {
+        inconsistencies.push(
+          `Estoque (${stock}) diverge do esperado (${expectedRemaining.toFixed(2)}) com base na compra ativa de ${initialQty}.`
+        );
+      }
+    }
+    if (productPurchases.some(p => !p.started_using_at && !p.finished_at) && product.started_using_at) {
+      // já há ciclo ativo, mas existe compra pendente — apenas informativo, não inconsistência
+    }
+
+    return {
+      finishedCycles,
+      lastCycle,
+      currentDays,
+      currentAppointments,
+      currentConsumed,
+      initialQty,
+      activePurchase,
+      nextPurchase,
+      runningOutAlert,
+      needsManualStart,
+      inconsistencies,
+      hasServiceLinks,
+    };
   }, [product, productPurchases, appointments, productServiceLinks]);
+
 
 
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.business_settings ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz;

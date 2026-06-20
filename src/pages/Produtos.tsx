@@ -75,7 +75,7 @@ import {
   X,
   Upload,
   Download,
-  WarehouseIcon,
+  
   AlertCircle,
 } from 'lucide-react';
 import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
@@ -199,7 +199,6 @@ export default function Produtos() {
 
   // ── Dialog states ───────────────────────────────────────
   const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
 
   // Product Detail
@@ -209,19 +208,9 @@ export default function Produtos() {
   // ── Novo Produto form ───────────────────────────────────
   const [productForm, setProductForm] = useState(createEmptyProductForm);
 
-  // ── Adicionar no Estoque form ───────────────────────────
-  const [stockForm, setStockForm] = useState({
-    product_id: '',
-    quantity: 0,
-    unit_price: 0,
-    total_price: 0,
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
-    expiry_date: '',
-    skip_cash_transaction: false,
-  });
-
   // ── Nova Compra form ────────────────────────────────────
   const [purchaseForm, setPurchaseForm] = useState(createEmptyPurchaseForm);
+
 
   // Open product from URL param
   useEffect(() => {
@@ -330,55 +319,8 @@ export default function Produtos() {
     await supabase.from('product_purchases').update({ finished_at: finishedAt }).eq('id', prev.id);
   };
 
-  const handleStockSubmit = async () => {
-    if (!stockForm.product_id || stockForm.quantity <= 0) return;
-    try {
-      const product = products.find(p => p.id === stockForm.product_id);
-      if (!product) return;
 
-      const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
-      const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
 
-      // Produto encerrado (sem uso ativo / estoque zerado / finalizado): promove esta compra como novo ciclo
-      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
-      // Início do uso = data da compra (não "hoje"), respeitando o que o usuário informou
-      const cycleStartDate = stockForm.purchase_date || format(new Date(), 'yyyy-MM-dd');
-
-      // Antes de criar a nova compra ativa, fecha o ciclo anterior (se houver)
-      if (isFinished) {
-        await closePreviousActiveCycle(stockForm.product_id, cycleStartDate);
-      }
-
-      await createPurchase.mutateAsync({
-        product_id: stockForm.product_id,
-        quantity: stockForm.quantity,
-        unit_price: normalizeBrazilianCurrency(stockForm.unit_price),
-        total_price: normalizeBrazilianCurrency(stockForm.total_price),
-        supplier: product.supplier || null,
-        purchase_date: stockForm.purchase_date,
-        started_using_at: isFinished ? cycleStartDate : null,
-        finished_at: null,
-        notes: stockForm.expiry_date ? `Validade: ${stockForm.expiry_date}` : null,
-        skip_cash_transaction: stockForm.skip_cash_transaction,
-      });
-
-      await updateProduct.mutateAsync({
-        id: product.id,
-        current_stock: isFinished ? stockForm.quantity : product.current_stock + stockForm.quantity,
-        quantity_purchased: newQuantityPurchased,
-        total_price: newTotalPrice,
-        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
-        purchase_date: stockForm.purchase_date,
-        expiry_date: stockForm.expiry_date || product.expiry_date,
-        ...(isFinished ? { started_using_at: cycleStartDate, finished_at: null as any } : {}),
-      });
-
-      setStockDialogOpen(false);
-      setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false });
-    } catch {
-      // toast shown by mutation
-    }
-  };
 
 
   const handlePurchaseSubmit = async () => {
@@ -457,20 +399,10 @@ export default function Produtos() {
   };
 
   // Bidirectional price calc helpers
-  const updateStockUnitPrice = (price: number) => setStockForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
-  const updateStockTotalPrice = (total: number) => setStockForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
-  const updateStockQuantity = (qty: number) => setStockForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
-
   const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
   const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
   const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
 
-  // Auto-fill supplier on stock form product selection
-  const handleStockProductSelect = (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    setStockForm(prev => ({ ...prev, product_id: productId }));
-    // supplier auto-filled from product
-  };
 
   const handlePurchaseProductSelect = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -579,77 +511,6 @@ export default function Produtos() {
 
           {canEdit && (
             <div className="flex items-center gap-2">
-              {/* ── Adicionar no Estoque ── */}
-              <Dialog open={stockDialogOpen} onOpenChange={(open) => { setStockDialogOpen(open); if (!open) setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false }); }}>
-                <DialogTrigger asChild>
-                  <Button variant="success" size="sm" className="h-8 gap-1 text-xs">
-                    <WarehouseIcon className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Adicionar no Estoque</span>
-                    <span className="sm:hidden">Estoque</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle className="text-base">Adicionar no Estoque</DialogTitle>
-                    <DialogDescription className="text-xs">Registre a quantidade atual de um produto no estoque</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-2.5">
-                    <div>
-                      <Label className="text-xs">Produto *</Label>
-                      <Select value={stockForm.product_id} onValueChange={handleStockProductSelect}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-                        <SelectContent>
-                          {products.map(p => <SelectItem key={p.id} value={p.id} className="text-sm">{p.name} {p.brand && `(${p.brand})`}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {stockForm.product_id && (() => {
-                      const selectedProd = products.find(p => p.id === stockForm.product_id);
-                      return selectedProd?.supplier ? (
-                        <div className="p-2 bg-muted/50 rounded text-xs"><strong>Fornecedor:</strong> {selectedProd.supplier}</div>
-                      ) : null;
-                    })()}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs">Quantidade *</Label>
-                        <Input type="number" value={stockForm.quantity || ''} onChange={(e) => updateStockQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <CurrencyInput value={stockForm.unit_price} onValueChange={updateStockUnitPrice} className="h-7 text-xs" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Valor Total (R$)</Label>
-                        <CurrencyInput value={stockForm.total_price} onValueChange={updateStockTotalPrice} className="h-7 text-xs" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Data da Compra</Label>
-                        <SafeDateInput value={stockForm.purchase_date} onCommit={(v) => setStockForm({ ...stockForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Data de Validade</Label>
-                        <SafeDateInput value={stockForm.expiry_date} onCommit={(v) => setStockForm({ ...stockForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
-                      <div>
-                        <Label className="text-xs font-medium">Produto já pago</Label>
-                        <p className="text-[10px] text-muted-foreground">Não gerar saída no caixa/financeiro</p>
-                      </div>
-                      <Switch checked={stockForm.skip_cash_transaction} onCheckedChange={(v) => setStockForm({ ...stockForm, skip_cash_transaction: v })} />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" size="sm" onClick={() => setStockDialogOpen(false)}>Cancelar</Button>
-                      <Button size="sm" className="btn-vibrant" onClick={handleStockSubmit} disabled={!stockForm.product_id || stockForm.quantity <= 0 || createPurchase.isPending}>
-                        {createPurchase.isPending ? 'Salvando...' : 'Adicionar'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
               {/* ── Nova Compra ── */}
               <Dialog open={purchaseDialogOpen} onOpenChange={(open) => { setPurchaseDialogOpen(open); if (!open) setPurchaseForm(createEmptyPurchaseForm()); }}>
                 <DialogTrigger asChild>

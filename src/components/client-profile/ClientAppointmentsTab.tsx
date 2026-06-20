@@ -487,6 +487,15 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
           )}
         </CardContent>
       </Card>
+
+      <WhatsappPreviewDialog
+        open={whatsappOpen}
+        onOpenChange={setWhatsappOpen}
+        phone={clientPhone}
+        initialMessage={whatsappMessage}
+        title="Enviar agendamentos no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </div>
   );
 }

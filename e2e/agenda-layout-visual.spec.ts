@@ -60,7 +60,7 @@ async function mockAgendaData(page: import('@playwright/test').Page) {
         auto_complete_appointments: false, timezone: 'America/Sao_Paulo', overdue_days_threshold: 7,
         automation_whatsapp_reminders: false, automation_waitlist: false, automation_gap_finder: false,
         automation_occupancy_dashboard: false, automation_smart_recurrence: false, reminder_hours_before: [24, 1],
-        reminder_provider: 'whatsapp', clinic_name: 'Lume Agenda', clinic_phone: null, clinic_address: null,
+        reminder_provider: 'whatsapp', clinic_name: 'Hora Pro', clinic_phone: null, clinic_address: null,
         clinic_email: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       },
       appointments: [

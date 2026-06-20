@@ -15,7 +15,7 @@ interface State {
   kind: ErrorKind;
 }
 
-const SUPPORT_EMAIL = 'suporte@agendalume.app';
+const SUPPORT_EMAIL = 'suporte@horaproagenda.app';
 
 function classify(error?: Error): ErrorKind {
   const msg = (error?.message || '').toLowerCase();
@@ -29,7 +29,7 @@ function classify(error?: Error): ErrorKind {
 const COPY: Record<ErrorKind, { title: string; description: string; icon: typeof AlertTriangle; hint: string }> = {
   network: {
     title: 'Sem conexão com o servidor',
-    description: 'Não conseguimos falar com o Lume Agenda. Verifique sua internet e tente novamente.',
+    description: 'Não conseguimos falar com o Hora Pro. Verifique sua internet e tente novamente.',
     icon: WifiOff,
     hint: 'Próximos passos: confirme sua conexão Wi-Fi/4G, desative VPN se houver, e tente novamente.',
   },
@@ -92,7 +92,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
   };
 
   handleSupport = () => {
-    const subject = encodeURIComponent('Erro na tela de login do Lume Agenda');
+    const subject = encodeURIComponent('Erro na tela de login do Hora Pro');
     const body = encodeURIComponent(
       `Olá, equipe de suporte.\n\nEncontrei um erro ao acessar a tela de login.\n\nTipo: ${this.state.kind}\nMensagem: ${this.state.error?.message || 'desconhecida'}\nNavegador: ${navigator.userAgent}\nData: ${new Date().toLocaleString('pt-BR')}\n`,
     );

@@ -75,7 +75,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: 'v1.0.0',
     date: '04/2026',
     highlights: [
-      'Lançamento oficial do AgendaLume',
+      'Lançamento oficial do Hora Pro',
     ],
     changes: [
       { type: 'novo', description: 'Agenda multiprofissional com Realtime, drag-and-drop, recorrência e validação de conflitos.' },

@@ -48,7 +48,7 @@ export interface WhatsappOpenOptions {
   onRoute?: (log: WhatsappRouteLog) => void;
 }
 
-const WHATSAPP_ROUTE_STORAGE_KEY = 'agendalume:last-whatsapp-route';
+const WHATSAPP_ROUTE_STORAGE_KEY = 'horapro:last-whatsapp-route';
 
 function recordWhatsappRoute(
   route: WhatsappOpenRoute,

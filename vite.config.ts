@@ -42,8 +42,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ["favicon.ico", "og-image.png"],
       manifest: {
-        name: "Lume Agenda - Beleza com Elegância",
-        short_name: "Lume Agenda",
+        name: "Hora Pro - Beleza com Elegância",
+        short_name: "Hora Pro",
         description: "Sistema completo de agendamento para clínicas de estética",
         theme_color: "#1a1a2e",
         background_color: "#ffffff",

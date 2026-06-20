@@ -168,7 +168,7 @@ export function OnboardingWizard({ open }: Props) {
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </div>
-          <DialogTitle className="text-center">Bem-vindo ao Lume Agenda</DialogTitle>
+          <DialogTitle className="text-center">Bem-vindo ao Hora Pro</DialogTitle>
           <DialogDescription className="text-center">
             Em 3 passos rápidos sua agenda fica pronta para uso.
           </DialogDescription>

@@ -144,7 +144,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
               {!effectiveCollapsed && (
                 <div className="overflow-hidden">
                   <h1 className="font-display text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
-                    Lume Agenda
+                    Hora Pro
                   </h1>
                   <p className="text-xs text-muted-foreground whitespace-nowrap">Beleza com elegância</p>
                 </div>
@@ -290,7 +290,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 </p>
               </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
-                Lume Agenda · {APP_VERSION_LABEL}
+                Hora Pro · {APP_VERSION_LABEL}
               </p>
             </div>
           ) : (

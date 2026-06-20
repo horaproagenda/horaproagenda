@@ -13,8 +13,8 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = 'Agendalume'
-const APP_URL = 'https://agendalume.app'
+const SITE_NAME = 'Hora Pro'
+const APP_URL = 'https://horaproagenda.app'
 
 type Kind =
   | 'payment_recorded'
@@ -56,7 +56,7 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
   },
   lifetime_granted: {
     title: 'Acesso vitalício concedido',
-    intro: () => 'Você recebeu acesso vitalício gratuito ao Agendalume.',
+    intro: () => 'Você recebeu acesso vitalício gratuito ao Hora Pro.',
     detail: () => 'Sua conta segue ativa sem necessidade de assinatura.',
   },
   subscription_activated: {

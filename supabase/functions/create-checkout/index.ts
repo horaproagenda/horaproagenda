@@ -65,7 +65,7 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data[0]?.id;
 
-    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://agendalume.app";
+    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
     let session: Stripe.Checkout.Session;
 
@@ -107,7 +107,7 @@ serve(async (req) => {
             recurring: { interval: 'month', interval_count: billingMonths },
             product: PRICE_INFO[priceId] ? undefined : undefined,
             product_data: {
-              name: `Agendalume — ${label}`,
+              name: `Hora Pro — ${label}`,
             },
           } as Stripe.Checkout.SessionCreateParams.LineItem.PriceData,
         }],

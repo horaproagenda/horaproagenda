@@ -1,4 +1,4 @@
-// Planos mensais do Agendalume.
+// Planos mensais do Hora Pro.
 // Cada plano define o número máximo de usuários ativos (admin + colaboradores).
 export interface Plan {
   productId: string;

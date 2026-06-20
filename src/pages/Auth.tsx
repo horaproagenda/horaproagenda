@@ -96,12 +96,12 @@ function OtpStatusAlert({ status, email, now }: { status: OtpStatus; email: stri
 
 const AuthSeo = () => (
   <Helmet>
-    <title>Entrar — Lume Agenda</title>
-    <meta name="description" content="Acesse sua conta Lume Agenda ou cadastre-se para gerenciar agendamentos, clientes e financeiro da sua clínica de estética." />
-    <link rel="canonical" href="https://agendalume.app/auth" />
-    <meta property="og:title" content="Entrar — Lume Agenda" />
-    <meta property="og:description" content="Acesse a Lume Agenda e gerencie sua clínica de estética em um só lugar." />
-    <meta property="og:url" content="https://agendalume.app/auth" />
+    <title>Entrar — Hora Pro</title>
+    <meta name="description" content="Acesse sua conta Hora Pro ou cadastre-se para gerenciar agendamentos, clientes e financeiro da sua clínica de estética." />
+    <link rel="canonical" href="https://horaproagenda.app/auth" />
+    <meta property="og:title" content="Entrar — Hora Pro" />
+    <meta property="og:description" content="Acesse a Hora Pro e gerencie sua clínica de estética em um só lugar." />
+    <meta property="og:url" content="https://horaproagenda.app/auth" />
   </Helmet>
 );
 
@@ -398,7 +398,7 @@ function AuthInner() {
       const uid = sessionData?.user?.id ?? null;
       if (uid) await recordTermsAcceptance(email, uid);
 
-      toast({ title: 'Bem-vindo(a) ao Agendalume!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
+      toast({ title: 'Bem-vindo(a) ao Hora Pro!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
 
       // Navegação explícita — não dependemos apenas do useEffect.
       navigate('/agenda', { replace: true });
@@ -674,7 +674,7 @@ function AuthInner() {
   return (
     <main className="flex min-h-screen items-center justify-center gradient-hero p-4">
       <AuthSeo />
-      <h1 className="sr-only">Entrar no Lume Agenda</h1>
+      <h1 className="sr-only">Entrar no Hora Pro</h1>
       <Card className="w-full max-w-md shadow-lg animate-scale-in">
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -682,7 +682,7 @@ function AuthInner() {
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Lume Agenda</CardTitle>
+          <CardTitle className="text-2xl">Hora Pro</CardTitle>
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>
         </CardHeader>
         <CardContent>
@@ -769,7 +769,7 @@ function AuthInner() {
                   <ScrollArea className="h-56 rounded-md border p-3 text-sm leading-relaxed">
                     <h4 className="font-semibold mb-1">Termos de Serviço</h4>
                     <p className="text-muted-foreground mb-3">
-                      Ao utilizar o Lume Agenda você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança após o período de teste gratuito e demais condições descritas integralmente em nossa página oficial.{" "}
+                      Ao utilizar o Hora Pro você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança após o período de teste gratuito e demais condições descritas integralmente em nossa página oficial.{" "}
                       <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
                     </p>
 
@@ -836,7 +836,7 @@ function AuthInner() {
 
           <div className="mt-4 pt-4 border-t border-border text-center">
             <p className="text-xs text-muted-foreground">
-              Ao utilizar o Lume Agenda, você concorda com nossos{" "}
+              Ao utilizar o Hora Pro, você concorda com nossos{" "}
               <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">
                 Termos de Serviço
               </Link>{" "}

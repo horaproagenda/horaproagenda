@@ -5056,6 +5056,7 @@ export type Database = {
         Args: { _package_appointment_id: string }
         Returns: number
       }
+      recalculate_product_cycles: { Args: never; Returns: undefined }
       record_data_migration: {
         Args: { p_details?: Json; p_key: string }
         Returns: boolean

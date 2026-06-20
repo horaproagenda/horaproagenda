@@ -7,11 +7,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square } from 'lucide-react';
+import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import {
   buildAppointmentPackageSequenceMap,
   buildAppointmentRecurringSequenceMap,
@@ -24,6 +25,7 @@ interface ClientAppointmentsTabProps {
   appointments: Appointment[];
   clientName?: string;
   clientCpf?: string;
+  clientPhone?: string;
 }
 
 const statusOptions = [
@@ -64,12 +66,14 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '' }: ClientAppointmentsTabProps) {
+export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '' }: ClientAppointmentsTabProps) {
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);

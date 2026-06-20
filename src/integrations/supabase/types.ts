@@ -5069,6 +5069,10 @@ export type Database = {
         Returns: undefined
       }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
+      repair_package_cancelled_history: {
+        Args: { _client_id?: string }
+        Returns: Json
+      }
       resolve_service_id_for_package: {
         Args: { _package_id: string; _sequence_order?: number }
         Returns: string

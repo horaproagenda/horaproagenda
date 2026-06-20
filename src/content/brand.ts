@@ -6,10 +6,10 @@
 export const BRAND = {
   name: "Hora Pro",
   shortName: "Hora Pro",
-  domain: "agendalume.app", // TODO: migrar para horapro.app após registro do domínio
-  url: "https://agendalume.app",
+  domain: "horaproagenda.app",
+  url: "https://horaproagenda.app",
   twitter: "@HoraProApp",
-  email: "contato@agendalume.app",
+  email: "contato@horaproagenda.app",
 } as const;
 
 export const TAGLINES = [

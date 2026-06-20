@@ -28,6 +28,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
+import { BRAND, PRIMARY_TAGLINE } from '@/content/brand';
+import horaProIcon from '@/assets/horapro-icon.png';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 
 const navigation = [
@@ -138,15 +140,19 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
             effectiveCollapsed ? "px-3 justify-center" : "px-6"
           )}>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-lg">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img
+                src={horaProIcon}
+                alt={BRAND.name}
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-xl shadow-lg"
+              />
               {!effectiveCollapsed && (
                 <div className="overflow-hidden">
                   <h1 className="font-display text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
-                    Hora Pro
+                    {BRAND.name}
                   </h1>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">Beleza com elegância</p>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">{PRIMARY_TAGLINE}</p>
                 </div>
               )}
             </div>
@@ -290,7 +296,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 </p>
               </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
-                Hora Pro · {APP_VERSION_LABEL}
+                {BRAND.name} · {APP_VERSION_LABEL}
               </p>
             </div>
           ) : (

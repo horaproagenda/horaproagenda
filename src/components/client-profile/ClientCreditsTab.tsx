@@ -18,7 +18,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditTransactionTypeLabel } from '@/lib/clientCreditPayment';
-import { buildPackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
+import { buildActivePackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -246,7 +246,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
 
   const isLoading = loadingPackages || loadingServices;
   const packageSequenceMap = useMemo(
-    () => buildPackageSessionSequenceMap((packageDetails || []) as any[]),
+    () => buildActivePackageSessionSequenceMap((packageDetails || []) as any[]),
     [packageDetails]
   );
 

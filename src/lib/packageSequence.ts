@@ -60,6 +60,16 @@ export const buildPackageSessionSequenceMap = <T extends SequencedPackageSession
   return map;
 };
 
+export const buildActivePackageSessionSequenceMap = <T extends SequencedPackageSession>(sessions: T[]) => {
+  const map = new Map<string, number>();
+  sortPackageSessionsByChronologicalSequence(sessions)
+    .filter((session) => session.appointment_id || session.status !== 'pending')
+    .forEach((session, index) => {
+      map.set(session.id, index + 1);
+    });
+  return map;
+};
+
 export const buildAppointmentPackageSequenceMap = (appointments: Appointment[]) => {
   const grouped = new Map<string, Appointment[]>();
 

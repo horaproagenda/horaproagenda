@@ -1689,8 +1689,6 @@ const Agenda = () => {
           onNewAbsence={handleOpenNewAbsence}
           onManageAbsences={() => setShowMobileAbsencePanel(true)}
           onOpenAutomations={() => setShowAutomationsSheet(true)}
-          onSendWhatsappReminders={handleSendWhatsappReminders}
-          sendingReminders={sendingReminders}
           onToday={() => {
             const today = new Date();
             setSelectedDate(today);

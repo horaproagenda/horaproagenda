@@ -851,39 +851,127 @@ export function ProductDetailDialog({
                        Período de Uso
                      </h4>
 
-                     {cycleSummary && (
-                       <div className="mb-3 space-y-2">
-                         {cycleSummary.runningOutAlert && (
-                           <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs text-amber-900 dark:text-amber-100">
-                             ⚠️ {cycleSummary.runningOutAlert}
-                           </div>
-                         )}
-                         <div className="grid grid-cols-2 gap-2">
-                           <div className="rounded-lg border bg-muted/30 p-2.5">
-                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
-                             <div className="text-xs tabular-nums mt-1">
-                               {product.started_using_at && !product.finished_at
-                                 ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
-                                 : 'Não iniciado'}
-                             </div>
-                           </div>
-                           <div className="rounded-lg border bg-muted/30 p-2.5">
-                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo anterior</div>
-                             <div className="text-xs tabular-nums mt-1">
-                               {cycleSummary.lastCycle
-                                 ? `${cycleSummary.lastCycle.days}d · ${cycleSummary.lastCycle.appointments} atend.`
-                                 : '—'}
-                             </div>
-                           </div>
-                         </div>
-                         {cycleSummary.nextPurchase && (
-                           <div className="rounded-lg border border-dashed bg-muted/20 p-2.5 text-xs text-muted-foreground">
-                             Próxima compra aguardando: {Number(cycleSummary.nextPurchase.quantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
-                             {' '}— ao informar o término, será iniciada automaticamente.
-                           </div>
-                         )}
-                       </div>
-                     )}
+                      {cycleSummary && (
+                        <div className="mb-3 space-y-2">
+                          {cycleSummary.inconsistencies.length > 0 && (
+                            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 p-2.5 text-xs text-red-900 dark:text-red-100 space-y-1">
+                              <div className="font-medium flex items-center gap-1">
+                                <AlertCircle className="h-3.5 w-3.5" /> Inconsistência detectada
+                              </div>
+                              {cycleSummary.inconsistencies.map((msg, i) => (
+                                <div key={i}>• {msg}</div>
+                              ))}
+                            </div>
+                          )}
+
+                          {cycleSummary.needsManualStart && canEdit && (
+                            <div className="rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-2.5 text-xs text-blue-900 dark:text-blue-100 space-y-2">
+                              <div className="flex items-start gap-1.5">
+                                <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                <span>
+                                  Este produto tem <strong>{Number(product.current_stock)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}</strong> em estoque mas <strong>nenhum ciclo ativo</strong>.
+                                  Os atendimentos não estão sendo contabilizados. Informe o início do uso para retomar a contagem.
+                                </span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-7 text-xs"
+                                onClick={async () => {
+                                  const today = format(new Date(), 'yyyy-MM-dd');
+                                  // tenta reutilizar uma compra pendente (sem started_using_at)
+                                  const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
+                                  if (pending && onUpdatePurchase) {
+                                    await onUpdatePurchase({ id: pending.id, started_using_at: today });
+                                  }
+                                  await onUpdateProduct({
+                                    id: product.id,
+                                    started_using_at: today,
+                                    finished_at: null as any,
+                                  });
+                                  toast.success('Início do uso registrado em ' + format(new Date(), 'dd/MM/yyyy'));
+                                }}
+                              >
+                                <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                                Iniciar uso hoje
+                              </Button>
+                            </div>
+                          )}
+
+                          {cycleSummary.runningOutAlert && (
+                            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs text-amber-900 dark:text-amber-100">
+                              ⚠️ {cycleSummary.runningOutAlert}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-lg border bg-muted/30 p-2.5">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
+                              <div className="text-xs tabular-nums mt-1">
+                                {product.started_using_at && !product.finished_at
+                                  ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
+                                  : 'Não iniciado'}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border bg-muted/30 p-2.5">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo anterior</div>
+                              <div className="text-xs tabular-nums mt-1">
+                                {cycleSummary.lastCycle
+                                  ? `${cycleSummary.lastCycle.days}d · ${cycleSummary.lastCycle.appointments} atend.`
+                                  : '—'}
+                              </div>
+                            </div>
+                          </div>
+                          {cycleSummary.nextPurchase && (
+                            <div className="rounded-lg border border-dashed bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                              Próxima compra aguardando: {Number(cycleSummary.nextPurchase.quantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                              {' '}— ao informar o término, será iniciada automaticamente.
+                            </div>
+                          )}
+
+                          {/* Painel "Como esse cálculo foi feito?" */}
+                          <button
+                            type="button"
+                            onClick={() => setShowCalcDetails(v => !v)}
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showCalcDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            Como esse cálculo foi feito?
+                          </button>
+                          {showCalcDetails && (
+                            <div className="rounded-lg border bg-muted/20 p-2.5 text-[11px] space-y-1.5 leading-relaxed">
+                              <div className="font-medium text-foreground">Regras aplicadas:</div>
+                              <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
+                                <li>
+                                  <strong>Dias:</strong> diferença entre hoje e a data de início do uso
+                                  {product.started_using_at && (
+                                    <> ({format(parseISO(product.started_using_at + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
+                                  )}.
+                                </li>
+                                <li>
+                                  <strong>Atendimentos:</strong> agendamentos concluídos no período de uso
+                                  {cycleSummary.hasServiceLinks
+                                    ? ' que utilizam algum dos serviços vinculados a este produto'
+                                    : ' (todos os atendimentos concluídos, pois o produto não está vinculado a serviços específicos)'}
+                                  → {cycleSummary.currentAppointments} atend.
+                                </li>
+                                <li>
+                                  <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                                </li>
+                                <li>
+                                  <strong>Alerta de fim de ciclo:</strong> dispara quando dias, atendimentos ou consumo atingem ≥ 80% do ciclo anterior.
+                                </li>
+                                <li>
+                                  <strong>Ciclo anterior (referência):</strong>{' '}
+                                  {cycleSummary.lastCycle
+                                    ? `${cycleSummary.lastCycle.days}d, ${cycleSummary.lastCycle.appointments} atend., ${cycleSummary.lastCycle.qtyConsumed} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label}`
+                                    : 'sem histórico ainda.'}
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
 
 
                     <div className="grid grid-cols-2 gap-4">

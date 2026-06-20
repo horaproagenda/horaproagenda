@@ -449,6 +449,42 @@ export default function Landing() {
             </div>
           </section>
 
+          {/* DIFERENCIAIS */}
+          <section className="border-y border-border/50 bg-gradient-to-br from-primary/5 via-background to-background">
+            <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+              <div className="mx-auto max-w-2xl text-center">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Diferenciais exclusivos
+                </span>
+                <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+                  O que nenhuma agenda comum entrega
+                </h2>
+                <p className="mt-4 text-muted-foreground">
+                  Recursos pensados para quem leva o atendimento a sério — automação real, financeiro
+                  preciso e documentos com validade jurídica.
+                </p>
+              </div>
+              <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {DIFFERENTIALS.map((d, i) => {
+                  const Icon = differentialIcons[i % differentialIcons.length];
+                  return (
+                    <article
+                      key={d.title}
+                      className="group relative overflow-hidden rounded-xl border border-border/60 bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+                    >
+                      <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-display text-lg font-semibold">{d.title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
           {/* PARA QUEM */}
           <section className="border-y border-border/50 bg-muted/20">
             <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">

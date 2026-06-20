@@ -65,6 +65,9 @@ export function MobileAgendaHeader({
   onNewAbsence,
   onManageAbsences,
   onToday,
+  onOpenAutomations,
+  onSendWhatsappReminders,
+  sendingReminders = false,
 }: MobileAgendaHeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   

@@ -112,6 +112,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
+  const hasActiveFilter = selectedMonth !== 'all' || selectedStatus !== 'all' || paymentTypeFilter !== 'all';
 
   const resolvedClientIdEarly = clientId || appointments[0]?.client_id || '';
 

@@ -16,6 +16,7 @@ import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
 import { useAutoHealing } from "@/hooks/useAutoHealing";
 import { useAgendaIntegrityAutoCheck } from "@/hooks/useAgendaIntegrityAutoCheck";
 import { useSaleFlowIntegrityAutoCheck } from "@/hooks/useSaleFlowIntegrityAutoCheck";
+import { usePaymentIntegrityAutoCheck } from "@/hooks/usePaymentIntegrityAutoCheck";
 import { useLayoutWatchdog } from "@/hooks/useLayoutWatchdog";
 
 // Eager: rotas críticas no boot (login, dashboard, 404)

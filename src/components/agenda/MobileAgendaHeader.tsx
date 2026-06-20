@@ -149,7 +149,7 @@ export function MobileAgendaHeader({
             Novo
           </Button>
 
-          {(onNewAbsence || onManageAbsences || onToday || onOpenAutomations || onSendWhatsappReminders) && (
+          {(onNewAbsence || onManageAbsences || onToday || onOpenAutomations) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -169,21 +169,11 @@ export function MobileAgendaHeader({
                     Ir para hoje
                   </DropdownMenuItem>
                 )}
-                {(onOpenAutomations || onSendWhatsappReminders) && <DropdownMenuSeparator />}
+                {onOpenAutomations && <DropdownMenuSeparator />}
                 {onOpenAutomations && (
                   <DropdownMenuItem onClick={onOpenAutomations} className="text-xs gap-2">
                     <Bot className="h-3.5 w-3.5" />
                     Lista de espera, encaixe, ocupação, recorrência
-                  </DropdownMenuItem>
-                )}
-                {onSendWhatsappReminders && (
-                  <DropdownMenuItem
-                    onClick={onSendWhatsappReminders}
-                    disabled={sendingReminders}
-                    className="text-xs gap-2"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    {sendingReminders ? 'Enviando lembretes...' : 'Enviar lembretes WhatsApp'}
                   </DropdownMenuItem>
                 )}
                 {(onNewAbsence || onManageAbsences) && <DropdownMenuSeparator />}

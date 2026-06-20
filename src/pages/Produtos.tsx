@@ -457,20 +457,10 @@ export default function Produtos() {
   };
 
   // Bidirectional price calc helpers
-  const updateStockUnitPrice = (price: number) => setStockForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
-  const updateStockTotalPrice = (total: number) => setStockForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
-  const updateStockQuantity = (qty: number) => setStockForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
-
   const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
   const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
   const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
 
-  // Auto-fill supplier on stock form product selection
-  const handleStockProductSelect = (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    setStockForm(prev => ({ ...prev, product_id: productId }));
-    // supplier auto-filled from product
-  };
 
   const handlePurchaseProductSelect = (productId: string) => {
     const product = products.find(p => p.id === productId);

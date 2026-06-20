@@ -56,8 +56,8 @@ describe('openWhatsappWithMessage', () => {
       'https://web.whatsapp.com/send?phone=5511987654321&text=oi',
       '_blank',
     );
-    expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).toContain('web.whatsapp.com');
-    expect(sessionStorage.getItem('agendalume:last-whatsapp-route')).not.toContain('api.whatsapp.com');
+    expect(sessionStorage.getItem('horapro:last-whatsapp-route')).toContain('web.whatsapp.com');
+    expect(sessionStorage.getItem('horapro:last-whatsapp-route')).not.toContain('api.whatsapp.com');
   });
 
   it('can open the installed WhatsApp app on mobile when requested', () => {

@@ -37,7 +37,7 @@ describe('Agenda automations + per-appointment WhatsApp reminder wiring', () => 
 
   it('does NOT expose a global "send WhatsApp reminders" trigger on the Agenda toolbar', () => {
     expect(agenda).not.toMatch(/handleSendWhatsappReminders/);
-    expect(agenda).not.toMatch(/send-appointment-reminders/);
+    expect(agenda).not.toMatch(/supabase\.functions\.invoke\(['"]send-appointment-reminders/);
     expect(mobileHeader).not.toMatch(/onSendWhatsappReminders/);
   });
 

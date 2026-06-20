@@ -330,55 +330,8 @@ export default function Produtos() {
     await supabase.from('product_purchases').update({ finished_at: finishedAt }).eq('id', prev.id);
   };
 
-  const handleStockSubmit = async () => {
-    if (!stockForm.product_id || stockForm.quantity <= 0) return;
-    try {
-      const product = products.find(p => p.id === stockForm.product_id);
-      if (!product) return;
 
-      const newQuantityPurchased = (product.quantity_purchased || 0) + stockForm.quantity;
-      const newTotalPrice = (product.total_price || 0) + normalizeBrazilianCurrency(stockForm.total_price);
 
-      // Produto encerrado (sem uso ativo / estoque zerado / finalizado): promove esta compra como novo ciclo
-      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
-      // Início do uso = data da compra (não "hoje"), respeitando o que o usuário informou
-      const cycleStartDate = stockForm.purchase_date || format(new Date(), 'yyyy-MM-dd');
-
-      // Antes de criar a nova compra ativa, fecha o ciclo anterior (se houver)
-      if (isFinished) {
-        await closePreviousActiveCycle(stockForm.product_id, cycleStartDate);
-      }
-
-      await createPurchase.mutateAsync({
-        product_id: stockForm.product_id,
-        quantity: stockForm.quantity,
-        unit_price: normalizeBrazilianCurrency(stockForm.unit_price),
-        total_price: normalizeBrazilianCurrency(stockForm.total_price),
-        supplier: product.supplier || null,
-        purchase_date: stockForm.purchase_date,
-        started_using_at: isFinished ? cycleStartDate : null,
-        finished_at: null,
-        notes: stockForm.expiry_date ? `Validade: ${stockForm.expiry_date}` : null,
-        skip_cash_transaction: stockForm.skip_cash_transaction,
-      });
-
-      await updateProduct.mutateAsync({
-        id: product.id,
-        current_stock: isFinished ? stockForm.quantity : product.current_stock + stockForm.quantity,
-        quantity_purchased: newQuantityPurchased,
-        total_price: newTotalPrice,
-        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
-        purchase_date: stockForm.purchase_date,
-        expiry_date: stockForm.expiry_date || product.expiry_date,
-        ...(isFinished ? { started_using_at: cycleStartDate, finished_at: null as any } : {}),
-      });
-
-      setStockDialogOpen(false);
-      setStockForm({ product_id: '', quantity: 0, unit_price: 0, total_price: 0, purchase_date: format(new Date(), 'yyyy-MM-dd'), expiry_date: '', skip_cash_transaction: false });
-    } catch {
-      // toast shown by mutation
-    }
-  };
 
 
   const handlePurchaseSubmit = async () => {

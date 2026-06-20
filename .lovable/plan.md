@@ -1,62 +1,78 @@
-## Contexto
-
-O app é multi-tenant: várias clínicas independentes usam o mesmo banco Supabase. Hoje, várias tabelas críticas **não têm `account_owner_id`**, e as RLS policies só checam `has_role('admin')` globalmente. Resultado: um admin da Clínica A consegue ler/editar dados da Clínica B. O scanner Wiz/Supabase apontou exatamente isso.
-
 ## Objetivo
 
-Isolar 100% dos dados por `account_owner_id` (o dono da conta = clínica), sem quebrar o app em produção.
+Transformar `/` em uma landing page pública otimizada para SEO, criar onboarding rápido pós-cadastro, publicar o app e registrar no Google Search Console. Sitemap e robots já existem — apenas vou expandir.
 
-## Tabelas afetadas (faltam `account_owner_id` ou RLS por tenant)
+---
 
-Críticas (PII / financeiro / operação):
-- `business_settings`
-- `user_roles`
-- `professional_whatsapp_credentials`
-- `professional_credentials`
-- `appointments`
-- `professionals` (tem `user_id`, falta `account_owner_id` direto)
+## 1. Landing page pública em `/`
 
-Já isoladas indiretamente (confirmar via auditoria):
-- `clients`, `services`, `service_packages`, `products`, `financial_entries`, `cash_*`, `client_documents`, etc.
+Hoje `/` está atrás de `ProtectedRoute` e redireciona para `/auth`, o que faz Google e crawlers de IA verem só uma tela de login — péssimo para SEO.
 
-## Estratégia (segura, sem downtime)
+Mudanças:
 
-Executar em **3 migrações**, cada uma idempotente e reversível:
+- Criar `src/pages/Landing.tsx` — página pública, server-friendly (sem dados autenticados), focada nas keywords: **"app de agendamento"**, **"agenda para clínica de estética"**, **"sistema de agendamento online"**, **"agenda para salão de beleza"**, **"software para esteticista"**.
+- Estrutura semântica:
+  - `<header>` com logo + botões "Entrar" / "Criar conta grátis"
+  - `<main>` com:
+    - Hero (H1 com keyword principal, CTA, screenshot do app)
+    - Seção de features (agenda, clientes, financeiro, WhatsApp, pacotes, comissões)
+    - Para quem é (clínicas de estética, salões, esteticistas, barbearias, podólogos…)
+    - Depoimentos / prova social (placeholder)
+    - FAQ (já temos JSON-LD pra isso — espelhar visualmente)
+    - CTA final
+  - `<footer>` com links para Termos, Privacidade, login
+- Roteamento: alterar `App.tsx` para que:
+  - `/` → `Landing` (público) **se usuário não autenticado**
+  - `/` → `Index` (dashboard atual) **se autenticado**
+  - Renomear rota interna para `/dashboard` apontando para o `Index` atual (com redirect de compat)
+- `<Helmet>` por rota com `react-helmet-async` para title/description/canonical/OG específicos da landing (instalar a lib).
+- Imagens: usar screenshots reais do app já existentes ou um hero gerado via imagegen com background sólido. Alt text com keywords.
+- Design: seguir o design system atual (Poppins, tokens semânticos do `index.css`) — nada de roxo/branco genérico de IA.
 
-### Migração 1 — Backfill estrutural
-1. `ALTER TABLE ... ADD COLUMN account_owner_id uuid` nas 6 tabelas críticas (nullable inicialmente).
-2. Função helper `public.get_account_owner_for_user(uuid)` (SECURITY DEFINER) que resolve `account_owner_id` a partir de `profiles.account_owner_id` (fallback = próprio id).
-3. Backfill:
-   - `business_settings.account_owner_id` = `user_id` resolvido via profiles
-   - `user_roles.account_owner_id` = idem
-   - `professional_whatsapp_credentials.account_owner_id` = via `professionals.user_id → profiles`
-   - `professional_credentials.account_owner_id` = idem
-   - `appointments.account_owner_id` = via `professionals.user_id → profiles`
-   - `professionals.account_owner_id` = via `user_id → profiles`
-4. Trigger `BEFORE INSERT` em cada tabela: se `account_owner_id IS NULL`, preencher automaticamente a partir de `auth.uid()` via `get_account_owner_for_user()`.
+## 2. Onboarding rápido pós-signup
 
-### Migração 2 — Tornar `NOT NULL` + RLS por tenant
-1. `ALTER COLUMN account_owner_id SET NOT NULL` (após verificar 0 nulls).
-2. Função helper `public.current_account_owner_id()` (SECURITY DEFINER, STABLE) — retorna o `account_owner_id` do `auth.uid()` corrente.
-3. Reescrever **todas as policies** das 6 tabelas para combinar `has_role(...)` **+** `account_owner_id = current_account_owner_id()`.
-4. Index em `account_owner_id` em todas as 6 tabelas.
+Hoje, ao criar conta, o usuário cai direto no dashboard vazio — alta chance de abandono.
 
-### Migração 3 — Realtime + edge functions
-1. Confirmar publicação Realtime já filtra por RLS (automático no Supabase) — apenas testar.
-2. Auditar edge functions (`admin-create-professional`, `whatsapp-claim-pool-instance`, `admin-set-user-permissions`, `admin-toggle-user-active`, `admin-delete-user`, `complete-signup`, `whatsapp-connect`) para sempre escopar queries por `account_owner_id` do caller, e nunca confiar em `professional_id` recebido do client sem validar tenant.
+Fluxo novo `src/components/onboarding/OnboardingWizard.tsx` (modal full-screen, 3 steps):
 
-## Marcação das findings
+1. **Dados da clínica** — nome do negócio, telefone, segmento (estética, salão, barbearia, podologia, outros). Salva em `business_settings`.
+2. **Primeiro profissional** — nome, especialidade. Pré-preenchido com dados do owner. Salva em `professionals`.
+3. **Primeiro serviço** — nome, duração, preço. Salva em `services`.
 
-Após cada migração executada e validada, marcar como `mark_as_fixed` as findings correspondentes no scanner.
+Ao final: toast de boas-vindas + redirect para `/agenda`.
 
-## Riscos & mitigação
+Gatilho: hook `useOnboardingStatus` checa se `business_settings.onboarding_completed_at IS NULL` (campo novo) **e** se não há profissionais/serviços. Migration para adicionar a coluna.
 
-- **Risco:** backfill incorreto deixa linhas órfãs → mitigação: query de verificação no fim da Migração 1 que aborta se houver `NULL`.
-- **Risco:** policies novas bloqueiam super-admin → mitigação: super-admin (`is_super_admin()` via allowlist) bypass em todas as policies.
-- **Risco:** edge functions com `service_role` quebram → mitigação: revisão manual + teste após Migração 2.
+Pula: botão "Pular por enquanto" salva `onboarding_completed_at = now()` mesmo assim, pra não reaparecer.
 
-## Entrega
+## 3. SEO técnico
 
-Vou começar pela **Migração 1** (estrutural + backfill + trigger de autopreenchimento). Você revisa, aprova, e seguimos para a 2 e 3.
+- **`public/sitemap.xml`** — adicionar `/` (landing) já está; manter `/auth`, termos, privacidade. Adicionar `<lastmod>`.
+- **`public/robots.txt`** — já está OK; só confirmar que `Disallow` não bloqueia rotas internas (não bloqueia, então tudo bem; rotas autenticadas não vazam dados pra crawler porque são SPA atrás de auth).
+- **`index.html`** — manter os JSON-LD existentes (Organization, WebSite, SoftwareApplication, FAQPage).
+- **Search Console** — usar o connector `google_search_console` para gerar token de verificação META, injetar no `<head>` e chamar verify para o domínio `https://agendalume.app/`. Adicionar o site verificado à lista do GSC.
 
-Confirma para eu disparar a Migração 1?
+## 4. Publicação
+
+Após as mudanças acima, chamar `preview_ui--publish` apontando para `agendalume.app`.
+
+---
+
+## Detalhes técnicos
+
+- Lib nova: `react-helmet-async` (per-route head tags).
+- Migration: `ALTER TABLE business_settings ADD COLUMN onboarding_completed_at timestamptz`.
+- Sem mudanças em RLS (campo herda policies existentes).
+- Nenhuma quebra de rota: `/` continua respondendo, só com conteúdo diferente conforme auth.
+
+---
+
+## Fora de escopo (deixar claro)
+
+- **Não posso garantir** ranking em "app de agendamento" no Google/ChatGPT/Gemini — depende de autoridade, backlinks e tempo. As mudanças tornam o app **elegível e bem descrito**, mas o resto é trabalho contínuo de SEO/conteúdo.
+- **Play Store / App Store**: o `capacitor.config.ts` já está pronto. Submissão exige contas pagas (Google $25, Apple $99/ano) e build nativo no seu Mac/Android Studio — sai do escopo desta entrega.
+- Bing Webmaster Tools: requer verificação manual sua (não há connector).
+
+---
+
+Aprova esse escopo?

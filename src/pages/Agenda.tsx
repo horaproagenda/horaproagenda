@@ -1640,27 +1640,8 @@ const Agenda = () => {
     setNewAppointmentDialogOpen(true);
   };
 
-  const handleSendWhatsappReminders = async () => {
-    if (sendingReminders) return;
-    setSendingReminders(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-appointment-reminders', {
-        body: { manual: true, triggered_at: new Date().toISOString() },
-      });
-      if (error) throw error;
-      const sent = (data as any)?.sent ?? (data as any)?.count ?? 0;
-      toast.success(
-        sent > 0
-          ? `Lembretes enviados (${sent}).`
-          : 'Nenhum lembrete pendente no momento.'
-      );
-    } catch (err: any) {
-      console.error('[Agenda] send-appointment-reminders failed', err);
-      toast.error(err?.message || 'Falha ao enviar lembretes via WhatsApp.');
-    } finally {
-      setSendingReminders(false);
-    }
-  };
+
+
 
 
   // Mobile-specific day stats for the header

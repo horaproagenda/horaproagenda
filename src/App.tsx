@@ -100,6 +100,20 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Rota raiz: landing pública para visitantes, dashboard para autenticados.
+ * Mantém `/` indexável pelo Google enquanto preserva acesso direto ao app
+ * para usuários logados.
+ */
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <RouteFallback />;
+  }
+  if (!user) return <Landing />;
+  return <ProtectedRoute><Index /></ProtectedRoute>;
+}
+
 const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);

@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { TrialBanner } from '@/components/TrialBanner';
+import { OnboardingGate } from '@/components/onboarding/OnboardingWizard';
 import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 import { useSubscriptionNotifier } from '@/hooks/useSubscriptionNotifier';
@@ -78,6 +79,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         open={isNewAppointmentOpen} 
         onOpenChange={setIsNewAppointmentOpen}
       />
+      <OnboardingGate />
     </div>
   );
 }

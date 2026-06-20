@@ -19,10 +19,12 @@ import { useSaleFlowIntegrityAutoCheck } from "@/hooks/useSaleFlowIntegrityAutoC
 import { usePaymentIntegrityAutoCheck } from "@/hooks/usePaymentIntegrityAutoCheck";
 import { useLayoutWatchdog } from "@/hooks/useLayoutWatchdog";
 
-// Eager: rotas críticas no boot (login, dashboard, 404)
+// Eager: rotas críticas no boot (login, dashboard, 404, landing pública)
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Landing from "./pages/Landing";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Lazy: cada página vira um chunk independente.
 // Reduz bundle inicial e acelera navegação subsequente.
@@ -98,6 +100,20 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Rota raiz: landing pública para visitantes, dashboard para autenticados.
+ * Mantém `/` indexável pelo Google enquanto preserva acesso direto ao app
+ * para usuários logados.
+ */
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <RouteFallback />;
+  }
+  if (!user) return <Landing />;
+  return <ProtectedRoute><Index /></ProtectedRoute>;
+}
+
 const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
@@ -127,7 +143,8 @@ const App = () => {
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
                 <Route path="/conta-inativa" element={<ContaInativa />} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/" element={<HomeRoute />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
                 <Route path="/clientes/:id" element={<ProtectedRoute><ClienteDetalhes /></ProtectedRoute>} />

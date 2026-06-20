@@ -791,6 +791,7 @@ export type Database = {
           created_at: string
           drag_and_drop_enabled: boolean
           id: string
+          onboarding_completed_at: string | null
           opening_time: string
           overdue_days_threshold: number
           reminder_hours_before: number[]
@@ -823,6 +824,7 @@ export type Database = {
           created_at?: string
           drag_and_drop_enabled?: boolean
           id?: string
+          onboarding_completed_at?: string | null
           opening_time?: string
           overdue_days_threshold?: number
           reminder_hours_before?: number[]
@@ -855,6 +857,7 @@ export type Database = {
           created_at?: string
           drag_and_drop_enabled?: boolean
           id?: string
+          onboarding_completed_at?: string | null
           opening_time?: string
           overdue_days_threshold?: number
           reminder_hours_before?: number[]

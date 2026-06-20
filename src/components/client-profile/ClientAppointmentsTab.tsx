@@ -358,6 +358,17 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 <FileDown className="h-3.5 w-3.5 mr-1" />
                 Exportar PDF ({selectedAppointments.size})
               </Button>
+              <Button
+                size="sm"
+                variant="default"
+                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleSendWhatsApp}
+                disabled={selectedAppointments.size === 0}
+                title="Enviar lista pelo WhatsApp"
+              >
+                <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                WhatsApp ({selectedAppointments.size})
+              </Button>
             </>
           ) : (
             <Button
@@ -368,7 +379,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
               disabled={filteredAppointments.length === 0}
             >
               <FileDown className="h-3.5 w-3.5 mr-1" />
-              Exportar PDF
+              Exportar / WhatsApp
             </Button>
           )}
         </div>
@@ -394,8 +405,14 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const totalSessions = packageData?.total_sessions;
                 const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id));
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
-                const displayName = packageData?.name || appointment.service?.name || 'Serviço';
-                const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
+                // Sempre que houver pacote vinculado, o nome do pacote é a fonte da verdade
+                // (mesmo em itens cancelados/reagendados — evita "Serviço" genérico).
+                const displayName = isPackage
+                  ? (packageData?.name || appointment.service?.name || 'Pacote')
+                  : (appointment.service?.name || 'Serviço');
+                const serviceLine = isPackage && appointment.service?.name && appointment.service.name !== packageData?.name
+                  ? appointment.service.name
+                  : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
                 return (

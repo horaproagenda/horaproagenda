@@ -173,15 +173,21 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     doc.text(`CPF:  ${cleanCpf}`, 14, 40);
     doc.text(`Data de emissao:  ${emissionDate}`, 14, 48);
     
-    // Table data with proper spacing and clean text
+    // Table data with proper spacing and clean text.
+    // Para preservar o nome correto, sempre que houver vínculo com pacote priorizamos
+    // o nome do pacote — evita itens cancelados aparecerem genericamente como "Serviço".
     const tableData = appointmentsToExport.map(apt => {
-      const serviceName = removeAccents(apt.service?.name || apt.package_appointment?.package?.name || 'Servico');
+      const isPkg = !!apt.package_appointment;
+      const rawName = isPkg
+        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
+        : (apt.service?.name || 'Servico');
+      const serviceName = removeAccents(rawName);
       const status = removeAccents(getAppointmentStatusConfig(apt.status).label);
       const date = format(new Date(apt.start_time), 'dd/MM/yyyy');
       const startTime = format(new Date(apt.start_time), 'HH:mm');
       const endTime = format(new Date(apt.end_time), 'HH:mm');
       const time = `${startTime}  -  ${endTime}`;
-      
+
       return [serviceName, date, time, status];
     });
 
@@ -247,6 +253,28 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     toast.success('PDF exportado com sucesso!');
     setSelectedAppointments(new Set());
     setIsSelectionMode(false);
+  };
+
+  const handleSendWhatsApp = () => {
+    const appointmentsToSend = filteredAppointments.filter(a => selectedAppointments.has(a.id));
+    if (appointmentsToSend.length === 0) {
+      toast.error('Selecione pelo menos um agendamento para enviar');
+      return;
+    }
+    const linhas = appointmentsToSend.map(apt => {
+      const isPkg = !!apt.package_appointment;
+      const nome = isPkg
+        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
+        : (apt.service?.name || 'Serviço');
+      const data = format(new Date(apt.start_time), 'dd/MM/yyyy');
+      const hora = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
+      const status = getAppointmentStatusConfig(apt.status).label;
+      return `• ${data} ${hora} — ${nome} (${status})`;
+    }).join('\n');
+
+    const msg = `Olá${clientName ? `, ${clientName}` : ''}! Segue o histórico dos seus agendamentos:\n\n${linhas}\n\nQualquer dúvida estou à disposição.`;
+    setWhatsappMessage(msg);
+    setWhatsappOpen(true);
   };
 
   const startSelectionMode = () => {

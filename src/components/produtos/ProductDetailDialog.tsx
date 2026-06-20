@@ -241,9 +241,15 @@ export function ProductDetailDialog({
     return { totalAppointments, avgPerAppointment, byService };
   }, [product, productServiceLinks, appointments, activeServices]);
 
-  // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark
+  // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark.
+  // Funciona para TODOS os produtos — com ou sem vínculo a serviços. Quando o produto não
+  // tem vínculos, contabiliza todos os atendimentos concluídos no período como sinal de uso.
   const cycleSummary = useMemo(() => {
     if (!product) return null;
+
+    const hasServiceLinks = productServiceLinks.length > 0;
+    const matchesProduct = (a: any) =>
+      !hasServiceLinks || productServiceLinks.some(sp => sp.service_id === a.service_id);
 
     const finishedCycles = productPurchases
       .filter(p => p.started_using_at && p.finished_at)
@@ -254,23 +260,30 @@ export function ProductDetailDialog({
         const apts = appointments.filter(a => {
           if (a.status !== 'completed') return false;
           const t = new Date(a.start_time);
-          return t >= start && t <= end && productServiceLinks.some(sp => sp.service_id === a.service_id);
+          return t >= start && t <= end && matchesProduct(a);
         }).length;
-        return { purchase: p, days, appointments: apts };
+        // Consumo do ciclo finalizado = quantidade comprada (assume-se totalmente consumida)
+        const qtyConsumed = Number(p.quantity || 0);
+        return { purchase: p, days, appointments: apts, qtyConsumed };
       });
 
     const lastCycle = finishedCycles[0] || null;
 
     let currentDays = 0;
     let currentAppointments = 0;
+    let currentConsumed = 0;
     if (product.started_using_at && !product.finished_at) {
       const start = parseISO(product.started_using_at + 'T00:00:00');
       currentDays = Math.max(0, differenceInDays(new Date(), start));
       currentAppointments = appointments.filter(a => {
         if (a.status !== 'completed') return false;
         const t = new Date(a.start_time);
-        return t >= start && productServiceLinks.some(sp => sp.service_id === a.service_id);
+        return t >= start && matchesProduct(a);
       }).length;
+      // Consumo real do ciclo atual = saída de estoque (universal, independe de vínculo)
+      const activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at);
+      const initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
+      currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
     }
 
     const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
@@ -279,14 +292,16 @@ export function ProductDetailDialog({
     if (lastCycle && product.started_using_at && !product.finished_at) {
       const pctDays = currentDays / lastCycle.days;
       const pctApts = lastCycle.appointments > 0 ? currentAppointments / lastCycle.appointments : 0;
-      const pct = Math.max(pctDays, pctApts);
+      const pctQty = lastCycle.qtyConsumed > 0 ? currentConsumed / lastCycle.qtyConsumed : 0;
+      const pct = Math.max(pctDays, pctApts, pctQty);
       if (pct >= 0.8) {
         runningOutAlert = `Atenção: já atingiu ${Math.round(pct * 100)}% do ciclo anterior (${lastCycle.days}d / ${lastCycle.appointments} atend.). Produto pode estar acabando.`;
       }
     }
 
-    return { finishedCycles, lastCycle, currentDays, currentAppointments, nextPurchase, runningOutAlert };
+    return { finishedCycles, lastCycle, currentDays, currentAppointments, currentConsumed, nextPurchase, runningOutAlert };
   }, [product, productPurchases, appointments, productServiceLinks]);
+
 
 
   // Available services to link (not already linked)

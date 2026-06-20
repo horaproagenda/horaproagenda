@@ -1926,6 +1926,39 @@ const Agenda = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Automations Sheet trigger (waitlist, gaps, occupancy, recurrence) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 flex-shrink-0"
+                onClick={() => setShowAutomationsSheet(true)}
+                aria-label="Automações da agenda"
+              >
+                <Bot className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Lista de espera, encaixes, ocupação, recorrência</TooltipContent>
+          </Tooltip>
+
+          {/* WhatsApp reminders trigger */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 flex-shrink-0"
+                onClick={handleSendWhatsappReminders}
+                disabled={sendingReminders}
+                aria-label="Enviar lembretes WhatsApp"
+              >
+                <MessageCircle className={cn("h-3.5 w-3.5", sendingReminders && "animate-pulse")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Enviar lembretes WhatsApp agora</TooltipContent>
+          </Tooltip>
+
           {/* Import/Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

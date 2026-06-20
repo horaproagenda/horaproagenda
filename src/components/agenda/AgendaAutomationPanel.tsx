@@ -22,6 +22,11 @@ interface AgendaAutomationPanelProps {
   onOpenNewAppointment?: (date?: Date, time?: string) => void;
   onScheduleFromWaitlist?: (entry: WaitlistEntry) => void;
   onScheduleFromRecurrence?: (clientId: string, serviceId: string, date: Date) => void;
+  /**
+   * When true, panel always renders the full content (no collapse/expand strip).
+   * Use this when embedding the panel inside a Sheet/Dialog on smaller screens.
+   */
+  forceExpanded?: boolean;
 }
 
 export function AgendaAutomationPanel({
@@ -29,9 +34,10 @@ export function AgendaAutomationPanel({
   onOpenNewAppointment,
   onScheduleFromWaitlist,
   onScheduleFromRecurrence,
+  forceExpanded = false,
 }: AgendaAutomationPanelProps) {
   // Start collapsed by default to not obstruct agenda view
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(!forceExpanded);
   const [activeTab, setActiveTab] = useState('occupancy');
 
   const handleGapSelect = (gap: { start: Date; professionalId: string }) => {
@@ -39,7 +45,7 @@ export function AgendaAutomationPanel({
     onOpenNewAppointment?.(gap.start, time);
   };
 
-  if (isCollapsed) {
+  if (isCollapsed && !forceExpanded) {
     return (
       <div className="w-10 border-l bg-muted/20 flex flex-col items-center py-4 gap-2">
         <Button

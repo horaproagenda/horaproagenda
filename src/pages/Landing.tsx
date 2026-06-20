@@ -13,6 +13,12 @@ import {
   ArrowRight,
   CheckCircle2,
   Loader2,
+  Sparkles,
+  FileSignature,
+  Receipt,
+  BellRing,
+  BarChart3,
+  UserPlus,
 } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -22,7 +28,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import horaProIcon from '@/assets/horapro-icon.png';
-import { BRAND, PRIMARY_TAGLINE, TAGLINES } from '@/content/brand';
+import { BRAND, PRIMARY_TAGLINE, TAGLINES, DIFFERENTIALS } from '@/content/brand';
+
+const differentialIcons = [MessageCircle, Receipt, Wallet, FileSignature, UserPlus, BellRing, BarChart3];
 
 const features = [
   {
@@ -101,9 +109,8 @@ const leadSchema = z.object({
   whatsapp: z
     .string()
     .trim()
-    .max(40)
-    .optional()
-    .or(z.literal('')),
+    .min(8, 'Informe seu WhatsApp')
+    .max(40, 'WhatsApp muito longo'),
   business_area: z.string().trim().max(100).optional().or(z.literal('')),
   message: z.string().trim().max(1000).optional().or(z.literal('')),
 });
@@ -200,9 +207,11 @@ function InterestForm() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="lead-whatsapp">WhatsApp</Label>
+          <Label htmlFor="lead-whatsapp">WhatsApp *</Label>
           <Input
             id="lead-whatsapp"
+            required
+            inputMode="tel"
             maxLength={40}
             value={form.whatsapp}
             onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}

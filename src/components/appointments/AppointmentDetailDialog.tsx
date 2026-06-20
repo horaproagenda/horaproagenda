@@ -912,7 +912,17 @@ export function AppointmentDetailDialog({
   // Packages must be paid in full, regardless of how many sessions are scheduled
   const servicePrice = appointment.service?.price || 0;
   const packagePrice = packageData?.total_price || 0;
-  const isPackagePaid = isPackageAppointment && packagePrice > 0 && Number(appointment.amount_paid || 0) >= packagePrice;
+  // Pacote considerado pago se QUALQUER um destes sinais existir, evitando
+  // cobrança indevida quando há venda paga registrada mas amount_paid no
+  // agendamento ficou desatualizado por sincronização parcial:
+  //   - amount_paid já cobre o valor total do pacote
+  //   - o agendamento foi marcado como 'paid'
+  //   - o pacote possui métodos de pagamento (foi vendido via caixa)
+  const isPackagePaid = isPackageAppointment && (
+    (packagePrice > 0 && Number(appointment.amount_paid || 0) >= packagePrice) ||
+    appointment.payment_status === 'paid' ||
+    ((packageData as any)?.payment_methods && (packageData as any).payment_methods.length > 0)
+  );
   
   // Desconto pré-configurado no agendamento: SEMPRE reduz o valor a pagar/total
   const grossServicePrice = isPackageAppointment ? packagePrice : servicePrice;
@@ -934,15 +944,17 @@ export function AppointmentDetailDialog({
   const finalAppointmentTotal = totalPrice + persistedAdditionalItemsTotal + additionalItemsTotal;
   
   // Calculate amount paid based on actual data
-  // For packages: if paid, show full package price as paid. If not paid, show appointment's amount_paid
+  // For packages: if paid, exibimos o valor total do pacote como pago
   // For regular services: show the actual amount_paid from the appointment
   const amountPaid = isPackageAppointment
-    ? Math.min(packagePrice || Number(appointment.amount_paid || 0), Number(appointment.amount_paid || 0))
+    ? (isPackagePaid ? Math.max(packagePrice, Number(appointment.amount_paid || 0)) : Number(appointment.amount_paid || 0))
     : Number(appointment.amount_paid || 0);
   
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
   const persistedDiscount = Number((appointment as any)?.discount_amount || 0);
-  const remainingAmount = Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
+  const remainingAmount = isPackagePaid
+    ? 0
+    : Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
   
   // Determine effective payment status based on actual amounts
   // This ensures consistency between displayed status and values

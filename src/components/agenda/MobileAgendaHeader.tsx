@@ -46,6 +46,9 @@ interface MobileAgendaHeaderProps {
   onNewAbsence?: () => void;
   onManageAbsences?: () => void;
   onToday?: () => void;
+  onOpenAutomations?: () => void;
+  onSendWhatsappReminders?: () => void;
+  sendingReminders?: boolean;
 }
 
 export function MobileAgendaHeader({

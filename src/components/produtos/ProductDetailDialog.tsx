@@ -140,6 +140,7 @@ export function ProductDetailDialog({
 
 
   const [isEditing, setIsEditing] = useState(false);
+  const [showCalcDetails, setShowCalcDetails] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);

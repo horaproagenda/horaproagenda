@@ -2373,6 +2373,28 @@ const Agenda = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Automations Sheet (works on all viewports) */}
+      <Sheet open={showAutomationsSheet} onOpenChange={setShowAutomationsSheet}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-4 pt-4 pb-2">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <Bot className="h-4 w-4 text-primary" />
+              Automações da Agenda
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
+            <AgendaAutomationPanel
+              selectedDate={selectedDate}
+              onOpenNewAppointment={(date, time) => {
+                setShowAutomationsSheet(false);
+                handleOpenNewAppointmentFromAutomation(date, time);
+              }}
+              forceExpanded
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 };

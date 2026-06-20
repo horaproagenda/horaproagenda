@@ -1,78 +1,73 @@
-## Objetivo
 
-Transformar `/` em uma landing page pública otimizada para SEO, criar onboarding rápido pós-cadastro, publicar o app e registrar no Google Search Console. Sitemap e robots já existem — apenas vou expandir.
+# Rebrand: Lume Agenda → Hora Pro
 
----
+## Importante sobre "registro de marca"
+Não consigo registrar a marca "Hora Pro" juridicamente — registro de marca é feito no **INPI** (https://www.gov.br/inpi). Posso:
+- Verificar disponibilidade básica via busca web (INPI, domínios, app stores).
+- Reservar o nome no produto (código, metadados, manifest, e-mails, domínio interno).
+- Gerar um documento `.md` com instruções para você dar entrada no INPI.
 
-## 1. Landing page pública em `/`
+O registro oficial precisa ser feito por você (ou um despachante) no INPI — custa ~R$ 355 e leva meses.
 
-Hoje `/` está atrás de `ProtectedRoute` e redireciona para `/auth`, o que faz Google e crawlers de IA verem só uma tela de login — péssimo para SEO.
+## 1. Validação do nome
+- Buscar "Hora Pro" / "HoraPro" no INPI, Google Play, App Store, domínios `.com.br`, `.app`, `.com`.
+- Entregar relatório em `BRAND_VALIDATION.md` com status e recomendação (ex.: usar `horapro.app` se `horapro.com.br` estiver ocupado).
+- Se o nome estiver tomado em pontos críticos, te aviso antes de prosseguir.
 
-Mudanças:
+## 2. Identidade visual (logo + paleta)
+- Gerar logotipo Hora Pro com `imagegen` (premium, transparente):
+  - Marca principal (horizontal: ícone + wordmark)
+  - Ícone isolado (favicon / app icon — quadrado, fundo sólido + variante transparente)
+  - Versão monocromática (preto / branco)
+- Paleta proposta (a confirmar): primária âmbar/laranja quente (energia + tempo) + neutros profundos. Definida via tokens semânticos em `src/index.css` (HSL), com modo claro e escuro.
+- Substituir favicon, ícones PWA e ativos em `public/` e `src/assets/`.
 
-- Criar `src/pages/Landing.tsx` — página pública, server-friendly (sem dados autenticados), focada nas keywords: **"app de agendamento"**, **"agenda para clínica de estética"**, **"sistema de agendamento online"**, **"agenda para salão de beleza"**, **"software para esteticista"**.
-- Estrutura semântica:
-  - `<header>` com logo + botões "Entrar" / "Criar conta grátis"
-  - `<main>` com:
-    - Hero (H1 com keyword principal, CTA, screenshot do app)
-    - Seção de features (agenda, clientes, financeiro, WhatsApp, pacotes, comissões)
-    - Para quem é (clínicas de estética, salões, esteticistas, barbearias, podólogos…)
-    - Depoimentos / prova social (placeholder)
-    - FAQ (já temos JSON-LD pra isso — espelhar visualmente)
-    - CTA final
-  - `<footer>` com links para Termos, Privacidade, login
-- Roteamento: alterar `App.tsx` para que:
-  - `/` → `Landing` (público) **se usuário não autenticado**
-  - `/` → `Index` (dashboard atual) **se autenticado**
-  - Renomear rota interna para `/dashboard` apontando para o `Index` atual (com redirect de compat)
-- `<Helmet>` por rota com `react-helmet-async` para title/description/canonical/OG específicos da landing (instalar a lib).
-- Imagens: usar screenshots reais do app já existentes ou um hero gerado via imagegen com background sólido. Alt text com keywords.
-- Design: seguir o design system atual (Poppins, tokens semânticos do `index.css`) — nada de roxo/branco genérico de IA.
+## 3. Rename global (Lume Agenda → Hora Pro)
+Substituições verificadas via `rg "Lume Agenda|LumeAgenda|agendalume"`:
+- `index.html` (title, meta description, OG, Twitter, JSON-LD)
+- `public/manifest.webmanifest` (name, short_name, description)
+- `public/llms.txt`, `public/robots.txt`, `public/sitemap.xml`
+- `src/pages/Landing.tsx` e demais páginas (`Auth`, `TermosDeServico`, `PoliticaDePrivacidade`, etc.)
+- `src/components/layout/Header.tsx` e sidebar
+- Templates de e-mail em `supabase/functions/_shared/email-templates/*` e `transactional-email-templates/*`
+- Edge functions que enviem texto com a marca (`send-transactional-email`, `send-appointment-reminders`, `whatsapp-*`)
+- `README.md`, `capacitor.config.ts` (appName, appId — manter bundle id atual para não quebrar instalações existentes; só ajusto display name)
+- Memórias do projeto (`mem://index.md` core)
+- `package.json` (name)
 
-## 2. Onboarding rápido pós-signup
+Domínio: `agendalume.app` continua funcionando (não dá pra trocar custom domain pelo código). Adicionar TODO em `BRAND_VALIDATION.md` para você comprar `horapro.app` (ou similar) e conectar via Settings → Domains.
 
-Hoje, ao criar conta, o usuário cai direto no dashboard vazio — alta chance de abandono.
+## 4. Taglines (5 opções) + descrição
+Entregue em `src/content/brand.ts` (reutilizado na landing) e `BRAND_COPY.md`:
+- 5 taglines curtas (≤6 palavras), ex.: "Sua hora, no controle.", "Agenda profissional, sem atrito.", etc.
+- 1 descrição curta (≤160 chars) para meta/App Store subtitle.
+- 1 descrição longa (~400 palavras) para landing, Play Store e App Store, com benefícios, público e CTA.
 
-Fluxo novo `src/components/onboarding/OnboardingWizard.tsx` (modal full-screen, 3 steps):
+## 5. Landing page pública
+Reescrever `src/pages/Landing.tsx` (rota `/`, já pública) com nova marca:
+- Hero com logo Hora Pro + tagline escolhida + CTA duplo (interesse + criar conta).
+- Seção "Benefícios" (6 cards: agenda em tempo real, WhatsApp, financeiro, pacotes, multiusuário, PWA).
+- Seção "Para quem é" (públicos).
+- **Formulário de interesse** novo: nome, e-mail, WhatsApp, área de atuação, mensagem.
+  - Salva em nova tabela `public.interest_leads` (Lovable Cloud / Supabase) com RLS:
+    - `INSERT` permitido para `anon` (formulário público).
+    - `SELECT/UPDATE/DELETE` apenas para `super_admin` via `has_role`.
+    - GRANTs explícitos conforme padrão do projeto.
+  - Honeypot + rate-limit por IP simples (campo `created_at` + check no client).
+- FAQ atualizado com novo nome.
+- Footer com nova marca.
+- Helmet: title, description, canonical, OG/Twitter atualizados para Hora Pro.
 
-1. **Dados da clínica** — nome do negócio, telefone, segmento (estética, salão, barbearia, podologia, outros). Salva em `business_settings`.
-2. **Primeiro profissional** — nome, especialidade. Pré-preenchido com dados do owner. Salva em `professionals`.
-3. **Primeiro serviço** — nome, duração, preço. Salva em `services`.
+## 6. Validação final
+- `rg -i "lume agenda|lumeagenda|agendalume"` deve retornar zero matches em código (exceto changelog/migrations históricas).
+- Build verde, preview carrega `/` com nova marca, formulário de interesse insere linha em `interest_leads`.
+- Atualizar `mem://index.md` (Core) com "Marca: Hora Pro".
 
-Ao final: toast de boas-vindas + redirect para `/agenda`.
+## Arquivos criados/alterados (resumo)
+- Novos: `src/content/brand.ts`, `BRAND_VALIDATION.md`, `BRAND_COPY.md`, `src/assets/horapro-logo.png`, `src/assets/horapro-icon.png`, migration `interest_leads`.
+- Editados: `index.html`, `public/manifest.webmanifest`, `public/llms.txt`, `public/sitemap.xml`, `public/favicon.*`, `src/index.css` (tokens), `tailwind.config.ts` (se preciso), `src/pages/Landing.tsx`, headers/sidebars, e-mail templates, `README.md`, `capacitor.config.ts`, `package.json`, `mem://index.md`.
 
-Gatilho: hook `useOnboardingStatus` checa se `business_settings.onboarding_completed_at IS NULL` (campo novo) **e** se não há profissionais/serviços. Migration para adicionar a coluna.
-
-Pula: botão "Pular por enquanto" salva `onboarding_completed_at = now()` mesmo assim, pra não reaparecer.
-
-## 3. SEO técnico
-
-- **`public/sitemap.xml`** — adicionar `/` (landing) já está; manter `/auth`, termos, privacidade. Adicionar `<lastmod>`.
-- **`public/robots.txt`** — já está OK; só confirmar que `Disallow` não bloqueia rotas internas (não bloqueia, então tudo bem; rotas autenticadas não vazam dados pra crawler porque são SPA atrás de auth).
-- **`index.html`** — manter os JSON-LD existentes (Organization, WebSite, SoftwareApplication, FAQPage).
-- **Search Console** — usar o connector `google_search_console` para gerar token de verificação META, injetar no `<head>` e chamar verify para o domínio `https://agendalume.app/`. Adicionar o site verificado à lista do GSC.
-
-## 4. Publicação
-
-Após as mudanças acima, chamar `preview_ui--publish` apontando para `agendalume.app`.
-
----
-
-## Detalhes técnicos
-
-- Lib nova: `react-helmet-async` (per-route head tags).
-- Migration: `ALTER TABLE business_settings ADD COLUMN onboarding_completed_at timestamptz`.
-- Sem mudanças em RLS (campo herda policies existentes).
-- Nenhuma quebra de rota: `/` continua respondendo, só com conteúdo diferente conforme auth.
-
----
-
-## Fora de escopo (deixar claro)
-
-- **Não posso garantir** ranking em "app de agendamento" no Google/ChatGPT/Gemini — depende de autoridade, backlinks e tempo. As mudanças tornam o app **elegível e bem descrito**, mas o resto é trabalho contínuo de SEO/conteúdo.
-- **Play Store / App Store**: o `capacitor.config.ts` já está pronto. Submissão exige contas pagas (Google $25, Apple $99/ano) e build nativo no seu Mac/Android Studio — sai do escopo desta entrega.
-- Bing Webmaster Tools: requer verificação manual sua (não há connector).
-
----
-
-Aprova esse escopo?
+## Perguntas antes de implementar
+1. **Paleta** — posso seguir com âmbar/laranja quente + neutros, ou prefere outra direção (azul corporativo, verde, roxo)?
+2. **Domínio** — mantenho `agendalume.app` no código por enquanto e te deixo TODO pra comprar `horapro.app`, ou você já tem domínio definido?
+3. **Formulário de interesse** — quer notificação por e-mail a cada novo lead (via edge function existente `send-transactional-email`)?

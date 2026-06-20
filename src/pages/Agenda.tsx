@@ -41,7 +41,6 @@ import {
   MoreHorizontal,
   Umbrella,
   Bot,
-  MessageCircle,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
@@ -117,7 +116,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
-import { supabase } from '@/integrations/supabase/client';
+
 
 
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';
@@ -189,7 +188,7 @@ const Agenda = () => {
   const [showMobileAbsencePanel, setShowMobileAbsencePanel] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showAutomationsSheet, setShowAutomationsSheet] = useState(false);
-  const [sendingReminders, setSendingReminders] = useState(false);
+  
   const [mobileView, setMobileView] = useState<MobileViewType>('day');
   
   // Detect true smartphone for optimized mobile layout
@@ -1640,27 +1639,8 @@ const Agenda = () => {
     setNewAppointmentDialogOpen(true);
   };
 
-  const handleSendWhatsappReminders = async () => {
-    if (sendingReminders) return;
-    setSendingReminders(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-appointment-reminders', {
-        body: { manual: true, triggered_at: new Date().toISOString() },
-      });
-      if (error) throw error;
-      const sent = (data as any)?.sent ?? (data as any)?.count ?? 0;
-      toast.success(
-        sent > 0
-          ? `Lembretes enviados (${sent}).`
-          : 'Nenhum lembrete pendente no momento.'
-      );
-    } catch (err: any) {
-      console.error('[Agenda] send-appointment-reminders failed', err);
-      toast.error(err?.message || 'Falha ao enviar lembretes via WhatsApp.');
-    } finally {
-      setSendingReminders(false);
-    }
-  };
+
+
 
 
   // Mobile-specific day stats for the header
@@ -1708,8 +1688,6 @@ const Agenda = () => {
           onNewAbsence={handleOpenNewAbsence}
           onManageAbsences={() => setShowMobileAbsencePanel(true)}
           onOpenAutomations={() => setShowAutomationsSheet(true)}
-          onSendWhatsappReminders={handleSendWhatsappReminders}
-          sendingReminders={sendingReminders}
           onToday={() => {
             const today = new Date();
             setSelectedDate(today);
@@ -1945,22 +1923,8 @@ const Agenda = () => {
             <TooltipContent>Lista de espera, encaixes, ocupação, recorrência</TooltipContent>
           </Tooltip>
 
-          {/* WhatsApp reminders trigger */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7 flex-shrink-0"
-                onClick={handleSendWhatsappReminders}
-                disabled={sendingReminders}
-                aria-label="Enviar lembretes WhatsApp"
-              >
-                <MessageCircle className={cn("h-3.5 w-3.5", sendingReminders && "animate-pulse")} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Enviar lembretes WhatsApp agora</TooltipContent>
-          </Tooltip>
+
+
 
           {/* Import/Export Dropdown */}
           <DropdownMenu>

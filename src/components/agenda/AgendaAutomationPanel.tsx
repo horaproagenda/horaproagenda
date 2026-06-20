@@ -95,21 +95,26 @@ export function AgendaAutomationPanel({
   }
 
   return (
-    <div className="w-80 border-l bg-muted/10 flex flex-col">
+    <div className={cn(
+      "flex flex-col bg-muted/10",
+      forceExpanded ? "w-full h-full" : "w-80 border-l"
+    )}>
       {/* Header */}
       <div className="p-3 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Automações</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => setIsCollapsed(true)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        {!forceExpanded && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsCollapsed(true)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}

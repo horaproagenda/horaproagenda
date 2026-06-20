@@ -75,7 +75,7 @@ import {
   X,
   Upload,
   Download,
-  WarehouseIcon,
+  
   AlertCircle,
 } from 'lucide-react';
 import { cn, normalizeBrazilianCurrency } from '@/lib/utils';

@@ -199,7 +199,6 @@ export default function Produtos() {
 
   // ── Dialog states ───────────────────────────────────────
   const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
 
   // Product Detail
@@ -209,19 +208,9 @@ export default function Produtos() {
   // ── Novo Produto form ───────────────────────────────────
   const [productForm, setProductForm] = useState(createEmptyProductForm);
 
-  // ── Adicionar no Estoque form ───────────────────────────
-  const [stockForm, setStockForm] = useState({
-    product_id: '',
-    quantity: 0,
-    unit_price: 0,
-    total_price: 0,
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
-    expiry_date: '',
-    skip_cash_transaction: false,
-  });
-
   // ── Nova Compra form ────────────────────────────────────
   const [purchaseForm, setPurchaseForm] = useState(createEmptyPurchaseForm);
+
 
   // Open product from URL param
   useEffect(() => {

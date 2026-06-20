@@ -112,6 +112,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
+  const hasActiveFilter = selectedMonth !== 'all' || selectedStatus !== 'all' || paymentTypeFilter !== 'all';
 
   const resolvedClientIdEarly = clientId || appointments[0]?.client_id || '';
 
@@ -457,81 +458,22 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleManualHeal}
-            disabled={healingPackages || !resolvedClientIdEarly}
-            className="h-8 text-xs"
-            title="Vincular agendamentos órfãos a sessões de pacote e preencher serviços faltantes"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${healingPackages ? 'animate-spin' : ''}`} />
-            Reparar pacotes
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
-            <Download className="h-3.5 w-3.5 mr-1" />
-            CSV
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportToPDF} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
-            <FileText className="h-3.5 w-3.5 mr-1" />
-            PDF
-          </Button>
+          {hasActiveFilter && (
+            <>
+              <Button size="sm" variant="outline" onClick={exportToCSV} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
+                <Download className="h-3.5 w-3.5 mr-1" />
+                CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportToPDF} disabled={filteredPaymentHistory.length === 0} className="h-8 text-xs">
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                PDF
+              </Button>
+            </>
+          )}
         </div>
 
       </div>
 
-      {/* Compact Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Card className="bg-card/50">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-500" />
-              <div>
-                <p className="text-lg font-bold">{summary.total}</p>
-                <p className="text-[10px] text-muted-foreground">Agendados</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-card/50">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-green-500" />
-              <div>
-                <p className="text-lg font-bold">{summary.completed}</p>
-                <p className="text-[10px] text-muted-foreground">Realizados</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-card/50">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
-              <div>
-                <p className="text-lg font-bold">R$ {summary.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
-                <p className="text-[10px] text-muted-foreground">Recebido</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {summary.totalPending > 0 && (
-          <Card className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                <div>
-                  <p className="text-lg font-bold text-amber-600">R$ {summary.totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
-                  <p className="text-[10px] text-muted-foreground">Pendente</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
 
       {/* Payment History */}
       <Card>

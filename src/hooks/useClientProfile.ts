@@ -602,25 +602,54 @@ export function useClientProfile(clientId: string) {
     },
   });
 
-  // Calculate total revenue from BOTH appointments AND sales
-  const totalFromAppointments = appointments
-    .filter(a => a.payment_status === 'paid' || (a.amount_paid && a.amount_paid > 0))
-    .reduce((sum, a) => sum + (a.amount_paid || 0), 0);
+  // Calcula a receita do cliente sem duplicidade.
+  // Regra: cada pagamento conta UMA vez.
+  // - Vendas (single_sales) válidas (não canceladas e final_amount > 0) contam pelo final_amount.
+  // - Pagamentos vinculados a agendamentos só contam quando NÃO existe venda
+  //   para o mesmo pacote/serviço, e por pacote são contabilizados uma única vez
+  //   (evita somar amount_paid replicado em todas as sessões do pacote).
+  const isCancelledSale = (sale: typeof clientSales[number]) =>
+    Boolean(sale.notes?.includes('CANCELADO')) || Number(sale.final_amount || 0) === 0;
 
-  const totalFromSales = clientSales.reduce((sum, sale) => sum + (sale.final_amount || 0), 0);
+  const totalFromSales = clientSales
+    .filter(sale => !isCancelledSale(sale))
+    .reduce((sum, sale) => sum + Number(sale.final_amount || 0), 0);
 
-  // Deduplicate - if an appointment has a linked sale, don't count twice
-  const appointmentSaleIds = new Set(
-    appointments
-      .filter(a => a.package_appointment?.package)
-      .map(a => a.package_appointment?.package?.id)
+  const salePackageIds = new Set(
+    clientSales
+      .filter(s => s.package_id && !isCancelledSale(s))
+      .map(s => s.package_id as string)
   );
-  
-  const uniqueSalesTotal = clientSales
-    .filter(sale => !sale.package_id || !appointmentSaleIds.has(sale.package_id))
-    .reduce((sum, sale) => sum + (sale.final_amount || 0), 0);
+  const saleServiceIds = new Set(
+    clientSales
+      .filter(s => s.service_id && !s.package_id && !isCancelledSale(s))
+      .map(s => s.service_id as string)
+  );
 
-  const totalRevenue = totalFromAppointments + uniqueSalesTotal;
+  const totalFromAppointments = (() => {
+    let sum = 0;
+    const seenPkg = new Set<string>();
+    for (const a of appointments) {
+      const paid = Number(a.amount_paid || 0);
+      if (paid <= 0) continue;
+      const pkgId = a.package_appointment?.package?.id;
+      if (pkgId) {
+        if (salePackageIds.has(pkgId)) continue; // já contado em totalFromSales
+        if (seenPkg.has(pkgId)) continue; // contar pacote uma única vez
+        seenPkg.add(pkgId);
+        sum += paid;
+      } else {
+        if (a.service_id && saleServiceIds.has(a.service_id)) continue;
+        sum += paid;
+      }
+    }
+    return sum;
+  })();
+
+  // Mantido para compatibilidade da lógica de paymentHistory abaixo.
+  const appointmentSaleIds = salePackageIds;
+
+  const totalRevenue = totalFromSales + totalFromAppointments;
 
   // Helper to get payment method name from ID
   const getPaymentMethodName = (methodIdOrName: string): string => {

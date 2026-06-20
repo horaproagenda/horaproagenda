@@ -49,8 +49,13 @@ import {
   Trash2,
   BarChart3,
   AlertCircle,
+  Info,
+  PlayCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { convertQuantity } from '@/lib/productStock';
 import { isProductExpired } from '@/lib/productExpiry';

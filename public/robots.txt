@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://agendalume.app/sitemap.xml
+Sitemap: https://horaproagenda.app/sitemap.xml

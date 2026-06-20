@@ -5048,6 +5048,10 @@ export type Database = {
       }
       purge_single_sale_cascade: { Args: { _sale_id: string }; Returns: Json }
       realtime_topic_suffix_uuid: { Args: { _topic: string }; Returns: string }
+      rebuild_package_appointments: {
+        Args: { _package_id: string }
+        Returns: number
+      }
       recalculate_package_minimum_intervals: {
         Args: { _package_appointment_id: string }
         Returns: number

@@ -4686,6 +4686,7 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      audit_payment_integrity: { Args: never; Returns: Json }
       audit_sale_flow_integrity: { Args: never; Returns: Json }
       authenticate_document_fill_link: {
         Args: { p_cpf: string; p_token: string }
@@ -5073,6 +5074,7 @@ export type Database = {
         Args: { _client_id?: string }
         Returns: Json
       }
+      repair_payment_integrity: { Args: never; Returns: number }
       resolve_service_id_for_package: {
         Args: { _package_id: string; _sequence_order?: number }
         Returns: string
@@ -5137,6 +5139,10 @@ export type Database = {
             }
             Returns: string
           }
+      sync_appointments_with_paid_sale: {
+        Args: { _sale_id: string }
+        Returns: number
+      }
       sync_recurring_session_notes: {
         Args: { p_recurring_group_id: string }
         Returns: number

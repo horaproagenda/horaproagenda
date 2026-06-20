@@ -162,6 +162,7 @@ export default function ClienteDetalhes() {
               appointments={appointments} 
               clientName={client.name}
               clientCpf={client.cpf || ''}
+              clientPhone={client.phone || ''}
             />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">

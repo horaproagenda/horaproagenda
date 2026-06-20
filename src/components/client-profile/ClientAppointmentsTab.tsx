@@ -7,11 +7,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square } from 'lucide-react';
+import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import {
   buildAppointmentPackageSequenceMap,
   buildAppointmentRecurringSequenceMap,
@@ -24,6 +25,7 @@ interface ClientAppointmentsTabProps {
   appointments: Appointment[];
   clientName?: string;
   clientCpf?: string;
+  clientPhone?: string;
 }
 
 const statusOptions = [
@@ -64,12 +66,14 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '' }: ClientAppointmentsTabProps) {
+export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '' }: ClientAppointmentsTabProps) {
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+
   const monthOptions = useMemo(() => getMonthOptions(), []);
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
   const recurringSequenceMap = useMemo(() => buildAppointmentRecurringSequenceMap(appointments), [appointments]);
@@ -169,15 +173,21 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     doc.text(`CPF:  ${cleanCpf}`, 14, 40);
     doc.text(`Data de emissao:  ${emissionDate}`, 14, 48);
     
-    // Table data with proper spacing and clean text
+    // Table data with proper spacing and clean text.
+    // Para preservar o nome correto, sempre que houver vínculo com pacote priorizamos
+    // o nome do pacote — evita itens cancelados aparecerem genericamente como "Serviço".
     const tableData = appointmentsToExport.map(apt => {
-      const serviceName = removeAccents(apt.service?.name || apt.package_appointment?.package?.name || 'Servico');
+      const isPkg = !!apt.package_appointment;
+      const rawName = isPkg
+        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
+        : (apt.service?.name || 'Servico');
+      const serviceName = removeAccents(rawName);
       const status = removeAccents(getAppointmentStatusConfig(apt.status).label);
       const date = format(new Date(apt.start_time), 'dd/MM/yyyy');
       const startTime = format(new Date(apt.start_time), 'HH:mm');
       const endTime = format(new Date(apt.end_time), 'HH:mm');
       const time = `${startTime}  -  ${endTime}`;
-      
+
       return [serviceName, date, time, status];
     });
 
@@ -243,6 +253,28 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     toast.success('PDF exportado com sucesso!');
     setSelectedAppointments(new Set());
     setIsSelectionMode(false);
+  };
+
+  const handleSendWhatsApp = () => {
+    const appointmentsToSend = filteredAppointments.filter(a => selectedAppointments.has(a.id));
+    if (appointmentsToSend.length === 0) {
+      toast.error('Selecione pelo menos um agendamento para enviar');
+      return;
+    }
+    const linhas = appointmentsToSend.map(apt => {
+      const isPkg = !!apt.package_appointment;
+      const nome = isPkg
+        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
+        : (apt.service?.name || 'Serviço');
+      const data = format(new Date(apt.start_time), 'dd/MM/yyyy');
+      const hora = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
+      const status = getAppointmentStatusConfig(apt.status).label;
+      return `• ${data} ${hora} — ${nome} (${status})`;
+    }).join('\n');
+
+    const msg = `Olá${clientName ? `, ${clientName}` : ''}! Segue o histórico dos seus agendamentos:\n\n${linhas}\n\nQualquer dúvida estou à disposição.`;
+    setWhatsappMessage(msg);
+    setWhatsappOpen(true);
   };
 
   const startSelectionMode = () => {
@@ -326,6 +358,17 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 <FileDown className="h-3.5 w-3.5 mr-1" />
                 Exportar PDF ({selectedAppointments.size})
               </Button>
+              <Button
+                size="sm"
+                variant="default"
+                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleSendWhatsApp}
+                disabled={selectedAppointments.size === 0}
+                title="Enviar lista pelo WhatsApp"
+              >
+                <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                WhatsApp ({selectedAppointments.size})
+              </Button>
             </>
           ) : (
             <Button
@@ -336,7 +379,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
               disabled={filteredAppointments.length === 0}
             >
               <FileDown className="h-3.5 w-3.5 mr-1" />
-              Exportar PDF
+              Exportar / WhatsApp
             </Button>
           )}
         </div>
@@ -362,8 +405,14 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const totalSessions = packageData?.total_sessions;
                 const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id));
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
-                const displayName = packageData?.name || appointment.service?.name || 'Serviço';
-                const serviceLine = isPackage && appointment.service?.name ? appointment.service.name : null;
+                // Sempre que houver pacote vinculado, o nome do pacote é a fonte da verdade
+                // (mesmo em itens cancelados/reagendados — evita "Serviço" genérico).
+                const displayName = isPackage
+                  ? (packageData?.name || appointment.service?.name || 'Pacote')
+                  : (appointment.service?.name || 'Serviço');
+                const serviceLine = isPackage && appointment.service?.name && appointment.service.name !== packageData?.name
+                  ? appointment.service.name
+                  : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
                 return (
@@ -438,6 +487,15 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
           )}
         </CardContent>
       </Card>
+
+      <WhatsappPreviewDialog
+        open={whatsappOpen}
+        onOpenChange={setWhatsappOpen}
+        phone={clientPhone}
+        initialMessage={whatsappMessage}
+        title="Enviar agendamentos no WhatsApp"
+        description="Revise e edite a mensagem antes de enviar para o cliente."
+      />
     </div>
   );
 }

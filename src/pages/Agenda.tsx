@@ -40,6 +40,8 @@ import {
   Upload,
   MoreHorizontal,
   Umbrella,
+  Bot,
+  MessageCircle,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';

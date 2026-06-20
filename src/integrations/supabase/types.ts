@@ -2036,6 +2036,42 @@ export type Database = {
         }
         Relationships: []
       }
+      interest_leads: {
+        Row: {
+          business_area: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          name: string
+          source: string | null
+          user_agent: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          business_area?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          source?: string | null
+          user_agent?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          business_area?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          source?: string | null
+          user_agent?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           account_owner_id: string | null

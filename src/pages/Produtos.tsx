@@ -80,6 +80,7 @@ import {
 } from 'lucide-react';
 import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
+import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
@@ -313,6 +314,22 @@ export default function Produtos() {
     }
   };
 
+  // Fecha o ciclo anterior (compra ativa anterior) ao iniciar um novo ciclo.
+  // Garante que "Ciclo anterior" passe a aparecer e seja atualizado automaticamente.
+  const closePreviousActiveCycle = async (productId: string, newCycleStartDate: string) => {
+    const prev = purchases
+      .filter(p => p.product_id === productId && p.started_using_at && !p.finished_at)
+      .sort((a, b) => (b.started_using_at || '').localeCompare(a.started_using_at || ''))[0];
+    if (!prev) return;
+    if ((prev.started_using_at || '') >= newCycleStartDate) return;
+    // finished_at = dia anterior ao novo ciclo, sem permitir valor menor que started_using_at
+    const d = parseISO(newCycleStartDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    const candidate = format(d, 'yyyy-MM-dd');
+    const finishedAt = candidate < (prev.started_using_at || '') ? prev.started_using_at! : candidate;
+    await supabase.from('product_purchases').update({ finished_at: finishedAt }).eq('id', prev.id);
+  };
+
   const handleStockSubmit = async () => {
     if (!stockForm.product_id || stockForm.quantity <= 0) return;
     try {
@@ -326,6 +343,11 @@ export default function Produtos() {
       const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
       // Início do uso = data da compra (não "hoje"), respeitando o que o usuário informou
       const cycleStartDate = stockForm.purchase_date || format(new Date(), 'yyyy-MM-dd');
+
+      // Antes de criar a nova compra ativa, fecha o ciclo anterior (se houver)
+      if (isFinished) {
+        await closePreviousActiveCycle(stockForm.product_id, cycleStartDate);
+      }
 
       await createPurchase.mutateAsync({
         product_id: stockForm.product_id,
@@ -377,6 +399,11 @@ export default function Produtos() {
         ? today
         : (purchaseForm.purchase_date || today);
       const startedUsingAt = promoteNow ? cycleStartDate : null;
+
+      // Fecha o ciclo anterior antes de promover a nova compra (se aplicável)
+      if (promoteNow && startedUsingAt) {
+        await closePreviousActiveCycle(purchaseForm.product_id, startedUsingAt);
+      }
 
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,

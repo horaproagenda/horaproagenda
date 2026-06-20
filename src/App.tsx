@@ -94,6 +94,7 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useAutoHealing();
   useAgendaIntegrityAutoCheck();
   useSaleFlowIntegrityAutoCheck();
+  usePaymentIntegrityAutoCheck();
   return <>{children}</>;
 }
 

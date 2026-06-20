@@ -10,6 +10,8 @@ import {
   UserX,
   List,
   MoreVertical,
+  Bot,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,9 @@ interface MobileAgendaHeaderProps {
   onNewAbsence?: () => void;
   onManageAbsences?: () => void;
   onToday?: () => void;
+  onOpenAutomations?: () => void;
+  onSendWhatsappReminders?: () => void;
+  sendingReminders?: boolean;
 }
 
 export function MobileAgendaHeader({
@@ -60,6 +65,9 @@ export function MobileAgendaHeader({
   onNewAbsence,
   onManageAbsences,
   onToday,
+  onOpenAutomations,
+  onSendWhatsappReminders,
+  sendingReminders = false,
 }: MobileAgendaHeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   
@@ -146,7 +154,7 @@ export function MobileAgendaHeader({
             Novo
           </Button>
 
-          {(onNewAbsence || onManageAbsences || onToday) && (
+          {(onNewAbsence || onManageAbsences || onToday || onOpenAutomations || onSendWhatsappReminders) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -158,12 +166,29 @@ export function MobileAgendaHeader({
                   <MoreVertical className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+              <DropdownMenuContent align="end" className="w-60 bg-popover z-50">
                 <DropdownMenuLabel className="text-[11px]">Ações</DropdownMenuLabel>
                 {onToday && (
                   <DropdownMenuItem onClick={onToday} className="text-xs gap-2">
                     <ChevronLeft className="h-3.5 w-3.5 opacity-0" />
                     Ir para hoje
+                  </DropdownMenuItem>
+                )}
+                {(onOpenAutomations || onSendWhatsappReminders) && <DropdownMenuSeparator />}
+                {onOpenAutomations && (
+                  <DropdownMenuItem onClick={onOpenAutomations} className="text-xs gap-2">
+                    <Bot className="h-3.5 w-3.5" />
+                    Lista de espera, encaixe, ocupação, recorrência
+                  </DropdownMenuItem>
+                )}
+                {onSendWhatsappReminders && (
+                  <DropdownMenuItem
+                    onClick={onSendWhatsappReminders}
+                    disabled={sendingReminders}
+                    className="text-xs gap-2"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {sendingReminders ? 'Enviando lembretes...' : 'Enviar lembretes WhatsApp'}
                   </DropdownMenuItem>
                 )}
                 {(onNewAbsence || onManageAbsences) && <DropdownMenuSeparator />}

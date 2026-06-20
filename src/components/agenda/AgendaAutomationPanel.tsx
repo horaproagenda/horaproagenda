@@ -22,6 +22,11 @@ interface AgendaAutomationPanelProps {
   onOpenNewAppointment?: (date?: Date, time?: string) => void;
   onScheduleFromWaitlist?: (entry: WaitlistEntry) => void;
   onScheduleFromRecurrence?: (clientId: string, serviceId: string, date: Date) => void;
+  /**
+   * When true, panel always renders the full content (no collapse/expand strip).
+   * Use this when embedding the panel inside a Sheet/Dialog on smaller screens.
+   */
+  forceExpanded?: boolean;
 }
 
 export function AgendaAutomationPanel({
@@ -29,9 +34,10 @@ export function AgendaAutomationPanel({
   onOpenNewAppointment,
   onScheduleFromWaitlist,
   onScheduleFromRecurrence,
+  forceExpanded = false,
 }: AgendaAutomationPanelProps) {
   // Start collapsed by default to not obstruct agenda view
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(!forceExpanded);
   const [activeTab, setActiveTab] = useState('occupancy');
 
   const handleGapSelect = (gap: { start: Date; professionalId: string }) => {
@@ -39,7 +45,7 @@ export function AgendaAutomationPanel({
     onOpenNewAppointment?.(gap.start, time);
   };
 
-  if (isCollapsed) {
+  if (isCollapsed && !forceExpanded) {
     return (
       <div className="w-10 border-l bg-muted/20 flex flex-col items-center py-4 gap-2">
         <Button
@@ -89,21 +95,26 @@ export function AgendaAutomationPanel({
   }
 
   return (
-    <div className="w-80 border-l bg-muted/10 flex flex-col">
+    <div className={cn(
+      "flex flex-col bg-muted/10",
+      forceExpanded ? "w-full h-full" : "w-80 border-l"
+    )}>
       {/* Header */}
       <div className="p-3 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Automações</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => setIsCollapsed(true)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        {!forceExpanded && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsCollapsed(true)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}

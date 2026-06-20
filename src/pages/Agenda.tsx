@@ -116,7 +116,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AgendaAutomationPanel } from '@/components/agenda/AgendaAutomationPanel';
-import { supabase } from '@/integrations/supabase/client';
+
 
 
 import { mergeAgendaTimeSlots } from '@/lib/agendaSlots';

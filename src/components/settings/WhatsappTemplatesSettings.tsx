@@ -132,7 +132,9 @@ export function WhatsappTemplatesSettings() {
       send_offset_hours: template.send_offset_hours ?? (template.type === 'birthday' ? 9 : 2),
       quiet_hours_start: template.quiet_hours_start ?? 8,
       quiet_hours_end: template.quiet_hours_end ?? 20,
-      professional_id: template.professional_id ?? '',
+      // Templates antigos podem ter professional_id null (= todos). Mapeamos para 'all'
+      // para refletir explicitamente a escolha do usuário no select.
+      professional_id: template.professional_id ?? 'all',
       is_active: template.is_active,
       include_confirmation_buttons: !!template.include_confirmation_buttons,
     });
@@ -142,14 +144,23 @@ export function WhatsappTemplatesSettings() {
     templates.filter(t => (t.professional_id ?? null) === (profId ?? null) && t.id !== exceptId).length;
 
   const handleSave = () => {
-    // Non-staff professionals can only save templates tied to themselves.
-    const targetProfId = isStaff
-      ? (formData.professional_id || null)
-      : myProfessionalId;
-    if (!isStaff && !targetProfId) {
-      toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
-      return;
+    // Profissional agora é OBRIGATÓRIO: o usuário precisa escolher
+    // "Todos os profissionais" (=> null) ou um profissional específico.
+    let targetProfId: string | null;
+    if (isStaff) {
+      if (!formData.professional_id || formData.professional_id === '__unset__') {
+        toast.error('Selecione "Todos os profissionais" ou um profissional específico.');
+        return;
+      }
+      targetProfId = formData.professional_id === 'all' ? null : formData.professional_id;
+    } else {
+      targetProfId = myProfessionalId;
+      if (!targetProfId) {
+        toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
+        return;
+      }
     }
+
     const existingCount = countForProfessional(targetProfId, editingId ?? undefined);
     if (existingCount >= MAX_TEMPLATES_PER_PROFESSIONAL) {
       toast.error(
@@ -168,7 +179,6 @@ export function WhatsappTemplatesSettings() {
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: adjustedSendOffset,
-      // Janela de envio é definida globalmente por profissional (coluna do WhatsApp em Configurações).
       quiet_hours_start: null,
       quiet_hours_end: null,
       professional_id: targetProfId,
@@ -184,6 +194,7 @@ export function WhatsappTemplatesSettings() {
     }
     setFormData(initialForm);
   };
+
 
   const handleCancel = () => {
     setEditingId(null);

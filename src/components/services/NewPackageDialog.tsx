@@ -271,6 +271,21 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
               </div>
             )}
 
+            {/* Info: o que é cada tipo de pacote */}
+            <div className={
+              packageType === 'sequential'
+                ? 'flex items-start gap-2 rounded-md border border-fuchsia-200 bg-fuchsia-50/60 p-2.5 text-[11px] leading-relaxed text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                : 'flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50/60 p-2.5 text-[11px] leading-relaxed text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-100'
+            }>
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <p>
+                {packageType === 'sequential'
+                  ? <><strong>Pacote sequencial</strong>: serviços diferentes em ordem definida, com intervalo entre etapas. A próxima sessão só é liberada após a anterior — ideal para protocolos por etapas.</>
+                  : <><strong>Pacote comum</strong>: várias sessões do mesmo serviço (ex.: 10 massagens). O cliente usa livremente até esgotar o saldo, respeitando o intervalo configurado.</>}
+              </p>
+            </div>
+
+
             {/* Sessions, Interval, Duration */}
             {packageType === 'standard' ? (
               <div className="grid grid-cols-3 gap-3">

@@ -2782,6 +2782,7 @@ export function AppointmentDetailDialog({
         initialMessage={whatsappPreviewMessage}
         title={whatsappPreviewTitle}
         description={whatsappPreviewDescription}
+        onMessageChange={setWhatsappPreviewMessage}
         onSent={() => toast.success('WhatsApp aberto. Confirme o envio da mensagem.')}
       />
     </>

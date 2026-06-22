@@ -134,8 +134,8 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="text-base">
             {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
           </DialogTitle>
@@ -144,8 +144,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-            <ScrollArea className="flex-1 pr-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 pr-4">
+
               <div className="space-y-2.5 pb-2">
                 <div className="grid grid-cols-2 gap-2.5">
                   <FormField

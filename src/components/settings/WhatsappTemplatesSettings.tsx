@@ -462,7 +462,16 @@ export function WhatsappTemplatesSettings() {
                 <Button variant="outline" onClick={handleCancel}>
                   <X className="h-4 w-4 mr-1" /> Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={!formData.name || !formData.message || limitWarning}>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    !formData.name ||
+                    !formData.message ||
+                    limitWarning ||
+                    (isStaff && (!formData.professional_id || formData.professional_id === '__unset__'))
+                  }
+                >
+
                   <Save className="h-4 w-4 mr-1" /> Salvar
                 </Button>
               </div>

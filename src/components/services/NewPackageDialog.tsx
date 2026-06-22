@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus, Trash2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

@@ -335,10 +335,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   )}
                 />
               </div>
-            </ScrollArea>
+            </div>
             
-            {/* Buttons OUTSIDE ScrollArea - always visible */}
-            <div className="flex justify-end gap-2 pt-3 border-t mt-2">
+            {/* Buttons OUTSIDE scroll - always visible */}
+            <div className="flex justify-end gap-2 p-4 border-t shrink-0 bg-muted/10">
+
               <Button
                 type="button"
                 variant="outline"

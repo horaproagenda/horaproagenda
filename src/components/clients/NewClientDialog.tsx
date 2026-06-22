@@ -727,6 +727,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             </div>
           </form>
         </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

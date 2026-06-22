@@ -59,10 +59,13 @@ const initialForm: FormState = {
   send_offset_hours: 9,
   quiet_hours_start: 8,
   quiet_hours_end: 20,
-  professional_id: '',
+  // Marcador de "não escolhido" — força o usuário a selecionar explicitamente
+  // "Todos os profissionais" ou um profissional específico antes de salvar.
+  professional_id: '__unset__',
   is_active: true,
   include_confirmation_buttons: false,
 };
+
 
 export function WhatsappTemplatesSettings() {
   const { templates: allTemplates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();

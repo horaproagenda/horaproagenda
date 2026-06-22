@@ -270,7 +270,9 @@ export function WhatsappTemplatesSettings() {
               onClick={() => {
                 setFormData({
                   ...initialForm,
-                  professional_id: isStaff ? '' : (myProfessionalId ?? ''),
+                  // Staff começa sem profissional escolhido (obrigatório selecionar).
+                  // Profissionais não-staff já têm o próprio id fixado.
+                  professional_id: isStaff ? '__unset__' : (myProfessionalId ?? '__unset__'),
                 });
                 setIsCreating(true);
               }}
@@ -284,31 +286,8 @@ export function WhatsappTemplatesSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg bg-muted/50 p-3">
-          <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
-          <p className="text-xs text-muted-foreground mb-2">
-            Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {variablesHelp.map(v => (
-              <button
-                type="button"
-                key={v.variable}
-                onClick={() => insertVariable(v.variable)}
-                disabled={!isCreating && !editingId}
-                className="text-xs"
-                title={v.description}
-              >
-                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
-                  {v.variable} — {v.description}
-                </Badge>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {(isCreating || editingId) && (
-          <div className="rounded-lg border border-border p-4 space-y-4 bg-card">
+          <div ref={formContainerRef} className="rounded-lg border border-border p-4 space-y-4 bg-card">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome do Template</Label>
@@ -336,12 +315,16 @@ export function WhatsappTemplatesSettings() {
 
             {isStaff ? (
               <div className="space-y-2">
-                <Label>Profissional (opcional)</Label>
+                <Label>
+                  Profissional <span className="text-destructive">*</span>
+                </Label>
                 <Select
-                  value={formData.professional_id || 'all'}
-                  onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
+                  value={formData.professional_id || '__unset__'}
+                  onValueChange={(v) => setFormData({ ...formData, professional_id: v })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione todos os profissionais ou um específico" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os profissionais</SelectItem>
                     {professionals.map(p => (
@@ -349,16 +332,15 @@ export function WhatsappTemplatesSettings() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Esta mensagem será disparada para os agendamentos do(s) profissional(is) selecionado(s).
+                </p>
               </div>
             ) : (
               <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                 Estas mensagens serão usadas apenas para os seus atendimentos.
               </div>
             )}
-            {isStaff && (
-              <></>
-            )}
-            {/* warning placeholder kept below */}
             <div>
               {limitWarning && (
                 <p className="text-xs text-destructive">
@@ -366,6 +348,30 @@ export function WhatsappTemplatesSettings() {
                 </p>
               )}
             </div>
+
+            {/* Variáveis disponíveis — só aparecem dentro do formulário de edição/criação. */}
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {variablesHelp.map(v => (
+                  <button
+                    type="button"
+                    key={v.variable}
+                    onClick={() => insertVariable(v.variable)}
+                    className="text-xs"
+                    title={v.description}
+                  >
+                    <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
+                      {v.variable} — {v.description}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            </div>
+
 
             {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="space-y-2">

@@ -37,16 +37,26 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Despesa Financeira', type: 'expense' },
-  { name: 'Despesa Fixa', type: 'expense' },
-  { name: 'Despesa Variável', type: 'expense' },
-  { name: 'Fornecedor', type: 'expense' },
-  { name: 'Funcionários', type: 'expense' },
-  { name: 'Imposto', type: 'expense' },
-  { name: 'Receita', type: 'income' },
-  { name: 'Transferência', type: 'expense' },
+const DEFAULT_CATEGORIES: { name: string; type: 'income' | 'expense' }[] = [
+  // Receitas
+  { name: 'Receita de Serviços', type: 'income' },
+  { name: 'Receita de Produtos', type: 'income' },
+  { name: 'Receita de Pacotes', type: 'income' },
+  { name: 'Outras Receitas', type: 'income' },
+  // Despesas
+  { name: 'Aluguel', type: 'expense' },
+  { name: 'Água e Luz', type: 'expense' },
+  { name: 'Internet e Telefone', type: 'expense' },
+  { name: 'Funcionários / Salários', type: 'expense' },
+  { name: 'Comissões', type: 'expense' },
+  { name: 'Impostos', type: 'expense' },
+  { name: 'Fornecedores', type: 'expense' },
+  { name: 'Material de Trabalho', type: 'expense' },
+  { name: 'Marketing', type: 'expense' },
+  { name: 'Manutenção', type: 'expense' },
+  { name: 'Outras Despesas', type: 'expense' },
 ];
+
 
 interface GroupedEntry {
   baseDescription: string;

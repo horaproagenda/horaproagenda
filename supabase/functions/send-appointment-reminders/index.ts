@@ -488,13 +488,14 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
         for (const apt of appts || []) {
           const phone = (apt as any).client?.phone;
-          if (!phone) { summary.skipped++; continue; }
+          const clientActive = (apt as any).client?.is_active !== false;
+          if (!phone || !clientActive) { summary.skipped++; continue; }
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
@@ -558,13 +559,14 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
         for (const apt of appts || []) {
           const phone = (apt as any).client?.phone;
-          if (!phone) { summary.skipped++; continue; }
+          const clientActive = (apt as any).client?.is_active !== false;
+          if (!phone || !clientActive) { summary.skipped++; continue; }
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
@@ -626,12 +628,13 @@ serve(async (req) => {
         const toIso = new Date(now - (minO - 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, end_time, start_time, status, professional_id, client:clients(name, phone), service:services(name), professional:professionals(name)')
+          .select('id, end_time, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('end_time', fromIso).lte('end_time', toIso).eq('status', 'completed');
 
         for (const apt of appts || []) {
           const phone = (apt as any).client?.phone;
-          if (!phone) { summary.skipped++; continue; }
+          const clientActive = (apt as any).client?.is_active !== false;
+          if (!phone || !clientActive) { summary.skipped++; continue; }
           const end = new Date((apt as any).end_time || apt.start_time);
           const hoursAfter = (now - end.getTime()) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
@@ -676,7 +679,7 @@ serve(async (req) => {
       const dd = String(today.getUTCDate()).padStart(2, '0');
 
       const { data: clients } = await supabase
-        .from('clients').select('id, name, phone, birthdate, assigned_professional_id').not('birthdate', 'is', null);
+        .from('clients').select('id, name, phone, birthdate, assigned_professional_id, is_active').not('birthdate', 'is', null).eq('is_active', true);
 
       for (const c of clients || []) {
         if (!c.phone || !c.birthdate) continue;

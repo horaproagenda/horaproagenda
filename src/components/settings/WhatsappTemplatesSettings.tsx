@@ -210,10 +210,13 @@ export function WhatsappTemplatesSettings() {
 
   const handlePreviewSend = () => {
     const sampleClient = 'Maria Aparecida Silva';
+    const profIdForPreview = formData.professional_id && formData.professional_id !== 'all' && formData.professional_id !== '__unset__'
+      ? formData.professional_id
+      : null;
     const message = renderTemplate(formData.message, {
       clientName: sampleClient,
       serviceName: 'Limpeza de pele',
-      professionalName: professionals.find(p => p.id === formData.professional_id)?.name || 'Profissional',
+      professionalName: (profIdForPreview && professionals.find(p => p.id === profIdForPreview)?.name) || 'Profissional',
       appointmentDate: new Date(),
       appointmentTime: '14:30',
       confirmationToken: '00000000-0000-0000-0000-000000000000',
@@ -228,10 +231,21 @@ export function WhatsappTemplatesSettings() {
     id ? (professionals.find(p => p.id === id)?.name || '—') : 'Todos os profissionais';
 
   const limitWarning = useMemo(() => {
-    const targetProfId = formData.professional_id || null;
+    if (!formData.professional_id || formData.professional_id === '__unset__') return false;
+    const targetProfId = formData.professional_id === 'all' ? null : formData.professional_id;
     const count = countForProfessional(targetProfId, editingId ?? undefined);
     return count >= MAX_TEMPLATES_PER_PROFESSIONAL;
   }, [formData.professional_id, templates, editingId]);
+
+  // Form do template — rolar para a posição visível quando criamos/editamos,
+  // para que o usuário não precise rolar a página manualmente.
+  const formContainerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if ((isCreating || editingId) && formContainerRef.current) {
+      formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isCreating, editingId]);
+
 
   return (
     <>

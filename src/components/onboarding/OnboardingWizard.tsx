@@ -127,7 +127,7 @@ export function OnboardingWizard({ open }: Props) {
 
     const { error } = await supabase.from('services').insert({
       name: serviceName.trim(),
-      duration_minutes: duration,
+      duration,
       price,
       is_active: true,
     } as any);

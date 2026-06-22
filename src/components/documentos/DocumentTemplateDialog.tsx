@@ -233,12 +233,12 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
           <div className="px-6 py-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-end gap-3">
                   <FormField
                     control={form.control}
                     name="title"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex-1">
                         <FormLabel className="text-xs">Título *</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Ex: Anamnese Facial" className="h-9" />
@@ -252,8 +252,8 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                     control={form.control}
                     name="is_active"
                     render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border p-3 h-9">
-                        <FormLabel className="text-xs m-0">Ativo</FormLabel>
+                      <FormItem className="flex items-center gap-2 rounded-md border px-2.5 h-9 shrink-0">
+                        <FormLabel className="text-[11px] m-0 leading-none">Ativo</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -261,6 +261,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                     )}
                   />
                 </div>
+
 
                 <FormField
                   control={form.control}

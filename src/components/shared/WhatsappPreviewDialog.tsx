@@ -124,7 +124,7 @@ export function WhatsappPreviewDialog({
           <Textarea
             id="whatsapp-preview-message"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => handleMessageChange(e.target.value)}
             rows={12}
             className="font-mono text-xs whitespace-pre-wrap"
             placeholder="Digite a mensagem..."

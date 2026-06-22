@@ -121,10 +121,26 @@ export function CategoriasFinanceiras() {
     overdue_tolerance_days: '0',
   });
 
-  // NOTE: Auto-criação de categorias padrão foi REMOVIDA porque causava
-  // duplicatas em race-condition (re-execuções do effect antes do invalidate
-  // chegar). O índice único (lower(name), type) no banco agora protege contra
-  // duplicatas, e o usuário deve criar suas próprias categorias manualmente.
+  // Seed idempotente das categorias padrão: só dispara quando NÃO existe
+  // nenhuma categoria do tipo (income/expense). A flag local + índice único
+  // (lower(name), type) no banco evitam duplicatas em race-condition.
+  const [seededDefaults, setSeededDefaults] = useState(false);
+  useEffect(() => {
+    if (seededDefaults) return;
+    if (categories.length > 0) { setSeededDefaults(true); return; }
+    setSeededDefaults(true);
+    DEFAULT_CATEGORIES.forEach(cat => {
+      createCategory.mutate({
+        name: cat.name,
+        type: cat.type,
+        is_recurring: false,
+        description: null,
+        is_active: true,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.length]);
+
 
   // Use deduplicated categories from hook
   const expenseCats = expenseCategories;

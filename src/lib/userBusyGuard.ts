@@ -19,7 +19,9 @@ if (typeof window !== 'undefined') {
   };
   window.addEventListener('input', markBusy, true);
   window.addEventListener('keydown', (e) => {
-    if (e.key.length === 1 || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(e.key)) {
+    const key = (e as KeyboardEvent)?.key;
+    if (typeof key !== 'string') return;
+    if (key.length === 1 || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(key)) {
       markBusy();
     }
   }, true);

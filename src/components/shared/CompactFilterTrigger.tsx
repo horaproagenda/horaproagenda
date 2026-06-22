@@ -38,7 +38,7 @@ export const CompactFilterTrigger = forwardRef<
       )}
       {...props}
     >
-      <SlidersHorizontal className="h-3 w-3" />
+      <Filter className="h-3 w-3" />
       <span>{label}</span>
       {hasActive && (
         <Badge

@@ -55,9 +55,10 @@ interface ImportResult {
 interface BulkImportDialogProps {
   type: 'services' | 'clients' | 'package_templates';
   onImportComplete?: () => void;
+  trigger?: React.ReactNode;
 }
 
-export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogProps) {
+export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedService[] | ParsedClient[] | ParsedPackageTemplate[]>([]);
@@ -398,11 +399,13 @@ export function BulkImportDialog({ type, onImportComplete }: BulkImportDialogPro
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetDialog(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Upload className="h-4 w-4" />
-          Importar
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" size="icon" className="h-8 w-8" title="Importar">
+            <Upload className="h-4 w-4" />
+          </Button>
+        )}
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Importar {type === 'services' ? 'Serviços' : type === 'clients' ? 'Clientes' : 'Modelos de Pacote'} em Massa</DialogTitle>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLogAccessOnMount } from '@/hooks/useLogAccess';
-import { Plus, Sparkles, Loader2, Package, Download, FolderPlus, MoreHorizontal, Repeat } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Package, Download, Upload, FolderPlus, MoreHorizontal, Repeat, Info } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
@@ -13,7 +13,7 @@ import { NewCategoryDialog } from '@/components/services/NewCategoryDialog';
 import { UnifiedServiceFilters } from '@/components/services/UnifiedServiceFilters';
 import { BulkImportDialog } from '@/components/services/BulkImportDialog';
 import { ManagePackageTemplatesDialog } from '@/components/services/ManagePackageTemplatesDialog';
-import { PackageAvailabilityReportDialog } from '@/components/services/PackageAvailabilityReportDialog';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,6 +37,7 @@ import { exportToCSV } from '@/lib/exportUtils';
 import { Service, PackageTemplate } from '@/types';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
 import { getCategoryColor } from '@/lib/categoryColors';
+import { cn } from '@/lib/utils';
 
 const defaultCategories = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
@@ -166,7 +167,7 @@ const PackageCardsSection: React.FC<PackageCardsSectionProps> = ({ items, onSele
 
 const Servicos: React.FC = () => {
   useLogAccessOnMount({ module: 'servicos', action: 'view', fieldsViewed: ['name', 'category', 'duration', 'price', 'professionals', 'is_active'] });
-  const [activeTab, setActiveTab] = useLocalStorage<string>('servicos-tab', 'services');
+  const [activeTab, setActiveTab] = useState<string>('services');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<PackageTemplate | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -452,6 +453,22 @@ const Servicos: React.FC = () => {
               </div>
             </div>
 
+            {/* Info banner: differentiate Serviços × Kits */}
+            <div className={cn(
+              'flex items-start gap-2 rounded-md border p-2.5 text-xs',
+              serviceTypeFilter === 'kit'
+                ? 'border-fuchsia-200 bg-fuchsia-50/60 text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                : 'border-sky-200 bg-sky-50/60 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
+            )}>
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <p className="leading-relaxed">
+                {serviceTypeFilter === 'kit'
+                  ? <><strong>Kits de Serviços</strong> são combinações de vários serviços diferentes vendidos juntos em um único atendimento — ideal para combos como "lavar + cortar + escovar".</>
+                  : <><strong>Serviços</strong> são procedimentos individuais (ex.: corte, manicure, massagem) com duração e preço próprios e agendados de forma avulsa. Já os <strong>Kits</strong> reúnem vários serviços em um só.</>}
+              </p>
+            </div>
+
+
             {/* Line 3: Filters + New Service + Import/Export */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -479,17 +496,23 @@ const Servicos: React.FC = () => {
                   hideSearch
                 />
 
+                <BulkImportDialog
+                  type="services"
+                  onImportComplete={refetch}
+                  trigger={
+                    <Button variant="outline" size="icon" className="h-8 w-8" title="Importar serviços">
+                      <Upload className="h-3.5 w-3.5" />
+                    </Button>
+                  }
+                />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                      Importar/Exportar
+                    <Button variant="outline" size="icon" className="h-8 w-8" title="Exportar">
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <BulkImportDialog type="services" onImportComplete={refetch} />
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportServicesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
                       Exportar Serviços avulsos
@@ -500,6 +523,7 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
 
                 <NewCategoryDialog existingCategories={allCategories} onCategoryCreated={handleCategoryCreated}>
                   <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
@@ -648,6 +672,21 @@ const Servicos: React.FC = () => {
               </div>
             </div>
 
+            {/* Info banner: Pacote comum × Pacote sequencial */}
+            <div className={cn(
+              'flex items-start gap-2 rounded-md border p-2.5 text-xs',
+              packageTypeFilter === 'sequential'
+                ? 'border-fuchsia-200 bg-fuchsia-50/60 text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                : 'border-violet-200 bg-violet-50/60 text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-100'
+            )}>
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <p className="leading-relaxed">
+                {packageTypeFilter === 'sequential'
+                  ? <><strong>Pacote sequencial</strong>: serviços diferentes em ordem definida, com intervalo entre etapas (ex.: avaliação → tratamento 1 → tratamento 2). A próxima sessão só libera após a anterior.</>
+                  : <><strong>Pacote comum</strong>: várias sessões do mesmo serviço (ex.: 10 sessões de massagem). O cliente usa livremente até esgotar o saldo, respeitando o intervalo entre sessões.</>}
+              </p>
+            </div>
+
             {/* Line 3: Filters + New Package + Import/Export */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -677,17 +716,23 @@ const Servicos: React.FC = () => {
                   hideSearch
                 />
 
+                <BulkImportDialog
+                  type="package_templates"
+                  onImportComplete={refetchPackages}
+                  trigger={
+                    <Button variant="outline" size="icon" className="h-8 w-8" title="Importar pacotes">
+                      <Upload className="h-3.5 w-3.5" />
+                    </Button>
+                  }
+                />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                      Importar/Exportar
+                    <Button variant="outline" size="icon" className="h-8 w-8" title="Exportar">
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <BulkImportDialog type="package_templates" onImportComplete={refetchPackages} />
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportStandardPackagesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
                       Exportar Pacotes comuns
@@ -698,9 +743,8 @@ const Servicos: React.FC = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <PackageAvailabilityReportDialog />
               </div>
+
 
               <div className="flex items-center gap-2">
                 <NewPackageDialog onPackageCreated={refetchPackages}>

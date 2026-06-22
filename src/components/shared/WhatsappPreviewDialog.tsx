@@ -27,6 +27,8 @@ interface WhatsappPreviewDialogProps {
   description?: string;
   /** Called with the final (possibly edited) message after the user confirms sending. */
   onSent?: (finalMessage: string) => void;
+  /** Called on every edit so the parent can persist the draft across re-renders/remounts. */
+  onMessageChange?: (message: string) => void;
 }
 
 /**
@@ -41,19 +43,34 @@ export function WhatsappPreviewDialog({
   title = 'Prévia da mensagem',
   description = 'Revise e edite a mensagem antes de enviar para o WhatsApp.',
   onSent,
+  onMessageChange,
 }: WhatsappPreviewDialogProps) {
   const [message, setMessage] = useState(initialMessage);
   const [recipientPhone, setRecipientPhone] = useState(phone || '');
   const [copied, setCopied] = useState(false);
+  const lastInitialRef = useRef(initialMessage);
   const { sendMessage, isLoading } = useWhatsapp();
+
+  // Reset apenas quando o initialMessage realmente mudar (novo template/agendamento),
+  // preservando edições do usuário enquanto navega dentro do diálogo pai.
+  useEffect(() => {
+    if (initialMessage !== lastInitialRef.current) {
+      lastInitialRef.current = initialMessage;
+      setMessage(initialMessage);
+    }
+  }, [initialMessage]);
 
   useEffect(() => {
     if (open) {
-      setMessage(initialMessage);
       setRecipientPhone(phone || '');
       setCopied(false);
     }
-  }, [open, initialMessage, phone]);
+  }, [open, phone]);
+
+  const handleMessageChange = (value: string) => {
+    setMessage(value);
+    onMessageChange?.(value);
+  };
 
   const handleSend = async () => {
     if (!recipientPhone.trim()) {

@@ -102,11 +102,13 @@ export function OnboardingWizard({ open }: Props) {
       .select('id', { count: 'exact', head: true });
     if ((count ?? 0) > 0) return true;
 
+    const specialtyValue = profSpecialty.trim();
     const { error } = await supabase.from('professionals').insert({
       name: profName.trim(),
-      specialty: profSpecialty.trim() || null,
+      specialties: specialtyValue ? [specialtyValue] : null,
       is_active: true,
       user_id: user?.id ?? null,
+      email: profile?.email ?? user?.email ?? null,
     } as any);
     if (error) {
       toast.error('Erro ao cadastrar profissional: ' + error.message);

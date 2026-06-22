@@ -330,30 +330,24 @@ const Clientes = () => {
               onClearAll={handleClearFilters}
             />
 
-            {/* Import/Export Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
-                  <Upload className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Importar</span>
-                  /
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Exportar</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <BulkImportClientsDialog onImported={refetch}>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar Clientes
-                  </DropdownMenuItem>
-                </BulkImportClientsDialog>
-                <DropdownMenuItem onClick={handleExport}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar Clientes
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Import (icon-only) */}
+            <BulkImportClientsDialog onImported={refetch}>
+              <Button variant="outline" size="icon" className="h-9 w-9" title="Importar clientes">
+                <Upload className="h-3.5 w-3.5" />
+              </Button>
+            </BulkImportClientsDialog>
+
+            {/* Export (icon-only) */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              title="Exportar clientes"
+              onClick={handleExport}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+
           </div>
 
           <div className="flex items-center gap-2">

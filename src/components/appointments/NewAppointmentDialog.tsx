@@ -789,6 +789,17 @@ export function NewAppointmentDialog({
     if (!selectedClient || !date || !time || !serviceOrPackage) {
       return;
     }
+
+    if (!selectedProfessional) {
+      toast.error('Selecione um profissional para o agendamento.');
+      return;
+    }
+
+    if (activeRooms.length > 1 && !selectedRoom) {
+      toast.error('Selecione uma sala para o agendamento.');
+      return;
+    }
+
     
     // Block if outside business hours
     if (businessHoursError) {
@@ -2101,8 +2112,8 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Profissional</Label>
+            <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
+              <Label className="text-violet-700 dark:text-violet-300 font-medium">Profissional *</Label>
               <SearchableSelect
                 options={activeProfessionals.map(p => ({
                   value: p.id,
@@ -2111,7 +2122,7 @@ Até breve! ✨`;
                 }))}
                 value={selectedProfessional}
                 onChange={setSelectedProfessional}
-                placeholder="Selecione um profissional (opcional)"
+                placeholder="Selecione um profissional"
                 searchPlaceholder="Buscar profissional..."
                 emptyMessage="Nenhum profissional encontrado"
               />
@@ -2127,8 +2138,10 @@ Até breve! ✨`;
               />
             )}
 
-            <div className="space-y-2">
-              <Label>Sala</Label>
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <Label className="text-amber-700 dark:text-amber-300 font-medium">
+                Sala{activeRooms.length > 1 ? ' *' : ''}
+              </Label>
               <SearchableSelect
                 options={activeRooms.map(r => ({
                   value: r.id,
@@ -2136,11 +2149,12 @@ Até breve! ✨`;
                 }))}
                 value={selectedRoom}
                 onChange={setSelectedRoom}
-                placeholder="Selecione uma sala (opcional)"
+                placeholder={activeRooms.length > 1 ? 'Selecione uma sala' : 'Selecione uma sala (opcional)'}
                 searchPlaceholder="Buscar sala..."
                 emptyMessage="Nenhuma sala encontrada"
               />
             </div>
+
 
             <div className="space-y-2">
               <Label>Equipamentos</Label>
@@ -2174,9 +2188,9 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
               <div className="space-y-2">
-                <Label>Data *</Label>
+                <Label className="text-sky-700 dark:text-sky-300 font-medium">Data *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -2197,9 +2211,7 @@ Até breve! ✨`;
                       onSelect={setDate}
                       initialFocus
                       disabled={(date) => {
-                        // Disable past dates
                         if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
-                        // Disable non-work days
                         if (!isWorkDay(date)) return true;
                         return false;
                       }}
@@ -2209,97 +2221,95 @@ Até breve! ✨`;
                 </Popover>
               </div>
 
-              <div className="space-y-2">
-                <Label>Horário *</Label>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Início</Label>
-                    <div className="flex items-center gap-1">
-                      <div className="relative flex-1">
-                        <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="time"
-                          value={time}
-                          onChange={(e) => setTime(e.target.value)}
-                          className="pl-8 h-9"
-                          placeholder="HH:MM"
-                        />
-                      </div>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
-                            <CalendarIcon className="h-3.5 w-3.5" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2 z-50" align="end">
-                          <p className="text-xs font-medium mb-2">Horários sugeridos</p>
-                          <ScrollArea className="h-[200px]">
-                            <div className="space-y-1">
-                              {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
-                                <Button
-                                  key={slot}
-                                  variant={time === slot ? "default" : "ghost"}
-                                  size="sm"
-                                  type="button"
-                                  className={cn(
-                                    "w-full justify-start text-left h-8",
-                                    !isAvailable && "opacity-50"
-                                  )}
-                                  onClick={() => {
-                                    setTime(slot);
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2 w-full">
-                                    {isAvailable ? (
-                                      <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                                    ) : (
-                                      <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
-                                    )}
-                                    <span>{slot}</span>
-                                    {!isAvailable && (
-                                      <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
-                                    )}
-                                  </div>
-                                </Button>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground flex items-center justify-between">
-                      <span>Término</span>
-                      {endTimeOverride && (
-                        <button
-                          type="button"
-                          className="text-[10px] text-primary hover:underline"
-                          onClick={() => setEndTimeOverride('')}
-                          title="Restaurar término automático"
-                        >
-                          Auto
-                        </button>
-                      )}
-                    </Label>
-                    <div className="relative">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-sky-700 dark:text-sky-300">Início *</Label>
+                  <div className="flex items-center gap-1">
+                    <div className="relative flex-1">
                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                       <Input
                         type="time"
-                        value={endTimeOverride || (appointmentTimes ? format(appointmentTimes.endTime, 'HH:mm') : '')}
-                        onChange={(e) => setEndTimeOverride(e.target.value)}
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
                         className="pl-8 h-9"
                         placeholder="HH:MM"
-                        disabled={!appointmentTimes}
                       />
                     </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2 z-50" align="end">
+                        <p className="text-xs font-medium mb-2">Horários sugeridos</p>
+                        <ScrollArea className="h-[200px]">
+                          <div className="space-y-1">
+                            {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
+                              <Button
+                                key={slot}
+                                variant={time === slot ? "default" : "ghost"}
+                                size="sm"
+                                type="button"
+                                className={cn(
+                                  "w-full justify-start text-left h-8",
+                                  !isAvailable && "opacity-50"
+                                )}
+                                onClick={() => {
+                                  setTime(slot);
+                                }}
+                              >
+                                <div className="flex items-center gap-2 w-full">
+                                  {isAvailable ? (
+                                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                  ) : (
+                                    <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                                  )}
+                                  <span>{slot}</span>
+                                  {!isAvailable && (
+                                    <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
+                                  )}
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  O término é calculado pela duração do serviço, mas pode ser editado manualmente.
-                </p>
+                <div className="space-y-1">
+                  <Label className="text-xs text-sky-700 dark:text-sky-300 flex items-center justify-between">
+                    <span>Término</span>
+                    {endTimeOverride && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setEndTimeOverride('')}
+                        title="Restaurar término automático"
+                      >
+                        Auto
+                      </button>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={endTimeOverride || (appointmentTimes ? format(appointmentTimes.endTime, 'HH:mm') : '')}
+                      onChange={(e) => setEndTimeOverride(e.target.value)}
+                      className="pl-8 h-9"
+                      placeholder="HH:MM"
+                      disabled={!appointmentTimes}
+                    />
+                  </div>
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                O término é calculado pela duração do serviço, mas pode ser editado manualmente.
+              </p>
             </div>
+
 
             {/* Show appointment summary */}
             {date && time && appointmentTimes && (selectedServiceData || selectedPackageData) && (
@@ -2340,7 +2350,7 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
                 {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
               </Button>

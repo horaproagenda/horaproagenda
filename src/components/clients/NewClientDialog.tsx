@@ -319,10 +319,11 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base">Novo Cliente</DialogTitle>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 px-5 py-3 text-white rounded-t-lg">
+          <DialogTitle className="text-base text-white">Novo Cliente</DialogTitle>
         </DialogHeader>
+        <div className="px-5 pb-5 pt-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
             {/* Person Type */}
@@ -726,6 +727,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             </div>
           </form>
         </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

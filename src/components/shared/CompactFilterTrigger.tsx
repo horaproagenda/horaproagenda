@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ export const CompactFilterTrigger = forwardRef<
       )}
       {...props}
     >
-      <SlidersHorizontal className="h-3 w-3" />
+      <Filter className="h-3 w-3" />
       <span>{label}</span>
       {hasActive && (
         <Badge

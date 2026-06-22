@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Plus, Edit2, Trash2, Save, X, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,10 +59,13 @@ const initialForm: FormState = {
   send_offset_hours: 9,
   quiet_hours_start: 8,
   quiet_hours_end: 20,
-  professional_id: '',
+  // Marcador de "não escolhido" — força o usuário a selecionar explicitamente
+  // "Todos os profissionais" ou um profissional específico antes de salvar.
+  professional_id: '__unset__',
   is_active: true,
   include_confirmation_buttons: false,
 };
+
 
 export function WhatsappTemplatesSettings() {
   const { templates: allTemplates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useWhatsappTemplates();
@@ -129,7 +132,9 @@ export function WhatsappTemplatesSettings() {
       send_offset_hours: template.send_offset_hours ?? (template.type === 'birthday' ? 9 : 2),
       quiet_hours_start: template.quiet_hours_start ?? 8,
       quiet_hours_end: template.quiet_hours_end ?? 20,
-      professional_id: template.professional_id ?? '',
+      // Templates antigos podem ter professional_id null (= todos). Mapeamos para 'all'
+      // para refletir explicitamente a escolha do usuário no select.
+      professional_id: template.professional_id ?? 'all',
       is_active: template.is_active,
       include_confirmation_buttons: !!template.include_confirmation_buttons,
     });
@@ -139,14 +144,23 @@ export function WhatsappTemplatesSettings() {
     templates.filter(t => (t.professional_id ?? null) === (profId ?? null) && t.id !== exceptId).length;
 
   const handleSave = () => {
-    // Non-staff professionals can only save templates tied to themselves.
-    const targetProfId = isStaff
-      ? (formData.professional_id || null)
-      : myProfessionalId;
-    if (!isStaff && !targetProfId) {
-      toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
-      return;
+    // Profissional agora é OBRIGATÓRIO: o usuário precisa escolher
+    // "Todos os profissionais" (=> null) ou um profissional específico.
+    let targetProfId: string | null;
+    if (isStaff) {
+      if (!formData.professional_id || formData.professional_id === '__unset__') {
+        toast.error('Selecione "Todos os profissionais" ou um profissional específico.');
+        return;
+      }
+      targetProfId = formData.professional_id === 'all' ? null : formData.professional_id;
+    } else {
+      targetProfId = myProfessionalId;
+      if (!targetProfId) {
+        toast.error('Seu usuário não está vinculado a um profissional. Contate o administrador.');
+        return;
+      }
     }
+
     const existingCount = countForProfessional(targetProfId, editingId ?? undefined);
     if (existingCount >= MAX_TEMPLATES_PER_PROFESSIONAL) {
       toast.error(
@@ -165,7 +179,6 @@ export function WhatsappTemplatesSettings() {
       message: formData.message,
       hours_before: ['reminder', 'confirmation'].includes(formData.type) ? formData.hours_before : null,
       send_offset_hours: adjustedSendOffset,
-      // Janela de envio é definida globalmente por profissional (coluna do WhatsApp em Configurações).
       quiet_hours_start: null,
       quiet_hours_end: null,
       professional_id: targetProfId,
@@ -182,6 +195,7 @@ export function WhatsappTemplatesSettings() {
     setFormData(initialForm);
   };
 
+
   const handleCancel = () => {
     setEditingId(null);
     setIsCreating(false);
@@ -196,10 +210,13 @@ export function WhatsappTemplatesSettings() {
 
   const handlePreviewSend = () => {
     const sampleClient = 'Maria Aparecida Silva';
+    const profIdForPreview = formData.professional_id && formData.professional_id !== 'all' && formData.professional_id !== '__unset__'
+      ? formData.professional_id
+      : null;
     const message = renderTemplate(formData.message, {
       clientName: sampleClient,
       serviceName: 'Limpeza de pele',
-      professionalName: professionals.find(p => p.id === formData.professional_id)?.name || 'Profissional',
+      professionalName: (profIdForPreview && professionals.find(p => p.id === profIdForPreview)?.name) || 'Profissional',
       appointmentDate: new Date(),
       appointmentTime: '14:30',
       confirmationToken: '00000000-0000-0000-0000-000000000000',
@@ -214,10 +231,21 @@ export function WhatsappTemplatesSettings() {
     id ? (professionals.find(p => p.id === id)?.name || '—') : 'Todos os profissionais';
 
   const limitWarning = useMemo(() => {
-    const targetProfId = formData.professional_id || null;
+    if (!formData.professional_id || formData.professional_id === '__unset__') return false;
+    const targetProfId = formData.professional_id === 'all' ? null : formData.professional_id;
     const count = countForProfessional(targetProfId, editingId ?? undefined);
     return count >= MAX_TEMPLATES_PER_PROFESSIONAL;
   }, [formData.professional_id, templates, editingId]);
+
+  // Form do template — rolar para a posição visível quando criamos/editamos,
+  // para que o usuário não precise rolar a página manualmente.
+  const formContainerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if ((isCreating || editingId) && formContainerRef.current) {
+      formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isCreating, editingId]);
+
 
   return (
     <>
@@ -242,7 +270,9 @@ export function WhatsappTemplatesSettings() {
               onClick={() => {
                 setFormData({
                   ...initialForm,
-                  professional_id: isStaff ? '' : (myProfessionalId ?? ''),
+                  // Staff começa sem profissional escolhido (obrigatório selecionar).
+                  // Profissionais não-staff já têm o próprio id fixado.
+                  professional_id: isStaff ? '__unset__' : (myProfessionalId ?? '__unset__'),
                 });
                 setIsCreating(true);
               }}
@@ -256,31 +286,8 @@ export function WhatsappTemplatesSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg bg-muted/50 p-3">
-          <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
-          <p className="text-xs text-muted-foreground mb-2">
-            Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {variablesHelp.map(v => (
-              <button
-                type="button"
-                key={v.variable}
-                onClick={() => insertVariable(v.variable)}
-                disabled={!isCreating && !editingId}
-                className="text-xs"
-                title={v.description}
-              >
-                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
-                  {v.variable} — {v.description}
-                </Badge>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {(isCreating || editingId) && (
-          <div className="rounded-lg border border-border p-4 space-y-4 bg-card">
+          <div ref={formContainerRef} className="rounded-lg border border-border p-4 space-y-4 bg-card">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome do Template</Label>
@@ -308,12 +315,16 @@ export function WhatsappTemplatesSettings() {
 
             {isStaff ? (
               <div className="space-y-2">
-                <Label>Profissional (opcional)</Label>
+                <Label>
+                  Profissional <span className="text-destructive">*</span>
+                </Label>
                 <Select
-                  value={formData.professional_id || 'all'}
-                  onValueChange={(v) => setFormData({ ...formData, professional_id: v === 'all' ? '' : v })}
+                  value={formData.professional_id || '__unset__'}
+                  onValueChange={(v) => setFormData({ ...formData, professional_id: v })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione todos os profissionais ou um específico" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os profissionais</SelectItem>
                     {professionals.map(p => (
@@ -321,16 +332,15 @@ export function WhatsappTemplatesSettings() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Esta mensagem será disparada para os agendamentos do(s) profissional(is) selecionado(s).
+                </p>
               </div>
             ) : (
               <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                 Estas mensagens serão usadas apenas para os seus atendimentos.
               </div>
             )}
-            {isStaff && (
-              <></>
-            )}
-            {/* warning placeholder kept below */}
             <div>
               {limitWarning && (
                 <p className="text-xs text-destructive">
@@ -338,6 +348,30 @@ export function WhatsappTemplatesSettings() {
                 </p>
               )}
             </div>
+
+            {/* Variáveis disponíveis — só aparecem dentro do formulário de edição/criação. */}
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-sm font-medium mb-1">Variáveis disponíveis</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Clique numa variável para inserir no cursor da mensagem. Apenas o texto entre colchetes (ex.: <code>{'{primeiro_nome}'}</code>) é substituído — não digite a descrição.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {variablesHelp.map(v => (
+                  <button
+                    type="button"
+                    key={v.variable}
+                    onClick={() => insertVariable(v.variable)}
+                    className="text-xs"
+                    title={v.description}
+                  >
+                    <Badge variant="outline" className="text-xs cursor-pointer hover:bg-primary/10">
+                      {v.variable} — {v.description}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            </div>
+
 
             {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="space-y-2">
@@ -428,7 +462,16 @@ export function WhatsappTemplatesSettings() {
                 <Button variant="outline" onClick={handleCancel}>
                   <X className="h-4 w-4 mr-1" /> Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={!formData.name || !formData.message || limitWarning}>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    !formData.name ||
+                    !formData.message ||
+                    limitWarning ||
+                    (isStaff && (!formData.professional_id || formData.professional_id === '__unset__'))
+                  }
+                >
+
                   <Save className="h-4 w-4 mr-1" /> Salvar
                 </Button>
               </div>

@@ -65,6 +65,31 @@ export const fieldLabels: Record<string, string> = {
 
   // Credenciais
   temp_password: 'Senha temporária',
+
+  // Genéricos comuns que apareciam em inglês/cru no log
+  type: 'Tipo',
+  description: 'Descrição',
+  title: 'Título',
+  content: 'Conteúdo',
+  role: 'Perfil',
+  created_at: 'Criado em',
+  updated_at: 'Atualizado em',
+  created_by: 'Criado por',
+  updated_by: 'Atualizado por',
+  deleted_at: 'Excluído em',
+  id: 'Identificador',
+  user_id: 'Usuário',
+  account_id: 'Conta',
+  message: 'Mensagem',
+  metadata: 'Detalhes',
+  fields: 'Campos',
+  value: 'Valor',
+  total: 'Total',
+  quantity: 'Quantidade',
+  duration_minutes: 'Duração (min)',
+  start_at: 'Início',
+  end_at: 'Término',
+  reason: 'Motivo',
 };
 
 export const targetTypeLabels: Record<string, string> = {
@@ -92,9 +117,26 @@ export const moduleLabels: Record<string, string> = {
   produtos: 'Produtos',
 };
 
+/**
+ * Devolve um rótulo amigável em PT-BR para um nome de campo técnico.
+ * - Usa o dicionário `fieldLabels` quando disponível.
+ * - Caso contrário, transforma `snake_case`/`camelCase` em frase capitalizada
+ *   (ex.: "payment_status" -> "Payment status" -> "Payment Status"? não:
+ *   primeira letra maiúscula, restante minúsculo) para evitar mostrar
+ *   identificadores crus como "type", "descripcion" para o usuário final.
+ */
 export function labelField(code: string): string {
-  return fieldLabels[code] ?? code.replace(/_/g, ' ');
+  if (!code) return '';
+  if (fieldLabels[code]) return fieldLabels[code];
+  const normalized = code
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_\-]+/g, ' ')
+    .trim()
+    .toLowerCase();
+  if (!normalized) return code;
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
+
 
 export function labelTargetType(t?: string | null): string {
   if (!t) return '';

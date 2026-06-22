@@ -37,16 +37,26 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Despesa Financeira', type: 'expense' },
-  { name: 'Despesa Fixa', type: 'expense' },
-  { name: 'Despesa Variável', type: 'expense' },
-  { name: 'Fornecedor', type: 'expense' },
-  { name: 'Funcionários', type: 'expense' },
-  { name: 'Imposto', type: 'expense' },
-  { name: 'Receita', type: 'income' },
-  { name: 'Transferência', type: 'expense' },
+const DEFAULT_CATEGORIES: { name: string; type: 'income' | 'expense' }[] = [
+  // Receitas
+  { name: 'Receita de Serviços', type: 'income' },
+  { name: 'Receita de Produtos', type: 'income' },
+  { name: 'Receita de Pacotes', type: 'income' },
+  { name: 'Outras Receitas', type: 'income' },
+  // Despesas
+  { name: 'Aluguel', type: 'expense' },
+  { name: 'Água e Luz', type: 'expense' },
+  { name: 'Internet e Telefone', type: 'expense' },
+  { name: 'Funcionários / Salários', type: 'expense' },
+  { name: 'Comissões', type: 'expense' },
+  { name: 'Impostos', type: 'expense' },
+  { name: 'Fornecedores', type: 'expense' },
+  { name: 'Material de Trabalho', type: 'expense' },
+  { name: 'Marketing', type: 'expense' },
+  { name: 'Manutenção', type: 'expense' },
+  { name: 'Outras Despesas', type: 'expense' },
 ];
+
 
 interface GroupedEntry {
   baseDescription: string;
@@ -111,10 +121,26 @@ export function CategoriasFinanceiras() {
     overdue_tolerance_days: '0',
   });
 
-  // NOTE: Auto-criação de categorias padrão foi REMOVIDA porque causava
-  // duplicatas em race-condition (re-execuções do effect antes do invalidate
-  // chegar). O índice único (lower(name), type) no banco agora protege contra
-  // duplicatas, e o usuário deve criar suas próprias categorias manualmente.
+  // Seed idempotente das categorias padrão: só dispara quando NÃO existe
+  // nenhuma categoria do tipo (income/expense). A flag local + índice único
+  // (lower(name), type) no banco evitam duplicatas em race-condition.
+  const [seededDefaults, setSeededDefaults] = useState(false);
+  useEffect(() => {
+    if (seededDefaults) return;
+    if (categories.length > 0) { setSeededDefaults(true); return; }
+    setSeededDefaults(true);
+    DEFAULT_CATEGORIES.forEach(cat => {
+      createCategory.mutate({
+        name: cat.name,
+        type: cat.type,
+        is_recurring: false,
+        description: null,
+        is_active: true,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.length]);
+
 
   // Use deduplicated categories from hook
   const expenseCats = expenseCategories;

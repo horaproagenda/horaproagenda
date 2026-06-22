@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -134,8 +134,8 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="text-base">
             {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
           </DialogTitle>
@@ -144,8 +144,9 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-            <ScrollArea className="flex-1 pr-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 pr-4">
+
               <div className="space-y-2.5 pb-2">
                 <div className="grid grid-cols-2 gap-2.5">
                   <FormField
@@ -334,10 +335,11 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   )}
                 />
               </div>
-            </ScrollArea>
+            </div>
             
-            {/* Buttons OUTSIDE ScrollArea - always visible */}
-            <div className="flex justify-end gap-2 pt-3 border-t mt-2">
+            {/* Buttons OUTSIDE scroll - always visible */}
+            <div className="flex justify-end gap-2 p-4 border-t shrink-0 bg-muted/10">
+
               <Button
                 type="button"
                 variant="outline"

@@ -29,7 +29,8 @@ function makeSupabaseFor(currentUser: { id: string; email: string }) {
   const ownerOf = currentUser.id === 'user-a' ? CLINIC_A_OWNER : CLINIC_B_OWNER;
 
   function fromProfessionals() {
-    let rows = PROFS.slice();
+    // Simula RLS: só vê profissionais da própria clínica.
+    let rows = PROFS.filter(p => p.account_owner_id === ownerOf);
     const q: any = {
       select: () => q,
       order: () => Promise.resolve({ data: rows, error: null }),

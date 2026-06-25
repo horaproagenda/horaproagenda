@@ -83,7 +83,10 @@ serve(async (req) => {
     }
 
     // 2) Gera QR Code (sem expor instance_id no retorno)
-    const { creds } = await resolveProfessionalCreds(supabaseService, professional_id);
+    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    if (source !== 'professional') {
+      return json({ success: false, error: 'Conecte uma instância própria para o profissional vinculado ao seu login.' }, 403);
+    }
     if (!creds) return json({ success: false, error: 'Conexão indisponível.' }, 500);
 
     const result = await ultramsgGetQrCode(creds);

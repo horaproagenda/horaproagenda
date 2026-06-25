@@ -48,6 +48,16 @@ serve(async (req) => {
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    if (source !== 'professional') {
+      return new Response(JSON.stringify({
+        configured: false,
+        connected: false,
+        provider: 'ultramsg',
+        source: 'none',
+        error: 'WhatsApp próprio não conectado para o profissional vinculado ao seu login.',
+        message: 'Conecte seu WhatsApp em Configurações → WhatsApp.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const st = await ultramsgStatus(creds);
 

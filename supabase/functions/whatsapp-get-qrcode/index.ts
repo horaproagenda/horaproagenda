@@ -42,6 +42,10 @@ serve(async (req) => {
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    if (source !== 'professional') {
+      return new Response(JSON.stringify({ success: false, error: 'QR Code indisponível: conecte uma instância própria para o profissional vinculado ao seu login.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     if (!creds) {
       return new Response(JSON.stringify({ success: false, error: 'UltraMsg não configurado para este profissional nem globalmente.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

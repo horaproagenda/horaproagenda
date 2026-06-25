@@ -28,6 +28,9 @@ describe('WhatsApp isolamento por login/profissional', () => {
     expect(qr).toMatch(/requested_professional_id !== professional_id/);
     expect(check).toMatch(/requested_professional_id/);
     expect(check).toMatch(/requested_professional_id !== professional_id/);
+    expect(connect).toMatch(/source !== 'professional'/);
+    expect(qr).toMatch(/source !== 'professional'/);
+    expect(check).toMatch(/source !== 'professional'/);
   });
 
   it('envio manual não aceita professional_id diferente do login autenticado', () => {

@@ -26,6 +26,16 @@ declare const __APP_BUILD_TIME__: string;
 const PURGE_FLAG = 'boot_version_purge_done_v1';
 const BUILD_KEY = 'app_current_build_id_v1';
 
+/**
+ * Marca a rebrand "Lume Agenda → Hora Pro". Sempre que o nome/logo
+ * do app mudar (ou for detectada regressão visual), bumpe a versão
+ * (v2 → v3 …). Ao detectar marcador antigo/ausente, o guard limpa
+ * TODOS os caches/SWs e força reload — garantindo que nenhum cliente
+ * fique preso a uma versão com o nome ou ícone antigo.
+ */
+const BRAND_PURGE_KEY = 'brand_purge_marker';
+const BRAND_PURGE_VERSION = 'horapro_v2';
+
 /** Reseta o flag de purge para permitir nova verificação após login/logout. */
 export function resetBootVersionGuardFlag(): void {
   try {
@@ -99,6 +109,29 @@ async function purgeEverythingAndReload(reason: string) {
 
 export async function bootVersionGuard(): Promise<void> {
   if (typeof window === 'undefined') return;
+
+  // ---- Rebrand purge (Lume Agenda → Hora Pro) ----
+  // Executa UMA vez por navegador/dispositivo: se o marcador local não bate
+  // com a versão atual da marca, limpa caches + SW e recarrega. Isso garante
+  // que ninguém continue vendo o nome/ícone antigo após o rebrand.
+  try {
+    const stored = localStorage.getItem(BRAND_PURGE_KEY);
+    if (stored !== BRAND_PURGE_VERSION) {
+      localStorage.setItem(BRAND_PURGE_KEY, BRAND_PURGE_VERSION);
+      // Só purga se já existia um marcador antigo OU se há SW/caches registrados
+      // (instalação fresca não precisa de reload).
+      const hasCaches = 'caches' in window && (await caches.keys()).length > 0;
+      const hasSW =
+        'serviceWorker' in navigator &&
+        (await navigator.serviceWorker.getRegistrations()).length > 0;
+      if (stored !== null || hasCaches || hasSW) {
+        await purgeEverythingAndReload('brand_rebrand_horapro');
+        return;
+      }
+    }
+  } catch {
+    /* storage indisponível — segue */
+  }
 
   const currentBuild =
     typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : 'dev';

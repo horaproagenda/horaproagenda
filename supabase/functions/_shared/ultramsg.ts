@@ -13,9 +13,28 @@ export function getUltramsgConfig(override?: UltramsgCreds | null) {
   let base = ((override?.base ?? Deno.env.get('ULTRAMSG_API_URL')) || DEFAULT_BASE).replace(/\/+$/, '');
   const instance = (override?.instance ?? Deno.env.get('ULTRAMSG_INSTANCE_ID') ?? '').trim();
   const token = (override?.token ?? Deno.env.get('ULTRAMSG_TOKEN') ?? '').trim();
-  if (instance && base.toLowerCase().endsWith(`/${instance.toLowerCase()}`)) {
-    base = base.slice(0, -1 - instance.length);
+
+  // Normaliza a base removendo qualquer sufixo de instância que já tenha
+  // sido salvo junto com api_url (causa raiz do "Path not found").
+  // Cobre os formatos comuns: /<instance>, /instance<digits>, /<digits>.
+  if (instance) {
+    const baseLower = base.toLowerCase();
+    const inst = instance.toLowerCase();
+    const candidates = new Set<string>([`/${inst}`]);
+    const onlyDigits = instance.match(/^(?:instance)?(\d+)$/i);
+    if (onlyDigits) {
+      candidates.add(`/instance${onlyDigits[1]}`);
+      candidates.add(`/${onlyDigits[1]}`);
+    }
+    for (const suffix of candidates) {
+      if (baseLower.endsWith(suffix)) {
+        base = base.slice(0, -suffix.length);
+        break;
+      }
+    }
   }
+  // Garante que api.ultramsg.com nunca fique com path sobrando.
+  base = base.replace(/\/+$/, '');
   return { base, instance, token, configured: Boolean(base && instance && token) };
 }
 

@@ -35,7 +35,10 @@ export function getUltramsgConfig(override?: UltramsgCreds | null) {
   }
   // Garante que api.ultramsg.com nunca fique com path sobrando.
   base = base.replace(/\/+$/, '');
-  return { base, instance, token, configured: Boolean(base && instance && token) };
+  // Segmento de URL exigido pela UltraMsg: precisa SEMPRE começar com "instance".
+  // Se o usuário salvou só os dígitos (ex.: "134567"), prefixamos.
+  const instanceSegment = /^instance/i.test(instance) ? instance : `instance${instance}`;
+  return { base, instance, instanceSegment, token, configured: Boolean(base && instance && token) };
 }
 
 export function normalizeBrPhone(phone: string): string {
@@ -74,11 +77,11 @@ export async function resolveProfessionalCreds(
 }
 
 export async function ultramsgStatus(override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) {
     return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
   }
-  const url = `${base}/${encodeURIComponent(instance)}/instance/status?token=${encodeURIComponent(token)}`;
+  const url = `${base}/${encodeURIComponent(instanceSegment)}/instance/status?token=${encodeURIComponent(token)}`;
   const r = await fetch(url);
   const text = await r.text();
   console.log('[ultramsg.status] HTTP', r.status, 'body:', text.slice(0, 500));
@@ -103,7 +106,7 @@ export async function ultramsgStatus(override?: UltramsgCreds | null) {
 }
 
 export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
   const st = await ultramsgStatus(override);
@@ -112,7 +115,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
   }
 
   const tryJson = async () => {
-    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
+    const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrCode?token=${encodeURIComponent(token)}`);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
     let q: string | null = data?.qrCode || data?.qrcode || null;
@@ -123,7 +126,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
   };
 
   const tryImage = async () => {
-    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrImage?token=${encodeURIComponent(token)}`);
+    const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrImage?token=${encodeURIComponent(token)}`);
     if (!r.ok) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
     if (buf.byteLength < 100) return null;
@@ -142,7 +145,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
 }
 
 export async function ultramsgSendText(opts: { to: string; body: string }, override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
   const st = await ultramsgStatus(override);
@@ -155,7 +158,7 @@ export async function ultramsgSendText(opts: { to: string; body: string }, overr
   form.set('to', normalizeBrPhone(opts.to));
   form.set('body', opts.body);
 
-  const r = await fetch(`${base}/${encodeURIComponent(instance)}/messages/chat`, {
+  const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/messages/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: form.toString(),

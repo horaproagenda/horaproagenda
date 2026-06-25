@@ -81,7 +81,7 @@ export async function ultramsgStatus(override?: UltramsgCreds | null) {
   if (!configured) {
     return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
   }
-  const url = `${base}/${encodeURIComponent(instance)}/instance/status?token=${encodeURIComponent(token)}`;
+  const url = `${base}/${encodeURIComponent(instanceSegment)}/instance/status?token=${encodeURIComponent(token)}`;
   const r = await fetch(url);
   const text = await r.text();
   console.log('[ultramsg.status] HTTP', r.status, 'body:', text.slice(0, 500));
@@ -115,7 +115,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
   }
 
   const tryJson = async () => {
-    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrCode?token=${encodeURIComponent(token)}`);
+    const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrCode?token=${encodeURIComponent(token)}`);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
     let q: string | null = data?.qrCode || data?.qrcode || null;
@@ -126,7 +126,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
   };
 
   const tryImage = async () => {
-    const r = await fetch(`${base}/${encodeURIComponent(instance)}/instance/qrImage?token=${encodeURIComponent(token)}`);
+    const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrImage?token=${encodeURIComponent(token)}`);
     if (!r.ok) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
     if (buf.byteLength < 100) return null;
@@ -158,7 +158,7 @@ export async function ultramsgSendText(opts: { to: string; body: string }, overr
   form.set('to', normalizeBrPhone(opts.to));
   form.set('body', opts.body);
 
-  const r = await fetch(`${base}/${encodeURIComponent(instance)}/messages/chat`, {
+  const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/messages/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: form.toString(),

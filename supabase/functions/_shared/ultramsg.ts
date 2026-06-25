@@ -35,7 +35,10 @@ export function getUltramsgConfig(override?: UltramsgCreds | null) {
   }
   // Garante que api.ultramsg.com nunca fique com path sobrando.
   base = base.replace(/\/+$/, '');
-  return { base, instance, token, configured: Boolean(base && instance && token) };
+  // Segmento de URL exigido pela UltraMsg: precisa SEMPRE começar com "instance".
+  // Se o usuário salvou só os dígitos (ex.: "134567"), prefixamos.
+  const instanceSegment = /^instance/i.test(instance) ? instance : `instance${instance}`;
+  return { base, instance, instanceSegment, token, configured: Boolean(base && instance && token) };
 }
 
 export function normalizeBrPhone(phone: string): string {

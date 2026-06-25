@@ -33,6 +33,7 @@ describe('WhatsApp isolamento por login/profissional', () => {
   it('envio manual não aceita professional_id diferente do login autenticado', () => {
     expect(send).toMatch(/professional_id && professional_id !== currentProfId/);
     expect(send).toMatch(/const targetProf = currentProfId \|\| null/);
+    expect(send).toMatch(/source !== 'professional'/);
   });
 
   it('não usa credencial global Evolution no fluxo de QR/conexão manual', () => {

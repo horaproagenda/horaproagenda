@@ -65,6 +65,11 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (!currentProfId) {
+      return new Response(JSON.stringify({ success: false, error: 'Seu login não está vinculado a um profissional com WhatsApp próprio.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (isProfessional && !isAdmin && !isReceptionist) {
       if (!currentProfId) {
         return new Response(JSON.stringify({ success: false, error: 'Profissional não vinculado.' }),
@@ -84,6 +89,9 @@ serve(async (req) => {
     // Mensagens manuais sempre usam as credenciais do profissional vinculado ao usuário logado.
     const targetProf = currentProfId || null;
     const { creds, source } = await resolveProfessionalCreds(supabaseService, targetProf);
+    if (source !== 'professional') {
+      throw new Error('Conecte o WhatsApp próprio do seu login em Configurações → WhatsApp.');
+    }
     if (!creds) throw new Error('UltraMsg não configurado.');
 
     const result = await ultramsgSendText({ to: phone, body: message }, creds);

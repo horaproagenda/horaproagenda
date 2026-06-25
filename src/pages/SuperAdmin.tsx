@@ -354,22 +354,53 @@ export default function SuperAdmin() {
                       <TooltipContent side="top" className="text-[11px]">{label}</TooltipContent>
                     </Tooltip>
                   );
+                  const dataCell = (content: React.ReactNode, hint: string, className = '') => (
+                    <TableCell className={`text-xs py-2 ${className}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help block">{content}</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px] max-w-[260px]">{hint}</TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                  );
                   return (
                     <TableRow key={r.owner_user_id}>
-                      <TableCell className="text-xs py-2 truncate max-w-0">
-                        <div className="font-medium truncate">{r.email ?? '—'}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
-                      </TableCell>
-                      <TableCell className="text-xs py-2">
+                      {dataCell(
+                        <>
+                          <div className="font-medium truncate">{r.email ?? '—'}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
+                        </>,
+                        'E-mail e código interno da conta responsável.',
+                        'truncate max-w-0',
+                      )}
+                      {dataCell(
                         <div className="flex items-center gap-1 flex-wrap">
                           {statusBadge(r.status)}
                           {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{r.plan_tier ?? '—'} / {r.seat_limit}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.trial_ends_at)}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.current_period_end)}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums truncate max-w-0">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 10) + '…' : '—'}</TableCell>
+                        </div>,
+                        'Situação atual da assinatura: Teste, Ativa, Em atraso, Cancelada ou Vitalícia (acesso gratuito concedido por você).',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{r.plan_tier ?? '—'} / {r.seat_limit}</span>,
+                        'Nível do plano contratado e quantidade de profissionais (acessos) permitidos.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{fmtDate(r.trial_ends_at)}</span>,
+                        'Data em que o período gratuito de teste expira.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{fmtDate(r.current_period_end)}</span>,
+                        'Até quando o pagamento atual mantém a conta ativa.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 10) + '…' : '—'}</span>,
+                        'Identificador desta conta dentro do sistema de cobrança Stripe. Útil para localizar o cliente no painel de pagamentos.',
+                        'tabular-nums truncate max-w-0',
+                      )}
                       <TableCell className="text-xs py-2 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1 justify-end">
                           {actionButton(

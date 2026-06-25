@@ -219,6 +219,32 @@ async function processQueue(supabase: any, summary: any) {
       await supabase.from('whatsapp_send_queue').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', row.id);
       continue;
     }
+    // Descarta itens cujo agendamento já passou ou já foi atendido/cancelado.
+    // Lembretes só fazem sentido para atendimentos futuros e ainda ativos —
+    // mensagens antigas que ficaram na fila enquanto o WhatsApp estava
+    // desconectado NÃO devem ser enviadas ao reconectar.
+    if (row.appointment_id) {
+      const { data: apt } = await supabase
+        .from('appointments')
+        .select('id, start_time, end_time, status')
+        .eq('id', row.appointment_id)
+        .maybeSingle();
+      const status = String((apt as any)?.status || '').toLowerCase();
+      const obsoleteStatus = ['completed', 'attended', 'attended_completed', 'no_show', 'noshow', 'canceled', 'cancelled'].includes(status);
+      const ref = row.template_type === 'follow_up'
+        ? ((apt as any)?.end_time || (apt as any)?.start_time)
+        : (apt as any)?.start_time;
+      const isPast = ref ? new Date(ref).getTime() < Date.now() : false;
+      if (!apt || obsoleteStatus || (row.template_type !== 'follow_up' && isPast) || (row.template_type === 'follow_up' && ref && new Date(ref).getTime() < Date.now() - 24 * 60 * 60_000)) {
+        await supabase.from('whatsapp_send_queue').update({
+          status: 'skipped',
+          last_error: !apt ? 'agendamento removido' : (obsoleteStatus ? `agendamento ${status}` : 'agendamento já passou antes da conexão'),
+          updated_at: new Date().toISOString(),
+        }).eq('id', row.id);
+        summary.skipped = (summary.skipped || 0) + 1;
+        continue;
+      }
+    }
     // Dedup: se já existe registro de envio para esse appointment+provider+hours, marca como sent e segue.
     if (row.appointment_id && row.provider) {
       const { data: alreadyLogged } = await supabase

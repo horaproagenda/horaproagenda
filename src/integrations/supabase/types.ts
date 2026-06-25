@@ -1501,39 +1501,63 @@ export type Database = {
       deleted_account_blocklist: {
         Row: {
           blocked_until: string
+          canceled_by: string | null
+          cancellation_type: string
           cnpj_hash: string | null
+          cnpj_last4: string | null
           cpf_hash: string | null
+          cpf_last4: string | null
           created_at: string
           deleted_at: string
           email_hash: string | null
+          email_masked: string | null
+          full_name_hash: string | null
           had_paid: boolean
           id: string
           phone_hash: string | null
+          phone_masked: string | null
           reason: string | null
+          user_id: string | null
         }
         Insert: {
           blocked_until?: string
+          canceled_by?: string | null
+          cancellation_type?: string
           cnpj_hash?: string | null
+          cnpj_last4?: string | null
           cpf_hash?: string | null
+          cpf_last4?: string | null
           created_at?: string
           deleted_at?: string
           email_hash?: string | null
+          email_masked?: string | null
+          full_name_hash?: string | null
           had_paid?: boolean
           id?: string
           phone_hash?: string | null
+          phone_masked?: string | null
           reason?: string | null
+          user_id?: string | null
         }
         Update: {
           blocked_until?: string
+          canceled_by?: string | null
+          cancellation_type?: string
           cnpj_hash?: string | null
+          cnpj_last4?: string | null
           cpf_hash?: string | null
+          cpf_last4?: string | null
           created_at?: string
           deleted_at?: string
           email_hash?: string | null
+          email_masked?: string | null
+          full_name_hash?: string | null
           had_paid?: boolean
           id?: string
           phone_hash?: string | null
+          phone_masked?: string | null
           reason?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -4760,10 +4784,20 @@ export type Database = {
         Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
       }
-      check_trial_eligibility: {
-        Args: { p_cnpj?: string; p_email: string; p_phone?: string }
-        Returns: Json
-      }
+      check_trial_eligibility:
+        | {
+            Args: { p_cnpj?: string; p_email: string; p_phone?: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_cnpj?: string
+              p_cpf?: string
+              p_email: string
+              p_phone?: string
+            }
+            Returns: Json
+          }
       claim_ultramsg_pool_instance: {
         Args: { p_professional_id: string }
         Returns: {

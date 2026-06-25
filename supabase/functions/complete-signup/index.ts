@@ -123,6 +123,24 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Block accounts whose identifiers were cancelled/blocked previously
+    {
+      const { data: blockCheck } = await supabaseAdmin.rpc("is_identifier_blocked", {
+        p_email: normalizedEmail,
+        p_cpf: cpfDigits,
+        p_cnpj: cnpj ?? null,
+        p_phone: phoneE164 ?? null,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((blockCheck as any)?.blocked) {
+        return jsonResponse({
+          success: false,
+          code: "account_blocked",
+          error: "Este cadastro está bloqueado pela administração da plataforma. Entre em contato com o suporte para mais informações.",
+        }, 403);
+      }
+    }
+
     // Validate verification code atomically (accepts either a freshly-used code
     // within the last 10 min OR an active code passed in `code`).
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();

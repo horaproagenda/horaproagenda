@@ -318,6 +318,32 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
+        {permissionError && (
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Sem permissão para este WhatsApp</AlertTitle>
+            <AlertDescription className="text-xs">
+              {permissionError}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!connected && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>
+            <AlertDescription className="text-xs space-y-1.5">
+              <p>Cada profissional tem o próprio QR Code — você só consegue conectar o WhatsApp vinculado ao seu login, nunca o de outra clínica ou colega.</p>
+              <ol className="list-decimal pl-4 space-y-1">
+                <li>Confirme que o profissional acima é você (criado com o mesmo e-mail do seu login).</li>
+                <li>Abra o WhatsApp no celular → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong>.</li>
+                <li>Clique em <strong>Conectar ao WhatsApp</strong> abaixo e escaneie o QR exibido.</li>
+              </ol>
+              <p className="text-[11px] text-muted-foreground">Se você é administrador e precisa que outro profissional conecte o WhatsApp dele, peça para ele acessar esta tela com o próprio login.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Alert variant={connected || configured ? 'default' : 'destructive'}>
           {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
           <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>

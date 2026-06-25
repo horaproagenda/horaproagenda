@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save,
-  ShieldCheck, Clock, Zap,
+  ShieldCheck, Clock, Zap, Info, ShieldAlert,
 } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';

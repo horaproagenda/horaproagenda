@@ -91,6 +91,10 @@ export default function SuperAdmin() {
   const [extraDays, setExtraDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   const [grandfatherTarget, setGrandfatherTarget] = useState<AdminAccountRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AdminAccountRow | null>(null);
+  const [cancelMonths, setCancelMonths] = useState(6);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return;

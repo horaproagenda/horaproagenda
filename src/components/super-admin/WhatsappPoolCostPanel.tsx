@@ -230,7 +230,7 @@ export function WhatsappPoolCostPanel() {
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Utilização do pool</span>
+              <span title="Percentual de instâncias do pool que já estão vinculadas a profissionais (e, portanto, gerando cobrança).">Utilização das instâncias</span>
               <span className="tabular-nums">{stats.utilization}%</span>
             </div>
             <Progress value={stats.utilization} className="h-2" />

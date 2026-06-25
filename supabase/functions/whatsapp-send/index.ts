@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgSendText, normalizeBrPhone, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
-import { evolutionSendText, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +60,16 @@ serve(async (req) => {
       currentProfId = prof?.id ?? null;
     }
 
+    if (professional_id && professional_id !== currentProfId) {
+      return new Response(JSON.stringify({ success: false, error: 'Mensagens manuais só podem sair pelo WhatsApp vinculado ao usuário logado.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!currentProfId) {
+      return new Response(JSON.stringify({ success: false, error: 'Seu login não está vinculado a um profissional com WhatsApp próprio.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (isProfessional && !isAdmin && !isReceptionist) {
       if (!currentProfId) {
         return new Response(JSON.stringify({ success: false, error: 'Profissional não vinculado.' }),
@@ -77,22 +86,12 @@ serve(async (req) => {
       }
     }
 
-    const evolution = getEvolutionConfig();
-    if (evolution.configured) {
-      try {
-        const result = await evolutionSendText({ to: phone, body: message });
-        return new Response(JSON.stringify({
-          success: true, provider: 'evolution', route: 'evolution-api',
-          data: result, instance: evolution.instance, source: 'global',
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      } catch (e) {
-        console.warn('Evolution send failed, falling back to UltraMsg:', e);
-      }
-    }
-
-    // Pick credentials: explicit professional_id > caller's professional > global fallback
-    const targetProf = professional_id || currentProfId || null;
+    // Mensagens manuais sempre usam as credenciais do profissional vinculado ao usuário logado.
+    const targetProf = currentProfId || null;
     const { creds, source } = await resolveProfessionalCreds(supabaseService, targetProf);
+    if (source !== 'professional') {
+      throw new Error('Conecte o WhatsApp próprio do seu login em Configurações → WhatsApp.');
+    }
     if (!creds) throw new Error('UltraMsg não configurado.');
 
     const result = await ultramsgSendText({ to: phone, body: message }, creds);

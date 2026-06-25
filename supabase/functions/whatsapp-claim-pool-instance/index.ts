@@ -32,20 +32,15 @@ serve(async (req) => {
     const userId = claims.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
-    let professional_id: string | undefined = body?.professional_id;
-
-    // Permission: admin can claim for anyone; otherwise must own that professional row.
-    const { data: roles } = await supabaseService
-      .from('user_roles').select('role').eq('user_id', userId);
-    const isAdmin = (roles ?? []).some((r: any) => r.role === 'admin');
+    const requested_professional_id: string | undefined = body?.professional_id;
 
     const { data: ownProf } = await supabaseService
       .from('professionals').select('id, account_owner_id').eq('user_id', userId).maybeSingle();
 
-    if (!professional_id) professional_id = ownProf?.id;
+    const professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
 
-    if (!isAdmin && professional_id !== ownProf?.id) {
+    if (requested_professional_id && requested_professional_id !== professional_id) {
       return json({ success: false, error: 'Sem permissão para reivindicar instância para outro profissional.' }, 403);
     }
 

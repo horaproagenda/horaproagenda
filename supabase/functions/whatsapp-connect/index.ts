@@ -8,7 +8,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
-import { evolutionGetQrCode, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,36 +40,15 @@ serve(async (req) => {
     if (authError || !user) return json({ success: false, error: 'Unauthorized' }, 401);
 
     const body = await req.json().catch(() => ({}));
-    let professional_id: string | undefined = body?.professional_id;
-
-    // Permissão: admin pode conectar para qualquer profissional; senão só para si.
-    const { data: roleRows } = await supabaseService
-      .from('user_roles').select('role').eq('user_id', user.id);
-    const roles = (roleRows ?? []).map((r: any) => r.role);
-    const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+    const requested_professional_id: string | undefined = body?.professional_id;
 
     const { data: ownProf } = await supabaseService
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
 
-    if (!professional_id) professional_id = ownProf?.id;
+    const professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
-    if (!isAdmin && professional_id !== ownProf?.id) {
-      return json({ success: false, error: 'Sem permissão.' }, 403);
-    }
-
-    const evolution = getEvolutionConfig();
-    if (evolution.configured) {
-      try {
-        const result = await evolutionGetQrCode();
-        if (result.connected) {
-          return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
-        }
-        if (result.qrcode) {
-          return json({ success: true, provider: 'evolution', qrcode: result.qrcode, pairingCode: result.pairingCode ?? null });
-        }
-      } catch (e) {
-        console.warn('Evolution connect failed, falling back to UltraMsg:', e);
-      }
+    if (requested_professional_id && requested_professional_id !== professional_id) {
+      return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' }, 403);
     }
 
     // 1) Reserva instância se ainda não houver
@@ -105,7 +83,10 @@ serve(async (req) => {
     }
 
     // 2) Gera QR Code (sem expor instance_id no retorno)
-    const { creds } = await resolveProfessionalCreds(supabaseService, professional_id);
+    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    if (source !== 'professional') {
+      return json({ success: false, error: 'Conecte uma instância própria para o profissional vinculado ao seu login.' }, 403);
+    }
     if (!creds) return json({ success: false, error: 'Conexão indisponível.' }, 500);
 
     const result = await ultramsgGetQrCode(creds);

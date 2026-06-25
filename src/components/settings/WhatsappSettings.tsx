@@ -7,14 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save,
-  ShieldCheck, Users, Clock, Zap,
+  ShieldCheck, Clock, Zap,
 } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 
 type Professional = { id: string; name: string };
 type Creds = {
@@ -43,7 +42,6 @@ export function WhatsappSettings() {
     checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
   } = useWhatsapp();
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedProfId, setSelectedProfId] = useState<string>('');
@@ -55,7 +53,7 @@ export function WhatsappSettings() {
 
   const refreshConnection = useCallback(async (professionalId?: string) => {
     if (!professionalId) return null;
-    const status = await checkConnection(professionalId);
+    const status = await checkConnection();
     if (status) {
       setConnectionByProf(prev => ({
         ...prev,
@@ -98,29 +96,19 @@ export function WhatsappSettings() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: rolesRows } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-      const roles = (rolesRows ?? []).map((r: any) => r.role);
-      const admin = roles.includes('admin');
-      setIsAdmin(admin);
 
       const { data: prof } = await supabase
-        .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+        .from('professionals').select('id, name').eq('user_id', user.id).maybeSingle();
       setMyProfessionalId(prof?.id ?? null);
-
-      if (admin) {
-        const { data: profs } = await supabase
-          .from('professionals').select('id, name').eq('is_active', true).order('name');
-        setProfessionals((profs as Professional[]) ?? []);
-        if (prof?.id) setSelectedProfId(prof.id);
-        else if (profs && profs.length > 0) setSelectedProfId((profs[0] as any).id);
-      } else if (prof?.id) {
-        setProfessionals([{ id: prof.id, name: 'Meu WhatsApp' }]);
+      if (prof?.id) {
+        setProfessionals([{ id: prof.id, name: prof.name || 'Meu WhatsApp' }]);
         setSelectedProfId(prof.id);
       }
 
       const { data: rows } = await supabase
         .from('professional_whatsapp_credentials')
-        .select('professional_id, is_active, last_connected_at');
+        .select('professional_id, is_active, last_connected_at')
+        .eq('professional_id', prof?.id ?? '00000000-0000-0000-0000-000000000000');
       const map: Record<string, Creds> = {};
       (rows ?? []).forEach((r: any) => { map[r.professional_id] = r; });
       setCredsMap(map);
@@ -171,19 +159,12 @@ export function WhatsappSettings() {
   const connected = selectedConnection?.connected === true;
   const configured = selectedConnection ? selectedConnection.configured !== false : Boolean(selectedProfId && credsMap[selectedProfId]);
   const selectedStatusLabel = !selectedProfId
-    ? 'Selecione um profissional'
+    ? 'Login sem profissional vinculado'
     : !selectedConnection
       ? 'Verificando'
       : connected
         ? 'Conectado'
         : 'Desconectado';
-
-  const professionalOptions = useMemo(() => professionals.map((p) => {
-    return {
-      value: p.id,
-      label: p.name,
-    };
-  }), [professionals]);
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
     enabled: !!selectedProfId && !!credsMap[selectedProfId],
@@ -217,12 +198,12 @@ export function WhatsappSettings() {
 
   const handleConnect = async () => {
     if (!selectedProfId) {
-      toast.error('Selecione um profissional.');
+      toast.error('Seu login precisa estar vinculado ao seu cadastro de profissional.');
       return;
     }
     if (connected) {
       const ok = window.confirm(
-        'O WhatsApp deste profissional já está conectado. Gerar um novo QR Code irá desconectar a sessão atual. Deseja continuar?',
+        'Seu WhatsApp já está conectado. Gerar um novo QR Code irá desconectar a sessão atual. Deseja continuar?',
       );
       if (!ok) return;
     }
@@ -230,7 +211,7 @@ export function WhatsappSettings() {
     try {
       // Endpoint único: reserva instância (se necessário) e retorna apenas o QR.
       const { data, error } = await supabase.functions.invoke('whatsapp-connect', {
-        body: { professional_id: selectedProfId },
+        body: {},
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Não foi possível conectar agora.');
@@ -257,13 +238,13 @@ export function WhatsappSettings() {
 
       // Fallback: se por algum motivo o connect não trouxe QR, busca via getQRCode.
       if (!data.qrcode) {
-        const qrResult = await getQRCode(selectedProfId);
+        const qrResult = await getQRCode();
         if ((qrResult as any)?.connected) {
           await refreshConnection(selectedProfId);
           return;
         }
       }
-      toast.success('QR Code gerado. Escaneie no celular do profissional.');
+      toast.success('QR Code gerado. Escaneie no seu celular.');
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao conectar WhatsApp.');
     } finally {
@@ -282,7 +263,7 @@ export function WhatsappSettings() {
             <div>
               <CardTitle>WhatsApp</CardTitle>
               <CardDescription>
-                Conecte o WhatsApp do profissional para enviar lembretes, confirmações e mensagens automáticas direto do número dele.
+                Conecte o WhatsApp do seu login para enviar lembretes, confirmações e mensagens automáticas do seu próprio número.
               </CardDescription>
             </div>
           </div>
@@ -298,22 +279,18 @@ export function WhatsappSettings() {
       </CardHeader>
 
       <CardContent className="space-y-5">
-        {/* Profissional selector (admin) ou bloqueado para o próprio (não-admin) */}
-        {isAdmin && professionals.length > 0 && (
-          <div className="space-y-2">
-            <Label className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
-              <Users className="h-3 w-3" /> Profissional
-            </Label>
-            <SearchableSelect
-              options={professionalOptions}
-              value={selectedProfId}
-              onChange={setSelectedProfId}
-              placeholder="Selecione um profissional"
-              searchPlaceholder="Buscar profissional..."
-              emptyMessage="Nenhum profissional encontrado."
-              className="h-9 text-sm"
-            />
+        {myProfessionalId ? (
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+            WhatsApp vinculado exclusivamente ao seu login: <span className="font-medium text-foreground">{selectedName}</span>.
           </div>
+        ) : (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Login sem profissional vinculado</AlertTitle>
+            <AlertDescription className="text-xs">
+              Para garantir isolamento entre clínicas, o QR Code só é liberado para o profissional vinculado ao usuário logado.
+            </AlertDescription>
+          </Alert>
         )}
 
         <Alert variant={connected || configured ? 'default' : 'destructive'}>
@@ -321,8 +298,8 @@ export function WhatsappSettings() {
           <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
           <AlertDescription className="text-xs">
             {connected
-              ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem desta conta respeitando a janela de horário configurada.`
-              : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do profissional.'}
+              ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem da sua conta respeitando a janela de horário configurada.`
+              : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do seu login.'}
             {connected && lastConnectedAt && (
               <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Clock className="h-3 w-3" />
@@ -367,7 +344,7 @@ export function WhatsappSettings() {
             )}
             <div className="space-y-2 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">
-                Abra o WhatsApp {selectedName ? <>do profissional <em>{selectedName}</em></> : null} no celular e leia o QR Code.
+                Abra o WhatsApp {selectedName ? <>de <em>{selectedName}</em></> : null} no celular e leia o QR Code.
               </p>
               <p>WhatsApp → Dispositivos conectados → Conectar dispositivo.</p>
               {pairingCode && <p>Código de pareamento: <span className="font-mono text-foreground">{pairingCode}</span></p>}
@@ -378,9 +355,9 @@ export function WhatsappSettings() {
         {/* Janela de horário por profissional */}
         {selectedProfId && (
           <div className="space-y-2 rounded-lg border p-3">
-            <p className="text-xs font-medium">Janela de envio das mensagens automáticas</p>
+            <p className="text-xs font-medium">Janela de envio das suas mensagens automáticas</p>
             <p className="text-[11px] text-muted-foreground">
-              Horário permitido para lembretes, confirmações, pós-atendimento e aniversário deste profissional.
+              Horário permitido para lembretes, confirmações, pós-atendimento e aniversário do seu login.
               Fora da janela, as mensagens ficam enfileiradas e saem assim que a janela abrir.
             </p>
             <div className="grid grid-cols-12 gap-2 items-end">

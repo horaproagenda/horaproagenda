@@ -11,12 +11,22 @@ export interface UltramsgCreds {
 
 export function getUltramsgConfig(override?: UltramsgCreds | null) {
   let base = ((override?.base ?? Deno.env.get('ULTRAMSG_API_URL')) || DEFAULT_BASE).replace(/\/+$/, '');
-  const instance = (override?.instance ?? Deno.env.get('ULTRAMSG_INSTANCE_ID') ?? '').trim();
+  let instance = (override?.instance ?? Deno.env.get('ULTRAMSG_INSTANCE_ID') ?? '').trim();
   const token = (override?.token ?? Deno.env.get('ULTRAMSG_TOKEN') ?? '').trim();
 
-  // Normaliza a base removendo qualquer sufixo de instância que já tenha
-  // sido salvo junto com api_url (causa raiz do "Path not found").
-  // Cobre os formatos comuns: /<instance>, /instance<digits>, /<digits>.
+  // Caso o usuário tenha salvo a URL inteira no campo instance_id
+  // (ex.: "https://api.ultramsg.com/instance179205/"), extrai o segmento
+  // instanceN e usa api.ultramsg.com como base.
+  const urlMatch = instance.match(/^https?:\/\/([^/]+)\/(?:instance)?(\d+)\/?$/i);
+  if (urlMatch) {
+    base = `https://${urlMatch[1]}`;
+    instance = `instance${urlMatch[2]}`;
+  }
+  // Também aceita só o número com barras: "/179205/" → "instance179205"
+  const bareDigits = instance.match(/^\/?(\d+)\/?$/);
+  if (bareDigits) instance = `instance${bareDigits[1]}`;
+
+  // Remove sufixo de instância que tenha sido salvo junto com api_url.
   if (instance) {
     const baseLower = base.toLowerCase();
     const inst = instance.toLowerCase();
@@ -33,10 +43,7 @@ export function getUltramsgConfig(override?: UltramsgCreds | null) {
       }
     }
   }
-  // Garante que api.ultramsg.com nunca fique com path sobrando.
   base = base.replace(/\/+$/, '');
-  // Segmento de URL exigido pela UltraMsg: precisa SEMPRE começar com "instance".
-  // Se o usuário salvou só os dígitos (ex.: "134567"), prefixamos.
   const instanceSegment = /^instance/i.test(instance) ? instance : `instance${instance}`;
   return { base, instance, instanceSegment, token, configured: Boolean(base && instance && token) };
 }

@@ -513,6 +513,56 @@ export default function SuperAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => { if (!o) { setCancelTarget(null); setCancelReason(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Ban className="h-4 w-4" /> Cancelar e bloquear conta
+            </DialogTitle>
+          </DialogHeader>
+          {cancelTarget && (
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Conta: <span className="font-medium text-foreground">{cancelTarget.email}</span>
+              </div>
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">
+                Esta ação <strong>exclui permanentemente</strong> o usuário do Auth, remove perfil, papéis e dados de cadastro,
+                e registra os identificadores (e-mail, celular, CPF, CNPJ, nome) em uma lista de bloqueio.
+                Enquanto o bloqueio estiver ativo, qualquer nova tentativa de cadastro com esses dados será barrada.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Bloquear por (meses)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={cancelMonths}
+                    onChange={(e) => setCancelMonths(Math.max(1, Math.min(120, Number(e.target.value) || 6)))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Motivo (opcional)</Label>
+                  <Input
+                    placeholder="Ex.: fraude, abuso, solicitação do usuário"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setCancelTarget(null); setCancelReason(''); }} disabled={cancelSubmitting}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={confirmCancelAccount} disabled={cancelSubmitting}>
+              {cancelSubmitting ? 'Cancelando...' : 'Cancelar e bloquear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

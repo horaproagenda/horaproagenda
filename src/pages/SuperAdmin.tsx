@@ -359,6 +359,12 @@ export default function SuperAdmin() {
                             () => setGrandfatherTarget(r),
                             r.is_grandfathered ? 'destructive' : 'secondary',
                           )}
+                          {actionButton(
+                            'Cancelar e bloquear conta',
+                            <Ban className="h-3 w-3" />,
+                            () => setCancelTarget(r),
+                            'destructive',
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

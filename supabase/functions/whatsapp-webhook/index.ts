@@ -114,6 +114,37 @@ serve(async (req) => {
           .eq('instance_id', instanceId);
         if (upErr) console.warn('[ultramsg-webhook] cred update error:', upErr.message);
         else console.log('[ultramsg-webhook] cred updated', { instanceId, statusStr, substatus, isConnected });
+
+        // Ao reconectar: reabre itens travados por "não conectado" e dispara o cron
+        // imediatamente para que nenhuma mensagem programada deixe de ser enviada.
+        if (isConnected) {
+          try {
+            await supabase
+              .from('whatsapp_send_queue')
+              .update({
+                status: 'pending',
+                attempts: 0,
+                next_attempt_at: new Date().toISOString(),
+                last_error: null,
+                updated_at: new Date().toISOString(),
+              })
+              .or('status.eq.failed,status.eq.pending')
+              .ilike('last_error', '%não conectado%');
+          } catch (e) { console.warn('[ultramsg-webhook] queue reopen failed', e); }
+
+          try {
+            const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-appointment-reminders`;
+            await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
+              },
+              body: JSON.stringify({ catchup: true, trigger: 'reconnect' }),
+            });
+          } catch (e) { console.warn('[ultramsg-webhook] reminders trigger failed', e); }
+        }
       }
     } catch (e) {
       console.warn('[ultramsg-webhook] instance_status handler error:', e);

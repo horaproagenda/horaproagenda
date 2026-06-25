@@ -76,6 +76,21 @@ function statusBadge(s: string) {
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`}>{m.label}</span>;
 }
 
+function HeaderHint({ label, hint }: { label: string; hint: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 cursor-help">
+          {label}
+          <span aria-hidden className="text-muted-foreground/60 text-[10px]">ⓘ</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-[11px] max-w-[280px] leading-relaxed">{hint}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+
 export default function SuperAdmin() {
   const { user, hasRole } = useAuth();
   const navigate = useNavigate();

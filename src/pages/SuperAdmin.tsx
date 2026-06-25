@@ -36,7 +36,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban } from 'lucide-react';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
 import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';
@@ -91,6 +91,10 @@ export default function SuperAdmin() {
   const [extraDays, setExtraDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   const [grandfatherTarget, setGrandfatherTarget] = useState<AdminAccountRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AdminAccountRow | null>(null);
+  const [cancelMonths, setCancelMonths] = useState(6);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -225,6 +229,34 @@ export default function SuperAdmin() {
     }
   };
 
+  const confirmCancelAccount = async () => {
+    if (!cancelTarget) return;
+    setCancelSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('super-admin-cancel-account', {
+        body: {
+          owner_user_id: cancelTarget.owner_user_id,
+          block_months: cancelMonths,
+          reason: cancelReason || 'super_admin_cancellation',
+          purge_data: true,
+        },
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Conta cancelada e bloqueada');
+      setCancelTarget(null);
+      setCancelReason('');
+      setCancelMonths(6);
+      qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
+      qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao cancelar conta');
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
   return (
     <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">
       <div className="space-y-4 p-4 md:p-6">
@@ -326,6 +358,12 @@ export default function SuperAdmin() {
                             <Crown className="h-3 w-3" />,
                             () => setGrandfatherTarget(r),
                             r.is_grandfathered ? 'destructive' : 'secondary',
+                          )}
+                          {actionButton(
+                            'Cancelar e bloquear conta',
+                            <Ban className="h-3 w-3" />,
+                            () => setCancelTarget(r),
+                            'destructive',
                           )}
                         </div>
                       </TableCell>
@@ -475,6 +513,56 @@ export default function SuperAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => { if (!o) { setCancelTarget(null); setCancelReason(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Ban className="h-4 w-4" /> Cancelar e bloquear conta
+            </DialogTitle>
+          </DialogHeader>
+          {cancelTarget && (
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Conta: <span className="font-medium text-foreground">{cancelTarget.email}</span>
+              </div>
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">
+                Esta ação <strong>exclui permanentemente</strong> o usuário do Auth, remove perfil, papéis e dados de cadastro,
+                e registra os identificadores (e-mail, celular, CPF, CNPJ, nome) em uma lista de bloqueio.
+                Enquanto o bloqueio estiver ativo, qualquer nova tentativa de cadastro com esses dados será barrada.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Bloquear por (meses)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={cancelMonths}
+                    onChange={(e) => setCancelMonths(Math.max(1, Math.min(120, Number(e.target.value) || 6)))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Motivo (opcional)</Label>
+                  <Input
+                    placeholder="Ex.: fraude, abuso, solicitação do usuário"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setCancelTarget(null); setCancelReason(''); }} disabled={cancelSubmitting}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={confirmCancelAccount} disabled={cancelSubmitting}>
+              {cancelSubmitting ? 'Cancelando...' : 'Cancelar e bloquear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

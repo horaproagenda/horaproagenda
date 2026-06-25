@@ -195,15 +195,15 @@ export function WhatsappPoolCostPanel() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Pool UltraMsg · Cobrança sob demanda</h2>
+          <h2 className="text-sm font-semibold">Instâncias UltraMsg · Cobrança sob demanda</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => refetch()}>
             <RefreshCw className="h-3 w-3 mr-1" /> Atualizar
           </Button>
-          <Button size="sm" variant="secondary" onClick={runHealthcheck} disabled={running}>
+          <Button size="sm" variant="secondary" onClick={runHealthcheck} disabled={running} title="Verifica em tempo real quais instâncias estão conectadas ao WhatsApp.">
             <Activity className="h-3 w-3 mr-1" />
-            {running ? 'Verificando...' : 'Health check'}
+            {running ? 'Verificando...' : 'Verificar conexões'}
           </Button>
         </div>
       </div>
@@ -230,7 +230,7 @@ export function WhatsappPoolCostPanel() {
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Utilização do pool</span>
+              <span title="Percentual de instâncias do pool que já estão vinculadas a profissionais (e, portanto, gerando cobrança).">Utilização das instâncias</span>
               <span className="tabular-nums">{stats.utilization}%</span>
             </div>
             <Progress value={stats.utilization} className="h-2" />

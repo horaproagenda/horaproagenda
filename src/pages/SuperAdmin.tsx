@@ -76,6 +76,21 @@ function statusBadge(s: string) {
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`}>{m.label}</span>;
 }
 
+function HeaderHint({ label, hint }: { label: string; hint: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 cursor-help">
+          {label}
+          <span aria-hidden className="text-muted-foreground/60 text-[10px]">ⓘ</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-[11px] max-w-[280px] leading-relaxed">{hint}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+
 export default function SuperAdmin() {
   const { user, hasRole } = useAuth();
   const navigate = useNavigate();
@@ -287,13 +302,27 @@ export default function SuperAdmin() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-[11px] w-[26%]">E-mail</TableHead>
-                  <TableHead className="text-[11px] w-[14%]">Situação</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Plano / Vagas</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Teste até</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Pago até</TableHead>
-                  <TableHead className="text-[11px] w-[14%]">Stripe</TableHead>
-                  <TableHead className="text-[11px] w-[16%] text-right">Ações</TableHead>
+                  <TableHead className="text-[11px] w-[26%]">
+                    <HeaderHint label="E-mail" hint="E-mail da pessoa responsável pela conta (administradora da clínica)." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[14%]">
+                    <HeaderHint label="Situação" hint="Estado atual da assinatura: Teste (período gratuito de 7 dias), Ativa (assinatura paga), Em atraso, Cancelada ou Vitalícia (acesso liberado por você, sem cobrança)." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Plano / Acessos" hint="Nível do plano contratado e quantidade de profissionais (acessos) que essa conta pode cadastrar." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Teste até" hint="Data em que o período gratuito de teste expira. Depois disso a conta precisa pagar para continuar." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Pago até" hint="Até quando o pagamento atual cobre o uso do aplicativo." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[14%]">
+                    <HeaderHint label="Cobrança" hint="Identificador do cliente no sistema de pagamento (Stripe). Serve para localizar a conta dentro do painel de cobranças." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[16%] text-right">
+                    <HeaderHint label="Ações" hint="Atalhos para registrar pagamento manual, estender teste, conceder acesso vitalício ou cancelar e bloquear a conta." />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,22 +354,53 @@ export default function SuperAdmin() {
                       <TooltipContent side="top" className="text-[11px]">{label}</TooltipContent>
                     </Tooltip>
                   );
+                  const dataCell = (content: React.ReactNode, hint: string, className = '') => (
+                    <TableCell className={`text-xs py-2 ${className}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help block">{content}</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px] max-w-[260px]">{hint}</TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                  );
                   return (
                     <TableRow key={r.owner_user_id}>
-                      <TableCell className="text-xs py-2 truncate max-w-0">
-                        <div className="font-medium truncate">{r.email ?? '—'}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
-                      </TableCell>
-                      <TableCell className="text-xs py-2">
+                      {dataCell(
+                        <>
+                          <div className="font-medium truncate">{r.email ?? '—'}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
+                        </>,
+                        'E-mail e código interno da conta responsável.',
+                        'truncate max-w-0',
+                      )}
+                      {dataCell(
                         <div className="flex items-center gap-1 flex-wrap">
                           {statusBadge(r.status)}
                           {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{r.plan_tier ?? '—'} / {r.seat_limit}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.trial_ends_at)}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums text-center">{fmtDate(r.current_period_end)}</TableCell>
-                      <TableCell className="text-xs py-2 tabular-nums truncate max-w-0">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 10) + '…' : '—'}</TableCell>
+                        </div>,
+                        'Situação atual da assinatura: Teste, Ativa, Em atraso, Cancelada ou Vitalícia (acesso gratuito concedido por você).',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{r.plan_tier ?? '—'} / {r.seat_limit}</span>,
+                        'Nível do plano contratado e quantidade de profissionais (acessos) permitidos.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{fmtDate(r.trial_ends_at)}</span>,
+                        'Data em que o período gratuito de teste expira.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{fmtDate(r.current_period_end)}</span>,
+                        'Até quando o pagamento atual mantém a conta ativa.',
+                        'tabular-nums text-center',
+                      )}
+                      {dataCell(
+                        <span className="tabular-nums">{r.stripe_customer_id ? r.stripe_customer_id.slice(0, 10) + '…' : '—'}</span>,
+                        'Identificador desta conta dentro do sistema de cobrança Stripe. Útil para localizar o cliente no painel de pagamentos.',
+                        'tabular-nums truncate max-w-0',
+                      )}
                       <TableCell className="text-xs py-2 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1 justify-end">
                           {actionButton(
@@ -378,65 +438,101 @@ export default function SuperAdmin() {
         <Card className="overflow-x-auto">
           <div className="flex items-center gap-2 px-3 pt-3">
             <Users className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">Uso de assentos por conta</h2>
+            <h2 className="text-sm font-semibold">Uso de acessos por conta</h2>
             <span className="text-[11px] text-muted-foreground">(atualiza em tempo real)</span>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[11px]">Conta</TableHead>
-                <TableHead className="text-[11px]">Status</TableHead>
-                <TableHead className="text-[11px]">Usados</TableHead>
-                <TableHead className="text-[11px]">Limite</TableHead>
-                <TableHead className="text-[11px]">Disponíveis</TableHead>
-                <TableHead className="text-[11px] min-w-[140px]">Ocupação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {seatsLoading && (
-                <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Carregando uso de assentos...</TableCell></TableRow>
-              )}
-              {!seatsLoading && seatRows.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
-              )}
-              {seatRows.map((r) => {
-                const pct = r.is_grandfathered ? 0 : (r.seat_limit > 0 ? Math.min(100, Math.round((r.used / r.seat_limit) * 100)) : 0);
-                const near = !r.is_grandfathered && r.seat_limit > 0 && r.available <= 1 && r.used < r.seat_limit;
-                const reached = !r.is_grandfathered && r.seat_limit > 0 && r.used >= r.seat_limit;
-                return (
-                  <TableRow key={r.owner_user_id}>
-                    <TableCell className="text-xs py-2">
-                      <div className="font-medium">{r.email ?? '—'}</div>
-                      <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
+          <p className="px-3 pb-2 text-[11px] text-muted-foreground">
+            Cada "acesso" corresponde a um profissional cadastrado naquela clínica.
+            O plano contratado define o limite de acessos disponíveis.
+          </p>
+          <TooltipProvider delayDuration={150}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-[11px]">
+                    <HeaderHint label="Conta" hint="E-mail da pessoa responsável pela clínica." />
+                  </TableHead>
+                  <TableHead className="text-[11px]">
+                    <HeaderHint label="Situação" hint="Estado da assinatura: Teste, Ativa, Em atraso, Cancelada ou Vitalícia." />
+                  </TableHead>
+                  <TableHead className="text-[11px]">
+                    <HeaderHint label="Usados" hint="Quantos profissionais já estão cadastrados na conta agora." />
+                  </TableHead>
+                  <TableHead className="text-[11px]">
+                    <HeaderHint label="Limite" hint="Quantos profissionais o plano contratado permite cadastrar no total." />
+                  </TableHead>
+                  <TableHead className="text-[11px]">
+                    <HeaderHint label="Disponíveis" hint="Quantos profissionais ainda podem ser cadastrados antes de atingir o limite do plano." />
+                  </TableHead>
+                  <TableHead className="text-[11px] min-w-[140px]">
+                    <HeaderHint label="Ocupação" hint="Percentual de acessos já utilizados em relação ao limite do plano. Quando chega perto de 100%, a conta precisa contratar mais acessos para continuar cadastrando profissionais." />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {seatsLoading && (
+                  <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Carregando uso de acessos...</TableCell></TableRow>
+                )}
+                {!seatsLoading && seatRows.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
+                )}
+                {seatRows.map((r) => {
+                  const pct = r.is_grandfathered ? 0 : (r.seat_limit > 0 ? Math.min(100, Math.round((r.used / r.seat_limit) * 100)) : 0);
+                  const near = !r.is_grandfathered && r.seat_limit > 0 && r.available <= 1 && r.used < r.seat_limit;
+                  const reached = !r.is_grandfathered && r.seat_limit > 0 && r.used >= r.seat_limit;
+                  const cell = (content: React.ReactNode, hint: string, className = '') => (
+                    <TableCell className={`text-xs py-2 ${className}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help">{content}</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px] max-w-[260px]">{hint}</TooltipContent>
+                      </Tooltip>
                     </TableCell>
-                    <TableCell className="text-xs py-2">
-                      <div className="flex items-center gap-1">
-                        {statusBadge(r.status)}
-                        {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs py-2 tabular-nums">{r.used}</TableCell>
-                    <TableCell className="text-xs py-2 tabular-nums">{r.is_grandfathered ? '∞' : r.seat_limit}</TableCell>
-                    <TableCell className={`text-xs py-2 tabular-nums ${reached ? 'text-red-700 font-semibold' : near ? 'text-amber-700 font-semibold' : ''}`}>
-                      {r.is_grandfathered ? '∞' : r.available}
-                    </TableCell>
-                    <TableCell className="text-xs py-2">
-                      {r.is_grandfathered ? (
-                        <span className="text-[11px] text-purple-700">Ilimitado</span>
-                      ) : r.seat_limit > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Progress value={pct} className="h-1.5" />
-                          <span className="text-[10px] tabular-nums w-8 text-right">{pct}%</span>
-                        </div>
-                      ) : <span className="text-[11px] text-muted-foreground">—</span>}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                  );
+                  return (
+                    <TableRow key={r.owner_user_id}>
+                      {cell(
+                        <div>
+                          <div className="font-medium">{r.email ?? '—'}</div>
+                          <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
+                        </div>,
+                        'Conta da clínica. O código abaixo é o identificador interno do usuário.',
+                      )}
+                      {cell(
+                        <div className="flex items-center gap-1">
+                          {statusBadge(r.status)}
+                          {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
+                        </div>,
+                        'Situação atual da assinatura. "Vitalícia" significa acesso liberado por você, sem cobrança e sem limite.',
+                      )}
+                      {cell(<span className="tabular-nums">{r.used}</span>, 'Profissionais já cadastrados nesta conta no momento.')}
+                      {cell(<span className="tabular-nums">{r.is_grandfathered ? '∞' : r.seat_limit}</span>, 'Limite máximo de profissionais permitido pelo plano contratado. "∞" significa ilimitado.')}
+                      {cell(
+                        <span className="tabular-nums">{r.is_grandfathered ? '∞' : r.available}</span>,
+                        'Acessos restantes antes de atingir o limite do plano.',
+                        reached ? 'text-red-700 font-semibold' : near ? 'text-amber-700 font-semibold' : '',
+                      )}
+                      {cell(
+                        r.is_grandfathered ? (
+                          <span className="text-[11px] text-purple-700">Ilimitado</span>
+                        ) : r.seat_limit > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <Progress value={pct} className="h-1.5 w-24" />
+                            <span className="text-[10px] tabular-nums w-8 text-right">{pct}%</span>
+                          </div>
+                        ) : <span className="text-[11px] text-muted-foreground">—</span>,
+                        'Quanto do plano já está sendo usado. 100% significa que a conta atingiu o limite e precisa contratar mais acessos para cadastrar novos profissionais.',
+                      )}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </Card>
       </div>
+
 
       <Dialog open={!!target && !!mode} onOpenChange={(o) => { if (!o) closeDialog(); }}>
         <DialogContent>

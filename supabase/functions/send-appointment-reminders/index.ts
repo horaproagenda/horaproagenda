@@ -93,8 +93,17 @@ function maybeAppendButtons(message: string, tpl: any, apt: any): string {
   if (!tpl?.include_confirmation_buttons) return message;
   const token = (apt as any).confirmation_token;
   if (!token) return message;
-  if (/CONFIRMAR/i.test(message) && /CANCELAR/i.test(message)) return message;
-  return `${message}\n\nResponda esta mensagem com *CONFIRMAR* para confirmar sua presença ou *CANCELAR* para desmarcar.`;
+  const confirmUrl = `${PUBLIC_APP_BASE}/c/${token}?a=confirm`;
+  const cancelUrl = `${PUBLIC_APP_BASE}/c/${token}?a=cancel`;
+  // Evita duplicar se o template já mencionar os links
+  const hasLinks = message.includes(confirmUrl) || message.includes(cancelUrl);
+  const hint = hasLinks
+    ? ''
+    : `\n\n✅ *CONFIRMAR presença:*\n${confirmUrl}\n\n❌ *CANCELAR agendamento:*\n${cancelUrl}`;
+  const replyHint = /responda.*confirmar|responda.*cancelar/i.test(message)
+    ? ''
+    : `\n\n_Ou responda esta mensagem com *CONFIRMAR* ou *CANCELAR*._`;
+  return `${message}${hint}${replyHint}`;
 }
 
 

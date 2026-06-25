@@ -198,8 +198,27 @@ export function WhatsappSettings() {
     : null;
 
   const handleConnect = async () => {
-    if (!selectedProfId) {
-      toast.error('Seu login precisa estar vinculado ao seu cadastro de profissional.');
+    setPermissionError(null);
+    // Validação extra: garante que estamos sempre conectando o profissional do login.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      const msg = 'Sessão expirada. Faça login novamente para conectar seu WhatsApp.';
+      setPermissionError(msg);
+      toast.error(msg);
+      return;
+    }
+    const { data: ownProf } = await supabase
+      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+    if (!ownProf?.id) {
+      const msg = 'Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.';
+      setPermissionError(msg);
+      toast.error('Login sem profissional vinculado.');
+      return;
+    }
+    if (selectedProfId && selectedProfId !== ownProf.id) {
+      const msg = 'Você só pode conectar o WhatsApp do profissional vinculado ao seu próprio login.';
+      setPermissionError(msg);
+      toast.error(msg);
       return;
     }
     if (connected) {

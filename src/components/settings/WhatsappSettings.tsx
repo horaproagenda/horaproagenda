@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   AlertCircle, CheckCircle, Loader2, MessageSquare, QrCode, RefreshCw, Save,
-  ShieldCheck, Clock, Zap,
+  ShieldCheck, Clock, Zap, Info, ShieldAlert,
 } from 'lucide-react';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
@@ -50,6 +50,7 @@ export function WhatsappSettings() {
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [connectionByProf, setConnectionByProf] = useState<Record<string, ConnectionSnapshot>>({});
+  const [permissionError, setPermissionError] = useState<string | null>(null);
 
   const refreshConnection = useCallback(async (professionalId?: string) => {
     if (!professionalId) return null;
@@ -197,8 +198,27 @@ export function WhatsappSettings() {
     : null;
 
   const handleConnect = async () => {
-    if (!selectedProfId) {
-      toast.error('Seu login precisa estar vinculado ao seu cadastro de profissional.');
+    setPermissionError(null);
+    // Validação extra: garante que estamos sempre conectando o profissional do login.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      const msg = 'Sessão expirada. Faça login novamente para conectar seu WhatsApp.';
+      setPermissionError(msg);
+      toast.error(msg);
+      return;
+    }
+    const { data: ownProf } = await supabase
+      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+    if (!ownProf?.id) {
+      const msg = 'Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.';
+      setPermissionError(msg);
+      toast.error('Login sem profissional vinculado.');
+      return;
+    }
+    if (selectedProfId && selectedProfId !== ownProf.id) {
+      const msg = 'Você só pode conectar o WhatsApp do profissional vinculado ao seu próprio login.';
+      setPermissionError(msg);
+      toast.error(msg);
       return;
     }
     if (connected) {
@@ -246,7 +266,12 @@ export function WhatsappSettings() {
       }
       toast.success('QR Code gerado. Escaneie no seu celular.');
     } catch (e: any) {
-      toast.error(e?.message || 'Erro ao conectar WhatsApp.');
+      const raw = (e?.context?.error || e?.message || '').toString();
+      const isForbidden = /403|Forbidden|só pode|vinculado ao usuário logado/i.test(raw);
+      if (isForbidden) {
+        setPermissionError(raw || 'Sem permissão para acessar o WhatsApp de outro profissional.');
+      }
+      toast.error(raw || 'Erro ao conectar WhatsApp.');
     } finally {
       setConnecting(false);
     }
@@ -289,6 +314,32 @@ export function WhatsappSettings() {
             <AlertTitle>Login sem profissional vinculado</AlertTitle>
             <AlertDescription className="text-xs">
               Para garantir isolamento entre clínicas, o QR Code só é liberado para o profissional vinculado ao usuário logado.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {permissionError && (
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Sem permissão para este WhatsApp</AlertTitle>
+            <AlertDescription className="text-xs">
+              {permissionError}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!connected && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>
+            <AlertDescription className="text-xs space-y-1.5">
+              <p>Cada profissional tem o próprio QR Code — você só consegue conectar o WhatsApp vinculado ao seu login, nunca o de outra clínica ou colega.</p>
+              <ol className="list-decimal pl-4 space-y-1">
+                <li>Confirme que o profissional acima é você (criado com o mesmo e-mail do seu login).</li>
+                <li>Abra o WhatsApp no celular → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong>.</li>
+                <li>Clique em <strong>Conectar ao WhatsApp</strong> abaixo e escaneie o QR exibido.</li>
+              </ol>
+              <p className="text-[11px] text-muted-foreground">Se você é administrador e precisa que outro profissional conecte o WhatsApp dele, peça para ele acessar esta tela com o próprio login.</p>
             </AlertDescription>
           </Alert>
         )}

@@ -75,6 +75,50 @@ serve(async (req) => {
       });
     } catch { /* table may not exist */ }
 
+    // ---- Real-time connection status (instance_status events) ----
+    // UltraMsg envia event_type "instance_status" sempre que a sessão muda
+    // (authenticated, disconnected, got_qr_code, etc). Refletimos o status
+    // em professional_whatsapp_credentials para a UI atualizar via realtime.
+    try {
+      const evt = String(payload?.event_type || payload?.type || '').toLowerCase();
+      const instanceId = String(
+        (payload as any)?.instanceId ||
+        (payload as any)?.instance_id ||
+        (payload as any)?.instance ||
+        (payload as any)?.data?.instanceId ||
+        (payload as any)?.data?.instance_id ||
+        (payload as any)?.data?.instance || ''
+      ).trim();
+      if (instanceId && (evt.includes('instance_status') || evt.includes('status'))) {
+        const statusStr = String(
+          (payload as any)?.status ||
+          (payload as any)?.data?.status ||
+          (payload as any)?.accountStatus?.status || ''
+        ).toLowerCase();
+        const substatus = String(
+          (payload as any)?.substatus ||
+          (payload as any)?.data?.substatus ||
+          (payload as any)?.accountStatus?.substatus || ''
+        ).toLowerCase();
+        const isConnected = statusStr === 'authenticated' || substatus === 'connected';
+        const isDown = ['disconnected', 'got_qr_code', 'loading', 'pending'].includes(statusStr) ||
+                       ['disconnected', 'loading', 'pending'].includes(substatus);
+        const patch: Record<string, any> = { last_checked_at: new Date().toISOString() };
+        if (isConnected) patch.last_connected_at = new Date().toISOString();
+        if (isConnected || isDown) {
+          patch.is_active = isConnected;
+        }
+        const { error: upErr } = await supabase
+          .from('professional_whatsapp_credentials')
+          .update(patch)
+          .eq('instance_id', instanceId);
+        if (upErr) console.warn('[ultramsg-webhook] cred update error:', upErr.message);
+        else console.log('[ultramsg-webhook] cred updated', { instanceId, statusStr, substatus, isConnected });
+      }
+    } catch (e) {
+      console.warn('[ultramsg-webhook] instance_status handler error:', e);
+    }
+
     // Try to act on incoming text messages: detect confirm/cancel intent.
     // Supports BOTH UltraMsg and Evolution API (v2/v6) payload shapes.
     const data = (payload?.data || payload?.message || payload || {}) as any;

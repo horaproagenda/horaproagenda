@@ -229,6 +229,34 @@ export default function SuperAdmin() {
     }
   };
 
+  const confirmCancelAccount = async () => {
+    if (!cancelTarget) return;
+    setCancelSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('super-admin-cancel-account', {
+        body: {
+          owner_user_id: cancelTarget.owner_user_id,
+          block_months: cancelMonths,
+          reason: cancelReason || 'super_admin_cancellation',
+          purge_data: true,
+        },
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Conta cancelada e bloqueada');
+      setCancelTarget(null);
+      setCancelReason('');
+      setCancelMonths(6);
+      qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
+      qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao cancelar conta');
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
   return (
     <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">
       <div className="space-y-4 p-4 md:p-6">

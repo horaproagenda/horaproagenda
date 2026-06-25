@@ -77,7 +77,7 @@ export async function resolveProfessionalCreds(
 }
 
 export async function ultramsgStatus(override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) {
     return { configured: false, connected: false, error: 'UltraMsg não configurado. Configure ULTRAMSG_INSTANCE_ID e ULTRAMSG_TOKEN.' };
   }
@@ -106,7 +106,7 @@ export async function ultramsgStatus(override?: UltramsgCreds | null) {
 }
 
 export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
   const st = await ultramsgStatus(override);
@@ -145,7 +145,7 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
 }
 
 export async function ultramsgSendText(opts: { to: string; body: string }, override?: UltramsgCreds | null) {
-  const { base, instance, token, configured } = getUltramsgConfig(override);
+  const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
 
   const st = await ultramsgStatus(override);

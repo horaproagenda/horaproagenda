@@ -287,13 +287,27 @@ export default function SuperAdmin() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-[11px] w-[26%]">E-mail</TableHead>
-                  <TableHead className="text-[11px] w-[14%]">Situação</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Plano / Vagas</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Teste até</TableHead>
-                  <TableHead className="text-[11px] w-[10%] text-center">Pago até</TableHead>
-                  <TableHead className="text-[11px] w-[14%]">Stripe</TableHead>
-                  <TableHead className="text-[11px] w-[16%] text-right">Ações</TableHead>
+                  <TableHead className="text-[11px] w-[26%]">
+                    <HeaderHint label="E-mail" hint="E-mail da pessoa responsável pela conta (administradora da clínica)." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[14%]">
+                    <HeaderHint label="Situação" hint="Estado atual da assinatura: Teste (período gratuito de 7 dias), Ativa (assinatura paga), Em atraso, Cancelada ou Vitalícia (acesso liberado por você, sem cobrança)." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Plano / Acessos" hint="Nível do plano contratado e quantidade de profissionais (acessos) que essa conta pode cadastrar." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Teste até" hint="Data em que o período gratuito de teste expira. Depois disso a conta precisa pagar para continuar." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[10%] text-center">
+                    <HeaderHint label="Pago até" hint="Até quando o pagamento atual cobre o uso do aplicativo." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[14%]">
+                    <HeaderHint label="Cobrança" hint="Identificador do cliente no sistema de pagamento (Stripe). Serve para localizar a conta dentro do painel de cobranças." />
+                  </TableHead>
+                  <TableHead className="text-[11px] w-[16%] text-right">
+                    <HeaderHint label="Ações" hint="Atalhos para registrar pagamento manual, estender teste, conceder acesso vitalício ou cancelar e bloquear a conta." />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

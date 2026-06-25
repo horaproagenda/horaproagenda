@@ -253,13 +253,18 @@ async function processQueue(supabase: any, summary: any) {
       }
       summary.retriedSent = (summary.retriedSent || 0) + 1;
     } catch (e) {
-      const nextAttempts = (row.attempts ?? 0) + 1;
-      const isFinal = nextAttempts >= (row.max_attempts ?? 8);
+      const errMsg = e instanceof Error ? e.message : String(e);
+      // Erros de "WhatsApp não conectado" não devem consumir tentativas:
+      // assim que a conexão voltar, a fila precisa drenar normalmente.
+      const isDisconnected = /n[ãa]o conectado|not connected|estado: desconhecido|qr code|disconnect/i.test(errMsg);
+      const nextAttempts = isDisconnected ? (row.attempts ?? 0) : (row.attempts ?? 0) + 1;
+      const isFinal = !isDisconnected && nextAttempts >= (row.max_attempts ?? 8);
+      const delayMs = isDisconnected ? 5 * 60_000 : backoffMs(nextAttempts);
       await supabase.from('whatsapp_send_queue').update({
         attempts: nextAttempts,
-        last_error: e instanceof Error ? e.message : String(e),
+        last_error: errMsg,
         status: isFinal ? 'failed' : 'pending',
-        next_attempt_at: new Date(Date.now() + backoffMs(nextAttempts)).toISOString(),
+        next_attempt_at: new Date(Date.now() + delayMs).toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('id', row.id);
       summary.retriedFailed = (summary.retriedFailed || 0) + 1;

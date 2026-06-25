@@ -8,7 +8,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
-import { evolutionGetQrCode, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,21 +49,6 @@ serve(async (req) => {
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
     if (requested_professional_id && requested_professional_id !== professional_id) {
       return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' }, 403);
-    }
-
-    const evolution = getEvolutionConfig();
-    if (evolution.configured) {
-      try {
-        const result = await evolutionGetQrCode();
-        if (result.connected) {
-          return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
-        }
-        if (result.qrcode) {
-          return json({ success: true, provider: 'evolution', qrcode: result.qrcode, pairingCode: result.pairingCode ?? null });
-        }
-      } catch (e) {
-        console.warn('Evolution connect failed, falling back to UltraMsg:', e);
-      }
     }
 
     // 1) Reserva instância se ainda não houver

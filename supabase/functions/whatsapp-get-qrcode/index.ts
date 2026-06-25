@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
-import { evolutionGetQrCode, getEvolutionConfig } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,27 +39,6 @@ serve(async (req) => {
     if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
       return new Response(JSON.stringify({ success: false, error: 'O QR Code só pode ser gerado para o profissional vinculado ao usuário logado.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const evolution = getEvolutionConfig();
-    if (evolution.configured) {
-      try {
-        const result = await evolutionGetQrCode();
-        if (result.connected) {
-          return new Response(JSON.stringify({
-            success: true, connected: true, source: 'global', provider: 'evolution',
-            message: 'WhatsApp já está conectado',
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-        if (result.qrcode) {
-          return new Response(JSON.stringify({
-            success: true, qrcode: result.qrcode, pairingCode: result.pairingCode ?? null,
-            source: 'global', provider: 'evolution',
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-      } catch (e) {
-        console.warn('Evolution QR failed, falling back to UltraMsg:', e);
-      }
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);

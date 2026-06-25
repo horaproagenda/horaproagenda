@@ -61,6 +61,11 @@ serve(async (req) => {
       currentProfId = prof?.id ?? null;
     }
 
+    if (professional_id && professional_id !== currentProfId) {
+      return new Response(JSON.stringify({ success: false, error: 'Mensagens manuais só podem sair pelo WhatsApp vinculado ao usuário logado.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (isProfessional && !isAdmin && !isReceptionist) {
       if (!currentProfId) {
         return new Response(JSON.stringify({ success: false, error: 'Profissional não vinculado.' }),
@@ -90,8 +95,8 @@ serve(async (req) => {
       }
     }
 
-    // Pick credentials: explicit professional_id > caller's professional > global fallback
-    const targetProf = professional_id || currentProfId || null;
+    // Mensagens manuais sempre usam as credenciais do profissional vinculado ao usuário logado.
+    const targetProf = currentProfId || null;
     const { creds, source } = await resolveProfessionalCreds(supabaseService, targetProf);
     if (!creds) throw new Error('UltraMsg não configurado.');
 

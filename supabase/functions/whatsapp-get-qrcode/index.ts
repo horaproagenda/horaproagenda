@@ -32,22 +32,14 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const professional_id: string | undefined = body?.professional_id;
+    const requested_professional_id: string | undefined = body?.professional_id;
 
-    const { data: roleRows } = await supabaseService
-      .from('user_roles').select('role').eq('user_id', user.id);
-    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
-    const isAdmin = roles.includes('admin');
-
-    // Authorization: admins always allowed. Professionals only for their own row.
-    if (!isAdmin) {
-      const { data: prof } = await supabaseService
-        .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
-      const myId = prof?.id ?? null;
-      if (!myId || (professional_id && professional_id !== myId)) {
-        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+    const { data: prof } = await supabaseService
+      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+    const professional_id = prof?.id ?? null;
+    if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
+      return new Response(JSON.stringify({ success: false, error: 'O QR Code só pode ser gerado para o profissional vinculado ao usuário logado.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const evolution = getEvolutionConfig();

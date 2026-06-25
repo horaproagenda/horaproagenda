@@ -41,21 +41,15 @@ serve(async (req) => {
     if (authError || !user) return json({ success: false, error: 'Unauthorized' }, 401);
 
     const body = await req.json().catch(() => ({}));
-    let professional_id: string | undefined = body?.professional_id;
-
-    // Permissão: admin pode conectar para qualquer profissional; senão só para si.
-    const { data: roleRows } = await supabaseService
-      .from('user_roles').select('role').eq('user_id', user.id);
-    const roles = (roleRows ?? []).map((r: any) => r.role);
-    const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+    const requested_professional_id: string | undefined = body?.professional_id;
 
     const { data: ownProf } = await supabaseService
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
 
-    if (!professional_id) professional_id = ownProf?.id;
+    const professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
-    if (!isAdmin && professional_id !== ownProf?.id) {
-      return json({ success: false, error: 'Sem permissão.' }, 403);
+    if (requested_professional_id && requested_professional_id !== professional_id) {
+      return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' }, 403);
     }
 
     const evolution = getEvolutionConfig();

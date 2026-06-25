@@ -12,11 +12,41 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    let professional_id: string | undefined;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ configured: false, connected: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    let requested_professional_id: string | undefined;
     try {
       const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-      professional_id = body?.professional_id;
+      requested_professional_id = body?.professional_id;
     } catch { /* ignore */ }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseUser = createClient(supabaseUrl, supabaseAnon, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const supabaseService = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ configured: false, connected: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const { data: prof } = await supabaseService
+      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+    const professional_id = prof?.id ?? null;
+    if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
+      return new Response(JSON.stringify({ configured: false, connected: false, error: 'O status do WhatsApp só pode ser consultado para o profissional vinculado ao usuário logado.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const evolution = getEvolutionConfig();
     let evolutionFallback: any = null;
@@ -39,10 +69,6 @@ serve(async (req) => {
       }
     }
 
-    const supabaseService = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
     if (!creds && evolutionFallback) {
       return new Response(JSON.stringify(evolutionFallback), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

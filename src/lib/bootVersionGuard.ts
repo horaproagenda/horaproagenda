@@ -26,6 +26,16 @@ declare const __APP_BUILD_TIME__: string;
 const PURGE_FLAG = 'boot_version_purge_done_v1';
 const BUILD_KEY = 'app_current_build_id_v1';
 
+/**
+ * Marca a rebrand "Lume Agenda → Hora Pro". Sempre que o nome/logo
+ * do app mudar (ou for detectada regressão visual), bumpe a versão
+ * (v2 → v3 …). Ao detectar marcador antigo/ausente, o guard limpa
+ * TODOS os caches/SWs e força reload — garantindo que nenhum cliente
+ * fique preso a uma versão com o nome ou ícone antigo.
+ */
+const BRAND_PURGE_KEY = 'brand_purge_marker';
+const BRAND_PURGE_VERSION = 'horapro_v2';
+
 /** Reseta o flag de purge para permitir nova verificação após login/logout. */
 export function resetBootVersionGuardFlag(): void {
   try {

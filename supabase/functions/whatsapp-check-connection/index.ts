@@ -71,6 +71,36 @@ serve(async (req) => {
         .eq('professional_id', professional_id);
     }
 
+    // Quando o WhatsApp passa a estar conectado, garantimos que a fila de
+    // mensagens travadas seja reaberta e o cron rode na hora — assim nenhuma
+    // mensagem pré-programada deixa de ser enviada após reconectar.
+    if (st.connected) {
+      try {
+        await supabaseService
+          .from('whatsapp_send_queue')
+          .update({
+            status: 'pending',
+            attempts: 0,
+            next_attempt_at: new Date().toISOString(),
+            last_error: null,
+            updated_at: new Date().toISOString(),
+          })
+          .or('status.eq.failed,status.eq.pending')
+          .ilike('last_error', '%não conectado%');
+      } catch (_) { /* ignore */ }
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-appointment-reminders`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
+          },
+          body: JSON.stringify({ catchup: true, trigger: 'check-connection' }),
+        });
+      } catch (_) { /* ignore */ }
+    }
+
     return new Response(JSON.stringify({
       configured: st.configured,
       connected: st.connected,

@@ -266,7 +266,12 @@ export function WhatsappSettings() {
       }
       toast.success('QR Code gerado. Escaneie no seu celular.');
     } catch (e: any) {
-      toast.error(e?.message || 'Erro ao conectar WhatsApp.');
+      const raw = (e?.context?.error || e?.message || '').toString();
+      const isForbidden = /403|Forbidden|só pode|vinculado ao usuário logado/i.test(raw);
+      if (isForbidden) {
+        setPermissionError(raw || 'Sem permissão para acessar o WhatsApp de outro profissional.');
+      }
+      toast.error(raw || 'Erro ao conectar WhatsApp.');
     } finally {
       setConnecting(false);
     }

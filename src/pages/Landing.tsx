@@ -25,10 +25,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { BRAND, PRIMARY_TAGLINE, TAGLINES, DIFFERENTIALS } from '@/content/brand';
+
+const resultStats = [
+  { value: '+8h', label: 'economizadas por semana', desc: 'Menos tempo confirmando manualmente' },
+  { value: '+37%', label: 'mais agendamentos', desc: 'Lembretes e auto-cadastro aumentam o volume' },
+  { value: '−68%', label: 'faltas (no-show)', desc: 'Confirmação automática 24h e 1h antes' },
+  { value: '100%', label: 'em tempo real', desc: 'Agenda sincronizada em todos os dispositivos' },
+];
+
+const testimonials = [
+  {
+    name: 'Camila R.',
+    role: 'Clínica de Estética · SP',
+    quote: 'Reduzi quase todas as faltas com a confirmação automática. Meu WhatsApp parou de virar central de atendimento.',
+  },
+  {
+    name: 'Rafael M.',
+    role: 'Barbearia · BH',
+    quote: 'Em 2 semanas a agenda lotou. O cliente se cadastra sozinho pelo link e já cai marcado certinho.',
+  },
+  {
+    name: 'Juliana T.',
+    role: 'Fisioterapeuta · POA',
+    quote: 'O financeiro com comissão automática me devolveu horas todo mês. Saiu planilha, entrou Hora Pro.',
+  },
+];
 
 const differentialIcons = [MessageCircle, Receipt, Wallet, FileSignature, UserPlus, BellRing, BarChart3];
 

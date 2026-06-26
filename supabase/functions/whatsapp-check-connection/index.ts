@@ -35,8 +35,8 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ configured: false, connected: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'unauthenticated', message: 'Sessão expirada. Faça login novamente.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { data: prof } = await supabaseService

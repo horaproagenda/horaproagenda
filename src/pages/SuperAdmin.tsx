@@ -300,6 +300,9 @@ export default function SuperAdmin() {
     } finally {
       setDeleteSubmitting(false);
     }
+  };
+
+
 
   return (
     <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">

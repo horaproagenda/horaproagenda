@@ -1498,6 +1498,33 @@ export type Database = {
           },
         ]
       }
+      daily_summary_log: {
+        Row: {
+          account_owner_id: string
+          bills_count: number
+          created_at: string
+          id: string
+          reminders_count: number
+          sent_date: string
+        }
+        Insert: {
+          account_owner_id: string
+          bills_count?: number
+          created_at?: string
+          id?: string
+          reminders_count?: number
+          sent_date: string
+        }
+        Update: {
+          account_owner_id?: string
+          bills_count?: number
+          created_at?: string
+          id?: string
+          reminders_count?: number
+          sent_date?: string
+        }
+        Relationships: []
+      }
       deleted_account_blocklist: {
         Row: {
           blocked_until: string

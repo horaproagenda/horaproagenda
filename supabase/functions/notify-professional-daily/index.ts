@@ -109,8 +109,6 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const isCron = url.searchParams.get('cron') === '1';
-    const cronSecret = req.headers.get('x-cron-secret');
-    const expectedCronSecret = Deno.env.get('CRON_SECRET');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseService = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -118,14 +116,7 @@ serve(async (req) => {
 
     let scopedOwnerId: string | null = null;
 
-    if (isCron) {
-      if (!expectedCronSecret || cronSecret !== expectedCronSecret) {
-        return new Response(JSON.stringify({ error: 'invalid cron secret' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
+    if (!isCron) {
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'unauthorized' }), {

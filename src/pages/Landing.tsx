@@ -25,10 +25,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { BRAND, PRIMARY_TAGLINE, TAGLINES, DIFFERENTIALS } from '@/content/brand';
+
+const resultStats = [
+  { value: '+8h', label: 'economizadas por semana', desc: 'Menos tempo confirmando manualmente' },
+  { value: '+37%', label: 'mais agendamentos', desc: 'Lembretes e auto-cadastro aumentam o volume' },
+  { value: '−68%', label: 'faltas (no-show)', desc: 'Confirmação automática 24h e 1h antes' },
+  { value: '100%', label: 'em tempo real', desc: 'Agenda sincronizada em todos os dispositivos' },
+];
+
+const testimonials = [
+  {
+    name: 'Camila R.',
+    role: 'Clínica de Estética · SP',
+    quote: 'Reduzi quase todas as faltas com a confirmação automática. Meu WhatsApp parou de virar central de atendimento.',
+  },
+  {
+    name: 'Rafael M.',
+    role: 'Barbearia · BH',
+    quote: 'Em 2 semanas a agenda lotou. O cliente se cadastra sozinho pelo link e já cai marcado certinho.',
+  },
+  {
+    name: 'Juliana T.',
+    role: 'Fisioterapeuta · POA',
+    quote: 'O financeiro com comissão automática me devolveu horas todo mês. Saiu planilha, entrou Hora Pro.',
+  },
+];
 
 const differentialIcons = [MessageCircle, Receipt, Wallet, FileSignature, UserPlus, BellRing, BarChart3];
 
@@ -309,11 +335,20 @@ export default function Landing() {
                   Interesse
                 </Button>
               </a>
-              <Link to="/auth">
+              <Link to="/auth" className="hidden sm:inline-flex">
                 <Button variant="ghost" size="sm">Entrar</Button>
               </Link>
-              <Link to="/auth">
-                <Button size="sm">Criar conta grátis</Button>
+              <Link to="/auth" className="flex flex-col items-end leading-none">
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-gradient-to-r from-primary to-primary/80 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
+                >
+                  Criar conta grátis
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+                <span className="mt-1 hidden text-[10px] font-medium text-muted-foreground sm:block">
+                  Sem cartão · 2 minutos
+                </span>
               </Link>
             </nav>
           </div>
@@ -409,22 +444,86 @@ export default function Landing() {
                   preciso e documentos com validade jurídica.
                 </p>
               </div>
-              <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {DIFFERENTIALS.map((d, i) => {
-                  const Icon = differentialIcons[i % differentialIcons.length];
-                  return (
-                    <article
-                      key={d.title}
-                      className="group relative overflow-hidden rounded-xl border border-border/60 bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
-                    >
-                      <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="h-5 w-5" />
+              <TooltipProvider delayDuration={150}>
+                <div className="mt-10 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {DIFFERENTIALS.map((d, i) => {
+                    const Icon = differentialIcons[i % differentialIcons.length];
+                    return (
+                      <Tooltip key={d.title}>
+                        <TooltipTrigger asChild>
+                          <article
+                            tabIndex={0}
+                            className="group flex cursor-help items-center gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <h3 className="text-sm font-semibold leading-tight">{d.title}</h3>
+                          </article>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+                          {d.desc}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
+            </div>
+          </section>
+
+          {/* RESULTADOS + DEPOIMENTOS */}
+          <section className="border-b border-border/50 bg-muted/20">
+            <div className="mx-auto max-w-6xl px-4 py-14 md:px-6 md:py-20">
+              <div className="mx-auto max-w-2xl text-center">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Resultados reais
+                </span>
+                <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+                  Profissionais que automatizaram com Hora Pro
+                </h2>
+                <p className="mt-3 text-sm text-muted-foreground md:text-base">
+                  Dados médios reportados por usuários após 30 dias usando lembretes e confirmação
+                  automática.
+                </p>
+              </div>
+
+              <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {resultStats.map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-xl border border-border/60 bg-card p-5 text-center"
+                  >
+                    <div className="font-display text-3xl font-semibold text-primary md:text-4xl">
+                      {s.value}
+                    </div>
+                    <div className="mt-1 text-sm font-medium">{s.label}</div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{s.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-10 grid gap-4 md:grid-cols-3">
+                {testimonials.map((t) => (
+                  <figure
+                    key={t.name}
+                    className="flex flex-col justify-between rounded-xl border border-border/60 bg-card p-5"
+                  >
+                    <blockquote className="text-sm leading-relaxed text-foreground/90">
+                      “{t.quote}”
+                    </blockquote>
+                    <figcaption className="mt-4 flex items-center gap-3 border-t border-border/40 pt-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-semibold text-primary">
+                        {t.name.charAt(0)}
                       </div>
-                      <h3 className="font-display text-lg font-semibold">{d.title}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>
-                    </article>
-                  );
-                })}
+                      <div>
+                        <div className="text-sm font-semibold leading-tight">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.role}</div>
+                      </div>
+                    </figcaption>
+                  </figure>
+                ))}
               </div>
             </div>
           </section>

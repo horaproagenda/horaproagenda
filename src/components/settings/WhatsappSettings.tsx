@@ -100,8 +100,9 @@ export function WhatsappSettings() {
       if (!user) return;
 
       const { data: prof } = await supabase
-        .from('professionals').select('id, name').eq('user_id', user.id).maybeSingle();
+        .from('professionals').select('id, name, whatsapp_release_approved').eq('user_id', user.id).maybeSingle();
       setMyProfessionalId(prof?.id ?? null);
+      setReleaseApproved(prof ? !!(prof as any).whatsapp_release_approved : null);
       if (prof?.id) {
         setProfessionals([{ id: prof.id, name: prof.name || 'Meu WhatsApp' }]);
         setSelectedProfId(prof.id);

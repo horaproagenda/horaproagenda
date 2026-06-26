@@ -1791,16 +1791,19 @@ const Agenda = () => {
           editingAbsence={editingAbsence}
         />
 
-        {/* Mobile Absence Management Sheet */}
+        {/* Mobile Absence Management Sheet (full screen) */}
         <Sheet open={showMobileAbsencePanel} onOpenChange={setShowMobileAbsencePanel}>
-          <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
-            <SheetHeader className="pb-3">
+          <SheetContent
+            side="bottom"
+            className="h-[100dvh] max-h-[100dvh] w-screen p-0 rounded-none flex flex-col"
+          >
+            <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/50 shrink-0">
               <SheetTitle className="flex items-center gap-2 text-base">
                 <UserX className="h-4 w-4 text-amber-600" />
                 Ausências Registradas
               </SheetTitle>
             </SheetHeader>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <AbsenceManagementPanel
                 professionals={professionals}
                 onEditAbsence={(absence) => {
@@ -1812,6 +1815,31 @@ const Agenda = () => {
                   setShowMobileAbsencePanel(false);
                   handleOpenNewAbsence();
                 }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Mobile Automations Sheet (full screen) */}
+        <Sheet open={showAutomationsSheet} onOpenChange={setShowAutomationsSheet}>
+          <SheetContent
+            side="bottom"
+            className="h-[100dvh] max-h-[100dvh] w-screen p-0 rounded-none flex flex-col"
+          >
+            <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/50 shrink-0">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <Bot className="h-4 w-4 text-primary" />
+                Automações da Agenda
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <AgendaAutomationPanel
+                selectedDate={selectedDate}
+                onOpenNewAppointment={(date, time) => {
+                  setShowAutomationsSheet(false);
+                  handleOpenNewAppointmentFromAutomation(date, time);
+                }}
+                forceExpanded
               />
             </div>
           </SheetContent>

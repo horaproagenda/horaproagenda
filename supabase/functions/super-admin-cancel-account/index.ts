@@ -99,28 +99,32 @@ Deno.serve(async (req) => {
       hashOne(fullName.toLowerCase()),
     ]);
 
-    const blockedUntil = new Date(Date.now() + blockMonths * 30 * 86400000).toISOString();
+    const blockedUntil = skipBlocklist
+      ? null
+      : new Date(Date.now() + blockMonths * 30 * 86400000).toISOString();
 
-    const { error: blockErr } = await admin.from("deleted_account_blocklist").insert({
-      user_id: ownerUserId,
-      email_hash: emailHash,
-      phone_hash: phoneHash,
-      cpf_hash: cpfHash,
-      cnpj_hash: cnpjHash,
-      full_name_hash: nameHash,
-      email_masked: maskEmail(email || null),
-      phone_masked: maskPhone(phoneDigits || null),
-      cpf_last4: last4(cpfDigits),
-      cnpj_last4: last4(cnpjDigits),
-      had_paid: Boolean(reg?.has_paid),
-      reason,
-      cancellation_type: "super_admin_cancellation",
-      canceled_by: callerId,
-      blocked_until: blockedUntil,
-    });
-    if (blockErr) {
-      console.error("super-admin-cancel-account block error:", blockErr);
-      return json({ error: blockErr.message }, 500);
+    if (!skipBlocklist) {
+      const { error: blockErr } = await admin.from("deleted_account_blocklist").insert({
+        user_id: ownerUserId,
+        email_hash: emailHash,
+        phone_hash: phoneHash,
+        cpf_hash: cpfHash,
+        cnpj_hash: cnpjHash,
+        full_name_hash: nameHash,
+        email_masked: maskEmail(email || null),
+        phone_masked: maskPhone(phoneDigits || null),
+        cpf_last4: last4(cpfDigits),
+        cnpj_last4: last4(cnpjDigits),
+        had_paid: Boolean(reg?.has_paid),
+        reason,
+        cancellation_type: "super_admin_cancellation",
+        canceled_by: callerId,
+        blocked_until: blockedUntil,
+      });
+      if (blockErr) {
+        console.error("super-admin-cancel-account block error:", blockErr);
+        return json({ error: blockErr.message }, 500);
+      }
     }
 
     // Mark subscription as canceled (if exists)

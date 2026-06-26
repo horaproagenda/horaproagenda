@@ -32,9 +32,9 @@ export interface SystemNotification {
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
 
-  // Fetch boletos vencendo hoje
+  // Fetch TODAS as contas (a pagar e a receber) vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
-    queryKey: ['boletos-vencendo-hoje'],
+    queryKey: ['contas-vencendo-hoje'],
     queryFn: async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const { data, error } = await supabase
@@ -43,16 +43,11 @@ export function useSystemNotifications() {
           *,
           payment_method:payment_methods(name)
         `)
-        .eq('type', 'payable')
         .eq('status', 'pending')
         .eq('due_date', today);
-      
+
       if (error) throw error;
-      
-      // Filter only those with boleto payment method
-      return (data || []).filter(entry => 
-        entry.payment_method?.name?.toLowerCase().includes('boleto')
-      );
+      return data || [];
     },
     refetchInterval: 60000, // Check every minute
   });
@@ -133,19 +128,22 @@ export function useSystemNotifications() {
   const allNotifications = useMemo((): SystemNotification[] => {
     const result: SystemNotification[] = [];
 
-    // Boletos vencendo hoje
-    boletosVencendoHoje.forEach(boleto => {
-      const id = `boleto-${boleto.id}`;
+    // Contas (pagar/receber) vencendo hoje
+    boletosVencendoHoje.forEach((entry: any) => {
+      const id = `bill-${entry.id}`;
+      const isPayable = entry.type === 'payable';
+      const tabSlug = isPayable ? 'pagar' : 'receber';
+      const titlePrefix = isPayable ? 'Conta a pagar' : 'Conta a receber';
       result.push({
         id,
-        signature: `${id}|${boleto.due_date}|${Number(boleto.amount).toFixed(2)}|${boleto.status}`,
+        signature: `${id}|${entry.due_date}|${Number(entry.amount).toFixed(2)}|${entry.status}`,
         type: 'boleto',
-        title: 'Boleto vencendo hoje',
-        description: `${boleto.description} - R$ ${Number(boleto.amount).toFixed(2)}`,
+        title: `${titlePrefix} vencendo hoje`,
+        description: `${entry.description} - R$ ${Number(entry.amount).toFixed(2)}`,
         severity: 'critical',
-        date: boleto.due_date,
-        link: `/financeiro?tab=pagar&entry=${boleto.id}`,
-        referenceId: boleto.id,
+        date: entry.due_date,
+        link: `/financeiro?tab=${tabSlug}&entry=${entry.id}`,
+        referenceId: entry.id,
         referenceType: 'financial_entry',
       });
     });

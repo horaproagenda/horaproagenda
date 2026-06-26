@@ -138,14 +138,28 @@ export function InterestLeadsPanel() {
                     : <Badge variant="secondary">Pendente</Badge>}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1.5">
+                  <div className="flex justify-end gap-1">
                     {!r.contacted_at && (
-                      <Button size="sm" variant="outline" onClick={() => markContacted(r)}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Já entrei em contato
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-6 w-6"
+                        title="Já entrei em contato"
+                        aria-label="Já entrei em contato"
+                        onClick={() => markContacted(r)}
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button size="sm" variant="destructive" onClick={() => removeLead(r)}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="h-6 w-6"
+                      title="Excluir"
+                      aria-label="Excluir"
+                      onClick={() => removeLead(r)}
+                    >
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </TableCell>

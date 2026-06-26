@@ -19,6 +19,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -153,6 +163,11 @@ export function ProductDetailDialog({
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
   const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmation dialogs for cycle lifecycle (container-based: refers to the recipient, not the total purchased qty)
+  const [pendingStartDate, setPendingStartDate] = useState<string | null>(null);
+  const [pendingEndDate, setPendingEndDate] = useState<string | null>(null);
+  const [pendingRefill, setPendingRefill] = useState<{ remainingStock: number } | null>(null);
   
   // Stock editing state
   const [isEditingStock, setIsEditingStock] = useState(false);
@@ -352,6 +367,137 @@ export function ProductDetailDialog({
     };
   }, [product, productPurchases, appointments, productServiceLinks]);
 
+  // === Cycle lifecycle helpers (container-based) ===
+  // O ciclo é sempre relativo ao RECIPIENTE em uso (ex.: 500 ml), e não ao total
+  // comprado (ex.: 5 L). O início/término do uso registra apenas a janela em que
+  // o conteúdo do recipiente atual foi consumido.
+
+  const endCyclePreview = useMemo(() => {
+    if (!product || !pendingEndDate) return null;
+    const activePurchase =
+      productPurchases.find(p => p.started_using_at && !p.finished_at)
+      || productPurchases.find(p => !p.finished_at)
+      || null;
+    const cycleStart = activePurchase?.started_using_at || product.started_using_at;
+    const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
+    const endDate = parseISO(pendingEndDate + 'T23:59:59');
+    const days = startDate ? Math.max(1, differenceInDays(endDate, startDate) + 1) : 0;
+    const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
+    const hasLinks = linkedServiceIds.length > 0;
+    const cycleApts = appointments.filter(a => {
+      if (a.status !== 'completed') return false;
+      if (hasLinks && !linkedServiceIds.includes(a.service_id)) return false;
+      const t = new Date(a.start_time);
+      if (startDate && t < startDate) return false;
+      return t <= endDate;
+    });
+
+    // Quantidade que será deduzida do estoque total (mesma lógica do handler real)
+    const containerDeductions = new Map<string, number>();
+    let exactDeduction = 0;
+    for (const sp of productServiceLinks) {
+      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
+      if (aptsThis <= 0) continue;
+      if (sp.tracking_method === 'estimated') {
+        const inStockUnit = convertQuantity(
+          Number(sp.container_amount || 0),
+          sp.container_unit || product.unit,
+          product.unit,
+        ) ?? Number(sp.container_amount || 0);
+        const key = `${sp.container_amount}-${sp.container_unit}`;
+        if (!containerDeductions.has(key) || (containerDeductions.get(key) || 0) < inStockUnit) {
+          containerDeductions.set(key, inStockUnit);
+        }
+      } else {
+        exactDeduction += aptsThis * Number(sp.quantity_per_use || 0);
+      }
+    }
+    const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
+    const totalDeduction = estimatedDeduction + exactDeduction;
+    const stockBefore = Number(product.current_stock || 0);
+    const remainingStock = Math.max(0, stockBefore - totalDeduction);
+    return {
+      days,
+      appointments: cycleApts.length,
+      totalDeduction,
+      stockBefore,
+      remainingStock,
+      hasLinks,
+      activePurchase,
+      cycleApts,
+    };
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, appointments]);
+
+  const runStartCycle = async (dateStr: string) => {
+    if (!product) return;
+    const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
+    if (pending && onUpdatePurchase) {
+      await onUpdatePurchase({ id: pending.id, started_using_at: dateStr });
+    }
+    await onUpdateProduct({
+      id: product.id,
+      started_using_at: dateStr,
+      finished_at: null as any,
+    });
+    toast.success('Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'));
+  };
+
+  const runEndCycle = async (dateStr: string) => {
+    if (!product || !endCyclePreview) return;
+    const { activePurchase, cycleApts, totalDeduction } = endCyclePreview;
+    // Persiste médias para vínculos estimados que tiveram uso
+    for (const sp of productServiceLinks) {
+      if (sp.tracking_method !== 'estimated') continue;
+      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
+      const containerInStockUnit = convertQuantity(
+        Number(sp.container_amount || 0),
+        sp.container_unit || product.unit,
+        product.unit,
+      ) ?? Number(sp.container_amount || 0);
+      if (aptsThis > 0 && containerInStockUnit > 0) {
+        const avg = containerInStockUnit / aptsThis;
+        await updateServiceProduct.mutateAsync({
+          id: sp.id,
+          quantity_per_use: avg,
+          estimated_appointments: aptsThis,
+        } as any);
+      }
+    }
+
+    const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+
+    // Fecha a compra ativa com o término informado
+    if (activePurchase && onUpdatePurchase) {
+      await onUpdatePurchase({
+        id: activePurchase.id,
+        finished_at: dateStr,
+        started_using_at:
+          activePurchase.started_using_at
+          || product.started_using_at
+          || activePurchase.purchase_date
+          || dateStr,
+      });
+    }
+
+    // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
+    await onUpdateProduct({
+      id: product.id,
+      finished_at: dateStr,
+      current_stock: newStock,
+    });
+
+    toast.success(
+      `Ciclo encerrado: ${cycleApts.length} atend., ${totalDeduction.toFixed(2)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} descontado(s) do estoque.`,
+    );
+
+    // Se ainda há estoque, oferece reabastecer o recipiente / iniciar novo ciclo
+    if (newStock > 0) {
+      setPendingRefill({ remainingStock: newStock });
+    }
+  };
+
+
+
 
 
 
@@ -495,6 +641,7 @@ export function ProductDetailDialog({
   if (!product) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
@@ -884,19 +1031,8 @@ export function ProductDetailDialog({
                                 size="sm"
                                 variant="default"
                                 className="h-7 text-xs"
-                                onClick={async () => {
-                                  const today = format(new Date(), 'yyyy-MM-dd');
-                                  // tenta reutilizar uma compra pendente (sem started_using_at)
-                                  const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
-                                  if (pending && onUpdatePurchase) {
-                                    await onUpdatePurchase({ id: pending.id, started_using_at: today });
-                                  }
-                                  await onUpdateProduct({
-                                    id: product.id,
-                                    started_using_at: today,
-                                    finished_at: null as any,
-                                  });
-                                  toast.success('Início do uso registrado em ' + format(new Date(), 'dd/MM/yyyy'));
+                                onClick={() => {
+                                  setPendingStartDate(format(new Date(), 'yyyy-MM-dd'));
                                 }}
                               >
                                 <PlayCircle className="h-3.5 w-3.5 mr-1" />
@@ -984,174 +1120,62 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Início do Uso
+                          Início do uso do recipiente
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
                             value={product.started_using_at || ''}
                             onCommit={(v) => {
-                              // Ao informar/alterar o início do uso, limpamos o término
-                              // (para que o usuário registre manualmente quando terminar).
-                              onUpdateProduct({
-                                id: product.id,
-                                started_using_at: v,
-                                ...(v ? { finished_at: null as any } : {}),
-                              });
+                              if (!v) {
+                                onUpdateProduct({
+                                  id: product.id,
+                                  started_using_at: null as any,
+                                });
+                                return;
+                              }
+                              setPendingStartDate(v);
                             }}
                             className="h-9"
                           />
                         ) : (
                           <span className="text-sm">
-                            {product.started_using_at 
+                            {product.started_using_at
                               ? format(parseISO(product.started_using_at), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Não iniciado'}
                           </span>
                         )}
+                        <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                          Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.
+                        </p>
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Término do Uso
+                          Término do uso do recipiente
                         </Label>
                         {canEdit ? (
-                           <SafeDateInput
-                             value={product.finished_at || ''}
-                             onCommit={async (v) => {
-                               if (!v) {
-                                 await onUpdateProduct({ id: product.id, finished_at: null as any });
-                                 return;
-                               }
-
-                               // 1) Identifica o ciclo ativo (compra em uso)
-                               let activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at);
-                               if (!activePurchase) {
-                                 activePurchase = productPurchases.find(p => !p.finished_at) || undefined;
-                               }
-
-                               // 2) Apura janela do ciclo e atendimentos concluídos
-                               const cycleStart = activePurchase?.started_using_at || product.started_using_at;
-                               const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
-                               const endDate = parseISO(v + 'T23:59:59');
-                               const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
-                               const cycleAppointments = appointments.filter(a => {
-                                 if (a.status !== 'completed') return false;
-                                 if (!linkedServiceIds.includes(a.service_id)) return false;
-                                 const t = new Date(a.start_time);
-                                 if (startDate && t < startDate) return false;
-                                 return t <= endDate;
-                               });
-                               const totalApts = cycleAppointments.length;
-
-                               // 3) Para cada vínculo em modo estimado, calcula média e persiste
-                               for (const sp of productServiceLinks) {
-                                 if (sp.tracking_method !== 'estimated') continue;
-                                 const containerInStockUnit = convertQuantity(
-                                   Number(sp.container_amount || 0),
-                                   sp.container_unit || product.unit,
-                                   product.unit
-                                 ) ?? Number(sp.container_amount || 0);
-                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
-                                 if (aptsThis > 0 && containerInStockUnit > 0) {
-                                   const avg = containerInStockUnit / aptsThis;
-                                   await updateServiceProduct.mutateAsync({
-                                     id: sp.id,
-                                     quantity_per_use: avg,
-                                     estimated_appointments: aptsThis,
-                                   } as any);
-                                 }
-                               }
-
-                               // 4) Calcula quanto deduzir do estoque total
-                               // Soma os "containers" dos vínculos estimados que tiveram uso neste ciclo (uma vez cada)
-                               const containerDeductions = new Map<string, number>();
-                               for (const sp of productServiceLinks) {
-                                 if (sp.tracking_method !== 'estimated') continue;
-                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
-                                 if (aptsThis <= 0) continue;
-                                 const key = `${sp.container_amount}-${sp.container_unit}`;
-                                 const inStockUnit = convertQuantity(
-                                   Number(sp.container_amount || 0),
-                                   sp.container_unit || product.unit,
-                                   product.unit
-                                 ) ?? Number(sp.container_amount || 0);
-                                 // mantém o maior (assume mesmo recipiente compartilhado)
-                                 if (!containerDeductions.has(key) || (containerDeductions.get(key) || 0) < inStockUnit) {
-                                   containerDeductions.set(key, inStockUnit);
-                                 }
-                               }
-                               const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
-
-                               // Para vínculos exatos: deduzir qty_per_use * atendimentos
-                               let exactDeduction = 0;
-                               for (const sp of productServiceLinks) {
-                                 if (sp.tracking_method === 'estimated') continue;
-                                 const aptsThis = cycleAppointments.filter(a => a.service_id === sp.service_id).length;
-                                 exactDeduction += aptsThis * Number(sp.quantity_per_use || 0);
-                               }
-
-                               const totalDeduction = estimatedDeduction + exactDeduction;
-                               const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
-
-                               // 5) Fecha a compra ativa com o término
-                               if (activePurchase && onUpdatePurchase) {
-                                 await onUpdatePurchase({
-                                   id: activePurchase.id,
-                                   finished_at: v,
-                                   started_using_at:
-                                     activePurchase.started_using_at
-                                     || product.started_using_at
-                                     || activePurchase.purchase_date
-                                     || v,
-                                 });
-                               }
-
-                               // 6) Limpa início/término do produto e atualiza estoque.
-                               //    Se ainda há estoque, inicia automaticamente um novo ciclo na data de hoje.
-                               const today = new Date().toISOString().slice(0, 10);
-                               const next = productPurchases.find(
-                                 p => !p.started_using_at && !p.finished_at && p.id !== activePurchase?.id
-                               );
-
-                               if (next && onUpdatePurchase) {
-                                 // Promove próxima compra como novo ciclo
-                                 await onUpdatePurchase({ id: next.id, started_using_at: today });
-                                 await onUpdateProduct({
-                                   id: product.id,
-                                   finished_at: null as any,
-                                   started_using_at: today,
-                                   current_stock: newStock + (Number(next.quantity) || 0),
-                                 });
-                               } else if (newStock > 0) {
-                                 // Inicia automaticamente um novo ciclo com o estoque restante
-                                 await onUpdateProduct({
-                                   id: product.id,
-                                   finished_at: null as any,
-                                   started_using_at: today,
-                                   current_stock: newStock,
-                                 });
-                               } else {
-                                 // Estoque esgotado: limpa ambas as datas para o usuário registrar nova compra
-                                 await onUpdateProduct({
-                                   id: product.id,
-                                   finished_at: null as any,
-                                   started_using_at: null as any,
-                                   current_stock: 0,
-                                 });
-                               }
-                             }}
-                             className="h-9"
-                           />
-
-
-
-
+                          <SafeDateInput
+                            value={product.finished_at || ''}
+                            onCommit={async (v) => {
+                              if (!v) {
+                                await onUpdateProduct({ id: product.id, finished_at: null as any });
+                                return;
+                              }
+                              setPendingEndDate(v);
+                            }}
+                            className="h-9"
+                          />
                         ) : (
                           <span className="text-sm">
-                            {product.finished_at 
+                            {product.finished_at
                               ? format(parseISO(product.finished_at), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Em uso'}
                           </span>
-                    )}
-                  </div>
+                        )}
+                        <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                          Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.
+                        </p>
+                      </div>
+
 
                   {/* Per-service usage breakdown within the usage window */}
                   {usageStats.byService.length > 0 && (
@@ -1971,6 +1995,131 @@ export function ProductDetailDialog({
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    {/* Confirmação: registrar INÍCIO do uso do recipiente */}
+    <AlertDialog open={!!pendingStartDate} onOpenChange={(o) => { if (!o) setPendingStartDate(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Registrar início do uso do recipiente</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Você está iniciando um <strong>novo ciclo</strong> em{' '}
+                <strong>{pendingStartDate ? format(parseISO(pendingStartDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>.
+              </p>
+              <p>
+                Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
+                (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+              </p>
+              {product && (
+                <p className="text-xs text-muted-foreground">
+                  Estoque total atual: {Number(product.current_stock || 0)}{' '}
+                  {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                </p>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const d = pendingStartDate!;
+              setPendingStartDate(null);
+              await runStartCycle(d);
+            }}
+          >
+            <Save className="h-4 w-4 mr-1" /> Salvar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação: registrar TÉRMINO do uso do recipiente */}
+    <AlertDialog open={!!pendingEndDate} onOpenChange={(o) => { if (!o) setPendingEndDate(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Registrar término do uso do recipiente</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Será encerrado o ciclo em{' '}
+                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>{' '}
+                com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.
+              </p>
+              {endCyclePreview && product && (
+                <div className="rounded-md border bg-muted/30 p-2 text-xs space-y-1">
+                  <div>Período: <strong>{endCyclePreview.days} dia(s)</strong></div>
+                  <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  <div>
+                    Será descontado do estoque total:{' '}
+                    <strong>
+                      {endCyclePreview.totalDeduction.toFixed(2)}{' '}
+                      {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                    </strong>{' '}
+                    (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
+                  </div>
+                  {!endCyclePreview.hasLinks && (
+                    <div className="text-amber-700 dark:text-amber-300">
+                      ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const d = pendingEndDate!;
+              setPendingEndDate(null);
+              await runEndCycle(d);
+            }}
+          >
+            <Save className="h-4 w-4 mr-1" /> Salvar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação: recipiente reabastecido → iniciar novo ciclo? */}
+    <AlertDialog open={!!pendingRefill} onOpenChange={(o) => { if (!o) setPendingRefill(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Recipiente reabastecido?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Ainda há{' '}
+                <strong>
+                  {pendingRefill?.remainingStock}{' '}
+                  {product ? PRODUCT_UNITS.find(u => u.value === product.unit)?.label : ''}
+                </strong>{' '}
+                no estoque total.
+              </p>
+              <p>
+                Se você reabasteceu o recipiente em uso, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
+                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando reabastecer.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Apenas registrar fechamento</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              setPendingRefill(null);
+              await runStartCycle(format(new Date(), 'yyyy-MM-dd'));
+            }}
+          >
+            <PlayCircle className="h-4 w-4 mr-1" /> Iniciar novo ciclo hoje
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

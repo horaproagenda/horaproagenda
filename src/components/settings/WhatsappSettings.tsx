@@ -398,21 +398,23 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        <Alert variant={connected || configured ? 'default' : 'destructive'}>
-          {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
-          <AlertDescription className="text-xs">
-            {connected
-              ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem da sua conta respeitando a janela de horário configurada.`
-              : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do seu login.'}
-            {connected && lastConnectedAt && (
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
+        {(connected || releaseApproved !== false) && (
+          <Alert variant={connected || configured ? 'default' : 'destructive'}>
+            {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
+            <AlertDescription className="text-xs">
+              {connected
+                ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem da sua conta respeitando a janela de horário configurada.`
+                : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do seu login.'}
+              {connected && lastConnectedAt && (
+                <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <WhatsappQueueStatusPanel />
 

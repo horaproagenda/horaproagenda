@@ -394,16 +394,19 @@ serve(async (req) => {
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   let catchup = true;
+  let drain = false;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       catchup = body?.catchup !== false;
+      drain = body?.drain === true;
     } else {
       const url = new URL(req.url);
       catchup = url.searchParams.get('catchup') !== 'false';
+      drain = url.searchParams.get('drain') === 'true';
     }
   } catch (_) { /* ignore */ }
-  const summary: any = { catchup, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  const summary: any = { catchup, drain, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, drained: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   try {
     const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
@@ -411,6 +414,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, message: 'Envios desativados', summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Drain mode: força reprocessar TODOS os pendentes e falhos imediatamente,
+    // resetando next_attempt_at e reabrindo itens marcados como 'failed' para
+    // garantir que nenhuma mensagem fique presa quando o WhatsApp reconecta.
+    if (drain) {
+      const nowIso = new Date().toISOString();
+      const { data: reopened } = await supabase
+        .from('whatsapp_send_queue')
+        .update({ status: 'pending', next_attempt_at: nowIso, attempts: 0, updated_at: nowIso })
+        .in('status', ['pending', 'failed'])
+        .select('id');
+      summary.drained = (reopened || []).length;
     }
 
     // First, drain retry queue

@@ -134,8 +134,8 @@ export default function ClienteDetalhes() {
               <Receipt className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span className="leading-tight">Orçam.</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-pink-500/15 data-[state=active]:text-pink-700 data-[state=active]:border-pink-500/40">
-              <Image className="h-3.5 w-3.5 text-pink-600 shrink-0" />
+            <TabsTrigger value="photos" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+              <Image className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Fotos</span>
             </TabsTrigger>
             <TabsTrigger value="info" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">

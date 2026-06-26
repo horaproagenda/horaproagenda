@@ -156,9 +156,9 @@ export default function Financeiro() {
               { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle, color: 'text-red-600', active: 'data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40' },
               { v: 'categorias', label: 'Categorias', Icon: Tag, color: 'text-amber-600', active: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40' },
               { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-emerald-600', active: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40' },
-              { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-fuchsia-600', active: 'data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-700 data-[state=active]:border-fuchsia-500/40' },
+              { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-violet-600', active: 'data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40' },
-              { v: 'metas', label: 'Metas', Icon: Target, color: 'text-rose-600', active: 'data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 data-[state=active]:border-rose-500/40' },
+              { v: 'metas', label: 'Metas', Icon: Target, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'precificacao', label: 'Precificação', Icon: Calculator, color: 'text-orange-600', active: 'data-[state=active]:bg-orange-500/15 data-[state=active]:text-orange-700 data-[state=active]:border-orange-500/40' },
               { v: 'dashboard', label: 'Dashboard', Icon: BarChart3, color: 'text-teal-600', active: 'data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40' },
             ].map(({ v, label, Icon, color, active }) => (

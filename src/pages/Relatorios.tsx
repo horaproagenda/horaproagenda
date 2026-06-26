@@ -410,8 +410,8 @@ const Relatorios = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid h-9 bg-muted/50 p-1 gap-1">
-              <TabsTrigger value="aniversariantes" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-pink-500/15 data-[state=active]:text-pink-700 data-[state=active]:border-pink-500/40">
-                <Cake className="h-3.5 w-3.5 text-pink-600" />
+              <TabsTrigger value="aniversariantes" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+                <Cake className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Aniversários</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{aniversariantes.length}</Badge>
               </TabsTrigger>

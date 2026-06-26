@@ -439,6 +439,7 @@ serve(async (req) => {
               payment_status: resolvedPaymentStatus,
               amount_paid: accumulatedAmountPaid,
               payment_methods: accumulatedPaymentMethods,
+              payment_date: nextPaymentDate,
               updated_by: userId,
             })
             .in('id', siblingIds);

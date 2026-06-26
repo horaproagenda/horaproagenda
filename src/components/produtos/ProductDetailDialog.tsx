@@ -163,6 +163,11 @@ export function ProductDetailDialog({
   const [containerUnit, setContainerUnit] = useState<ProductUnit>('ml');
   const [knowsQuantity, setKnowsQuantity] = useState<'yes' | 'no'>('yes');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmation dialogs for cycle lifecycle (container-based: refers to the recipient, not the total purchased qty)
+  const [pendingStartDate, setPendingStartDate] = useState<string | null>(null);
+  const [pendingEndDate, setPendingEndDate] = useState<string | null>(null);
+  const [pendingRefill, setPendingRefill] = useState<{ remainingStock: number } | null>(null);
   
   // Stock editing state
   const [isEditingStock, setIsEditingStock] = useState(false);

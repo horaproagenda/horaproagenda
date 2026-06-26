@@ -25,30 +25,34 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Controle de acesso: cron usa apikey (anon) sem Authorization;
-    // chamadas manuais devem vir de um Super Admin autenticado.
+    // Require either a CRON_SECRET header (for pg_cron) OR a super_admin Bearer JWT.
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedCron = req.headers.get('x-cron-secret');
     const authHeader = req.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
+    let authorized = false;
+
+    if (cronSecret && providedCron && providedCron === cronSecret) {
+      authorized = true;
+    } else if (authHeader?.startsWith('Bearer ')) {
       const userClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_ANON_KEY')!,
         { global: { headers: { Authorization: authHeader } } },
       );
       const { data: { user } } = await userClient.auth.getUser();
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const { data: roles } = await supabase
-        .from('user_roles').select('role').eq('user_id', user.id);
-      const isSuper = (roles ?? []).some((r: any) => r.role === 'super_admin');
-      if (!isSuper) {
-        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (user) {
+        const { data: roles } = await supabase
+          .from('user_roles').select('role').eq('user_id', user.id);
+        if ((roles ?? []).some((r: any) => r.role === 'super_admin')) authorized = true;
       }
     }
+
+    if (!authorized) {
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
 
     const { data: rows } = await supabase
       .from('ultramsg_instance_pool')

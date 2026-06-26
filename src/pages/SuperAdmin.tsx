@@ -36,7 +36,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban, Trash2 } from 'lucide-react';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
 import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';

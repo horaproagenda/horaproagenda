@@ -367,6 +367,137 @@ export function ProductDetailDialog({
     };
   }, [product, productPurchases, appointments, productServiceLinks]);
 
+  // === Cycle lifecycle helpers (container-based) ===
+  // O ciclo é sempre relativo ao RECIPIENTE em uso (ex.: 500 ml), e não ao total
+  // comprado (ex.: 5 L). O início/término do uso registra apenas a janela em que
+  // o conteúdo do recipiente atual foi consumido.
+
+  const endCyclePreview = useMemo(() => {
+    if (!product || !pendingEndDate) return null;
+    const activePurchase =
+      productPurchases.find(p => p.started_using_at && !p.finished_at)
+      || productPurchases.find(p => !p.finished_at)
+      || null;
+    const cycleStart = activePurchase?.started_using_at || product.started_using_at;
+    const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
+    const endDate = parseISO(pendingEndDate + 'T23:59:59');
+    const days = startDate ? Math.max(1, differenceInDays(endDate, startDate) + 1) : 0;
+    const linkedServiceIds = productServiceLinks.map(sp => sp.service_id);
+    const hasLinks = linkedServiceIds.length > 0;
+    const cycleApts = appointments.filter(a => {
+      if (a.status !== 'completed') return false;
+      if (hasLinks && !linkedServiceIds.includes(a.service_id)) return false;
+      const t = new Date(a.start_time);
+      if (startDate && t < startDate) return false;
+      return t <= endDate;
+    });
+
+    // Quantidade que será deduzida do estoque total (mesma lógica do handler real)
+    const containerDeductions = new Map<string, number>();
+    let exactDeduction = 0;
+    for (const sp of productServiceLinks) {
+      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
+      if (aptsThis <= 0) continue;
+      if (sp.tracking_method === 'estimated') {
+        const inStockUnit = convertQuantity(
+          Number(sp.container_amount || 0),
+          sp.container_unit || product.unit,
+          product.unit,
+        ) ?? Number(sp.container_amount || 0);
+        const key = `${sp.container_amount}-${sp.container_unit}`;
+        if (!containerDeductions.has(key) || (containerDeductions.get(key) || 0) < inStockUnit) {
+          containerDeductions.set(key, inStockUnit);
+        }
+      } else {
+        exactDeduction += aptsThis * Number(sp.quantity_per_use || 0);
+      }
+    }
+    const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
+    const totalDeduction = estimatedDeduction + exactDeduction;
+    const stockBefore = Number(product.current_stock || 0);
+    const remainingStock = Math.max(0, stockBefore - totalDeduction);
+    return {
+      days,
+      appointments: cycleApts.length,
+      totalDeduction,
+      stockBefore,
+      remainingStock,
+      hasLinks,
+      activePurchase,
+      cycleApts,
+    };
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, appointments]);
+
+  const runStartCycle = async (dateStr: string) => {
+    if (!product) return;
+    const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
+    if (pending && onUpdatePurchase) {
+      await onUpdatePurchase({ id: pending.id, started_using_at: dateStr });
+    }
+    await onUpdateProduct({
+      id: product.id,
+      started_using_at: dateStr,
+      finished_at: null as any,
+    });
+    toast.success('Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'));
+  };
+
+  const runEndCycle = async (dateStr: string) => {
+    if (!product || !endCyclePreview) return;
+    const { activePurchase, cycleApts, totalDeduction } = endCyclePreview;
+    // Persiste médias para vínculos estimados que tiveram uso
+    for (const sp of productServiceLinks) {
+      if (sp.tracking_method !== 'estimated') continue;
+      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
+      const containerInStockUnit = convertQuantity(
+        Number(sp.container_amount || 0),
+        sp.container_unit || product.unit,
+        product.unit,
+      ) ?? Number(sp.container_amount || 0);
+      if (aptsThis > 0 && containerInStockUnit > 0) {
+        const avg = containerInStockUnit / aptsThis;
+        await updateServiceProduct.mutateAsync({
+          id: sp.id,
+          quantity_per_use: avg,
+          estimated_appointments: aptsThis,
+        } as any);
+      }
+    }
+
+    const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+
+    // Fecha a compra ativa com o término informado
+    if (activePurchase && onUpdatePurchase) {
+      await onUpdatePurchase({
+        id: activePurchase.id,
+        finished_at: dateStr,
+        started_using_at:
+          activePurchase.started_using_at
+          || product.started_using_at
+          || activePurchase.purchase_date
+          || dateStr,
+      });
+    }
+
+    // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
+    await onUpdateProduct({
+      id: product.id,
+      finished_at: dateStr,
+      current_stock: newStock,
+    });
+
+    toast.success(
+      `Ciclo encerrado: ${cycleApts.length} atend., ${totalDeduction.toFixed(2)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} descontado(s) do estoque.`,
+    );
+
+    // Se ainda há estoque, oferece reabastecer o recipiente / iniciar novo ciclo
+    if (newStock > 0) {
+      setPendingRefill({ remainingStock: newStock });
+    }
+  };
+
+
+
 
 
 

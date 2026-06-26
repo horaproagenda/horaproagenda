@@ -136,16 +136,47 @@ Deno.serve(async (req) => {
     // Soft-disable the profile so realtime guards log the user out
     await admin.from("profiles").update({ is_active: false }).eq("id", ownerUserId);
 
+    let purgeReport: unknown = null;
+    const authDeleteWarnings: string[] = [];
+
     if (purgeData) {
-      // Hard delete: mirror tables first (Auth cascade handles the rest via FKs)
-      await admin.from("trial_registrations").delete().eq("user_id", ownerUserId);
-      await admin.from("user_roles").delete().eq("user_id", ownerUserId);
-      await admin.from("profiles").delete().eq("id", ownerUserId);
+      // 1. Collect child users (sub-profiles) BEFORE purging
+      const { data: childRows } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("account_owner_id", ownerUserId)
+        .neq("id", ownerUserId);
+      const childIds: string[] = (childRows ?? [])
+        .map((r) => r.id as string)
+        .filter(Boolean);
+
+      // 2. Wipe ALL tenant data via SECURITY DEFINER RPC (dynamic over every
+      //    public table that has account_owner_id). Idempotent and tolerant of
+      //    partial prior deletions.
+      const { data: rpcRes, error: rpcErr } = await admin.rpc(
+        "super_admin_purge_owner_data",
+        { _owner_user_id: ownerUserId },
+      );
+      if (rpcErr) {
+        console.error("super-admin-cancel-account purge rpc error:", rpcErr);
+        return json({ error: `purge failed: ${rpcErr.message}` }, 500);
+      }
+      purgeReport = rpcRes;
+
+      // 3. Delete auth users (children first, then the owner). Each failure is
+      //    logged but does not abort the response — the DB is already clean.
+      for (const childId of childIds) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: childErr } = await (admin.auth as any).admin.deleteUser(childId);
+        if (childErr && !/not.found/i.test(childErr.message ?? "")) {
+          authDeleteWarnings.push(`child ${childId}: ${childErr.message}`);
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: delErr } = await (admin.auth as any).admin.deleteUser(ownerUserId);
-      if (delErr) {
+      if (delErr && !/not.found/i.test(delErr.message ?? "")) {
         console.error("super-admin-cancel-account auth delete:", delErr);
-        return json({ ok: true, deleted_auth: false, warning: delErr.message }, 200);
+        authDeleteWarnings.push(`owner: ${delErr.message}`);
       }
     }
 

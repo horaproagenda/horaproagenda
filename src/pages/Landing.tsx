@@ -393,33 +393,6 @@ export default function Landing() {
             </div>
           </section>
 
-          {/* BENEFÍCIOS */}
-          <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
-                Tudo o que você precisa, em um só lugar
-              </h2>
-              <p className="mt-4 text-muted-foreground">
-                O Hora Pro foi desenhado para ser rápido, claro e sem ruído — pronto para o dia
-                a dia de quem atende com hora marcada.
-              </p>
-            </div>
-            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {features.map((f) => (
-                <article
-                  key={f.title}
-                  className="group rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/40"
-                >
-                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <f.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-display text-lg font-semibold">{f.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
           {/* DIFERENCIAIS */}
           <section className="border-y border-border/50 bg-gradient-to-br from-primary/5 via-background to-background">
             <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
@@ -455,6 +428,34 @@ export default function Landing() {
               </div>
             </div>
           </section>
+
+          {/* BENEFÍCIOS */}
+          <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
+                Tudo o que você precisa, em um só lugar
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                O Hora Pro foi desenhado para ser rápido, claro e sem ruído — pronto para o dia
+                a dia de quem atende com hora marcada.
+              </p>
+            </div>
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((f) => (
+                <article
+                  key={f.title}
+                  className="group rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/40"
+                >
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <f.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold">{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
 
           {/* PARA QUEM */}
           <section className="border-y border-border/50 bg-muted/20">

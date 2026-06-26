@@ -128,19 +128,22 @@ export function useSystemNotifications() {
   const allNotifications = useMemo((): SystemNotification[] => {
     const result: SystemNotification[] = [];
 
-    // Boletos vencendo hoje
-    boletosVencendoHoje.forEach(boleto => {
-      const id = `boleto-${boleto.id}`;
+    // Contas (pagar/receber) vencendo hoje
+    boletosVencendoHoje.forEach((entry: any) => {
+      const id = `bill-${entry.id}`;
+      const isPayable = entry.type === 'payable';
+      const tabSlug = isPayable ? 'pagar' : 'receber';
+      const titlePrefix = isPayable ? 'Conta a pagar' : 'Conta a receber';
       result.push({
         id,
-        signature: `${id}|${boleto.due_date}|${Number(boleto.amount).toFixed(2)}|${boleto.status}`,
+        signature: `${id}|${entry.due_date}|${Number(entry.amount).toFixed(2)}|${entry.status}`,
         type: 'boleto',
-        title: 'Boleto vencendo hoje',
-        description: `${boleto.description} - R$ ${Number(boleto.amount).toFixed(2)}`,
+        title: `${titlePrefix} vencendo hoje`,
+        description: `${entry.description} - R$ ${Number(entry.amount).toFixed(2)}`,
         severity: 'critical',
-        date: boleto.due_date,
-        link: `/financeiro?tab=pagar&entry=${boleto.id}`,
-        referenceId: boleto.id,
+        date: entry.due_date,
+        link: `/financeiro?tab=${tabSlug}&entry=${entry.id}`,
+        referenceId: entry.id,
         referenceType: 'financial_entry',
       });
     });

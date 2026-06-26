@@ -112,6 +112,8 @@ export default function SuperAdmin() {
   const [cancelMonths, setCancelMonths] = useState(6);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return;

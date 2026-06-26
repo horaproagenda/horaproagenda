@@ -13,8 +13,8 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ configured: false, connected: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'unauthenticated', message: 'Faça login para verificar o WhatsApp.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     let requested_professional_id: string | undefined;

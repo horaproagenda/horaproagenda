@@ -462,6 +462,11 @@ export default function SuperAdmin() {
                             <Ban className="h-3 w-3" />,
                             () => setCancelTarget(r),
                             'destructive',
+                          {actionButton(
+                            'Apagar usuário (sem bloqueio — permite novo cadastro)',
+                            <Trash2 className="h-3 w-3" />,
+                            () => setDeleteTarget(r),
+                            'destructive',
                           )}
                         </div>
                       </TableCell>

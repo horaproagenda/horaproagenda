@@ -335,11 +335,20 @@ export default function Landing() {
                   Interesse
                 </Button>
               </a>
-              <Link to="/auth">
+              <Link to="/auth" className="hidden sm:inline-flex">
                 <Button variant="ghost" size="sm">Entrar</Button>
               </Link>
-              <Link to="/auth">
-                <Button size="sm">Criar conta grátis</Button>
+              <Link to="/auth" className="flex flex-col items-end leading-none">
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-gradient-to-r from-primary to-primary/80 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
+                >
+                  Criar conta grátis
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+                <span className="mt-1 hidden text-[10px] font-medium text-muted-foreground sm:block">
+                  Sem cartão · 2 minutos
+                </span>
               </Link>
             </nav>
           </div>

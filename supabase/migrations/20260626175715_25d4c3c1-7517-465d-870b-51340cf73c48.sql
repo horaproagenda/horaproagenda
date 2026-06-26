@@ -1,0 +1,1 @@
+GRANT SELECT, UPDATE, DELETE ON public.interest_leads TO authenticated;

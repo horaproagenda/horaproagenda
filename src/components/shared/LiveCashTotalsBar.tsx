@@ -39,7 +39,7 @@ export function LiveCashTotalsBar({ compact = false, className = '' }: Props) {
 
   const items = [
     { label: 'Entradas', value: t.income, Icon: ArrowDownCircle, color: 'text-emerald-600' },
-    { label: 'Saídas', value: t.expense, Icon: ArrowUpCircle, color: 'text-rose-600' },
+    { label: 'Saídas', value: t.expense, Icon: ArrowUpCircle, color: 'text-destructive' },
     { label: 'Descontos', value: t.discounts, Icon: Percent, color: 'text-amber-600' },
     { label: 'Taxas Cartão', value: t.cardFees, Icon: CreditCard, color: 'text-orange-600' },
     { label: 'Líquido', value: t.net, Icon: TrendingUp, color: 'text-blue-600' },

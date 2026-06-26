@@ -268,37 +268,87 @@ serve(async (req) => {
       // Get timezone offset from settings
       const timezoneOffset = getTimezoneOffset(businessSettings.timezone);
       console.log(`Using timezone: ${businessSettings.timezone || 'America/Sao_Paulo'} (offset: ${timezoneOffset}h)`);
-      
+
       // Extract LOCAL time from the appointment - convert UTC to local timezone
       const { hours: startHour, minutes: startMinutes } = extractLocalTimeFromUTC(body.start_time, timezoneOffset);
       const { hours: endHour, minutes: endMinutes } = extractLocalTimeFromUTC(body.end_time, timezoneOffset);
-      
-      const [openHour, openMinute] = businessSettings.opening_time.split(':').map(Number);
-      const [closeHour, closeMinute] = businessSettings.closing_time.split(':').map(Number);
 
+      // Per-day business hours: each weekday can override opening/closing (sunday/saturday slots).
+      const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time, timezoneOffset);
+
+      // Resolve per-professional override (professional_preferences) for day flags and hours.
+      let proWorkSundays: boolean | null = null;
+      let proWorkSaturdays: boolean | null = null;
+      let proSundayOpen: string | null = null;
+      let proSundayClose: string | null = null;
+      let proSaturdayOpen: string | null = null;
+      let proSaturdayClose: string | null = null;
+      if (body.professional_id) {
+        const { data: prefs } = await supabase
+          .from('professional_preferences')
+          .select('work_sundays, work_saturdays, sunday_opening_time, sunday_closing_time, saturday_opening_time, saturday_closing_time')
+          .eq('professional_id', body.professional_id)
+          .maybeSingle();
+        if (prefs) {
+          proWorkSundays = prefs.work_sundays;
+          proWorkSaturdays = prefs.work_saturdays;
+          proSundayOpen = prefs.sunday_opening_time;
+          proSundayClose = prefs.sunday_closing_time;
+          proSaturdayOpen = prefs.saturday_opening_time;
+          proSaturdayClose = prefs.saturday_closing_time;
+        }
+      }
+
+      // Effective day-of-week toggle: professional override wins; otherwise global setting.
+      const effectiveWorkSundays = proWorkSundays !== null ? proWorkSundays : !!businessSettings.work_sundays;
+      const effectiveWorkSaturdays = proWorkSaturdays !== null ? proWorkSaturdays : !!businessSettings.work_saturdays;
+
+      if (dayOfWeek === 0 && !effectiveWorkSundays) {
+        errors.push({ field: 'start_time', message: 'Profissional/estabelecimento não atende aos domingos.' });
+      }
+      if (dayOfWeek === 6 && !effectiveWorkSaturdays) {
+        errors.push({ field: 'start_time', message: 'Profissional/estabelecimento não atende aos sábados.' });
+      }
+
+      // Resolve effective opening/closing for the day (per-day fields fall back to global hours).
+      let dayOpen = businessSettings.opening_time;
+      let dayClose = businessSettings.closing_time;
+      if (dayOfWeek === 0) {
+        dayOpen = proSundayOpen || businessSettings.sunday_opening_time || businessSettings.opening_time;
+        dayClose = proSundayClose || businessSettings.sunday_closing_time || businessSettings.closing_time;
+      } else if (dayOfWeek === 6) {
+        dayOpen = proSaturdayOpen || businessSettings.saturday_opening_time || businessSettings.opening_time;
+        dayClose = proSaturdayClose || businessSettings.saturday_closing_time || businessSettings.closing_time;
+      }
+
+      const [openHour, openMinute] = String(dayOpen).split(':').map(Number);
+      const [closeHour, closeMinute] = String(dayClose).split(':').map(Number);
       const startInMinutes = startHour * 60 + startMinutes;
       const endInMinutes = endHour * 60 + endMinutes;
       const openInMinutes = openHour * 60 + openMinute;
       const closeInMinutes = closeHour * 60 + closeMinute;
 
-      console.log(`Time validation: LOCAL start=${startHour}:${startMinutes} (${startInMinutes}min), end=${endHour}:${endMinutes} (${endInMinutes}min), open=${openHour}:${openMinute} (${openInMinutes}min), close=${closeHour}:${closeMinute} (${closeInMinutes}min)`);
+      console.log(`Time validation: dow=${dayOfWeek} LOCAL start=${startHour}:${startMinutes}, end=${endHour}:${endMinutes}, open=${dayOpen}, close=${dayClose}`);
 
       if (startInMinutes < openInMinutes || endInMinutes > closeInMinutes) {
-        errors.push({ 
-          field: 'time', 
-          message: `Appointment must be within business hours (${businessSettings.opening_time} - ${businessSettings.closing_time})` 
+        errors.push({
+          field: 'time',
+          message: `Horário fora do funcionamento do dia (${dayOpen} - ${dayClose}).`
         });
       }
 
-      // Check day of week in local timezone
-      const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time, timezoneOffset);
-      console.log(`Day of week: ${dayOfWeek} (0=Sun, 6=Sat), work_sundays=${businessSettings.work_sundays}, work_saturdays=${businessSettings.work_saturdays}`);
-      
-      if (dayOfWeek === 0 && !businessSettings.work_sundays) {
-        errors.push({ field: 'start_time', message: 'Business is closed on Sundays' });
-      }
-      if (dayOfWeek === 6 && !businessSettings.work_saturdays) {
-        errors.push({ field: 'start_time', message: 'Business is closed on Saturdays' });
+      // Block scheduling on professional absences (vacation/leave/blocked period).
+      if (body.professional_id) {
+        const { data: absences } = await supabase
+          .from('professional_absences')
+          .select('start_date, end_date, reason')
+          .eq('professional_id', body.professional_id)
+          .lte('start_date', body.end_time)
+          .gte('end_date', body.start_time);
+        if (absences && absences.length > 0) {
+          const reason = absences[0].reason || 'ausência registrada';
+          errors.push({ field: 'professional_id', message: `Profissional indisponível neste período (${reason}).` });
+        }
       }
     }
 

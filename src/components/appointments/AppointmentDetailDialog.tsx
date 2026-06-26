@@ -1122,22 +1122,33 @@ export function AppointmentDetailDialog({
 
   const handleSendReceipt = async () => {
     const phone = appointment.client?.phone?.replace(/\D/g, '');
+    const pdfDoc = buildReceiptPdf();
+    const filename = `recibo_${safeClient.name.replace(/\s+/g, '_')}_${appointment.id.slice(0, 8)}.pdf`;
+    // Sempre faz o download local — garante que o usuário tenha o arquivo em mãos
+    // mesmo se o navegador não suportar Web Share API com anexos.
+    pdfDoc.save(filename);
+
     if (!phone) {
-      toast.error('Cliente sem telefone cadastrado.');
+      toast.error('Cliente sem telefone cadastrado para envio no WhatsApp.');
       return;
     }
-    const pdfBlob = buildReceiptPdf().output('blob');
-    const file = new File([pdfBlob], `recibo_${appointment.id.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+    const pdfBlob = pdfDoc.output('blob');
+    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
     const shareData = { files: [file], title: 'Recibo de pagamento', text: `Recibo da baixa de ${safeClient.name}` };
-    if (navigator.canShare?.(shareData)) {
-      await navigator.share(shareData);
-      return;
+    // Web Share API com anexo (mobile/PWA): abre o seletor nativo com o PDF já anexado.
+    if (typeof navigator !== 'undefined' && (navigator as any).canShare?.(shareData)) {
+      try {
+        await (navigator as any).share(shareData);
+        return;
+      } catch {
+        // usuário cancelou ou erro — segue para o fallback de WhatsApp Web.
+      }
     }
-    const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
+    const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.\n\nO PDF foi baixado neste dispositivo — anexe-o nesta conversa para enviar.`;
     setWhatsappPreviewPhone(phone);
     setWhatsappPreviewMessage(message);
     setWhatsappPreviewTitle('Enviar recibo no WhatsApp');
-    setWhatsappPreviewDescription('Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa.');
+    setWhatsappPreviewDescription('Revise a mensagem e anexe o PDF do recibo (já baixado) na conversa do WhatsApp.');
     setWhatsappPreviewOpen(true);
   };
 

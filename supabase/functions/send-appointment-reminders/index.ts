@@ -340,8 +340,6 @@ serve(async (req) => {
 
   if (cronSecret && providedCron && providedCron === cronSecret) {
     authorized = true;
-  }
-
   } else if (authHeader?.startsWith('Bearer ')) {
     try {
       const userClient = createClient(
@@ -364,16 +362,13 @@ serve(async (req) => {
     console.warn('send-appointment-reminders unauthorized', {
       hasCronSecret: Boolean(cronSecret),
       hasProvidedCron: Boolean(providedCron),
-      hasApikeyHeader: Boolean(apikeyHeader),
-      hasAnonKey: Boolean(anonKey),
-      hasPublishableKey: Boolean(publishableKey),
-      apikeyMatchesKnownPublicKey: Boolean(apikeyHeader && ((anonKey && apikeyHeader === anonKey) || (publishableKey && apikeyHeader === publishableKey))),
       hasAuthHeader: Boolean(authHeader),
     });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   let catchup = true;

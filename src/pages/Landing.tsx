@@ -363,59 +363,30 @@ export default function Landing() {
                   </ul>
                 </div>
                 <div className="relative">
-                  <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl shadow-primary/10">
-                    <div className="flex h-full flex-col p-5">
-                      <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                        <div className="h-2 w-2 rounded-full bg-red-400" />
-                        <div className="h-2 w-2 rounded-full bg-yellow-400" />
-                        <div className="h-2 w-2 rounded-full bg-green-400" />
-                        <span className="ml-3 text-xs text-muted-foreground">
-                          horapro.app/agenda
-                        </span>
-                      </div>
-                      <div className="mt-4 flex-1">
-                        <div className="grid grid-cols-7 gap-1 text-[10px] text-muted-foreground">
-                          {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
-                            <div key={d} className="text-center">
-                              {d}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-2 grid grid-cols-7 gap-1">
-                          {Array.from({ length: 21 }).map((_, i) => {
-                            const filled = [2, 5, 8, 9, 13, 17, 19].includes(i);
-                            return (
-                              <div
-                                key={i}
-                                className={`h-10 rounded ${
-                                  filled ? 'bg-primary/80' : 'bg-muted/40'
-                                }`}
-                              />
-                            );
-                          })}
-                        </div>
-                        <div className="mt-4 space-y-2">
-                          {[
-                            { h: '09:00', n: 'Maria Silva', s: 'Corte e escova' },
-                            { h: '10:30', n: 'João Costa', s: 'Massagem terapêutica' },
-                            { h: '14:00', n: 'Ana Souza', s: 'Pacote · 3/10' },
-                          ].map((a) => (
-                            <div
-                              key={a.h}
-                              className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-xs"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="font-medium tabular-nums text-primary">
-                                  {a.h}
-                                </span>
-                                <span className="font-medium">{a.n}</span>
-                              </div>
-                              <span className="text-muted-foreground">{a.s}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-6 shadow-2xl shadow-primary/10 md:p-7">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Diferenciais exclusivos
+                    </span>
+                    <h3 className="mt-3 font-display text-xl font-semibold leading-tight md:text-2xl">
+                      O que nenhuma agenda comum entrega
+                    </h3>
+                    <ul className="mt-4 space-y-2.5">
+                      {DIFFERENTIALS.slice(0, 5).map((d, i) => {
+                        const Icon = differentialIcons[i % differentialIcons.length];
+                        return (
+                          <li
+                            key={d.title}
+                            className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5"
+                          >
+                            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="text-sm font-medium leading-snug">{d.title}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 </div>
               </div>

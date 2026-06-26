@@ -67,7 +67,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
-import { convertQuantity } from '@/lib/productStock';
+import { convertQuantity, areUnitsCrossFamily } from '@/lib/productStock';
 import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
@@ -395,13 +395,18 @@ export function ProductDetailDialog({
     // Quantidade que será deduzida do estoque total (mesma lógica do handler real)
     const containerDeductions = new Map<string, number>();
     let exactDeduction = 0;
+    let usedCrossFamilyConversion = false;
     for (const sp of productServiceLinks) {
       const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
       if (aptsThis <= 0) continue;
       if (sp.tracking_method === 'estimated') {
+        const fromUnit = sp.container_unit || product.unit;
+        if (areUnitsCrossFamily(fromUnit, product.unit)) {
+          usedCrossFamilyConversion = true;
+        }
         const inStockUnit = convertQuantity(
           Number(sp.container_amount || 0),
-          sp.container_unit || product.unit,
+          fromUnit,
           product.unit,
         ) ?? Number(sp.container_amount || 0);
         const key = `${sp.container_amount}-${sp.container_unit}`;
@@ -425,6 +430,7 @@ export function ProductDetailDialog({
       hasLinks,
       activePurchase,
       cycleApts,
+      usedCrossFamilyConversion,
     };
   }, [product, pendingEndDate, productPurchases, productServiceLinks, appointments]);
 
@@ -2059,6 +2065,14 @@ export function ProductDetailDialog({
                     </strong>{' '}
                     (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
                   </div>
+                  {endCyclePreview.usedCrossFamilyConversion && (
+                    <div className="text-amber-700 dark:text-amber-300">
+                      ⚠️ A unidade do recipiente difere da unidade do estoque (ex.: ml × kg).
+                      Convertido assumindo densidade ≈ 1 g/ml (água/gel). Se o produto for
+                      muito mais denso ou leve, ajuste a unidade do recipiente para casar
+                      com o estoque.
+                    </div>
+                  )}
                   {!endCyclePreview.hasLinks && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.

@@ -1,5 +1,6 @@
 export type StockUnit = 'un' | 'ml' | 'l' | 'g' | 'kg' | 'other' | string;
 
+// Conversões diretas dentro da mesma família (volume ↔ volume, massa ↔ massa).
 const CONVERSIONS: Record<string, Record<string, number>> = {
   l: { ml: 1000 },
   ml: { l: 1 / 1000 },
@@ -7,13 +8,39 @@ const CONVERSIONS: Record<string, Record<string, number>> = {
   g: { kg: 1 / 1000 },
 };
 
-export function convertQuantity(value: number, fromUnit: StockUnit | null | undefined, toUnit: StockUnit | null | undefined): number | null {
+// Pontes volume ↔ massa assumindo densidade ≈ 1 g/ml (água, gel, cremes
+// aquosos). Cobre o caso real de comprar 25 kg de gel e usar 500 ml por
+// atendimento — a baixa do estoque precisa ser 0,5 kg, não 500 kg.
+// fator = (valor em fromUnit) * fator → valor em toUnit.
+const CROSS_FAMILY_DENSITY_1: Record<string, Record<string, number>> = {
+  ml: { g: 1, kg: 1 / 1000 },
+  l: { g: 1000, kg: 1 },
+  g: { ml: 1, l: 1 / 1000 },
+  kg: { ml: 1000, l: 1 },
+};
+
+export function areUnitsCrossFamily(
+  fromUnit: StockUnit | null | undefined,
+  toUnit: StockUnit | null | undefined,
+): boolean {
+  if (!fromUnit || !toUnit || fromUnit === toUnit) return false;
+  return !!CROSS_FAMILY_DENSITY_1[fromUnit]?.[toUnit];
+}
+
+export function convertQuantity(
+  value: number,
+  fromUnit: StockUnit | null | undefined,
+  toUnit: StockUnit | null | undefined,
+): number | null {
   if (!Number.isFinite(value)) return null;
   if (!fromUnit || !toUnit) return null;
   if (fromUnit === toUnit) return value;
 
   const direct = CONVERSIONS[fromUnit]?.[toUnit];
-  if (direct) return value * direct;
+  if (direct !== undefined) return value * direct;
+
+  const cross = CROSS_FAMILY_DENSITY_1[fromUnit]?.[toUnit];
+  if (cross !== undefined) return value * cross;
 
   return null;
 }

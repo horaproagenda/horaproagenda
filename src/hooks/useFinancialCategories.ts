@@ -114,12 +114,28 @@ export function useFinancialCategories() {
   });
 
   const activeCategories = categories.filter(c => c.is_active);
-  
-  // Deduplicate categories by name+type (keep first occurrence)
+
+  // Normaliza removendo acentos e variações de plural em PT-BR
+  // (fornecedor/fornecedores, comissão/comissões, despesa/despesas)
+  const normalizeName = (name: string) => {
+    let n = name
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+    if (n.endsWith('oes') && n.length > 4) n = n.slice(0, -3) + 'ao';
+    else if (n.endsWith('aes') && n.length > 4) n = n.slice(0, -3) + 'ao';
+    else if (n.endsWith('es') && n.length > 4) n = n.slice(0, -2);
+    else if (n.endsWith('s') && n.length > 3) n = n.slice(0, -1);
+    return n;
+  };
+
+  // Deduplicate categories by normalized name + type (keep first occurrence)
   const dedup = (cats: FinancialCategory[]) => {
     const seen = new Map<string, FinancialCategory>();
     cats.forEach(c => {
-      const key = `${c.name.toLowerCase().trim()}|${c.type}`;
+      const key = `${normalizeName(c.name)}|${c.type}`;
       if (!seen.has(key)) seen.set(key, c);
     });
     return Array.from(seen.values());

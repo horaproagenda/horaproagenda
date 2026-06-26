@@ -105,10 +105,13 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     if (navRef.current) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
-    // Fecha o drawer APÓS o React Router processar a navegação,
-    // evitando que a animação de translate cancele o toque no mobile.
+    // Mobile: fecha o drawer após a navegação.
     if (onMobileClose) {
       setTimeout(() => onMobileClose(), 0);
+    }
+    // Desktop: recolhe a barra lateral automaticamente para liberar a visão da página.
+    if (!isMobile && !isCollapsed) {
+      setTimeout(() => onToggleCollapse(), 0);
     }
   };
 

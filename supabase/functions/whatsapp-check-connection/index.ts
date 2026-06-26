@@ -43,8 +43,8 @@ serve(async (req) => {
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
     const professional_id = prof?.id ?? null;
     if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
-      return new Response(JSON.stringify({ configured: false, connected: false, error: 'O status do WhatsApp só pode ser consultado para o profissional vinculado ao usuário logado.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'no_professional', message: 'O status do WhatsApp só pode ser consultado para o profissional vinculado ao usuário logado.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);

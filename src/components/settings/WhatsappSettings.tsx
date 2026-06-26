@@ -51,6 +51,7 @@ export function WhatsappSettings() {
   const [connecting, setConnecting] = useState(false);
   const [connectionByProf, setConnectionByProf] = useState<Record<string, ConnectionSnapshot>>({});
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [releaseApproved, setReleaseApproved] = useState<boolean | null>(null);
 
   const refreshConnection = useCallback(async (professionalId?: string) => {
     if (!professionalId) return null;

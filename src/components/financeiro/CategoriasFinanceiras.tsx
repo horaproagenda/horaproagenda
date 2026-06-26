@@ -371,6 +371,31 @@ export function CategoriasFinanceiras() {
     setEditScope(null);
   };
 
+  const handleDeleteEntry = async (scope: 'current' | 'future' | 'following' | 'all') => {
+    if (!editingEntry || !editingGroup) return;
+    const refDate = editingEntry.due_date;
+    let targets: FinancialEntry[] = [];
+    if (scope === 'current') targets = [editingEntry];
+    else if (scope === 'future') targets = editingGroup.entries.filter(e => e.due_date >= refDate);
+    else if (scope === 'following') targets = editingGroup.entries.filter(e => e.due_date > refDate);
+    else targets = editingGroup.entries;
+
+    if (targets.length === 0) {
+      toast.error('Nenhuma conta encontrada para o escopo selecionado');
+      return;
+    }
+    if (!window.confirm(`Excluir ${targets.length} conta(s)? Esta ação não pode ser desfeita.`)) return;
+
+    for (const entry of targets) {
+      await deleteEntry.mutateAsync(entry.id);
+    }
+    toast.success(`${targets.length} conta(s) excluída(s)`);
+    setEditEntryDialogOpen(false);
+    setEditingEntry(null);
+    setEditingGroup(null);
+    setEditScope(null);
+  };
+
 
   // Group entries by category
   const expensesByCategory = expenseCats.map(cat => ({

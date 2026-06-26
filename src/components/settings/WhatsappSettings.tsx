@@ -51,6 +51,7 @@ export function WhatsappSettings() {
   const [connecting, setConnecting] = useState(false);
   const [connectionByProf, setConnectionByProf] = useState<Record<string, ConnectionSnapshot>>({});
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [releaseApproved, setReleaseApproved] = useState<boolean | null>(null);
 
   const refreshConnection = useCallback(async (professionalId?: string) => {
     if (!professionalId) return null;
@@ -99,8 +100,9 @@ export function WhatsappSettings() {
       if (!user) return;
 
       const { data: prof } = await supabase
-        .from('professionals').select('id, name').eq('user_id', user.id).maybeSingle();
+        .from('professionals').select('id, name, whatsapp_release_approved').eq('user_id', user.id).maybeSingle();
       setMyProfessionalId(prof?.id ?? null);
+      setReleaseApproved(prof ? !!(prof as any).whatsapp_release_approved : null);
       if (prof?.id) {
         setProfessionals([{ id: prof.id, name: prof.name || 'Meu WhatsApp' }]);
         setSelectedProfId(prof.id);
@@ -115,6 +117,20 @@ export function WhatsappSettings() {
       setCredsMap(map);
     })();
   }, []);
+
+  // Repolla aprovação da liberação do WhatsApp pelo Super Admin (a cada 20s) enquanto não aprovado.
+  useEffect(() => {
+    if (!myProfessionalId || releaseApproved) return;
+    const t = setInterval(async () => {
+      const { data } = await supabase
+        .from('professionals')
+        .select('whatsapp_release_approved')
+        .eq('id', myProfessionalId)
+        .maybeSingle();
+      if (data && (data as any).whatsapp_release_approved) setReleaseApproved(true);
+    }, 20000);
+    return () => clearInterval(t);
+  }, [myProfessionalId, releaseApproved]);
 
   useEffect(() => {
     if (selectedProfId) {
@@ -354,7 +370,19 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        {!connected && (
+        {!connected && myProfessionalId && releaseApproved === false && (
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertTitle>Validando seu cadastro…</AlertTitle>
+            <AlertDescription className="text-xs space-y-1">
+              <p>Estamos confirmando seus dados e preparando uma instância de WhatsApp exclusiva para o seu login.</p>
+              <p>Assim que a liberação for concluída pela equipe Hora Pro, o QR Code aparecerá aqui automaticamente — você não precisa atualizar a página.</p>
+              <p className="text-[11px] text-muted-foreground">Isso costuma levar alguns minutos em horário comercial.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!connected && releaseApproved && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>
@@ -370,21 +398,23 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        <Alert variant={connected || configured ? 'default' : 'destructive'}>
-          {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
-          <AlertDescription className="text-xs">
-            {connected
-              ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem da sua conta respeitando a janela de horário configurada.`
-              : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do seu login.'}
-            {connected && lastConnectedAt && (
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
+        {(connected || releaseApproved !== false) && (
+          <Alert variant={connected || configured ? 'default' : 'destructive'}>
+            {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
+            <AlertDescription className="text-xs">
+              {connected
+                ? `WhatsApp autenticado. Mensagens automáticas (lembretes, confirmações, follow-ups, aniversários e cobranças) saem da sua conta respeitando a janela de horário configurada.`
+                : 'Clique em "Conectar ao WhatsApp" e escaneie o QR Code com o WhatsApp do seu login.'}
+              {connected && lastConnectedAt && (
+                <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Última verificação: {lastConnectedAt} · monitoramento automático a cada 60s
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <WhatsappQueueStatusPanel />
 
@@ -394,7 +424,7 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          {!connected && selectedProfId && (
+          {!connected && selectedProfId && releaseApproved && (
             <Button
               onClick={handleConnect}
               disabled={connecting || isLoadingQR}

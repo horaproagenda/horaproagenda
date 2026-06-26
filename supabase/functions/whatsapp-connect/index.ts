@@ -43,12 +43,19 @@ serve(async (req) => {
     const requested_professional_id: string | undefined = body?.professional_id;
 
     const { data: ownProf } = await supabaseService
-      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
+      .from('professionals').select('id, whatsapp_release_approved').eq('user_id', user.id).maybeSingle();
 
     const professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
     if (requested_professional_id && requested_professional_id !== professional_id) {
       return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' }, 403);
+    }
+    if (!ownProf?.whatsapp_release_approved) {
+      return json({
+        success: false,
+        pending_validation: true,
+        error: 'Estamos validando seu cadastro. Assim que a instância de WhatsApp for liberada, o QR Code aparecerá aqui automaticamente. Você receberá um aviso pelo WhatsApp.',
+      }, 200);
     }
 
     // 1) Reserva instância se ainda não houver

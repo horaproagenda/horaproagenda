@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const ownerUserId: string | undefined = body?.owner_user_id;
     const reason: string = (body?.reason ?? "super_admin_cancellation").toString();
-    const blockMonths: number = Math.max(1, Math.min(120, Number(body?.block_months ?? 6)));
+    const skipBlocklist: boolean = body?.skip_blocklist === true;
+    const blockMonths: number = skipBlocklist
+      ? 0
+      : Math.max(1, Math.min(120, Number(body?.block_months ?? 6)));
     const purgeData: boolean = body?.purge_data !== false; // default true
 
     if (!ownerUserId) return json({ error: "owner_user_id is required" }, 400);
@@ -96,28 +99,32 @@ Deno.serve(async (req) => {
       hashOne(fullName.toLowerCase()),
     ]);
 
-    const blockedUntil = new Date(Date.now() + blockMonths * 30 * 86400000).toISOString();
+    const blockedUntil = skipBlocklist
+      ? null
+      : new Date(Date.now() + blockMonths * 30 * 86400000).toISOString();
 
-    const { error: blockErr } = await admin.from("deleted_account_blocklist").insert({
-      user_id: ownerUserId,
-      email_hash: emailHash,
-      phone_hash: phoneHash,
-      cpf_hash: cpfHash,
-      cnpj_hash: cnpjHash,
-      full_name_hash: nameHash,
-      email_masked: maskEmail(email || null),
-      phone_masked: maskPhone(phoneDigits || null),
-      cpf_last4: last4(cpfDigits),
-      cnpj_last4: last4(cnpjDigits),
-      had_paid: Boolean(reg?.has_paid),
-      reason,
-      cancellation_type: "super_admin_cancellation",
-      canceled_by: callerId,
-      blocked_until: blockedUntil,
-    });
-    if (blockErr) {
-      console.error("super-admin-cancel-account block error:", blockErr);
-      return json({ error: blockErr.message }, 500);
+    if (!skipBlocklist) {
+      const { error: blockErr } = await admin.from("deleted_account_blocklist").insert({
+        user_id: ownerUserId,
+        email_hash: emailHash,
+        phone_hash: phoneHash,
+        cpf_hash: cpfHash,
+        cnpj_hash: cnpjHash,
+        full_name_hash: nameHash,
+        email_masked: maskEmail(email || null),
+        phone_masked: maskPhone(phoneDigits || null),
+        cpf_last4: last4(cpfDigits),
+        cnpj_last4: last4(cnpjDigits),
+        had_paid: Boolean(reg?.has_paid),
+        reason,
+        cancellation_type: "super_admin_cancellation",
+        canceled_by: callerId,
+        blocked_until: blockedUntil,
+      });
+      if (blockErr) {
+        console.error("super-admin-cancel-account block error:", blockErr);
+        return json({ error: blockErr.message }, 500);
+      }
     }
 
     // Mark subscription as canceled (if exists)
@@ -144,13 +151,14 @@ Deno.serve(async (req) => {
 
     await admin.from("audit_log").insert({
       user_id: callerId,
-      action: "super_admin.cancel_account",
+      action: skipBlocklist ? "super_admin.delete_account" : "super_admin.cancel_account",
       entity_type: "account_subscriptions",
       entity_id: ownerUserId,
       details: {
         reason,
         block_months: blockMonths,
         purge_data: purgeData,
+        skip_blocklist: skipBlocklist,
         blocked_until: blockedUntil,
       },
     });

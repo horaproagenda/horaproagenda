@@ -36,7 +36,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban, Trash2 } from 'lucide-react';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
 import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';
@@ -112,6 +112,8 @@ export default function SuperAdmin() {
   const [cancelMonths, setCancelMonths] = useState(6);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -274,6 +276,34 @@ export default function SuperAdmin() {
     }
   };
 
+  const confirmDeleteAccount = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('super-admin-cancel-account', {
+        body: {
+          owner_user_id: deleteTarget.owner_user_id,
+          reason: 'super_admin_delete',
+          purge_data: true,
+          skip_blocklist: true,
+        },
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Usuário apagado. Pode se cadastrar novamente.');
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
+      qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao apagar usuário');
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
+
+
+
   return (
     <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">
       <div className="space-y-4 p-4 md:p-6">
@@ -431,6 +461,12 @@ export default function SuperAdmin() {
                             'Cancelar e bloquear conta',
                             <Ban className="h-3 w-3" />,
                             () => setCancelTarget(r),
+                            'destructive',
+                          )}
+                          {actionButton(
+                            'Apagar usuário (sem bloqueio — permite novo cadastro)',
+                            <Trash2 className="h-3 w-3" />,
+                            () => setDeleteTarget(r),
                             'destructive',
                           )}
                         </div>
@@ -667,6 +703,36 @@ export default function SuperAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" /> Apagar usuário definitivamente
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Conta: <span className="font-medium text-foreground">{deleteTarget?.email}</span>
+              </span>
+              <span className="block">
+                Esta ação <strong>exclui o usuário do Auth, perfil, papéis e cadastros</strong> e
+                <strong> não registra bloqueio</strong>. O usuário poderá se cadastrar novamente
+                com o mesmo e-mail, CPF, CNPJ ou celular, como se nunca tivesse usado o aplicativo.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteSubmitting}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDeleteAccount(); }}
+              disabled={deleteSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteSubmitting ? 'Apagando...' : 'Apagar usuário'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

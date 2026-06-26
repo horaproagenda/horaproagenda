@@ -379,6 +379,22 @@ serve(async (req) => {
     // CRITICAL: persist discount_amount so it survives reloads and the
     // totalRequired calc remains coherent on follow-up updates.
     const discountToPersist = Math.max(0, Number(body.discount_amount || 0));
+    // Compute payment_date:
+    // - If this is the first time amount_paid becomes > 0 -> stamp today (BRT).
+    // - If amount_paid is being reset to 0 -> clear it.
+    // - Otherwise preserve the existing payment_date (manual edits in Financeiro
+    //   are responsible for moving the date when the user changes value/method/date).
+    const todayBrt = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+    ).toISOString().slice(0, 10);
+    const existingPaymentDate = (appointment as any).payment_date as string | null | undefined;
+    let nextPaymentDate: string | null | undefined = existingPaymentDate ?? null;
+    if (accumulatedAmountPaid > 0 && !existingPaymentDate) {
+      nextPaymentDate = todayBrt;
+    } else if (accumulatedAmountPaid === 0) {
+      nextPaymentDate = null;
+    }
+
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
@@ -386,6 +402,7 @@ serve(async (req) => {
         amount_paid: accumulatedAmountPaid,
         payment_status: resolvedPaymentStatus,
         discount_amount: discountToPersist,
+        payment_date: nextPaymentDate,
         updated_by: userId,
       })
       .eq('id', body.appointment_id)

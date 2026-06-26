@@ -1,6 +1,7 @@
 // Category color mapping for services
+// Tons neutros/temáticos — evitamos rosa/coral fixos para não conflitar com a cor do tema.
 const categoryColors: Record<string, { bg: string; border: string; text: string; hex: string }> = {
-  'Facial': { bg: 'bg-pink-100', border: 'border-pink-400', text: 'text-pink-800', hex: '#ec4899' },
+  'Facial': { bg: 'bg-primary/10', border: 'border-primary/40', text: 'text-primary', hex: '#7D573D' },
   'Corporal': { bg: 'bg-amber-100', border: 'border-amber-400', text: 'text-amber-800', hex: '#f59e0b' },
   'Sobrancelhas': { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-800', hex: '#a855f7' },
   'Capilar': { bg: 'bg-teal-100', border: 'border-teal-400', text: 'text-teal-800', hex: '#14b8a6' },

@@ -276,6 +276,31 @@ export default function SuperAdmin() {
     }
   };
 
+  const confirmDeleteAccount = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('super-admin-cancel-account', {
+        body: {
+          owner_user_id: deleteTarget.owner_user_id,
+          reason: 'super_admin_delete',
+          purge_data: true,
+          skip_blocklist: true,
+        },
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Usuário apagado. Pode se cadastrar novamente.');
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
+      qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao apagar usuário');
+    } finally {
+      setDeleteSubmitting(false);
+    }
+
   return (
     <AppLayout title="Super Admin" subtitle="Painel da criadora da plataforma">
       <div className="space-y-4 p-4 md:p-6">

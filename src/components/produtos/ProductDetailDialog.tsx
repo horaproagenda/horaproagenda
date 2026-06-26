@@ -2065,6 +2065,14 @@ export function ProductDetailDialog({
                     </strong>{' '}
                     (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
                   </div>
+                  {endCyclePreview.usedCrossFamilyConversion && (
+                    <div className="text-amber-700 dark:text-amber-300">
+                      ⚠️ A unidade do recipiente difere da unidade do estoque (ex.: ml × kg).
+                      Convertido assumindo densidade ≈ 1 g/ml (água/gel). Se o produto for
+                      muito mais denso ou leve, ajuste a unidade do recipiente para casar
+                      com o estoque.
+                    </div>
+                  )}
                   {!endCyclePreview.hasLinks && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.

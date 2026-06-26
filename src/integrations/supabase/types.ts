@@ -5264,6 +5264,10 @@ export type Database = {
             }
             Returns: string
           }
+      super_admin_purge_owner_data: {
+        Args: { _owner_user_id: string }
+        Returns: Json
+      }
       sync_appointments_with_paid_sale: {
         Args: { _sale_id: string }
         Returns: number

@@ -108,7 +108,9 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const isCron = url.searchParams.get('cron') === '1';
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedCron = req.headers.get('x-cron-secret');
+    const isCron = !!cronSecret && providedCron === cronSecret;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseService = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -117,6 +119,13 @@ serve(async (req) => {
     let scopedOwnerId: string | null = null;
 
     if (!isCron) {
+      // Reject any cron-style invocation that didn't provide the shared secret.
+      if (url.searchParams.get('cron') === '1' || providedCron) {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'unauthorized' }), {
@@ -144,6 +153,7 @@ serve(async (req) => {
       }
       scopedOwnerId = prof.account_owner_id;
     }
+
 
     const supabase = createClient(supabaseUrl, supabaseService);
     const today = new Date().toISOString().split('T')[0];

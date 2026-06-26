@@ -422,7 +422,7 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          {!connected && selectedProfId && (
+          {!connected && selectedProfId && releaseApproved && (
             <Button
               onClick={handleConnect}
               disabled={connecting || isLoadingQR}

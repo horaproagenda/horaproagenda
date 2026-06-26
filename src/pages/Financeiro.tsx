@@ -34,7 +34,7 @@ import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { useState } from 'react';
+
 import { cn } from '@/lib/utils';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 

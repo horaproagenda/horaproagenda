@@ -370,7 +370,19 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        {!connected && (
+        {!connected && myProfessionalId && releaseApproved === false && (
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertTitle>Validando seu cadastro…</AlertTitle>
+            <AlertDescription className="text-xs space-y-1">
+              <p>Estamos confirmando seus dados e preparando uma instância de WhatsApp exclusiva para o seu login.</p>
+              <p>Assim que a liberação for concluída pela equipe Hora Pro, o QR Code aparecerá aqui automaticamente — você não precisa atualizar a página.</p>
+              <p className="text-[11px] text-muted-foreground">Isso costuma levar alguns minutos em horário comercial.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!connected && releaseApproved && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>

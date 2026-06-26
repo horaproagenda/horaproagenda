@@ -936,7 +936,44 @@ export function CategoriasFinanceiras() {
                       Dias após o vencimento antes de marcar como "Atrasada"
                     </p>
                   </div>
-                  <div className="flex gap-2 justify-end">
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-xs text-destructive flex items-center gap-1.5">
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir esta conta
+                    </Label>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      <Button size="sm" variant="outline" className="justify-start text-xs h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteEntry('current')}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Somente o mês atual
+                      </Button>
+                      {editingGroup && editingGroup.entries.length > 1 && (() => {
+                        const refDate = editingEntry?.due_date || '';
+                        const followingCount = editingGroup.entries.filter(e => e.due_date > refDate).length;
+                        const futureCount = editingGroup.entries.filter(e => e.due_date >= refDate).length;
+                        return (
+                          <>
+                            {followingCount > 0 && (
+                              <Button size="sm" variant="outline" className="justify-start text-xs h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteEntry('following')}>
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Apenas meses seguintes ({followingCount})
+                              </Button>
+                            )}
+                            {futureCount > 1 && (
+                              <Button size="sm" variant="outline" className="justify-start text-xs h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteEntry('future')}>
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Mês atual + seguintes ({futureCount})
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" className="justify-start text-xs h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteEntry('all')}>
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Todos os meses ({editingGroup.entries.length})
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-2">
                     <Button variant="outline" onClick={() => setEditScope(null)}>Voltar</Button>
                     <Button onClick={handleEditEntry}>
                       <Check className="h-4 w-4 mr-2" />

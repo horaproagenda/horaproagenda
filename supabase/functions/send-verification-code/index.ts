@@ -72,17 +72,20 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // SECURITY: avoid email enumeration. Always return an identical 200
-    // response regardless of whether the address is registered. When the
-    // request doesn't match the expected state (signup w/ existing email or
-    // login w/ unknown email) we silently skip the actual send.
+    // For signup, give a clear error when the email is already registered so
+    // the user understands why no code arrived (instead of silently skipping).
+    // For login, keep anti-enumeration: silently succeed when unknown.
     const exists = await authUserExistsByEmail(supabaseAdmin, normalizedEmail);
-    const shouldSkipSend =
-      (normalizedType === 'signup' && exists) ||
-      (normalizedType === 'login' && !exists);
-
-    if (shouldSkipSend) {
-      // Constant-time-ish small delay to dampen response-time enumeration.
+    if (normalizedType === 'signup' && exists) {
+      return new Response(
+        JSON.stringify({
+          error: "Este e-mail já está cadastrado. Faça login ou recupere sua senha.",
+          code: "email_already_registered",
+        }),
+        { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (normalizedType === 'login' && !exists) {
       await new Promise((r) => setTimeout(r, 200));
       return new Response(
         JSON.stringify({ success: true, message: "Código enviado para o e-mail" }),

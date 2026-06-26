@@ -241,7 +241,7 @@ const Ajuda = () => {
                 </Badge>
               </div>
               <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
-                <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 data-[state=active]:border-rose-500/40">Novidades</TabsTrigger>
+                <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novidades</TabsTrigger>
                 <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
                 <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
                 <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Permissões</TabsTrigger>
@@ -250,11 +250,11 @@ const Ajuda = () => {
 
             <TabsContent value="whats-new" className="space-y-3 page-enter">
               {CURRENT_CHANGELOG && (
-                <Card className="card-hover border-rose-500/30">
+                <Card className="card-hover border-primary/30">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Rocket className="h-4 w-4 text-rose-500" />
+                        <Rocket className="h-4 w-4 text-primary" />
                         Versão atual — {CURRENT_CHANGELOG.version}
                       </CardTitle>
                       <Badge variant="secondary" className="text-[10px]">{CURRENT_CHANGELOG.date}</Badge>
@@ -264,8 +264,8 @@ const Ajuda = () => {
                   <CardContent className="space-y-3">
                     <div className="grid gap-2 sm:grid-cols-2">
                       {CURRENT_CHANGELOG.highlights.map((h, i) => (
-                        <div key={i} className="p-2 rounded-lg bg-rose-500/5 border border-rose-500/15 flex items-start gap-2">
-                          <Sparkles className="h-3.5 w-3.5 mt-0.5 text-rose-500 shrink-0" />
+                        <div key={i} className="p-2 rounded-lg bg-primary/10 border border-primary/3015 flex items-start gap-2">
+                          <Sparkles className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
                           <p className="text-xs">{h}</p>
                         </div>
                       ))}

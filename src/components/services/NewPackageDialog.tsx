@@ -274,7 +274,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             {/* Info: o que é cada tipo de pacote */}
             <div className={
               packageType === 'sequential'
-                ? 'flex items-start gap-2 rounded-md border border-fuchsia-200 bg-fuchsia-50/60 p-2.5 text-[11px] leading-relaxed text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                ? 'flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 p-2.5 text-[11px] leading-relaxed text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
                 : 'flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50/60 p-2.5 text-[11px] leading-relaxed text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-100'
             }>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />

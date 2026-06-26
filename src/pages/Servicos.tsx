@@ -419,7 +419,7 @@ const Servicos: React.FC = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1">
             <TabsTrigger value="services" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Serviços</TabsTrigger>
-            <TabsTrigger value="packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-700 data-[state=active]:border-fuchsia-500/40">Pacotes</TabsTrigger>
+            <TabsTrigger value="packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Pacotes</TabsTrigger>
           </TabsList>
 
 
@@ -457,7 +457,7 @@ const Servicos: React.FC = () => {
             <div className={cn(
               'flex items-start gap-2 rounded-md border p-2.5 text-xs',
               serviceTypeFilter === 'kit'
-                ? 'border-fuchsia-200 bg-fuchsia-50/60 text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                ? 'border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
                 : 'border-sky-200 bg-sky-50/60 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
             )}>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -676,7 +676,7 @@ const Servicos: React.FC = () => {
             <div className={cn(
               'flex items-start gap-2 rounded-md border p-2.5 text-xs',
               packageTypeFilter === 'sequential'
-                ? 'border-fuchsia-200 bg-fuchsia-50/60 text-fuchsia-900 dark:border-fuchsia-900/40 dark:bg-fuchsia-950/30 dark:text-fuchsia-100'
+                ? 'border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
                 : 'border-violet-200 bg-violet-50/60 text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-100'
             )}>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -791,7 +791,7 @@ const Servicos: React.FC = () => {
                 {sequentialPackages.length > 0 && (
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Repeat className="h-3.5 w-3.5 text-fuchsia-600" />
+                      <Repeat className="h-3.5 w-3.5 text-primary" />
                       <h3 className="text-sm font-semibold">Pacotes sequenciais</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{sequentialPackages.length}</Badge>
                     </div>

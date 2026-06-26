@@ -40,6 +40,8 @@ import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban }
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Progress } from '@/components/ui/progress';
 import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';
+import { InterestLeadsPanel } from '@/components/super-admin/InterestLeadsPanel';
+import { WhatsappReleasePanel } from '@/components/super-admin/WhatsappReleasePanel';
 
 interface AdminAccountRow {
   owner_user_id: string;

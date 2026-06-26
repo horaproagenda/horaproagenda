@@ -32,9 +32,9 @@ export interface SystemNotification {
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
 
-  // Fetch boletos vencendo hoje
+  // Fetch TODAS as contas (a pagar e a receber) vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
-    queryKey: ['boletos-vencendo-hoje'],
+    queryKey: ['contas-vencendo-hoje'],
     queryFn: async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const { data, error } = await supabase
@@ -43,16 +43,11 @@ export function useSystemNotifications() {
           *,
           payment_method:payment_methods(name)
         `)
-        .eq('type', 'payable')
         .eq('status', 'pending')
         .eq('due_date', today);
-      
+
       if (error) throw error;
-      
-      // Filter only those with boleto payment method
-      return (data || []).filter(entry => 
-        entry.payment_method?.name?.toLowerCase().includes('boleto')
-      );
+      return data || [];
     },
     refetchInterval: 60000, // Check every minute
   });

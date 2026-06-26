@@ -191,10 +191,17 @@ Deno.serve(async (req) => {
         purge_data: purgeData,
         skip_blocklist: skipBlocklist,
         blocked_until: blockedUntil,
+        purge_report: purgeReport,
+        auth_delete_warnings: authDeleteWarnings,
       },
     });
 
-    return json({ ok: true, blocked_until: blockedUntil });
+    return json({
+      ok: true,
+      blocked_until: blockedUntil,
+      purge_report: purgeReport,
+      auth_delete_warnings: authDeleteWarnings,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("super-admin-cancel-account error:", msg);

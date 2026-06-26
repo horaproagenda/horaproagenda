@@ -176,7 +176,32 @@ serve(async (req) => {
     const results: any[] = [];
     for (const owner of byOwner.values()) {
       try {
+        // Dedup: tenta inserir log do dia; se já existe, pula (a menos que seja chamada manual escopada)
+        if (isCron) {
+          const { error: dupErr } = await supabase
+            .from('daily_summary_log')
+            .insert({ account_owner_id: owner.account_owner_id, sent_date: today });
+          if (dupErr) {
+            results.push({ owner: owner.account_owner_id, skipped: true, reason: 'já enviado hoje' });
+            continue;
+          }
+        }
         const r = await buildAndSendFor(supabase, owner, today);
+        if (r?.sent && isCron) {
+          await supabase
+            .from('daily_summary_log')
+            .update({ bills_count: r.bills ?? 0, reminders_count: r.reminders ?? 0 })
+            .eq('account_owner_id', owner.account_owner_id)
+            .eq('sent_date', today);
+        }
+        // Se não enviou (sem dados ou erro) e foi cron, remove o registro para tentar novamente depois
+        if (isCron && !r?.sent) {
+          await supabase
+            .from('daily_summary_log')
+            .delete()
+            .eq('account_owner_id', owner.account_owner_id)
+            .eq('sent_date', today);
+        }
         results.push({ owner: owner.account_owner_id, ...r });
       } catch (err) {
         results.push({

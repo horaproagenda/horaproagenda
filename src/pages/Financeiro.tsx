@@ -34,7 +34,7 @@ import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 
@@ -45,7 +45,8 @@ export default function Financeiro() {
   const { banks } = useBanks();
   const { appointments } = useAppointments();
   const { professionals } = useProfessionals();
-  const [activeTab, setActiveTab] = useLocalStorage('financeiro-tab', 'relatorio');
+  // Sempre abre na aba Relatório ao entrar na página
+  const [activeTab, setActiveTab] = useState('relatorio');
 
   // Handle URL query params for deep linking from notifications
   useEffect(() => {

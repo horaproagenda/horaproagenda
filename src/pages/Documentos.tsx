@@ -62,12 +62,12 @@ const templateTypeConfig = {
   facial: { 
     label: 'Facial', 
     icon: Sparkles, 
-    color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300' 
+    color: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground' 
   },
   corporal: { 
     label: 'Corporal', 
     icon: Heart, 
-    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' 
+    color: 'bg-accent text-accent-foreground dark:bg-accent/40 dark:text-accent-foreground' 
   },
 };
 

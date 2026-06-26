@@ -305,14 +305,19 @@ export function ProductDetailDialog({
       }
     }
 
-    // Detecta necessidade de iniciar manualmente: produto tem estoque, mas não está com ciclo ativo
-    // (ex.: término foi preenchido mas ainda há produto restante para uso).
+    // Detecta necessidade de iniciar manualmente: produto tem estoque, mas não está com ciclo ativo.
+    // Dispara quando:
+    //  (a) nunca foi iniciado (!started_using_at) e há histórico/compras, OU
+    //  (b) o ciclo anterior foi encerrado (started_using_at + finished_at preenchidos)
+    //      e ainda há estoque — sinal de que o recipiente foi reabastecido.
     const stock = Number(product.current_stock || 0);
-    const needsManualStart =
+    const cycleClosedWithStock =
+      !!product.started_using_at && !!product.finished_at && stock > 0;
+    const neverStartedWithHistory =
       !product.started_using_at &&
       stock > 0 &&
-      !nextPurchase &&
       (finishedCycles.length > 0 || productPurchases.length > 0);
+    const needsManualStart = cycleClosedWithStock || neverStartedWithHistory;
 
     // Inconsistências: estoque negativo, ou consumo registrado ≠ variação do estoque
     const inconsistencies: string[] = [];

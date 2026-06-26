@@ -151,13 +151,14 @@ Deno.serve(async (req) => {
 
     await admin.from("audit_log").insert({
       user_id: callerId,
-      action: "super_admin.cancel_account",
+      action: skipBlocklist ? "super_admin.delete_account" : "super_admin.cancel_account",
       entity_type: "account_subscriptions",
       entity_id: ownerUserId,
       details: {
         reason,
         block_months: blockMonths,
         purge_data: purgeData,
+        skip_blocklist: skipBlocklist,
         blocked_until: blockedUntil,
       },
     });

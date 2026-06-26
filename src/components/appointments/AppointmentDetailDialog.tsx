@@ -1122,22 +1122,33 @@ export function AppointmentDetailDialog({
 
   const handleSendReceipt = async () => {
     const phone = appointment.client?.phone?.replace(/\D/g, '');
+    const pdfDoc = buildReceiptPdf();
+    const filename = `recibo_${safeClient.name.replace(/\s+/g, '_')}_${appointment.id.slice(0, 8)}.pdf`;
+    // Sempre faz o download local — garante que o usuário tenha o arquivo em mãos
+    // mesmo se o navegador não suportar Web Share API com anexos.
+    pdfDoc.save(filename);
+
     if (!phone) {
-      toast.error('Cliente sem telefone cadastrado.');
+      toast.error('Cliente sem telefone cadastrado para envio no WhatsApp.');
       return;
     }
-    const pdfBlob = buildReceiptPdf().output('blob');
-    const file = new File([pdfBlob], `recibo_${appointment.id.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+    const pdfBlob = pdfDoc.output('blob');
+    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
     const shareData = { files: [file], title: 'Recibo de pagamento', text: `Recibo da baixa de ${safeClient.name}` };
-    if (navigator.canShare?.(shareData)) {
-      await navigator.share(shareData);
-      return;
+    // Web Share API com anexo (mobile/PWA): abre o seletor nativo com o PDF já anexado.
+    if (typeof navigator !== 'undefined' && (navigator as any).canShare?.(shareData)) {
+      try {
+        await (navigator as any).share(shareData);
+        return;
+      } catch {
+        // usuário cancelou ou erro — segue para o fallback de WhatsApp Web.
+      }
     }
-    const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.`;
+    const message = `Olá ${safeClient.name}, segue o recibo da baixa do seu agendamento. Total: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}.\n\nO PDF foi baixado neste dispositivo — anexe-o nesta conversa para enviar.`;
     setWhatsappPreviewPhone(phone);
     setWhatsappPreviewMessage(message);
     setWhatsappPreviewTitle('Enviar recibo no WhatsApp');
-    setWhatsappPreviewDescription('Revise e edite a mensagem antes de enviar. Lembre-se de anexar o PDF do recibo na conversa.');
+    setWhatsappPreviewDescription('Revise a mensagem e anexe o PDF do recibo (já baixado) na conversa do WhatsApp.');
     setWhatsappPreviewOpen(true);
   };
 
@@ -1600,26 +1611,50 @@ export function AppointmentDetailDialog({
             ) : (
               /* Service Info - View Mode */
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{appointment.service?.name}</p>
-                    <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
-                  </div>
-                </div>
+                {(() => {
+                  // Fallbacks defensivos: quando o agendamento é de pacote (ou o serviço
+                  // foi removido/renomeado), exibimos o nome do pacote para o ícone
+                  // de estrela nunca aparecer vazio.
+                  const displayName = appointment.service?.name
+                    || packageData?.name
+                    || (isPackageAppointment ? 'Sessão de Pacote' : 'Serviço');
+                  const displayCategory = appointment.service?.category
+                    || (isPackageAppointment ? 'Pacote' : '');
+                  // Duração: prioriza service.duration; se ausente/zero, calcula a partir
+                  // de start/end (verdadeira fonte da verdade do horário do atendimento).
+                  const startMs = new Date(appointment.start_time).getTime();
+                  const endMs = new Date(appointment.end_time).getTime();
+                  const computedMinutes = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+                    ? Math.round((endMs - startMs) / 60000)
+                    : 0;
+                  const durationMinutes = Number(appointment.service?.duration) > 0
+                    ? Number(appointment.service?.duration)
+                    : computedMinutes;
+                  return (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{displayName}</p>
+                          {displayCategory && <p className="text-sm text-muted-foreground">{displayCategory}</p>}
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                      </div>
 
-                <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    {formatTimeInTimeZone(appointment.start_time, settings?.timezone)} - {formatTimeInTimeZone(appointment.end_time, settings?.timezone)}
-                    <span className="text-muted-foreground ml-1">({formatDurationClock(appointment.service?.duration || 0)})</span>
-                  </span>
-                </div>
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {formatTimeInTimeZone(appointment.start_time, settings?.timezone)} - {formatTimeInTimeZone(appointment.end_time, settings?.timezone)}
+                          <span className="text-muted-foreground ml-1">({formatDurationClock(durationMinutes)})</span>
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {professional && (
                   <div className="flex items-center gap-3">
@@ -1773,14 +1808,12 @@ export function AppointmentDetailDialog({
               )}
 
               {(amountPaid > 0 || persistedAdditionalItemsTotal > 0) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" onClick={handleDownloadReceipt}>
+                <div className="flex">
+                  {/* Botão único: baixa o PDF localmente e abre o WhatsApp do cliente
+                      para enviar o arquivo (Web Share API no mobile/PWA, fallback web). */}
+                  <Button type="button" variant="outline" className="w-full" onClick={handleSendReceipt}>
                     <FileDown className="h-4 w-4 mr-2" />
-                    Baixar recibo PDF
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleSendReceipt}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar ao cliente
+                    Baixar recibo PDF e enviar no WhatsApp
                   </Button>
                 </div>
               )}

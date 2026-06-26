@@ -1994,6 +1994,131 @@ export function ProductDetailDialog({
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    {/* Confirmação: registrar INÍCIO do uso do recipiente */}
+    <AlertDialog open={!!pendingStartDate} onOpenChange={(o) => { if (!o) setPendingStartDate(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Registrar início do uso do recipiente</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Você está iniciando um <strong>novo ciclo</strong> em{' '}
+                <strong>{pendingStartDate ? format(parseISO(pendingStartDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>.
+              </p>
+              <p>
+                Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
+                (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+              </p>
+              {product && (
+                <p className="text-xs text-muted-foreground">
+                  Estoque total atual: {Number(product.current_stock || 0)}{' '}
+                  {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                </p>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const d = pendingStartDate!;
+              setPendingStartDate(null);
+              await runStartCycle(d);
+            }}
+          >
+            <Save className="h-4 w-4 mr-1" /> Salvar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação: registrar TÉRMINO do uso do recipiente */}
+    <AlertDialog open={!!pendingEndDate} onOpenChange={(o) => { if (!o) setPendingEndDate(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Registrar término do uso do recipiente</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Será encerrado o ciclo em{' '}
+                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>{' '}
+                com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.
+              </p>
+              {endCyclePreview && product && (
+                <div className="rounded-md border bg-muted/30 p-2 text-xs space-y-1">
+                  <div>Período: <strong>{endCyclePreview.days} dia(s)</strong></div>
+                  <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  <div>
+                    Será descontado do estoque total:{' '}
+                    <strong>
+                      {endCyclePreview.totalDeduction.toFixed(2)}{' '}
+                      {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                    </strong>{' '}
+                    (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
+                  </div>
+                  {!endCyclePreview.hasLinks && (
+                    <div className="text-amber-700 dark:text-amber-300">
+                      ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const d = pendingEndDate!;
+              setPendingEndDate(null);
+              await runEndCycle(d);
+            }}
+          >
+            <Save className="h-4 w-4 mr-1" /> Salvar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação: recipiente reabastecido → iniciar novo ciclo? */}
+    <AlertDialog open={!!pendingRefill} onOpenChange={(o) => { if (!o) setPendingRefill(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Recipiente reabastecido?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Ainda há{' '}
+                <strong>
+                  {pendingRefill?.remainingStock}{' '}
+                  {product ? PRODUCT_UNITS.find(u => u.value === product.unit)?.label : ''}
+                </strong>{' '}
+                no estoque total.
+              </p>
+              <p>
+                Se você reabasteceu o recipiente em uso, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
+                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando reabastecer.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Apenas registrar fechamento</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              setPendingRefill(null);
+              await runStartCycle(format(new Date(), 'yyyy-MM-dd'));
+            }}
+          >
+            <PlayCircle className="h-4 w-4 mr-1" /> Iniciar novo ciclo hoje
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

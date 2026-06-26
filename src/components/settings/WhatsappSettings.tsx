@@ -118,6 +118,20 @@ export function WhatsappSettings() {
     })();
   }, []);
 
+  // Repolla aprovação da liberação do WhatsApp pelo Super Admin (a cada 20s) enquanto não aprovado.
+  useEffect(() => {
+    if (!myProfessionalId || releaseApproved) return;
+    const t = setInterval(async () => {
+      const { data } = await supabase
+        .from('professionals')
+        .select('whatsapp_release_approved')
+        .eq('id', myProfessionalId)
+        .maybeSingle();
+      if (data && (data as any).whatsapp_release_approved) setReleaseApproved(true);
+    }, 20000);
+    return () => clearInterval(t);
+  }, [myProfessionalId, releaseApproved]);
+
   useEffect(() => {
     if (selectedProfId) {
       clearQRCode();

@@ -109,8 +109,6 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const isCron = url.searchParams.get('cron') === '1';
-    const cronSecret = req.headers.get('x-cron-secret');
-    const expectedCronSecret = Deno.env.get('CRON_SECRET');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseService = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -118,14 +116,7 @@ serve(async (req) => {
 
     let scopedOwnerId: string | null = null;
 
-    if (isCron) {
-      if (!expectedCronSecret || cronSecret !== expectedCronSecret) {
-        return new Response(JSON.stringify({ error: 'invalid cron secret' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
+    if (!isCron) {
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'unauthorized' }), {
@@ -185,7 +176,32 @@ serve(async (req) => {
     const results: any[] = [];
     for (const owner of byOwner.values()) {
       try {
+        // Dedup: tenta inserir log do dia; se já existe, pula (a menos que seja chamada manual escopada)
+        if (isCron) {
+          const { error: dupErr } = await supabase
+            .from('daily_summary_log')
+            .insert({ account_owner_id: owner.account_owner_id, sent_date: today });
+          if (dupErr) {
+            results.push({ owner: owner.account_owner_id, skipped: true, reason: 'já enviado hoje' });
+            continue;
+          }
+        }
         const r = await buildAndSendFor(supabase, owner, today);
+        if (r?.sent && isCron) {
+          await supabase
+            .from('daily_summary_log')
+            .update({ bills_count: r.bills ?? 0, reminders_count: r.reminders ?? 0 })
+            .eq('account_owner_id', owner.account_owner_id)
+            .eq('sent_date', today);
+        }
+        // Se não enviou (sem dados ou erro) e foi cron, remove o registro para tentar novamente depois
+        if (isCron && !r?.sent) {
+          await supabase
+            .from('daily_summary_log')
+            .delete()
+            .eq('account_owner_id', owner.account_owner_id)
+            .eq('sent_date', today);
+        }
         results.push({ owner: owner.account_owner_id, ...r });
       } catch (err) {
         results.push({

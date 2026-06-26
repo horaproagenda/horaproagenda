@@ -875,7 +875,9 @@ export function ProductDetailDialog({
                                 <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                                 <span>
                                   Este produto tem <strong>{Number(product.current_stock)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}</strong> em estoque mas <strong>nenhum ciclo ativo</strong>.
-                                  Os atendimentos não estão sendo contabilizados. Informe o início do uso para retomar a contagem.
+                                  {product.started_using_at && product.finished_at
+                                    ? ' O ciclo anterior foi encerrado em ' + format(parseISO(product.finished_at + 'T00:00:00'), 'dd/MM/yyyy') + '. Se o recipiente foi reabastecido, registre o novo início para retomar a contagem.'
+                                    : ' Os atendimentos não estão sendo contabilizados. Informe o início do uso para retomar a contagem.'}
                                 </span>
                               </div>
                               <Button

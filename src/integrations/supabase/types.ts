@@ -2063,6 +2063,8 @@ export type Database = {
       interest_leads: {
         Row: {
           business_area: string | null
+          contacted_at: string | null
+          contacted_by: string | null
           created_at: string
           email: string
           id: string
@@ -2074,6 +2076,8 @@ export type Database = {
         }
         Insert: {
           business_area?: string | null
+          contacted_at?: string | null
+          contacted_by?: string | null
           created_at?: string
           email: string
           id?: string
@@ -2085,6 +2089,8 @@ export type Database = {
         }
         Update: {
           business_area?: string | null
+          contacted_at?: string | null
+          contacted_by?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -3215,6 +3221,9 @@ export type Database = {
           updated_by: string | null
           user_id: string | null
           whatsapp_from_number: string | null
+          whatsapp_release_approved: boolean
+          whatsapp_release_approved_at: string | null
+          whatsapp_release_approved_by: string | null
         }
         Insert: {
           account_owner_id?: string
@@ -3250,6 +3259,9 @@ export type Database = {
           updated_by?: string | null
           user_id?: string | null
           whatsapp_from_number?: string | null
+          whatsapp_release_approved?: boolean
+          whatsapp_release_approved_at?: string | null
+          whatsapp_release_approved_by?: string | null
         }
         Update: {
           account_owner_id?: string
@@ -3285,6 +3297,9 @@ export type Database = {
           updated_by?: string | null
           user_id?: string | null
           whatsapp_from_number?: string | null
+          whatsapp_release_approved?: boolean
+          whatsapp_release_approved_at?: string | null
+          whatsapp_release_approved_by?: string | null
         }
         Relationships: []
       }

@@ -1030,19 +1030,8 @@ export function ProductDetailDialog({
                                 size="sm"
                                 variant="default"
                                 className="h-7 text-xs"
-                                onClick={async () => {
-                                  const today = format(new Date(), 'yyyy-MM-dd');
-                                  // tenta reutilizar uma compra pendente (sem started_using_at)
-                                  const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
-                                  if (pending && onUpdatePurchase) {
-                                    await onUpdatePurchase({ id: pending.id, started_using_at: today });
-                                  }
-                                  await onUpdateProduct({
-                                    id: product.id,
-                                    started_using_at: today,
-                                    finished_at: null as any,
-                                  });
-                                  toast.success('Início do uso registrado em ' + format(new Date(), 'dd/MM/yyyy'));
+                                onClick={() => {
+                                  setPendingStartDate(format(new Date(), 'yyyy-MM-dd'));
                                 }}
                               >
                                 <PlayCircle className="h-3.5 w-3.5 mr-1" />

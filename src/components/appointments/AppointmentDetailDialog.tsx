@@ -1808,14 +1808,12 @@ export function AppointmentDetailDialog({
               )}
 
               {(amountPaid > 0 || persistedAdditionalItemsTotal > 0) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" onClick={handleDownloadReceipt}>
+                <div className="flex">
+                  {/* Botão único: baixa o PDF localmente e abre o WhatsApp do cliente
+                      para enviar o arquivo (Web Share API no mobile/PWA, fallback web). */}
+                  <Button type="button" variant="outline" className="w-full" onClick={handleSendReceipt}>
                     <FileDown className="h-4 w-4 mr-2" />
-                    Baixar recibo PDF
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleSendReceipt}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar ao cliente
+                    Baixar recibo PDF e enviar no WhatsApp
                   </Button>
                 </div>
               )}

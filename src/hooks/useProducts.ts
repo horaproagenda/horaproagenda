@@ -8,20 +8,29 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 function useProductsRealtime() {
   const queryClient = useQueryClient();
   useEffect(() => {
+    const invalidateAll = () => {
+      // Mantém a página Produtos inteira em tempo real a cada mudança de
+      // agendamento (especialmente status -> 'completed'), pois isso
+      // afeta consumo, atendimentos restantes e ciclo do recipiente,
+      // tanto via serviço quanto via pacote.
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['service_products'] });
+      queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
+      queryClient.invalidateQueries({ queryKey: ['package_templates'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+    };
     const ch = supabase
       .channel('products-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_product_consumption' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_product_consumption' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'package_appointments' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);

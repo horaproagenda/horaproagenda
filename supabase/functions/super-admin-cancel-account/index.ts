@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const ownerUserId: string | undefined = body?.owner_user_id;
     const reason: string = (body?.reason ?? "super_admin_cancellation").toString();
-    const blockMonths: number = Math.max(1, Math.min(120, Number(body?.block_months ?? 6)));
+    const skipBlocklist: boolean = body?.skip_blocklist === true;
+    const blockMonths: number = skipBlocklist
+      ? 0
+      : Math.max(1, Math.min(120, Number(body?.block_months ?? 6)));
     const purgeData: boolean = body?.purge_data !== false; // default true
 
     if (!ownerUserId) return json({ error: "owner_user_id is required" }, 400);

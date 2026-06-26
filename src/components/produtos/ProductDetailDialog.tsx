@@ -641,6 +641,7 @@ export function ProductDetailDialog({
   if (!product) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>

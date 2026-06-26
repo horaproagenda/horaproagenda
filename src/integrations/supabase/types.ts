@@ -401,6 +401,7 @@ export type Database = {
           id: string
           notes: string | null
           package_appointment_id: string | null
+          payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
           professional_id: string | null
@@ -428,6 +429,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
+          payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
@@ -455,6 +457,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
+          payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
           professional_id?: string | null
@@ -5222,6 +5225,7 @@ export type Database = {
           id: string
           notes: string | null
           package_appointment_id: string | null
+          payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
           professional_id: string | null

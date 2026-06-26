@@ -761,7 +761,10 @@ export function useClientProfile(clientId: string) {
 
         items.push({
           id: packageId ? `pkg-${packageId}` : `apt-${a.id}`,
-          date: a.updated_at?.split('T')[0] || a.start_time.split('T')[0],
+          // Use payment_date when available (real, immutable payment date).
+          // Falls back to start_time so unrelated edits to the appointment
+          // (status, reschedule, etc.) never overwrite the historical date.
+          date: (a as any).payment_date || a.start_time.split('T')[0],
           description: displayName,
           serviceName: displayName,
           amount: amountPaid,

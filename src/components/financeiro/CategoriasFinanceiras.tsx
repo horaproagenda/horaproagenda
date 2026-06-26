@@ -69,7 +69,7 @@ interface GroupedEntry {
 
 export function CategoriasFinanceiras() {
   const { categories, incomeCategories, expenseCategories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
-  const { payables, receivables, createEntry, updateEntry } = useFinancialEntries();
+  const { payables, receivables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
 

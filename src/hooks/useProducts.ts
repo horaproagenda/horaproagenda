@@ -23,7 +23,7 @@ function useProductsRealtime() {
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });
     };
     const ch = supabase
-      .channel('products-realtime')
+      .channel(`products-realtime-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_product_consumption' }, invalidateAll)

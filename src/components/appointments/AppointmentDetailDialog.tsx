@@ -1600,26 +1600,50 @@ export function AppointmentDetailDialog({
             ) : (
               /* Service Info - View Mode */
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{appointment.service?.name}</p>
-                    <p className="text-sm text-muted-foreground">{appointment.service?.category}</p>
-                  </div>
-                </div>
+                {(() => {
+                  // Fallbacks defensivos: quando o agendamento é de pacote (ou o serviço
+                  // foi removido/renomeado), exibimos o nome do pacote para o ícone
+                  // de estrela nunca aparecer vazio.
+                  const displayName = appointment.service?.name
+                    || packageData?.name
+                    || (isPackageAppointment ? 'Sessão de Pacote' : 'Serviço');
+                  const displayCategory = appointment.service?.category
+                    || (isPackageAppointment ? 'Pacote' : '');
+                  // Duração: prioriza service.duration; se ausente/zero, calcula a partir
+                  // de start/end (verdadeira fonte da verdade do horário do atendimento).
+                  const startMs = new Date(appointment.start_time).getTime();
+                  const endMs = new Date(appointment.end_time).getTime();
+                  const computedMinutes = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+                    ? Math.round((endMs - startMs) / 60000)
+                    : 0;
+                  const durationMinutes = Number(appointment.service?.duration) > 0
+                    ? Number(appointment.service?.duration)
+                    : computedMinutes;
+                  return (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{displayName}</p>
+                          {displayCategory && <p className="text-sm text-muted-foreground">{displayCategory}</p>}
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{format(new Date(`${formatDateInTimeZone(appointment.start_time, settings?.timezone)}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                      </div>
 
-                <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    {formatTimeInTimeZone(appointment.start_time, settings?.timezone)} - {formatTimeInTimeZone(appointment.end_time, settings?.timezone)}
-                    <span className="text-muted-foreground ml-1">({formatDurationClock(appointment.service?.duration || 0)})</span>
-                  </span>
-                </div>
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {formatTimeInTimeZone(appointment.start_time, settings?.timezone)} - {formatTimeInTimeZone(appointment.end_time, settings?.timezone)}
+                          <span className="text-muted-foreground ml-1">({formatDurationClock(durationMinutes)})</span>
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {professional && (
                   <div className="flex items-center gap-3">

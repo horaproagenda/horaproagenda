@@ -447,6 +447,45 @@ BEGIN
     v_recalculated := v_recalculated + COALESCE(v_updates, 0);
   END LOOP;
 
+
+
+  -- Corrige lacunas já existentes: se uma aplicação posterior ficou longe demais
+  -- da aplicação anterior (ex.: 08/08 em vez de 21/07 após 30/06), recalcula a
+  -- cadeia a partir da aplicação anterior que define o intervalo correto.
+  FOR rec IN
+    WITH ordered AS (
+      SELECT
+        pa.id,
+        pa.package_id,
+        COALESCE(a.start_time, pa.scheduled_date) AS effective_start,
+        GREATEST(21, COALESCE(NULLIF(pa.interval_after_days, 0), NULLIF(sp.interval_days, 0), 21)) AS expected_days,
+        LEAD(COALESCE(a.start_time, pa.scheduled_date)) OVER (
+          PARTITION BY pa.package_id
+          ORDER BY COALESCE(pa.sequence_order, pa.session_number), COALESCE(a.start_time, pa.scheduled_date), pa.created_at, pa.id
+        ) AS next_start
+      FROM public.package_appointments pa
+      JOIN public.service_packages sp ON sp.id = pa.package_id
+      LEFT JOIN public.appointments a ON a.id = pa.appointment_id
+      WHERE sp.is_active = true
+        AND (_client_id IS NULL OR sp.client_id = _client_id)
+        AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+        AND COALESCE(a.status::text, 'scheduled') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+        AND COALESCE(a.start_time, pa.scheduled_date) IS NOT NULL
+    )
+    SELECT id
+    FROM ordered
+    WHERE next_start IS NOT NULL
+      AND next_start IS DISTINCT FROM (
+        (((effective_start AT TIME ZONE 'America/Sao_Paulo')::date + expected_days)::timestamp
+          + (effective_start AT TIME ZONE 'America/Sao_Paulo')::time
+        ) AT TIME ZONE 'America/Sao_Paulo'
+      )
+    ORDER BY package_id, effective_start
+  LOOP
+    v_updates := public.recalculate_package_minimum_intervals(rec.id);
+    v_recalculated := v_recalculated + COALESCE(v_updates, 0);
+  END LOOP;
+
   SELECT public.refresh_appointment_name_snapshots(_client_id) INTO v_snapshots;
 
   RETURN jsonb_build_object(
@@ -488,6 +527,40 @@ BEGIN
       ) DESC,
       COALESCE(pa.sequence_order, pa.session_number) DESC,
       pa.id
+  LOOP
+    PERFORM public.recalculate_package_minimum_intervals(rec.id);
+  END LOOP;
+
+
+
+  FOR rec IN
+    WITH ordered AS (
+      SELECT
+        pa.id,
+        pa.package_id,
+        COALESCE(a.start_time, pa.scheduled_date) AS effective_start,
+        GREATEST(21, COALESCE(NULLIF(pa.interval_after_days, 0), NULLIF(sp.interval_days, 0), 21)) AS expected_days,
+        LEAD(COALESCE(a.start_time, pa.scheduled_date)) OVER (
+          PARTITION BY pa.package_id
+          ORDER BY COALESCE(pa.sequence_order, pa.session_number), COALESCE(a.start_time, pa.scheduled_date), pa.created_at, pa.id
+        ) AS next_start
+      FROM public.package_appointments pa
+      JOIN public.service_packages sp ON sp.id = pa.package_id
+      LEFT JOIN public.appointments a ON a.id = pa.appointment_id
+      WHERE sp.is_active = true
+        AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+        AND COALESCE(a.status::text, 'scheduled') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+        AND COALESCE(a.start_time, pa.scheduled_date) IS NOT NULL
+    )
+    SELECT id
+    FROM ordered
+    WHERE next_start IS NOT NULL
+      AND next_start IS DISTINCT FROM (
+        (((effective_start AT TIME ZONE 'America/Sao_Paulo')::date + expected_days)::timestamp
+          + (effective_start AT TIME ZONE 'America/Sao_Paulo')::time
+        ) AT TIME ZONE 'America/Sao_Paulo'
+      )
+    ORDER BY package_id, effective_start
   LOOP
     PERFORM public.recalculate_package_minimum_intervals(rec.id);
   END LOOP;

@@ -699,9 +699,6 @@ export function AppointmentDetailDialog({
     setShowDeleteDialog(true);
   };
 
-  const [rescheduleStatusDialog, setRescheduleStatusDialog] = useState<{ open: boolean; date: string; time: string }>(
-    { open: false, date: '', time: '' }
-  );
 
   const applyStatusUpdate = (newStatus: AppointmentStatus, extraUpdates: Record<string, any> = {}) => {
     setSelectedStatus(newStatus);

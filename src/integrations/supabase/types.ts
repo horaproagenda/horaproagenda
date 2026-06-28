@@ -401,6 +401,7 @@ export type Database = {
           id: string
           notes: string | null
           package_appointment_id: string | null
+          package_name_snapshot: string | null
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
@@ -408,6 +409,7 @@ export type Database = {
           recurring_group_id: string | null
           room_id: string | null
           service_id: string | null
+          service_name_snapshot: string | null
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -429,6 +431,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
+          package_name_snapshot?: string | null
           payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
@@ -436,6 +439,7 @@ export type Database = {
           recurring_group_id?: string | null
           room_id?: string | null
           service_id?: string | null
+          service_name_snapshot?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -457,6 +461,7 @@ export type Database = {
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
+          package_name_snapshot?: string | null
           payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
@@ -464,6 +469,7 @@ export type Database = {
           recurring_group_id?: string | null
           room_id?: string | null
           service_id?: string | null
+          service_name_snapshot?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -5194,6 +5200,10 @@ export type Database = {
         Returns: undefined
       }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
+      repair_client_package_schedule_and_history: {
+        Args: { _client_id?: string }
+        Returns: Json
+      }
       repair_package_cancelled_history: {
         Args: { _client_id?: string }
         Returns: Json
@@ -5226,6 +5236,7 @@ export type Database = {
           id: string
           notes: string | null
           package_appointment_id: string | null
+          package_name_snapshot: string | null
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
@@ -5233,6 +5244,7 @@ export type Database = {
           recurring_group_id: string | null
           room_id: string | null
           service_id: string | null
+          service_name_snapshot: string | null
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string

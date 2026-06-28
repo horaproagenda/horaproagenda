@@ -551,10 +551,23 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                   {filteredAppointments.map(appointment => {
                     const status = getAppointmentStatusConfig(appointment.status);
                     const packageData = appointment.package_appointment?.package;
-                    const isPackage = Boolean(packageData);
                     const packageSession = appointment.package_appointment;
-                    const serviceName = isPackage ? (appointment.service?.name || packageData?.service?.name || packageData?.name || '-') : (appointment.service?.name || '-');
-                    const packageName = packageData?.name || null;
+                    const isPackage = Boolean(packageData) || Boolean(packageSession);
+                    // Resolve service name from any available source (current FK, package, or notes snapshot)
+                    const serviceName =
+                      appointment.service?.name ||
+                      packageData?.service?.name ||
+                      (appointment as any)?.service_name_snapshot ||
+                      null;
+                    const packageName = packageData?.name || (appointment as any)?.package_name_snapshot || null;
+                    // Primary label shown big: package name (if package), else service name, else fallback
+                    const primaryLabel = isPackage
+                      ? (packageName || serviceName || 'Pacote (registro removido)')
+                      : (serviceName || 'Atendimento');
+                    // Secondary line: service name when primary is a package, else nothing
+                    const secondaryLabel = isPackage && packageName && serviceName && serviceName !== packageName
+                      ? `Aplicação: ${serviceName}`
+                      : null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
                     const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
@@ -570,8 +583,8 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                     return (
                       <TableRow key={appointment.id} className={`hover:bg-muted/30 align-top ${statusTextClass}`}>
                         <TableCell className="text-xs py-2">
-                          <div className="font-medium leading-tight">{serviceName}</div>
-                          {packageName && <div className="text-[10px] font-medium leading-tight mt-0.5 opacity-80">Pacote: {packageName}</div>}
+                          <div className="font-medium leading-tight">{primaryLabel}</div>
+                          {secondaryLabel && <div className="text-[10px] leading-tight mt-0.5 opacity-80">{secondaryLabel}</div>}
                         </TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
                         <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>

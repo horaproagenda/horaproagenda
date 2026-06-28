@@ -409,7 +409,7 @@ export function useAppointments() {
         if (updates.start_time) {
           const { data: currentSession } = await (supabase as any)
             .from('package_appointments')
-            .select('*, package:service_packages(id, package_type, duration)')
+              .select('*, package:service_packages(id, package_type, duration, interval_days)')
             .eq('id', data.package_appointment_id)
             .single();
 
@@ -422,7 +422,7 @@ export function useAppointments() {
 
             const { data: packageInfo } = await (supabase as any)
               .from('service_packages')
-              .select('professional_id, room_id')
+              .select('professional_id, room_id, interval_days')
               .eq('id', currentSession.package_id)
               .single();
 
@@ -447,7 +447,11 @@ export function useAppointments() {
               const session = orderedSessions[index];
               if (index > currentIndex) {
                 const previousSession = orderedSessions[index - 1];
-                nextStart = new Date(nextStart.getTime() + Number(previousSession.interval_after_days || 0) * 24 * 60 * 60 * 1000);
+                const intervalDays = Math.max(
+                  21,
+                  Number(previousSession.interval_after_days || currentSession.package?.interval_days || packageInfo?.interval_days || 21)
+                );
+                nextStart = new Date(nextStart.getTime() + intervalDays * 24 * 60 * 60 * 1000);
               }
 
               const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);

@@ -4835,6 +4835,14 @@ export type Database = {
         Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
       }
+      cascade_package_intervals_after_anchor: {
+        Args: {
+          _anchor_start: string
+          _from_start?: string
+          _package_id: string
+        }
+        Returns: number
+      }
       check_trial_eligibility:
         | {
             Args: { p_cnpj?: string; p_email: string; p_phone?: string }
@@ -5209,6 +5217,50 @@ export type Database = {
         Returns: Json
       }
       repair_payment_integrity: { Args: never; Returns: number }
+      reschedule_package_appointment_safely: {
+        Args: {
+          p_appointment_id: string
+          p_expected_version?: number
+          p_new_end: string
+          p_new_start: string
+        }
+        Returns: {
+          account_owner_id: string
+          amount_paid: number | null
+          client_id: string
+          composite_group_id: string | null
+          composite_sequence_order: number | null
+          confirmation_responded_at: string | null
+          confirmation_token: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          end_time: string
+          id: string
+          notes: string | null
+          package_appointment_id: string | null
+          package_name_snapshot: string | null
+          payment_date: string | null
+          payment_methods: string[] | null
+          payment_status: string | null
+          professional_id: string | null
+          recurring_group_id: string | null
+          room_id: string | null
+          service_id: string | null
+          service_name_snapshot: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       resolve_service_id_for_package: {
         Args: { _package_id: string; _sequence_order?: number }
         Returns: string

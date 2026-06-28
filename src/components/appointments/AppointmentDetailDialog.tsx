@@ -550,6 +550,9 @@ export function AppointmentDetailDialog({
   // Load series info - MUST be before any early returns
   const [localSeriesCount, setLocalSeriesCount] = useState(0);
   const [localSeriesIndex, setLocalSeriesIndex] = useState(0);
+  const [rescheduleStatusDialog, setRescheduleStatusDialog] = useState<{ open: boolean; date: string; time: string }>(
+    { open: false, date: '', time: '' }
+  );
   
   useEffect(() => {
     const loadSeriesInfoAsync = async () => {
@@ -699,9 +702,6 @@ export function AppointmentDetailDialog({
     setShowDeleteDialog(true);
   };
 
-  const [rescheduleStatusDialog, setRescheduleStatusDialog] = useState<{ open: boolean; date: string; time: string }>(
-    { open: false, date: '', time: '' }
-  );
 
   const applyStatusUpdate = (newStatus: AppointmentStatus, extraUpdates: Record<string, any> = {}) => {
     setSelectedStatus(newStatus);

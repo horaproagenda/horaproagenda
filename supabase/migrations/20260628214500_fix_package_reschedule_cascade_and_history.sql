@@ -36,8 +36,8 @@ BEGIN
     WHERE pa.id = NEW.package_appointment_id;
   END IF;
 
-  NEW.service_name_snapshot := COALESCE(NULLIF(NEW.service_name_snapshot, ''), v_service_name, NEW.service_name_snapshot);
-  NEW.package_name_snapshot := COALESCE(NULLIF(NEW.package_name_snapshot, ''), v_package_name, NEW.package_name_snapshot);
+  NEW.service_name_snapshot := COALESCE(v_service_name, NULLIF(NEW.service_name_snapshot, ''), NEW.service_name_snapshot);
+  NEW.package_name_snapshot := COALESCE(v_package_name, NULLIF(NEW.package_name_snapshot, ''), NEW.package_name_snapshot);
 
   RETURN NEW;
 END;
@@ -87,6 +87,9 @@ BEGIN
   IF v_package_id IS NULL THEN
     RETURN 0;
   END IF;
+
+  PERFORM set_config('app.skip_package_interval_cascade', 'on', true);
+  PERFORM set_config('app.skip_rebuild_pa', '1', true);
 
   FOR rec IN
     SELECT
@@ -170,6 +173,9 @@ BEGIN
       v_previous_interval := rec.interval_after_days;
     END IF;
   END LOOP;
+
+  PERFORM set_config('app.skip_package_interval_cascade', 'off', true);
+  PERFORM set_config('app.skip_rebuild_pa', '0', true);
 
   RETURN v_updates;
 END;

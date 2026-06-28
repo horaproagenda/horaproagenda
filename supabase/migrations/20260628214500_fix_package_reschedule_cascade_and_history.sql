@@ -390,6 +390,10 @@ DECLARE
   v_cancelled jsonb := '{}'::jsonb;
   v_snapshots jsonb := '{}'::jsonb;
 BEGIN
+  IF _client_id IS NULL AND auth.uid() IS NOT NULL AND NOT public.is_super_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Informe um cliente para ajustar o histórico';
+  END IF;
+
   IF _client_id IS NOT NULL AND auth.uid() IS NOT NULL AND NOT EXISTS (
     SELECT 1
     FROM public.clients c

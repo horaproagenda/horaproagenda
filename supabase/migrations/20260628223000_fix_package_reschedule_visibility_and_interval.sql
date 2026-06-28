@@ -347,7 +347,8 @@ BEGIN
   FOR rec IN
     SELECT DISTINCT ON (a.id)
       a.id AS appointment_id,
-      sp.id AS package_id
+      sp.id AS package_id,
+      pa.id AS package_appointment_id
     FROM public.appointments a
     JOIN public.service_packages sp
       ON sp.client_id = a.client_id
@@ -369,6 +370,13 @@ BEGIN
       pa.created_at
   LOOP
     BEGIN
+      UPDATE public.package_appointments
+      SET status = 'pending',
+          updated_at = now()
+      WHERE id = rec.package_appointment_id
+        AND appointment_id IS NULL
+        AND status = 'rescheduled';
+
       UPDATE public.appointments
       SET status = 'scheduled'::public.appointment_status,
           updated_at = now()

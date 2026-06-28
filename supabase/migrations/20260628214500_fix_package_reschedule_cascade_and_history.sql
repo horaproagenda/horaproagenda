@@ -420,15 +420,28 @@ BEGIN
     v_rebuilt := v_rebuilt + 1;
   END LOOP;
 
+  -- Recalcula a partir da última aplicação alterada/agendada de cada pacote.
+  -- Isso preserva a data escolhida manualmente no reagendamento (ex.: 30/06)
+  -- e corrige apenas as aplicações seguintes (ex.: 21/07), sem voltar a cadeia
+  -- para datas antigas do pacote.
   FOR rec IN
     SELECT DISTINCT ON (pa.package_id) pa.id
     FROM public.package_appointments pa
     JOIN public.service_packages sp ON sp.id = pa.package_id
+    LEFT JOIN public.appointments a ON a.id = pa.appointment_id
     WHERE sp.is_active = true
       AND (_client_id IS NULL OR sp.client_id = _client_id)
       AND (pa.appointment_id IS NOT NULL OR pa.scheduled_date IS NOT NULL)
-      AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled')
-    ORDER BY pa.package_id, COALESCE(pa.sequence_order, pa.session_number), COALESCE(pa.scheduled_date, pa.created_at), pa.id
+      AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+      AND COALESCE(a.status::text, 'scheduled') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+    ORDER BY
+      pa.package_id,
+      GREATEST(
+        COALESCE(a.updated_at, a.created_at, 'epoch'::timestamptz),
+        COALESCE(pa.updated_at, pa.created_at, 'epoch'::timestamptz)
+      ) DESC,
+      COALESCE(pa.sequence_order, pa.session_number) DESC,
+      pa.id
   LOOP
     v_updates := public.recalculate_package_minimum_intervals(rec.id);
     v_recalculated := v_recalculated + COALESCE(v_updates, 0);
@@ -462,10 +475,19 @@ BEGIN
     SELECT DISTINCT ON (pa.package_id) pa.id
     FROM public.package_appointments pa
     JOIN public.service_packages sp ON sp.id = pa.package_id
+    LEFT JOIN public.appointments a ON a.id = pa.appointment_id
     WHERE sp.is_active = true
       AND (pa.appointment_id IS NOT NULL OR pa.scheduled_date IS NOT NULL)
-      AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled')
-    ORDER BY pa.package_id, COALESCE(pa.sequence_order, pa.session_number), COALESCE(pa.scheduled_date, pa.created_at), pa.id
+      AND COALESCE(pa.status, 'pending') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+      AND COALESCE(a.status::text, 'scheduled') NOT IN ('cancelled', 'rescheduled', 'completed', 'missed')
+    ORDER BY
+      pa.package_id,
+      GREATEST(
+        COALESCE(a.updated_at, a.created_at, 'epoch'::timestamptz),
+        COALESCE(pa.updated_at, pa.created_at, 'epoch'::timestamptz)
+      ) DESC,
+      COALESCE(pa.sequence_order, pa.session_number) DESC,
+      pa.id
   LOOP
     PERFORM public.recalculate_package_minimum_intervals(rec.id);
   END LOOP;

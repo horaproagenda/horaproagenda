@@ -76,6 +76,11 @@ export const buildAppointmentPackageSequenceMap = (appointments: Appointment[]) 
   appointments.forEach((appointment) => {
     const packageId = appointment.package_appointment?.package_id || appointment.package_appointment?.package?.id;
     if (!packageId || !appointment.package_appointment) return;
+
+    // Histórico inativo (cancelado/reagendado) deve manter o número original da
+    // aplicação, mas não pode deslocar a numeração ativa do pacote no perfil.
+    if (appointment.status === 'cancelled' || appointment.status === 'rescheduled') return;
+
     const current = grouped.get(packageId) || [];
     current.push(appointment);
     grouped.set(packageId, current);

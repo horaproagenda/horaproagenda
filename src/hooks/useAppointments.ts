@@ -390,12 +390,16 @@ export function useAppointments() {
       }
 
       if ((updates.start_time || updates.end_time || updates.status === 'scheduled' || updates.status === 'confirmed') && data.package_appointment_id && updates.status !== 'completed') {
+        const packageSessionUpdate: Record<string, any> = {
+          status: updates.status === 'confirmed' ? 'scheduled' : 'scheduled',
+        };
+        if (updates.start_time) {
+          packageSessionUpdate.scheduled_date = updates.start_time || data.start_time;
+        }
+
         const { error: pkgScheduleError } = await supabase
           .from('package_appointments')
-          .update({
-            status: updates.status === 'confirmed' ? 'scheduled' : 'scheduled',
-            scheduled_date: updates.start_time || data.start_time,
-          })
+          .update(packageSessionUpdate)
           .eq('id', data.package_appointment_id);
 
         if (pkgScheduleError) {
@@ -405,7 +409,7 @@ export function useAppointments() {
         if (updates.start_time) {
           const { data: currentSession } = await (supabase as any)
             .from('package_appointments')
-            .select('*, package:service_packages(id, package_type, duration)')
+              .select('*, package:service_packages(id, package_type, duration, interval_days)')
             .eq('id', data.package_appointment_id)
             .single();
 
@@ -418,26 +422,36 @@ export function useAppointments() {
 
             const { data: packageInfo } = await (supabase as any)
               .from('service_packages')
-              .select('professional_id, room_id')
+              .select('professional_id, room_id, interval_days')
               .eq('id', currentSession.package_id)
               .single();
 
+            const cascadeStart = new Date(updates.start_time);
+            const cascadeEnd = new Date(cascadeStart.getTime() + 730 * 24 * 60 * 60 * 1000);
             const { data: existingAppointments } = await supabase
               .from('appointments')
               .select('id, start_time, end_time, professional_id, room_id, status')
-              .not('status', 'eq', 'cancelled')
-              .gte('start_time', new Date(new Date(updates.start_time).getTime() - 24 * 60 * 60 * 1000).toISOString());
+              .not('status', 'in', '(cancelled,rescheduled)')
+              .gte('start_time', new Date(cascadeStart.getTime() - 24 * 60 * 60 * 1000).toISOString())
+              .lte('start_time', cascadeEnd.toISOString());
 
-            const orderedSessions = (packageSessions || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+            const inactiveStatuses = new Set(['completed', 'missed', 'cancelled', 'rescheduled']);
+            const orderedSessions = (packageSessions || [])
+              .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
+              .filter((session: any) => session.id === data.package_appointment_id || !inactiveStatuses.has(session.status));
             const currentIndex = orderedSessions.findIndex((session: any) => session.id === data.package_appointment_id);
             let nextStart = new Date(updates.start_time);
-            const ignoredAppointmentIds = orderedSessions.slice(currentIndex).map((session: any) => session.appointment_id);
+            const ignoredAppointmentIds = orderedSessions.slice(Math.max(0, currentIndex)).map((session: any) => session.appointment_id).filter(Boolean);
 
             for (let index = currentIndex; index >= 0 && index < orderedSessions.length; index += 1) {
               const session = orderedSessions[index];
               if (index > currentIndex) {
                 const previousSession = orderedSessions[index - 1];
-                nextStart = new Date(nextStart.getTime() + Number(previousSession.interval_after_days || 0) * 24 * 60 * 60 * 1000);
+                const intervalDays = Math.max(
+                  21,
+                  Number(previousSession.interval_after_days || currentSession.package?.interval_days || packageInfo?.interval_days || 21)
+                );
+                nextStart = new Date(nextStart.getTime() + intervalDays * 24 * 60 * 60 * 1000);
               }
 
               const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);
@@ -449,10 +463,10 @@ export function useAppointments() {
 
               await supabase
                 .from('package_appointments')
-                .update({ scheduled_date: nextStart.toISOString(), status: session.status === 'completed' ? 'completed' : 'scheduled' })
+                .update({ scheduled_date: nextStart.toISOString(), status: 'scheduled' })
                 .eq('id', session.id);
 
-              if (session.appointment_id && session.status !== 'completed' && session.status !== 'missed') {
+              if (session.appointment_id) {
                 await supabase
                   .from('appointments')
                   .update({

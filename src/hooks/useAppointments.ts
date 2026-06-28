@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
-import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import { logAccess } from '@/hooks/useLogAccess';
 import { broadcastDataChange } from '@/hooks/useCrossDeviceSync';
 
@@ -407,76 +406,12 @@ export function useAppointments() {
         }
 
         if (updates.start_time) {
-          const { data: currentSession } = await (supabase as any)
-            .from('package_appointments')
-              .select('*, package:service_packages(id, package_type, duration, interval_days)')
-            .eq('id', data.package_appointment_id)
-            .single();
+          const { error: cascadeError } = await supabase.rpc('recalculate_package_minimum_intervals', {
+            _package_appointment_id: data.package_appointment_id,
+          });
 
-          if (currentSession?.package?.package_type === 'sequential') {
-            const { data: packageSessions } = await (supabase as any)
-              .from('package_appointments')
-              .select('*, service:services(duration)')
-              .eq('package_id', currentSession.package_id)
-              .order('sequence_order', { ascending: true });
-
-            const { data: packageInfo } = await (supabase as any)
-              .from('service_packages')
-              .select('professional_id, room_id, interval_days')
-              .eq('id', currentSession.package_id)
-              .single();
-
-            const cascadeStart = new Date(updates.start_time);
-            const cascadeEnd = new Date(cascadeStart.getTime() + 730 * 24 * 60 * 60 * 1000);
-            const { data: existingAppointments } = await supabase
-              .from('appointments')
-              .select('id, start_time, end_time, professional_id, room_id, status')
-              .not('status', 'in', '(cancelled,rescheduled)')
-              .gte('start_time', new Date(cascadeStart.getTime() - 24 * 60 * 60 * 1000).toISOString())
-              .lte('start_time', cascadeEnd.toISOString());
-
-            const inactiveStatuses = new Set(['completed', 'missed', 'cancelled', 'rescheduled']);
-            const orderedSessions = (packageSessions || [])
-              .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
-              .filter((session: any) => session.id === data.package_appointment_id || !inactiveStatuses.has(session.status));
-            const currentIndex = orderedSessions.findIndex((session: any) => session.id === data.package_appointment_id);
-            let nextStart = new Date(updates.start_time);
-            const ignoredAppointmentIds = orderedSessions.slice(Math.max(0, currentIndex)).map((session: any) => session.appointment_id).filter(Boolean);
-
-            for (let index = currentIndex; index >= 0 && index < orderedSessions.length; index += 1) {
-              const session = orderedSessions[index];
-              if (index > currentIndex) {
-                const previousSession = orderedSessions[index - 1];
-                const intervalDays = Math.max(
-                  21,
-                  Number(previousSession.interval_after_days || currentSession.package?.interval_days || packageInfo?.interval_days || 21)
-                );
-                nextStart = new Date(nextStart.getTime() + intervalDays * 24 * 60 * 60 * 1000);
-              }
-
-              const duration = Number((Array.isArray(session.service) ? session.service[0]?.duration : session.service?.duration) || currentSession.package.duration || 60);
-              nextStart = findNextAvailablePackageSlot(nextStart, duration, existingAppointments || [], {
-                professional_id: packageInfo?.professional_id || data.professional_id,
-                room_id: packageInfo?.room_id || data.room_id,
-                ignoreAppointmentIds: ignoredAppointmentIds,
-              });
-
-              await supabase
-                .from('package_appointments')
-                .update({ scheduled_date: nextStart.toISOString(), status: 'scheduled' })
-                .eq('id', session.id);
-
-              if (session.appointment_id) {
-                await supabase
-                  .from('appointments')
-                  .update({
-                    start_time: nextStart.toISOString(),
-                    end_time: new Date(nextStart.getTime() + duration * 60 * 1000).toISOString(),
-                    status: index === currentIndex ? (updates.status || data.status) : 'scheduled',
-                  })
-                  .eq('id', session.appointment_id);
-              }
-            }
+          if (cascadeError) {
+            console.error('Error recalculating package cascade:', cascadeError);
           }
         }
       }

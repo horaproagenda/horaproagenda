@@ -323,30 +323,44 @@ AS $$
 DECLARE
   v_updated integer := 0;
 BEGIN
+  WITH resolved AS (
+    SELECT
+      a.id,
+      COALESCE(s.name, pa_svc.name, sp_svc.name, a.service_name_snapshot) AS new_service_name,
+      COALESCE(sp.name, note_pkg.name, a.package_name_snapshot) AS new_package_name
+    FROM public.appointments a
+    JOIN public.clients c ON c.id = a.client_id
+    LEFT JOIN public.package_appointments pa ON pa.id = a.package_appointment_id
+    LEFT JOIN public.service_packages sp ON sp.id = pa.package_id
+    LEFT JOIN public.services s ON s.id = a.service_id
+    LEFT JOIN public.services pa_svc ON pa_svc.id = pa.service_id
+    LEFT JOIN public.services sp_svc ON sp_svc.id = sp.service_id
+    LEFT JOIN LATERAL (
+      SELECT sp2.name
+      FROM public.service_packages sp2
+      WHERE sp2.client_id = a.client_id
+        AND a.notes IS NOT NULL
+        AND lower(a.notes) LIKE '%' || lower(sp2.name) || '%'
+      ORDER BY length(sp2.name) DESC, sp2.created_at DESC
+      LIMIT 1
+    ) note_pkg ON true
+    WHERE (_client_id IS NULL OR a.client_id = _client_id)
+      AND (
+        auth.uid() IS NULL
+        OR c.account_owner_id IS NULL
+        OR c.account_owner_id = auth.uid()
+        OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.account_owner_id = c.account_owner_id)
+      )
+  )
   UPDATE public.appointments a
-  SET service_name_snapshot = COALESCE(s.name, pa_svc.name, sp_svc.name, a.service_name_snapshot),
-      package_name_snapshot = COALESCE(sp.name, note_pkg.name, a.package_name_snapshot),
+  SET service_name_snapshot = r.new_service_name,
+      package_name_snapshot = r.new_package_name,
       updated_at = now()
-  FROM public.clients c
-  LEFT JOIN public.package_appointments pa ON pa.id = a.package_appointment_id
-  LEFT JOIN public.service_packages sp ON sp.id = pa.package_id
-  LEFT JOIN public.services s ON s.id = a.service_id
-  LEFT JOIN public.services pa_svc ON pa_svc.id = pa.service_id
-  LEFT JOIN public.services sp_svc ON sp_svc.id = sp.service_id
-  LEFT JOIN LATERAL (
-    SELECT sp2.name
-    FROM public.service_packages sp2
-    WHERE sp2.client_id = a.client_id
-      AND a.notes IS NOT NULL
-      AND lower(a.notes) LIKE '%' || lower(sp2.name) || '%'
-    ORDER BY length(sp2.name) DESC, sp2.created_at DESC
-    LIMIT 1
-  ) note_pkg ON true
-  WHERE c.id = a.client_id
-    AND (_client_id IS NULL OR a.client_id = _client_id)
+  FROM resolved r
+  WHERE a.id = r.id
     AND (
-      a.service_name_snapshot IS DISTINCT FROM COALESCE(s.name, pa_svc.name, sp_svc.name, a.service_name_snapshot)
-      OR a.package_name_snapshot IS DISTINCT FROM COALESCE(sp.name, note_pkg.name, a.package_name_snapshot)
+      a.service_name_snapshot IS DISTINCT FROM r.new_service_name
+      OR a.package_name_snapshot IS DISTINCT FROM r.new_package_name
     );
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;

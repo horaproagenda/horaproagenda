@@ -426,16 +426,22 @@ export function useAppointments() {
               .eq('id', currentSession.package_id)
               .single();
 
+            const cascadeStart = new Date(updates.start_time);
+            const cascadeEnd = new Date(cascadeStart.getTime() + 730 * 24 * 60 * 60 * 1000);
             const { data: existingAppointments } = await supabase
               .from('appointments')
               .select('id, start_time, end_time, professional_id, room_id, status')
-              .not('status', 'eq', 'cancelled')
-              .gte('start_time', new Date(new Date(updates.start_time).getTime() - 24 * 60 * 60 * 1000).toISOString());
+              .not('status', 'in', '(cancelled,rescheduled)')
+              .gte('start_time', new Date(cascadeStart.getTime() - 24 * 60 * 60 * 1000).toISOString())
+              .lte('start_time', cascadeEnd.toISOString());
 
-            const orderedSessions = (packageSessions || []).sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+            const inactiveStatuses = new Set(['completed', 'missed', 'cancelled', 'rescheduled']);
+            const orderedSessions = (packageSessions || [])
+              .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
+              .filter((session: any) => session.id === data.package_appointment_id || !inactiveStatuses.has(session.status));
             const currentIndex = orderedSessions.findIndex((session: any) => session.id === data.package_appointment_id);
             let nextStart = new Date(updates.start_time);
-            const ignoredAppointmentIds = orderedSessions.slice(currentIndex).map((session: any) => session.appointment_id);
+            const ignoredAppointmentIds = orderedSessions.slice(Math.max(0, currentIndex)).map((session: any) => session.appointment_id).filter(Boolean);
 
             for (let index = currentIndex; index >= 0 && index < orderedSessions.length; index += 1) {
               const session = orderedSessions[index];
@@ -453,10 +459,10 @@ export function useAppointments() {
 
               await supabase
                 .from('package_appointments')
-                .update({ scheduled_date: nextStart.toISOString(), status: session.status === 'completed' ? 'completed' : 'scheduled' })
+                .update({ scheduled_date: nextStart.toISOString(), status: 'scheduled' })
                 .eq('id', session.id);
 
-              if (session.appointment_id && session.status !== 'completed' && session.status !== 'missed') {
+              if (session.appointment_id) {
                 await supabase
                   .from('appointments')
                   .update({

@@ -2401,6 +2401,53 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Reschedule prompt when changing status to "Reagendado" */}
+      <Dialog
+        open={rescheduleStatusDialog.open}
+        onOpenChange={(o) => !o && setRescheduleStatusDialog({ open: false, date: '', time: '' })}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reagendar atendimento</DialogTitle>
+            <DialogDescription className="text-xs">
+              Escolha a nova data e horário, ou marque como reagendado para definir depois.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Nova data</Label>
+                <DateInputWithCalendar
+                  value={rescheduleStatusDialog.date}
+                  onChange={(v) => setRescheduleStatusDialog((s) => ({ ...s, date: v }))}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Novo horário</Label>
+                <Input
+                  type="time"
+                  value={rescheduleStatusDialog.time}
+                  onChange={(e) => setRescheduleStatusDialog((s) => ({ ...s, time: e.target.value }))}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setRescheduleStatusDialog({ open: false, date: '', time: '' })}>
+              Cancelar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRescheduleLater}>
+              Reagendar depois
+            </Button>
+            <Button size="sm" onClick={handleConfirmRescheduleNow} disabled={updateAppointment.isPending}>
+              Confirmar novo horário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Propagate dates confirmation (package / recurring step rescheduled) */}
       <AlertDialog open={!!pendingPropagation} onOpenChange={(o) => { if (!o) setPendingPropagation(null); }}>
         <AlertDialogContent>

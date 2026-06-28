@@ -390,12 +390,16 @@ export function useAppointments() {
       }
 
       if ((updates.start_time || updates.end_time || updates.status === 'scheduled' || updates.status === 'confirmed') && data.package_appointment_id && updates.status !== 'completed') {
+        const packageSessionUpdate: Record<string, any> = {
+          status: updates.status === 'confirmed' ? 'scheduled' : 'scheduled',
+        };
+        if (updates.start_time) {
+          packageSessionUpdate.scheduled_date = updates.start_time || data.start_time;
+        }
+
         const { error: pkgScheduleError } = await supabase
           .from('package_appointments')
-          .update({
-            status: updates.status === 'confirmed' ? 'scheduled' : 'scheduled',
-            scheduled_date: updates.start_time || data.start_time,
-          })
+          .update(packageSessionUpdate)
           .eq('id', data.package_appointment_id);
 
         if (pkgScheduleError) {

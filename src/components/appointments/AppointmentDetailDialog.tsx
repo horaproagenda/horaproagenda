@@ -698,6 +698,19 @@ export function AppointmentDetailDialog({
     setShowDeleteDialog(true);
   };
 
+  const [rescheduleStatusDialog, setRescheduleStatusDialog] = useState<{ open: boolean; date: string; time: string }>(
+    { open: false, date: '', time: '' }
+  );
+
+  const applyStatusUpdate = (newStatus: AppointmentStatus, extraUpdates: Record<string, any> = {}) => {
+    setSelectedStatus(newStatus);
+    updateAppointment.mutate({
+      id: appointment.id,
+      updates: { status: newStatus, ...extraUpdates },
+      expectedVersion: appointment.version,
+    });
+  };
+
   const handleStatusChange = (newStatus: AppointmentStatus) => {
     if (isLockedByOther) {
       toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
@@ -714,13 +727,53 @@ export function AppointmentDetailDialog({
       return;
     }
 
-    setSelectedStatus(newStatus);
-    updateAppointment.mutate({
-      id: appointment.id,
-      updates: { status: newStatus },
-      expectedVersion: appointment.version,
-    });
+    // When marking as "rescheduled", open dialog to pick new date/time (or postpone)
+    if (newStatus === 'rescheduled') {
+      const current = new Date(appointment.start_time);
+      setRescheduleStatusDialog({
+        open: true,
+        date: format(current, 'yyyy-MM-dd'),
+        time: format(current, 'HH:mm'),
+      });
+      return;
+    }
+
+    applyStatusUpdate(newStatus);
   };
+
+  const handleConfirmRescheduleNow = async () => {
+    const { date, time } = rescheduleStatusDialog;
+    if (!date || !time) {
+      toast.error('Informe a nova data e horário.');
+      return;
+    }
+    const baseDate = new Date(`${date}T12:00:00`);
+    const newStart = createDateTimeInTimeZone(baseDate, time, settings?.timezone);
+    const originalDuration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
+    const newEnd = new Date(newStart.getTime() + originalDuration);
+    try {
+      await updateAppointment.mutateAsync({
+        id: appointment.id,
+        updates: {
+          start_time: newStart.toISOString(),
+          end_time: newEnd.toISOString(),
+          status: 'scheduled' as AppointmentStatus,
+        },
+        expectedVersion: appointment.version,
+      });
+      toast.success(`Reagendado para ${format(newStart, "dd/MM/yyyy 'às' HH:mm")}.`);
+      setRescheduleStatusDialog({ open: false, date: '', time: '' });
+    } catch (err: any) {
+      toast.error('Erro ao reagendar: ' + (err?.message || 'desconhecido'));
+    }
+  };
+
+  const handleRescheduleLater = () => {
+    applyStatusUpdate('rescheduled');
+    setRescheduleStatusDialog({ open: false, date: '', time: '' });
+    toast.info('Marcado como reagendado. Defina a nova data quando preferir.');
+  };
+
 
   const handleConfirmPackageOutcome = async (mode: 'release' | 'consume') => {
     if (!pendingPackageOutcome) return;

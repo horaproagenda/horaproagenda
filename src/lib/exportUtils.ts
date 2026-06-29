@@ -35,6 +35,29 @@ let lastExport: {
   timeout: ReturnType<typeof setTimeout>;
 } | null = null;
 
+/**
+ * Quando um valor textual é puramente numérico e longo (telefone, CPF, CEP)
+ * ou parece uma data (`dd/mm/aaaa` / `aaaa-mm-dd`), o Excel/Google Sheets
+ * convertem para número (mostrando notação científica `3,8E+10`) ou para data
+ * (mostrando `###` quando a coluna fica estreita). Envelopamos com a fórmula
+ * `="valor"` para forçar a célula a ser tratada como texto.
+ */
+export function toExcelTextIfNeeded(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  if (trimmed.startsWith('="')) return value;
+  const digits = trimmed.replace(/\D/g, '');
+  const isLongDigits =
+    /^\+?[\d\s().-]+$/.test(trimmed) && digits.length >= 8 && digits.length <= 20;
+  const isBrDate = /^\d{2}\/\d{2}\/\d{2,4}$/.test(trimmed);
+  const isIsoDate = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?.*)?$/.test(trimmed);
+  if (isLongDigits || isBrDate || isIsoDate) {
+    return `="${trimmed.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
 /** Aplica regra de quoting RFC-4180 ao valor. */
 export function escapeCsvCell(value: unknown, separator: string = CSV_SEPARATOR): string {
   if (value === null || value === undefined) return '';
@@ -55,19 +78,28 @@ export function escapeCsvCell(value: unknown, separator: string = CSV_SEPARATOR)
   return `"${str.replace(/"/g, '""')}"`;
 }
 
+export interface BuildCsvOptions {
+  /** Ativa a transformação automática para texto (telefones, CPFs, datas). Default: true */
+  protectExcelText?: boolean;
+}
+
 /** Gera o conteúdo CSV (sem BOM) a partir de headers + linhas. */
 export function buildCsv(
   headers: string[],
   rows: (string | number | null | undefined)[][],
   separator: string = CSV_SEPARATOR,
+  options: BuildCsvOptions = {},
 ): string {
+  const { protectExcelText = true } = options;
+  const transform = (c: unknown) => (protectExcelText ? toExcelTextIfNeeded(c) : c);
   const lines: string[] = [];
   lines.push(headers.map((h) => escapeCsvCell(h, separator)).join(separator));
   for (const row of rows) {
-    lines.push(row.map((c) => escapeCsvCell(c, separator)).join(separator));
+    lines.push(row.map((c) => escapeCsvCell(transform(c), separator)).join(separator));
   }
   return lines.join('\r\n');
 }
+
 
 /**
  * Parser CSV robusto. Respeita aspas, escapes (`""`), separadores e

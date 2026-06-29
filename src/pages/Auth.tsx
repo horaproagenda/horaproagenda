@@ -760,14 +760,19 @@ function AuthInner() {
                     <Label htmlFor="signup-cnpj">CNPJ <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                     <Input id="signup-cnpj" type="text" inputMode="numeric" placeholder="00.000.000/0000-00" value={signupCnpj} onChange={(e) => setSignupCnpj(maskCNPJ(e.target.value))} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="signup-city">Cidade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-                      <Input id="signup-city" type="text" placeholder="Sua cidade" value={signupCity} onChange={(e) => setSignupCity(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-state">UF</Label>
-                      <Input id="signup-state" type="text" maxLength={2} placeholder="SP" value={signupState} onChange={(e) => setSignupState(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+
+                  <div className="pt-2 border-t">
+                    <h3 className="text-sm font-semibold mb-3">Sua clínica / estabelecimento</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-clinic-name">Nome da clínica *</Label>
+                        <Input id="signup-clinic-name" type="text" placeholder="Ex: Studio Bella" value={signupClinicName} onChange={(e) => setSignupClinicName(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-clinic-phone">Telefone da clínica *</Label>
+                        <Input id="signup-clinic-phone" type="text" inputMode="tel" placeholder="(11) 99999-9999" value={signupClinicPhone} onChange={(e) => setSignupClinicPhone(e.target.value)} />
+                      </div>
+                      <AddressFieldsCep value={signupAddress} onChange={setSignupAddress} required />
                     </div>
                   </div>
                   <Button type="button" size="lg" className="w-full" onClick={handleAdvanceToTerms} disabled={loading}>

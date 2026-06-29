@@ -1095,8 +1095,17 @@ export function AppointmentDetailDialog({
         formatCurrency(row.unitPrice),
         formatCurrency(row.total),
       ]),
-      styles: { font: 'helvetica', fontSize: 9 },
-      headStyles: { fillColor: [44, 62, 80] },
+      margin: { left: 14, right: 14 },
+      tableWidth: 'auto',
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
+      headStyles: { fillColor: [44, 62, 80], textColor: 255, halign: 'center', valign: 'middle' },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 38 },
+        2: { halign: 'center', cellWidth: 18 },
+        3: { halign: 'right', cellWidth: 30 },
+        4: { halign: 'right', cellWidth: 30 },
+      },
     });
 
     const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 120;

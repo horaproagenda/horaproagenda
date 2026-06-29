@@ -314,10 +314,11 @@ export function CashRegisterReportDialog({
         head: [],
         body: summaryData,
         theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 3 },
+        tableWidth: 'auto',
+        styles: { fontSize: 10, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
         columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 60 },
-          1: { halign: 'right' },
+          0: { fontStyle: 'bold', cellWidth: 80 },
+          1: { halign: 'right', cellWidth: 60 },
         },
         margin: { left: 14, right: 14 },
       });

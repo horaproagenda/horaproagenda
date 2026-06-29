@@ -105,7 +105,13 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
+    const requestBody: CompleteSignupRequest = await req.json();
+    const {
+      email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan,
+      clinicName, clinicPhone, clinicEmail,
+      clinicCep, clinicStreet, clinicNumber, clinicComplement,
+      clinicNeighborhood, clinicCity, clinicState,
+    } = requestBody;
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedCode = (code ?? "").toString().replace(/\D/g, "").trim();
 

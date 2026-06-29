@@ -236,9 +236,11 @@ export function RelatorioConsolidado() {
       startY: 28,
       head: [['Data', 'Descrição', 'Origem', 'Tipo', 'Status', 'Valor']],
       body: reportExportRows,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 104 }, 5: { halign: 'right', cellWidth: 30 } },
+      margin: { left: 14, right: 14 },
+      tableWidth: 'auto',
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+      headStyles: { fillColor: [41, 98, 255], halign: 'center', valign: 'middle' },
+      columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 95 }, 2: { cellWidth: 32 }, 3: { cellWidth: 30 }, 4: { cellWidth: 25 }, 5: { halign: 'right', cellWidth: 30 } },
     });
     doc.save(`relatorio_consolidado_filtrado_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };

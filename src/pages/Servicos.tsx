@@ -329,15 +329,25 @@ const Servicos: React.FC = () => {
 
   const exportServicesCSV = () => {
     const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     exportToCSV({
       filename: 'servicos',
-      headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Duração (min)', 'Retorno (dias)', 'Status'],
       rows: onlyServices.map(s => [
-        s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
+        s.name,
+        s.category,
+        s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
+        s.room?.name || '-',
+        Array.isArray(s.equipment) && s.equipment.length ? s.equipment.join(', ') : '-',
+        Number(s.price).toFixed(2),
+        s.duration,
+        s.return_days || '-',
+        s.is_active ? 'Ativo' : 'Inativo',
       ]),
       successMessage: 'Serviços exportados com sucesso!',
     });
   };
+
 
   const exportKitServicesCSV = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);

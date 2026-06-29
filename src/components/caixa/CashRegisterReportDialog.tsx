@@ -341,9 +341,10 @@ export function CashRegisterReportDialog({
           head: [[normalizeText('Forma de Pagamento'), 'Valor']],
           body: [...breakdownData, [normalizeText('Total'), formatCurrency(totals.income)]],
           theme: 'striped',
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold' },
-          columnStyles: { 1: { halign: 'right' } },
+          tableWidth: 'auto',
+          styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
+          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold', halign: 'center', valign: 'middle' },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { halign: 'right', cellWidth: 60 } },
           margin: { left: 14, right: 14 },
         });
 

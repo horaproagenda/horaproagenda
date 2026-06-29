@@ -792,10 +792,17 @@ export type Database = {
           automation_waitlist: boolean | null
           automation_whatsapp_reminders: boolean | null
           clinic_address: string | null
+          clinic_cep: string | null
+          clinic_city: string | null
           clinic_cnpj: string | null
+          clinic_complement: string | null
           clinic_email: string | null
           clinic_name: string | null
+          clinic_neighborhood: string | null
+          clinic_number: string | null
           clinic_phone: string | null
+          clinic_state: string | null
+          clinic_street: string | null
           closing_time: string
           created_at: string
           drag_and_drop_enabled: boolean
@@ -803,6 +810,7 @@ export type Database = {
           onboarding_completed_at: string | null
           opening_time: string
           overdue_days_threshold: number
+          professional_name: string | null
           reminder_hours_before: number[]
           reminder_provider: string
           saturday_closing_time: string | null
@@ -825,10 +833,17 @@ export type Database = {
           automation_waitlist?: boolean | null
           automation_whatsapp_reminders?: boolean | null
           clinic_address?: string | null
+          clinic_cep?: string | null
+          clinic_city?: string | null
           clinic_cnpj?: string | null
+          clinic_complement?: string | null
           clinic_email?: string | null
           clinic_name?: string | null
+          clinic_neighborhood?: string | null
+          clinic_number?: string | null
           clinic_phone?: string | null
+          clinic_state?: string | null
+          clinic_street?: string | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -836,6 +851,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           opening_time?: string
           overdue_days_threshold?: number
+          professional_name?: string | null
           reminder_hours_before?: number[]
           reminder_provider?: string
           saturday_closing_time?: string | null
@@ -858,10 +874,17 @@ export type Database = {
           automation_waitlist?: boolean | null
           automation_whatsapp_reminders?: boolean | null
           clinic_address?: string | null
+          clinic_cep?: string | null
+          clinic_city?: string | null
           clinic_cnpj?: string | null
+          clinic_complement?: string | null
           clinic_email?: string | null
           clinic_name?: string | null
+          clinic_neighborhood?: string | null
+          clinic_number?: string | null
           clinic_phone?: string | null
+          clinic_state?: string | null
+          clinic_street?: string | null
           closing_time?: string
           created_at?: string
           drag_and_drop_enabled?: boolean
@@ -869,6 +892,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           opening_time?: string
           overdue_days_threshold?: number
+          professional_name?: string | null
           reminder_hours_before?: number[]
           reminder_provider?: string
           saturday_closing_time?: string | null
@@ -1506,6 +1530,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contact_change_verifications: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          new_value: string
+          type: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          new_value: string
+          type: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_value?: string
+          type?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       daily_summary_log: {
         Row: {
@@ -3234,6 +3294,8 @@ export type Database = {
           beneficiary_state: string | null
           bio: string | null
           birthdate: string | null
+          cep: string | null
+          city: string | null
           cnpj: string | null
           commission_fixed_value: number | null
           commission_frequency: string | null
@@ -3241,6 +3303,7 @@ export type Database = {
           commission_percentage: number | null
           commission_type: string | null
           company_name: string | null
+          complement: string | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -3248,11 +3311,15 @@ export type Database = {
           is_active: boolean
           is_commission_based: boolean | null
           name: string
+          neighborhood: string | null
+          number: string | null
           permissions: Json | null
           phone: string | null
           quiet_hours_end: number | null
           quiet_hours_start: number | null
           specialties: string[] | null
+          state: string | null
+          street: string | null
           updated_at: string
           updated_by: string | null
           user_id: string | null
@@ -3272,6 +3339,8 @@ export type Database = {
           beneficiary_state?: string | null
           bio?: string | null
           birthdate?: string | null
+          cep?: string | null
+          city?: string | null
           cnpj?: string | null
           commission_fixed_value?: number | null
           commission_frequency?: string | null
@@ -3279,6 +3348,7 @@ export type Database = {
           commission_percentage?: number | null
           commission_type?: string | null
           company_name?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -3286,11 +3356,15 @@ export type Database = {
           is_active?: boolean
           is_commission_based?: boolean | null
           name: string
+          neighborhood?: string | null
+          number?: string | null
           permissions?: Json | null
           phone?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           specialties?: string[] | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null
@@ -3310,6 +3384,8 @@ export type Database = {
           beneficiary_state?: string | null
           bio?: string | null
           birthdate?: string | null
+          cep?: string | null
+          city?: string | null
           cnpj?: string | null
           commission_fixed_value?: number | null
           commission_frequency?: string | null
@@ -3317,6 +3393,7 @@ export type Database = {
           commission_percentage?: number | null
           commission_type?: string | null
           company_name?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -3324,11 +3401,15 @@ export type Database = {
           is_active?: boolean
           is_commission_based?: boolean | null
           name?: string
+          neighborhood?: string | null
+          number?: string | null
           permissions?: Json | null
           phone?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           specialties?: string[] | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null

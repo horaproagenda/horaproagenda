@@ -18,6 +18,18 @@ interface CompleteSignupRequest {
   city?: string;
   state?: string;
   selectedPlan?: string;
+  // Dados da clínica (passam direto para business_settings)
+  clinicName?: string;
+  clinicPhone?: string;
+  clinicEmail?: string;
+  // Endereço estruturado da clínica
+  clinicCep?: string;
+  clinicStreet?: string;
+  clinicNumber?: string;
+  clinicComplement?: string;
+  clinicNeighborhood?: string;
+  clinicCity?: string;
+  clinicState?: string;
 }
 
 // CPF validator (matches src/lib/cpfValidator.ts)
@@ -93,7 +105,13 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan }: CompleteSignupRequest = await req.json();
+    const requestBody: CompleteSignupRequest = await req.json();
+    const {
+      email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan,
+      clinicName, clinicPhone, clinicEmail,
+      clinicCep, clinicStreet, clinicNumber, clinicComplement,
+      clinicNeighborhood, clinicCity, clinicState,
+    } = requestBody;
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedCode = (code ?? "").toString().replace(/\D/g, "").trim();
 
@@ -344,6 +362,68 @@ serve(async (req) => {
     await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
     if (phoneE164) {
       await supabaseAdmin.from("phone_verification_codes").delete().eq("phone", phoneE164);
+    }
+
+    // Cria business_settings inicial com dados da clínica + endereço
+    // Idempotente: só insere se o owner ainda não tem.
+    try {
+      const { data: existingBs } = await supabaseAdmin
+        .from("business_settings")
+        .select("id")
+        .eq("account_owner_id", userId)
+        .limit(1)
+        .maybeSingle();
+
+      const bsPayload: Record<string, unknown> = {
+        clinic_name: clinicName?.trim() || companyName?.trim() || null,
+        clinic_phone: clinicPhone?.trim() || phoneE164 || null,
+        clinic_email: clinicEmail?.trim()?.toLowerCase() || normalizedEmail,
+        professional_name: fullName.trim(),
+        clinic_cep: clinicCep?.trim() || null,
+        clinic_street: clinicStreet?.trim() || null,
+        clinic_number: clinicNumber?.trim() || null,
+        clinic_complement: clinicComplement?.trim() || null,
+        clinic_neighborhood: clinicNeighborhood?.trim() || null,
+        clinic_city: clinicCity?.trim() || city?.trim() || null,
+        clinic_state: (clinicState || state || "").toUpperCase() || null,
+        account_owner_id: userId,
+        onboarding_completed_at: clinicName ? nowIso : null,
+      };
+
+      if (existingBs?.id) {
+        await supabaseAdmin.from("business_settings").update(bsPayload).eq("id", existingBs.id);
+      } else {
+        await supabaseAdmin.from("business_settings").insert(bsPayload);
+      }
+    } catch (e) {
+      console.warn("complete-signup business_settings insert failed:", e);
+    }
+
+    // Cria o primeiro profissional vinculado ao admin
+    try {
+      const { count: profCount } = await supabaseAdmin
+        .from("professionals")
+        .select("id", { count: "exact", head: true })
+        .eq("account_owner_id", userId);
+      if ((profCount ?? 0) === 0) {
+        await supabaseAdmin.from("professionals").insert({
+          name: fullName.trim(),
+          email: normalizedEmail,
+          phone: clinicPhone?.trim() || phoneE164 || null,
+          is_active: true,
+          user_id: userId,
+          account_owner_id: userId,
+          cep: clinicCep?.trim() || null,
+          street: clinicStreet?.trim() || null,
+          number: clinicNumber?.trim() || null,
+          complement: clinicComplement?.trim() || null,
+          neighborhood: clinicNeighborhood?.trim() || null,
+          city: clinicCity?.trim() || city?.trim() || null,
+          state: (clinicState || state || "").toUpperCase() || null,
+        });
+      }
+    } catch (e) {
+      console.warn("complete-signup first professional insert failed:", e);
     }
 
     return jsonResponse({ success: true, user_id: userId });

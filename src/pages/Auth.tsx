@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
+import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 
 const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
 const TERMS_VERSION = 'v1';
@@ -148,8 +149,11 @@ function AuthInner() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupCnpj, setSignupCnpj] = useState('');
-  const [signupCity, setSignupCity] = useState('');
-  const [signupState, setSignupState] = useState('');
+  // Dados da clínica
+  const [signupClinicName, setSignupClinicName] = useState('');
+  const [signupClinicPhone, setSignupClinicPhone] = useState('');
+  // Endereço estruturado
+  const [signupAddress, setSignupAddress] = useState<AddressFields>(emptyAddress);
   const [acceptedTerms, setAcceptedTerms] = useState<boolean>(() => {
     try { return localStorage.getItem(TERMS_ACCEPT_KEY) === '1'; } catch { return false; }
   });
@@ -220,7 +224,13 @@ function AuthInner() {
     if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
     const cnpjDigits = signupCnpj.replace(/\D/g, '');
     if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
-    if (signupState && !BR_STATES.includes(signupState.toUpperCase())) return 'UF inválida.';
+    if (!signupClinicName.trim()) return 'Informe o nome da clínica.';
+    if (!signupClinicPhone.trim()) return 'Informe o telefone da clínica.';
+    const cepDigits = signupAddress.cep.replace(/\D/g, '');
+    if (cepDigits.length !== 8) return 'CEP inválido (8 dígitos).';
+    if (!signupAddress.number.trim()) return 'Informe o número do endereço.';
+    if (!signupAddress.city.trim()) return 'Informe a cidade.';
+    if (!signupAddress.state.trim() || !BR_STATES.includes(signupAddress.state.toUpperCase())) return 'UF inválida.';
     return null;
   };
 
@@ -344,8 +354,18 @@ function AuthInner() {
       const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
         cpf: signupCpf.replace(/\D/g, ''),
         cnpj: signupCnpj.replace(/\D/g, '') || undefined,
-        city: signupCity.trim() || undefined,
-        state: signupState.trim().toUpperCase() || undefined,
+        city: signupAddress.city.trim() || undefined,
+        state: signupAddress.state.trim().toUpperCase() || undefined,
+        clinicName: signupClinicName.trim(),
+        clinicPhone: signupClinicPhone.trim(),
+        clinicEmail: email,
+        clinicCep: signupAddress.cep.replace(/\D/g, ''),
+        clinicStreet: signupAddress.street.trim(),
+        clinicNumber: signupAddress.number.trim(),
+        clinicComplement: signupAddress.complement.trim() || undefined,
+        clinicNeighborhood: signupAddress.neighborhood.trim(),
+        clinicCity: signupAddress.city.trim(),
+        clinicState: signupAddress.state.trim().toUpperCase(),
         code,
       });
 
@@ -740,14 +760,19 @@ function AuthInner() {
                     <Label htmlFor="signup-cnpj">CNPJ <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                     <Input id="signup-cnpj" type="text" inputMode="numeric" placeholder="00.000.000/0000-00" value={signupCnpj} onChange={(e) => setSignupCnpj(maskCNPJ(e.target.value))} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="signup-city">Cidade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-                      <Input id="signup-city" type="text" placeholder="Sua cidade" value={signupCity} onChange={(e) => setSignupCity(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-state">UF</Label>
-                      <Input id="signup-state" type="text" maxLength={2} placeholder="SP" value={signupState} onChange={(e) => setSignupState(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+
+                  <div className="pt-2 border-t">
+                    <h3 className="text-sm font-semibold mb-3">Sua clínica / estabelecimento</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-clinic-name">Nome da clínica *</Label>
+                        <Input id="signup-clinic-name" type="text" placeholder="Ex: Studio Bella" value={signupClinicName} onChange={(e) => setSignupClinicName(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-clinic-phone">Telefone da clínica *</Label>
+                        <Input id="signup-clinic-phone" type="text" inputMode="tel" placeholder="(11) 99999-9999" value={signupClinicPhone} onChange={(e) => setSignupClinicPhone(e.target.value)} />
+                      </div>
+                      <AddressFieldsCep value={signupAddress} onChange={setSignupAddress} required />
                     </div>
                   </div>
                   <Button type="button" size="lg" className="w-full" onClick={handleAdvanceToTerms} disabled={loading}>

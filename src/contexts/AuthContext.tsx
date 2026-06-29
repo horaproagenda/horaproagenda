@@ -13,6 +13,17 @@ type SignupMetadata = {
   state?: string;
   selectedPlan?: string;
   code?: string;
+  // Dados da clínica e endereço (vão para business_settings + primeiro profissional)
+  clinicName?: string;
+  clinicPhone?: string;
+  clinicEmail?: string;
+  clinicCep?: string;
+  clinicStreet?: string;
+  clinicNumber?: string;
+  clinicComplement?: string;
+  clinicNeighborhood?: string;
+  clinicCity?: string;
+  clinicState?: string;
 };
 
 interface AuthContextType {

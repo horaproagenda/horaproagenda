@@ -18,6 +18,18 @@ interface CompleteSignupRequest {
   city?: string;
   state?: string;
   selectedPlan?: string;
+  // Dados da clínica (passam direto para business_settings)
+  clinicName?: string;
+  clinicPhone?: string;
+  clinicEmail?: string;
+  // Endereço estruturado da clínica
+  clinicCep?: string;
+  clinicStreet?: string;
+  clinicNumber?: string;
+  clinicComplement?: string;
+  clinicNeighborhood?: string;
+  clinicCity?: string;
+  clinicState?: string;
 }
 
 // CPF validator (matches src/lib/cpfValidator.ts)

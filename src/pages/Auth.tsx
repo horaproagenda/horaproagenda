@@ -149,8 +149,11 @@ function AuthInner() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupCnpj, setSignupCnpj] = useState('');
-  const [signupCity, setSignupCity] = useState('');
-  const [signupState, setSignupState] = useState('');
+  // Dados da clínica
+  const [signupClinicName, setSignupClinicName] = useState('');
+  const [signupClinicPhone, setSignupClinicPhone] = useState('');
+  // Endereço estruturado
+  const [signupAddress, setSignupAddress] = useState<AddressFields>(emptyAddress);
   const [acceptedTerms, setAcceptedTerms] = useState<boolean>(() => {
     try { return localStorage.getItem(TERMS_ACCEPT_KEY) === '1'; } catch { return false; }
   });

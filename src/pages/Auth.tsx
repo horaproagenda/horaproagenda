@@ -224,7 +224,13 @@ function AuthInner() {
     if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
     const cnpjDigits = signupCnpj.replace(/\D/g, '');
     if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
-    if (signupState && !BR_STATES.includes(signupState.toUpperCase())) return 'UF inválida.';
+    if (!signupClinicName.trim()) return 'Informe o nome da clínica.';
+    if (!signupClinicPhone.trim()) return 'Informe o telefone da clínica.';
+    const cepDigits = signupAddress.cep.replace(/\D/g, '');
+    if (cepDigits.length !== 8) return 'CEP inválido (8 dígitos).';
+    if (!signupAddress.number.trim()) return 'Informe o número do endereço.';
+    if (!signupAddress.city.trim()) return 'Informe a cidade.';
+    if (!signupAddress.state.trim() || !BR_STATES.includes(signupAddress.state.toUpperCase())) return 'UF inválida.';
     return null;
   };
 

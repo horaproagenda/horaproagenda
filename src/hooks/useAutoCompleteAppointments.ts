@@ -15,10 +15,19 @@ export function useAutoCompleteAppointments() {
 
     const now = new Date();
     
-    // Find appointments that are scheduled/confirmed but their end_time has passed
+    // Find appointments that are scheduled/confirmed but their end_time has passed.
+    // IMPORTANT: respect manual overrides. If the user updated the appointment AFTER
+    // its end_time (e.g. reverted "Atendido" back to "Agendado"), do NOT auto-complete
+    // again — the manual status wins.
+    const MANUAL_OVERRIDE_GRACE_MS = 60_000; // 1 min de tolerância para updates do próprio salvamento
     const overdueAppointments = appointments.filter(apt => {
-      const endTime = new Date(apt.end_time);
-      return (apt.status === 'scheduled' || apt.status === 'confirmed') && endTime < now;
+      if (apt.status !== 'scheduled' && apt.status !== 'confirmed') return false;
+      const endTime = new Date(apt.end_time).getTime();
+      if (endTime >= now.getTime()) return false;
+      const updatedAt = apt.updated_at ? new Date(apt.updated_at).getTime() : 0;
+      // Se foi atualizado após o término, considera intervenção manual e mantém o status escolhido.
+      if (updatedAt && updatedAt > endTime + MANUAL_OVERRIDE_GRACE_MS) return false;
+      return true;
     });
 
     if (overdueAppointments.length === 0) return;

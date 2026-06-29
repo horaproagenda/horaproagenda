@@ -28,35 +28,36 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // Lazy: cada página vira um chunk independente.
 // Reduz bundle inicial e acelera navegação subsequente.
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Clientes = lazy(() => import("./pages/Clientes"));
-const ClienteDetalhes = lazy(() => import("./pages/ClienteDetalhes"));
-const ProfissionalDetalhes = lazy(() => import("./pages/ProfissionalDetalhes"));
-const Servicos = lazy(() => import("./pages/Servicos"));
-const Cadastros = lazy(() => import("./pages/Cadastros"));
-const Caixa = lazy(() => import("./pages/Caixa"));
-const Financeiro = lazy(() => import("./pages/Financeiro"));
-const Produtos = lazy(() => import("./pages/Produtos"));
-const Relatorios = lazy(() => import("./pages/Relatorios"));
-const Lembretes = lazy(() => import("./pages/Lembretes"));
-const Documentos = lazy(() => import("./pages/Documentos"));
-const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+import { lazyWithRetry } from "./lib/chunkErrorRecovery";
+const Agenda = lazy(lazyWithRetry(() => import("./pages/Agenda")));
+const Clientes = lazy(lazyWithRetry(() => import("./pages/Clientes")));
+const ClienteDetalhes = lazy(lazyWithRetry(() => import("./pages/ClienteDetalhes")));
+const ProfissionalDetalhes = lazy(lazyWithRetry(() => import("./pages/ProfissionalDetalhes")));
+const Servicos = lazy(lazyWithRetry(() => import("./pages/Servicos")));
+const Cadastros = lazy(lazyWithRetry(() => import("./pages/Cadastros")));
+const Caixa = lazy(lazyWithRetry(() => import("./pages/Caixa")));
+const Financeiro = lazy(lazyWithRetry(() => import("./pages/Financeiro")));
+const Produtos = lazy(lazyWithRetry(() => import("./pages/Produtos")));
+const Relatorios = lazy(lazyWithRetry(() => import("./pages/Relatorios")));
+const Lembretes = lazy(lazyWithRetry(() => import("./pages/Lembretes")));
+const Documentos = lazy(lazyWithRetry(() => import("./pages/Documentos")));
+const Configuracoes = lazy(lazyWithRetry(() => import("./pages/Configuracoes")));
 // Auditoria removido — informações agora no Painel Admin
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
-const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
-const UsuariosConta = lazy(() => import("./pages/UsuariosConta"));
-const Ajuda = lazy(() => import("./pages/Ajuda"));
-const Suporte = lazy(() => import("./pages/Suporte"));
-const Assinatura = lazy(() => import("./pages/Assinatura"));
-const AssinaturaSucesso = lazy(() => import("./pages/AssinaturaSucesso"));
-const AssinaturaCancelado = lazy(() => import("./pages/AssinaturaCancelado"));
-const PreencherDocumento = lazy(() => import("./pages/PreencherDocumento"));
-const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
-const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const TermosDeServico = lazy(() => import("./pages/TermosDeServico"));
-const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
-const ContaInativa = lazy(() => import("./pages/ContaInativa"));
-const ConfirmarAgendamento = lazy(() => import("./pages/ConfirmarAgendamento"));
+const AdminPanel = lazy(lazyWithRetry(() => import("./pages/AdminPanel")));
+const SuperAdmin = lazy(lazyWithRetry(() => import("./pages/SuperAdmin")));
+const UsuariosConta = lazy(lazyWithRetry(() => import("./pages/UsuariosConta")));
+const Ajuda = lazy(lazyWithRetry(() => import("./pages/Ajuda")));
+const Suporte = lazy(lazyWithRetry(() => import("./pages/Suporte")));
+const Assinatura = lazy(lazyWithRetry(() => import("./pages/Assinatura")));
+const AssinaturaSucesso = lazy(lazyWithRetry(() => import("./pages/AssinaturaSucesso")));
+const AssinaturaCancelado = lazy(lazyWithRetry(() => import("./pages/AssinaturaCancelado")));
+const PreencherDocumento = lazy(lazyWithRetry(() => import("./pages/PreencherDocumento")));
+const CadastroCliente = lazy(lazyWithRetry(() => import("./pages/CadastroCliente")));
+const Unsubscribe = lazy(lazyWithRetry(() => import("./pages/Unsubscribe")));
+const TermosDeServico = lazy(lazyWithRetry(() => import("./pages/TermosDeServico")));
+const PoliticaDePrivacidade = lazy(lazyWithRetry(() => import("./pages/PoliticaDePrivacidade")));
+const ContaInativa = lazy(lazyWithRetry(() => import("./pages/ContaInativa")));
+const ConfirmarAgendamento = lazy(lazyWithRetry(() => import("./pages/ConfirmarAgendamento")));
 
 // Fallback minimalista enquanto o chunk da rota carrega.
 function RouteFallback() {

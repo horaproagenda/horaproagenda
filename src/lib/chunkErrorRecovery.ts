@@ -43,7 +43,6 @@ function reloadOnce(reason: string) {
 export function installChunkErrorRecovery() {
   // Reset do flag em navegação bem-sucedida
   window.addEventListener('load', () => {
-    // Se chegamos a este ponto sem erro, qualquer reload futuro pode acontecer
     setTimeout(() => {
       try { sessionStorage.removeItem(RELOADED_KEY); } catch { /* noop */ }
     }, 5000);
@@ -61,3 +60,31 @@ export function installChunkErrorRecovery() {
     }
   });
 }
+
+/**
+ * Envolve `() => import(...)` com retry + reload automático.
+ * Use junto com React.lazy para que rotas com chunk obsoleto não
+ * deixem a tela em branco após uma nova publicação.
+ */
+export function lazyWithRetry<T>(factory: () => Promise<T>, retries = 1): () => Promise<T> {
+  return async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      if (isChunkLoadError(err)) {
+        if (retries > 0) {
+          await new Promise((r) => setTimeout(r, 250));
+          try {
+            return await factory();
+          } catch (err2) {
+            if (isChunkLoadError(err2)) reloadOnce('lazyWithRetry');
+            throw err2;
+          }
+        }
+        reloadOnce('lazyWithRetry');
+      }
+      throw err;
+    }
+  };
+}
+

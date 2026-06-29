@@ -354,8 +354,18 @@ function AuthInner() {
       const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
         cpf: signupCpf.replace(/\D/g, ''),
         cnpj: signupCnpj.replace(/\D/g, '') || undefined,
-        city: signupCity.trim() || undefined,
-        state: signupState.trim().toUpperCase() || undefined,
+        city: signupAddress.city.trim() || undefined,
+        state: signupAddress.state.trim().toUpperCase() || undefined,
+        clinicName: signupClinicName.trim(),
+        clinicPhone: signupClinicPhone.trim(),
+        clinicEmail: email,
+        clinicCep: signupAddress.cep.replace(/\D/g, ''),
+        clinicStreet: signupAddress.street.trim(),
+        clinicNumber: signupAddress.number.trim(),
+        clinicComplement: signupAddress.complement.trim() || undefined,
+        clinicNeighborhood: signupAddress.neighborhood.trim(),
+        clinicCity: signupAddress.city.trim(),
+        clinicState: signupAddress.state.trim().toUpperCase(),
         code,
       });
 

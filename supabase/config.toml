@@ -51,3 +51,9 @@ project_id = "nsgcllrbswodjoadybsj"
 
   [functions.stripe-webhook]
     verify_jwt = false
+
+  [functions.send-contact-change-code]
+    verify_jwt = true
+  [functions.verify-contact-change]
+    verify_jwt = true
+

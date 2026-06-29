@@ -262,25 +262,46 @@ const Clientes = () => {
       : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
-  const handleExport = () => {
-    const csvContent = [
-      ['Nome', 'Telefone', 'Email', 'CPF', 'Status', 'Data de Cadastro'].join(','),
-      ...filteredAndSortedClients.map(client => [
-        `"${client.name}"`,
-        client.phone,
-        client.email || '',
-        client.cpf || '',
-        client.is_active ? 'Ativo' : 'Inativo',
-        new Date(client.created_at).toLocaleDateString('pt-BR'),
-      ].join(','))
-    ].join('\n');
+  const buildExportRows = () =>
+    filteredAndSortedClients.map(client => [
+      client.name || '',
+      client.phone || '',
+      client.email || '',
+      client.cpf || '',
+      client.birthdate ? format(new Date(`${client.birthdate}T12:00:00`), 'dd/MM/yyyy') : '',
+      (client as any).last_visit_at
+        ? format(new Date((client as any).last_visit_at), 'dd/MM/yyyy')
+        : '-',
+      client.is_active ? 'Ativo' : 'Inativo',
+      client.created_at ? format(new Date(client.created_at), 'dd/MM/yyyy') : '',
+    ]);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `clientes_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+  const exportHeaders = ['Nome', 'Telefone', 'Email', 'CPF', 'Data de Nascimento', 'Última Visita', 'Status', 'Data de Cadastro'];
+
+  const handleExport = async () => {
+    const { exportToCSV } = await import('@/lib/exportUtils');
+    exportToCSV({
+      filename: 'clientes',
+      headers: exportHeaders,
+      rows: buildExportRows(),
+      successMessage: 'Clientes exportados em CSV!',
+    });
   };
+
+  const handleExportPdf = async () => {
+    const { exportTableToPdf } = await import('@/lib/pdfExport');
+    exportTableToPdf({
+      filename: 'clientes',
+      title: 'Lista de Clientes',
+      subtitle: `Total: ${filteredAndSortedClients.length} cliente(s)`,
+      orientation: 'landscape',
+      headers: exportHeaders,
+      rows: buildExportRows(),
+      columnWidths: { 0: 50, 1: 35, 2: 55, 3: 30, 4: 28, 5: 28, 6: 20, 7: 28 },
+      columnAlign: { 4: 'center', 5: 'center', 6: 'center', 7: 'center' },
+    });
+  };
+
 
   const getProfessionalName = (professionalId: string | null) => {
     if (!professionalId) return '-';

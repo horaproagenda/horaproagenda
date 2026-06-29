@@ -329,15 +329,25 @@ const Servicos: React.FC = () => {
 
   const exportServicesCSV = () => {
     const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     exportToCSV({
       filename: 'servicos',
-      headers: ['Nome', 'Categoria', 'Preço', 'Duração (min)', 'Retorno (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Duração (min)', 'Retorno (dias)', 'Status'],
       rows: onlyServices.map(s => [
-        s.name, s.category, Number(s.price).toFixed(2), s.duration, s.return_days || '-', s.is_active ? 'Ativo' : 'Inativo'
+        s.name,
+        s.category,
+        s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
+        s.room?.name || '-',
+        Array.isArray(s.equipment) && s.equipment.length ? s.equipment.join(', ') : '-',
+        Number(s.price).toFixed(2),
+        s.duration,
+        s.return_days || '-',
+        s.is_active ? 'Ativo' : 'Inativo',
       ]),
       successMessage: 'Serviços exportados com sucesso!',
     });
   };
+
 
   const exportKitServicesCSV = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);
@@ -374,11 +384,21 @@ const Servicos: React.FC = () => {
 
   const exportStandardPackagesCSV = () => {
     const onlyStandard = filteredPackages.filter(p => p.package_type !== 'sequential');
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     exportToCSV({
       filename: 'pacotes-comuns',
-      headers: ['Nome', 'Categoria', 'Preço', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Status'],
       rows: onlyStandard.map(p => [
-        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+        p.name,
+        p.category || '-',
+        p.professional_id ? (profById.get(p.professional_id)?.name || '-') : '-',
+        p.room?.name || '-',
+        Array.isArray(p.equipment) && p.equipment.length ? p.equipment.join(', ') : '-',
+        Number(p.price).toFixed(2),
+        p.total_sessions,
+        p.duration || 60,
+        p.interval_days || 7,
+        p.is_active ? 'Ativo' : 'Inativo',
       ]),
       successMessage: 'Pacotes comuns exportados com sucesso!',
     });
@@ -386,15 +406,26 @@ const Servicos: React.FC = () => {
 
   const exportSequentialPackagesCSV = () => {
     const onlySeq = filteredPackages.filter(p => p.package_type === 'sequential');
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     exportToCSV({
       filename: 'pacotes-sequenciais',
-      headers: ['Nome', 'Categoria', 'Preço', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Status'],
       rows: onlySeq.map(p => [
-        p.name, p.category || '-', Number(p.price).toFixed(2), p.total_sessions, p.duration || 60, p.interval_days || 7, p.is_active ? 'Ativo' : 'Inativo'
+        p.name,
+        p.category || '-',
+        p.professional_id ? (profById.get(p.professional_id)?.name || '-') : '-',
+        p.room?.name || '-',
+        Array.isArray(p.equipment) && p.equipment.length ? p.equipment.join(', ') : '-',
+        Number(p.price).toFixed(2),
+        p.total_sessions,
+        p.duration || 60,
+        p.interval_days || 7,
+        p.is_active ? 'Ativo' : 'Inativo',
       ]),
       successMessage: 'Pacotes sequenciais exportados com sucesso!',
     });
   };
+
 
   const renderPackageCards = (items: PackageTemplate[]) => (
     <PackageCardsSection items={items} onSelect={setSelectedPackage} />

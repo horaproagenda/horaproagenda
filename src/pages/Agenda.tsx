@@ -745,7 +745,7 @@ const Agenda = () => {
     doc.text('Agenda filtrada', 14, 14);
     doc.setFontSize(9);
     doc.text(`Filtro de pagamento: ${paymentFilter === 'client_credit' ? CLIENT_CREDIT_SOURCE_LABEL : paymentFilter === 'non_cash' ? NON_CASH_PAYMENT_LABEL : paymentFilter}`, 14, 21);
-    autoTable(doc, { startY: 28, head: [['Data', 'Hora', 'Cliente', 'Serviço', 'Profissional', 'Pagamento', 'Valor pago']], body: rows, styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 98, 255] }, columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 18 }, 5: { cellWidth: 56 }, 6: { halign: 'right' } } });
+    autoTable(doc, { startY: 28, head: [['Data', 'Hora', 'Cliente', 'Serviço', 'Profissional', 'Pagamento', 'Valor pago']], body: rows, margin: { left: 14, right: 14 }, tableWidth: 'auto', styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' }, headStyles: { fillColor: [41, 98, 255], halign: 'center', valign: 'middle' }, columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 16 }, 2: { cellWidth: 50 }, 3: { cellWidth: 50 }, 4: { cellWidth: 40 }, 5: { cellWidth: 50 }, 6: { halign: 'right', cellWidth: 26 } } });
     doc.save(`agenda_filtrada_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 

@@ -412,9 +412,11 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       startY: 28,
       head: [['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa']],
       body: paymentExportRows,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 50 }, 2: { cellWidth: 76 }, 3: { halign: 'right', cellWidth: 28 }, 4: { halign: 'right', cellWidth: 28 } },
+      margin: { left: 14, right: 14 },
+      tableWidth: 'auto',
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+      headStyles: { fillColor: [41, 98, 255], halign: 'center', valign: 'middle' },
+      columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 48 }, 2: { cellWidth: 70 }, 3: { halign: 'right', cellWidth: 24 }, 4: { halign: 'right', cellWidth: 24 }, 5: { cellWidth: 36 }, 6: { cellWidth: 36 } },
     });
     doc.save(`relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };

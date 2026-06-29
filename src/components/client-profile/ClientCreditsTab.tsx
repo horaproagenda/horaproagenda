@@ -339,9 +339,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       startY: 28,
       head: [['Data', 'Tipo', 'Descrição', 'Profissional', 'Valor', 'Saldo anterior', 'Novo saldo']],
       body: creditExportRows,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 98, 255] },
-      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 26 }, 2: { cellWidth: 70 }, 3: { cellWidth: 36 }, 4: { halign: 'right', cellWidth: 28 }, 5: { halign: 'right', cellWidth: 32 }, 6: { halign: 'right', cellWidth: 32 } },
+      margin: { left: 14, right: 14 },
+      tableWidth: 'auto',
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+      headStyles: { fillColor: [41, 98, 255], halign: 'center', valign: 'middle' },
+      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 24 }, 2: { cellWidth: 70 }, 3: { cellWidth: 36 }, 4: { halign: 'right', cellWidth: 26 }, 5: { halign: 'right', cellWidth: 30 }, 6: { halign: 'right', cellWidth: 30 } },
     });
     doc.save(`historico_credito_cliente_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };

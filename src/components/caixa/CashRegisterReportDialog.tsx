@@ -314,10 +314,11 @@ export function CashRegisterReportDialog({
         head: [],
         body: summaryData,
         theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 3 },
+        tableWidth: 'auto',
+        styles: { fontSize: 10, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
         columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 60 },
-          1: { halign: 'right' },
+          0: { fontStyle: 'bold', cellWidth: 80 },
+          1: { halign: 'right', cellWidth: 60 },
         },
         margin: { left: 14, right: 14 },
       });
@@ -340,9 +341,10 @@ export function CashRegisterReportDialog({
           head: [[normalizeText('Forma de Pagamento'), 'Valor']],
           body: [...breakdownData, [normalizeText('Total'), formatCurrency(totals.income)]],
           theme: 'striped',
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold' },
-          columnStyles: { 1: { halign: 'right' } },
+          tableWidth: 'auto',
+          styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
+          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold', halign: 'center', valign: 'middle' },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { halign: 'right', cellWidth: 60 } },
           margin: { left: 14, right: 14 },
         });
 
@@ -357,7 +359,7 @@ export function CashRegisterReportDialog({
 
       const transactionData = transactions.map(t => [
         format(parseISO(t.created_at), 'HH:mm'),
-        normalizeText(t.description || t.category || '-').substring(0, 40),
+        normalizeText(t.description || t.category || '-'),
         normalizeText(t.type === 'income' ? 'Entrada' : 'Saida'),
         `${t.type === 'income' ? '+' : '-'}${formatCurrency(Number(t.amount))}`,
       ]);
@@ -368,12 +370,13 @@ export function CashRegisterReportDialog({
           head: [['Hora', normalizeText('Descricao'), 'Tipo', 'Valor']],
           body: transactionData,
           theme: 'striped',
-          styles: { fontSize: 8, cellPadding: 2 },
-          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold' },
+          tableWidth: 'auto',
+          styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+          headStyles: { fillColor: [60, 60, 60], fontStyle: 'bold', halign: 'center', valign: 'middle' },
           columnStyles: {
             0: { cellWidth: 20 },
-            1: { cellWidth: 80 },
-            2: { cellWidth: 25 },
+            1: { cellWidth: 102 },
+            2: { cellWidth: 25, halign: 'center' },
             3: { halign: 'right', cellWidth: 35 },
           },
           margin: { left: 14, right: 14 },

@@ -358,16 +358,19 @@ const Clientes = () => {
               </Button>
             </BulkImportClientsDialog>
 
-            {/* Export (icon-only) */}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              title="Exportar clientes"
-              onClick={handleExport}
-            >
-              <Download className="h-3.5 w-3.5" />
-            </Button>
+            {/* Export (CSV / PDF) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" title="Exportar clientes">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={handleExport}>Exportar CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}>Exportar PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
 
           </div>
 

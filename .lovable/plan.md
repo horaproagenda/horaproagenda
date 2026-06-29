@@ -1,73 +1,72 @@
+## Objetivo
 
-# Rebrand: Lume Agenda → Hora Pro
+Aproveitar tudo que o profissional digita no **cadastro** (Auth → signup) dentro de **Configurações → Informações da Clínica**, sem precisar redigitar. Endereço sempre puxado por CEP. Trocar e-mail/celular exige código de verificação enviado para o **e-mail atual**.
 
-## Importante sobre "registro de marca"
-Não consigo registrar a marca "Hora Pro" juridicamente — registro de marca é feito no **INPI** (https://www.gov.br/inpi). Posso:
-- Verificar disponibilidade básica via busca web (INPI, domínios, app stores).
-- Reservar o nome no produto (código, metadados, manifest, e-mails, domínio interno).
-- Gerar um documento `.md` com instruções para você dar entrada no INPI.
+## 1. Banco (migration)
 
-O registro oficial precisa ser feito por você (ou um despachante) no INPI — custa ~R$ 355 e leva meses.
+Adicionar colunas em `public.business_settings` (todas opcionais, texto):
+- `clinic_cep`, `clinic_street`, `clinic_number`, `clinic_complement`, `clinic_neighborhood`, `clinic_city`, `clinic_state`
+- `professional_name` (nome do profissional principal, separado do nome da clínica)
 
-## 1. Validação do nome
-- Buscar "Hora Pro" / "HoraPro" no INPI, Google Play, App Store, domínios `.com.br`, `.app`, `.com`.
-- Entregar relatório em `BRAND_VALIDATION.md` com status e recomendação (ex.: usar `horapro.app` se `horapro.com.br` estiver ocupado).
-- Se o nome estiver tomado em pontos críticos, te aviso antes de prosseguir.
+Manter `clinic_address` por compatibilidade (preencher automaticamente como string concatenada via trigger ou no save).
 
-## 2. Identidade visual (logo + paleta)
-- Gerar logotipo Hora Pro com `imagegen` (premium, transparente):
-  - Marca principal (horizontal: ícone + wordmark)
-  - Ícone isolado (favicon / app icon — quadrado, fundo sólido + variante transparente)
-  - Versão monocromática (preto / branco)
-- Paleta proposta (a confirmar): primária âmbar/laranja quente (energia + tempo) + neutros profundos. Definida via tokens semânticos em `src/index.css` (HSL), com modo claro e escuro.
-- Substituir favicon, ícones PWA e ativos em `public/` e `src/assets/`.
+Em `public.professionals`: adicionar `cep`, `street`, `number`, `complement`, `neighborhood`, `city`, `state` (opcionais — endereço próprio se o profissional atende fora da clínica).
 
-## 3. Rename global (Lume Agenda → Hora Pro)
-Substituições verificadas via `rg "Lume Agenda|LumeAgenda|agendalume"`:
-- `index.html` (title, meta description, OG, Twitter, JSON-LD)
-- `public/manifest.webmanifest` (name, short_name, description)
-- `public/llms.txt`, `public/robots.txt`, `public/sitemap.xml`
-- `src/pages/Landing.tsx` e demais páginas (`Auth`, `TermosDeServico`, `PoliticaDePrivacidade`, etc.)
-- `src/components/layout/Header.tsx` e sidebar
-- Templates de e-mail em `supabase/functions/_shared/email-templates/*` e `transactional-email-templates/*`
-- Edge functions que enviem texto com a marca (`send-transactional-email`, `send-appointment-reminders`, `whatsapp-*`)
-- `README.md`, `capacitor.config.ts` (appName, appId — manter bundle id atual para não quebrar instalações existentes; só ajusto display name)
-- Memórias do projeto (`mem://index.md` core)
-- `package.json` (name)
+Tabela nova `public.contact_change_verifications` (RLS por `auth.uid()`): guarda código de 6 dígitos, tipo (`email` | `phone`), valor novo proposto, `expires_at` (10 min), `used_at`, `attempts`. GRANTs para `authenticated` e `service_role`.
 
-Domínio: `agendalume.app` continua funcionando (não dá pra trocar custom domain pelo código). Adicionar TODO em `BRAND_VALIDATION.md` para você comprar `horapro.app` (ou similar) e conectar via Settings → Domains.
+## 2. Edge Functions
 
-## 4. Taglines (5 opções) + descrição
-Entregue em `src/content/brand.ts` (reutilizado na landing) e `BRAND_COPY.md`:
-- 5 taglines curtas (≤6 palavras), ex.: "Sua hora, no controle.", "Agenda profissional, sem atrito.", etc.
-- 1 descrição curta (≤160 chars) para meta/App Store subtitle.
-- 1 descrição longa (~400 palavras) para landing, Play Store e App Store, com benefícios, público e CTA.
+- **`send-contact-change-code`** (nova): recebe `{ type: 'email' | 'phone', newValue }`, gera código 6 dígitos, grava em `contact_change_verifications`, envia template `contact-change-code` para o e-mail **atual** do usuário autenticado. Rate-limit por usuário (60s cooldown, 5/h).
+- **`verify-contact-change`** (nova): recebe `{ type, newValue, code }`, valida (não expirado, não usado, tentativas < 5). Em sucesso: atualiza `auth.users.email` (via admin) ou `profiles.phone` / `business_settings.clinic_phone`, marca `used_at`.
+- Template React Email novo `_shared/transactional-email-templates/contact-change-code.tsx` (assunto: "Confirme a alteração da sua conta — Hora Pro").
 
-## 5. Landing page pública
-Reescrever `src/pages/Landing.tsx` (rota `/`, já pública) com nova marca:
-- Hero com logo Hora Pro + tagline escolhida + CTA duplo (interesse + criar conta).
-- Seção "Benefícios" (6 cards: agenda em tempo real, WhatsApp, financeiro, pacotes, multiusuário, PWA).
-- Seção "Para quem é" (públicos).
-- **Formulário de interesse** novo: nome, e-mail, WhatsApp, área de atuação, mensagem.
-  - Salva em nova tabela `public.interest_leads` (Lovable Cloud / Supabase) com RLS:
-    - `INSERT` permitido para `anon` (formulário público).
-    - `SELECT/UPDATE/DELETE` apenas para `super_admin` via `has_role`.
-    - GRANTs explícitos conforme padrão do projeto.
-  - Honeypot + rate-limit por IP simples (campo `created_at` + check no client).
-- FAQ atualizado com novo nome.
-- Footer com nova marca.
-- Helmet: title, description, canonical, OG/Twitter atualizados para Hora Pro.
+## 3. Formulário de cadastro (`src/pages/Auth.tsx`)
 
-## 6. Validação final
-- `rg -i "lume agenda|lumeagenda|agendalume"` deve retornar zero matches em código (exceto changelog/migrations históricas).
-- Build verde, preview carrega `/` com nova marca, formulário de interesse insere linha em `interest_leads`.
-- Atualizar `mem://index.md` (Core) com "Marca: Hora Pro".
+Etapa `form` passa a coletar **tudo de uma vez** (todos obrigatórios, conforme escolha do usuário):
 
-## Arquivos criados/alterados (resumo)
-- Novos: `src/content/brand.ts`, `BRAND_VALIDATION.md`, `BRAND_COPY.md`, `src/assets/horapro-logo.png`, `src/assets/horapro-icon.png`, migration `interest_leads`.
-- Editados: `index.html`, `public/manifest.webmanifest`, `public/llms.txt`, `public/sitemap.xml`, `public/favicon.*`, `src/index.css` (tokens), `tailwind.config.ts` (se preciso), `src/pages/Landing.tsx`, headers/sidebars, e-mail templates, `README.md`, `capacitor.config.ts`, `package.json`, `mem://index.md`.
+```text
+Dados pessoais       Cadastro da clínica            Endereço
+─────────────        ──────────────────             ────────
+Nome completo*       Nome da clínica*               CEP* (busca ViaCEP)
+CPF*                 Telefone da clínica*           Rua (auto)
+E-mail (login)*      E-mail da clínica* (default    Número*
+Senha*               = mesmo do login, editável)    Bairro (auto)
+Confirmar senha*     CNPJ (opcional)                Cidade (auto)
+                                                    Estado (auto)
+                                                    Complemento (opcional)
+```
 
-## Perguntas antes de implementar
-1. **Paleta** — posso seguir com âmbar/laranja quente + neutros, ou prefere outra direção (azul corporativo, verde, roxo)?
-2. **Domínio** — mantenho `agendalume.app` no código por enquanto e te deixo TODO pra comprar `horapro.app`, ou você já tem domínio definido?
-3. **Formulário de interesse** — quer notificação por e-mail a cada novo lead (via edge function existente `send-transactional-email`)?
+CEP usa o helper existente `src/lib/viacep.ts` (`fetchAddressByCep`, `formatCep`). Ao perder foco/8 dígitos: preenche rua/bairro/cidade/UF e foca o campo "Número".
+
+No envio (após verificação do código de e-mail), `signUp` passa todos esses campos via `userMetadata`. A edge `complete-signup` grava em `profiles` (nome/cpf/cnpj/telefone), cria a primeira linha de `business_settings` com os campos da clínica + endereço, e cria o primeiro `professionals` linkado ao `user_id` com o nome/telefone/e-mail.
+
+## 4. Onboarding (`OnboardingWizard.tsx`)
+
+Como o signup agora cobre tudo, o wizard só aparece para contas legadas sem `clinic_name`. Quando aparecer, vem **pré-preenchido** do `profile` / `business_settings` e do `auth.users.email`, mais o campo CEP com busca automática. Não duplicar perguntas que o signup já fez.
+
+## 5. Configurações → Informações da Clínica (`src/pages/Configuracoes.tsx`)
+
+Substituir o card atual por um layout com os mesmos campos do signup, na mesma ordem (dados, contato, endereço). Tudo carregado de `business_settings` + `profiles` (nome do profissional vem de `profile.full_name`).
+
+Comportamento:
+- Campos comuns (nome, clínica, CNPJ, endereço): editáveis e salvam direto.
+- **E-mail** e **telefone do profissional**: campo com botão "Alterar". Ao clicar, abre um `Dialog` que pede o novo valor → dispara `send-contact-change-code` → mostra input de 6 dígitos → `verify-contact-change` confirma e atualiza. Toast e UI refletem imediatamente.
+- CEP usa `fetchAddressByCep` e preenche rua/bairro/cidade/UF automaticamente, igual ao signup.
+
+## 6. Cadastro de profissional (`admin-create-professional` + UI em Cadastros)
+
+Adicionar opcionalmente os mesmos campos de endereço (CEP, rua, número, bairro, cidade, UF, complemento). Default = endereço da clínica (botão "Usar endereço da clínica" pré-preenche). Salva nas novas colunas de `professionals`.
+
+## Detalhes técnicos
+
+- ViaCEP já existe em `src/lib/viacep.ts` — reutilizar, sem nova dependência.
+- Verificação reutiliza tabela e padrões existentes de `verification_codes` (mesmo formato 6 dígitos, mesmo TTL 10min). Tabela separada porque o destinatário muda (e-mail atual, não o novo).
+- Hook novo `useContactChangeVerification` encapsula `send` + `verify` para reuso em Configurações e (futuramente) outras telas.
+- `useBusinessSettings.ts` `select` é estendido com as novas colunas.
+- Componente reutilizável `<AddressFieldsCep />` para evitar duplicar a lógica CEP entre signup, onboarding, configurações e cadastro de profissional.
+
+## Fora do escopo
+
+- SMS no celular (usuário escolheu código no e-mail para ambos).
+- Geocoding/mapa.
+- Múltiplas unidades da clínica.

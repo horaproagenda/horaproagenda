@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
+import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 
 const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
 const TERMS_VERSION = 'v1';

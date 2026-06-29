@@ -359,7 +359,7 @@ export function CashRegisterReportDialog({
 
       const transactionData = transactions.map(t => [
         format(parseISO(t.created_at), 'HH:mm'),
-        normalizeText(t.description || t.category || '-').substring(0, 40),
+        normalizeText(t.description || t.category || '-'),
         normalizeText(t.type === 'income' ? 'Entrada' : 'Saida'),
         `${t.type === 'income' ? '+' : '-'}${formatCurrency(Number(t.amount))}`,
       ]);

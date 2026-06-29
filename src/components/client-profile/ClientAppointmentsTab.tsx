@@ -200,6 +200,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
         cellPadding: 5,
         halign: 'left',
         valign: 'middle',
+        overflow: 'linebreak',
         lineColor: [200, 200, 200],
         lineWidth: 0.1,
       },

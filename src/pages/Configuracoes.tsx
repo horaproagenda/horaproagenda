@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Palette, Check, Trash2 } from 'lucide-react';
+import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
+import { useContactChangeVerification, type ContactChangeType } from '@/hooks/useContactChangeVerification';
+import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
@@ -22,63 +29,118 @@ import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Configurações da conta.
- * Horário de funcionamento, automações e opções da agenda (drag-and-drop,
- * auto-complete) vivem APENAS em `MinhasPreferenciasSettings`, que aplica
- * override por profissional sobre o padrão global. Não duplicar essas seções
- * aqui — os helpers de overlay (`get_effective_business_settings`) já garantem
- * que cada profissional veja seus próprios horários/automações.
+ * Horário de funcionamento, automações e opções da agenda vivem em
+ * `MinhasPreferenciasSettings` (override por profissional).
  */
 const Configuracoes = () => {
-  const { hasRole } = useAuth();
+  const { hasRole, user, profile } = useAuth();
   const isAdmin = hasRole('admin');
   const { settings, updateSettings } = useBusinessSettings();
   const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
 
-  // Clinic info (admin only — único bloco global restante)
+  // Clinic info
+  const [professionalName, setProfessionalName] = useState('');
   const [clinicName, setClinicName] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
   const [clinicEmail, setClinicEmail] = useState('');
-  const [clinicAddress, setClinicAddress] = useState('');
-  const [clinicEditing, setClinicEditing] = useState(false);
+  const [address, setAddress] = useState<AddressFields>(emptyAddress);
 
-  const clinicSaved = !!((settings as any)?.clinic_name);
-  const clinicLocked = clinicSaved && !clinicEditing;
-  const savedInputClass =
-    'h-8 text-sm border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium';
+  // E-mail / celular de login (com verificação)
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPhone, setAccountPhone] = useState('');
+
+  // Dialog de troca
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeType, setChangeType] = useState<ContactChangeType>('email');
+  const [changeNewValue, setChangeNewValue] = useState('');
+  const [changeCode, setChangeCode] = useState('');
+  const [changeStep, setChangeStep] = useState<'input' | 'code'>('input');
+  const { sendCode, verifyCode, sending, verifying } = useContactChangeVerification();
 
   useEffect(() => {
     if (settings) {
-      setClinicName((settings as any).clinic_name || '');
-      setClinicPhone((settings as any).clinic_phone || '');
-      setClinicEmail((settings as any).clinic_email || '');
-      setClinicAddress((settings as any).clinic_address || '');
+      const s = settings as any;
+      setProfessionalName(s.professional_name || profile?.full_name || '');
+      setClinicName(s.clinic_name || '');
+      setClinicPhone(s.clinic_phone || '');
+      setClinicEmail(s.clinic_email || '');
+      setAddress({
+        cep: s.clinic_cep || '',
+        street: s.clinic_street || '',
+        number: s.clinic_number || '',
+        complement: s.clinic_complement || '',
+        neighborhood: s.clinic_neighborhood || '',
+        city: s.clinic_city || '',
+        state: s.clinic_state || '',
+      });
     }
-  }, [settings]);
+  }, [settings, profile?.full_name]);
 
-  const handleSaveClinic = () => {
-    if (clinicLocked) {
-      setClinicEditing(true);
+  useEffect(() => {
+    setAccountEmail(user?.email || '');
+    setAccountPhone((profile as any)?.phone || '');
+  }, [user?.email, profile]);
+
+  const handleSaveClinic = async () => {
+    // Salva business_settings
+    updateSettings.mutate({
+      clinic_name: clinicName,
+      clinic_phone: clinicPhone,
+      clinic_email: clinicEmail,
+      professional_name: professionalName,
+      clinic_cep: address.cep,
+      clinic_street: address.street,
+      clinic_number: address.number,
+      clinic_complement: address.complement,
+      clinic_neighborhood: address.neighborhood,
+      clinic_city: address.city,
+      clinic_state: address.state,
+    } as any);
+
+    // Atualiza nome do profissional no perfil
+    if (professionalName && user?.id && professionalName !== profile?.full_name) {
+      await supabase.from('profiles').update({ full_name: professionalName }).eq('id', user.id);
+    }
+  };
+
+  const openChange = (type: ContactChangeType) => {
+    setChangeType(type);
+    setChangeNewValue('');
+    setChangeCode('');
+    setChangeStep('input');
+    setChangeOpen(true);
+  };
+
+  const handleSendChange = async () => {
+    if (!changeNewValue.trim()) {
+      toast.error('Informe o novo valor.');
       return;
     }
-    updateSettings.mutate(
-      {
-        clinic_name: clinicName,
-        clinic_phone: clinicPhone,
-        clinic_email: clinicEmail,
-        clinic_address: clinicAddress,
-      } as any,
-      { onSuccess: () => setClinicEditing(false) }
-    );
+    const ok = await sendCode(changeType, changeNewValue.trim());
+    if (ok) setChangeStep('code');
+  };
+
+  const handleVerifyChange = async () => {
+    if (changeCode.length !== 6) {
+      toast.error('Digite os 6 dígitos.');
+      return;
+    }
+    const ok = await verifyCode(changeType, changeNewValue.trim(), changeCode);
+    if (ok) {
+      setChangeOpen(false);
+      // Atualiza estado local imediatamente
+      if (changeType === 'email') setAccountEmail(changeNewValue.trim().toLowerCase());
+      else setAccountPhone(changeNewValue.trim());
+    }
   };
 
   return (
     <AppLayout title="Configurações" subtitle="Personalize seu sistema">
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
-          {/* Preferências do profissional (horários, agenda, automações) */}
           <MinhasPreferenciasSettings />
 
-          {/* Informações da Clínica (somente admin) */}
+          {/* Informações da Clínica */}
           {isAdmin && (
             <Card className="card-hover">
               <CardHeader className="pb-3">
@@ -88,80 +150,120 @@ const Configuracoes = () => {
                   </div>
                   <div>
                     <CardTitle className="text-sm font-medium">Informações da Clínica</CardTitle>
-                    <CardDescription className="text-xs">Dados básicos do estabelecimento</CardDescription>
+                    <CardDescription className="text-xs">
+                      Aproveitados do seu cadastro — pode editar a qualquer momento
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Nome da Clínica</Label>
+                  <Label className="text-xs">Nome do profissional</Label>
                   <Input
-                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
+                    className="h-8 text-sm"
+                    value={professionalName}
+                    onChange={(e) => setProfessionalName(e.target.value)}
+                    placeholder="Seu nome completo"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome da clínica</Label>
+                  <Input
+                    className="h-8 text-sm"
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
                     placeholder="Nome do estabelecimento"
-                    readOnly={clinicLocked}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Telefone</Label>
+                    <Label className="text-xs">Telefone da clínica</Label>
                     <Input
-                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
+                      className="h-8 text-sm"
                       value={clinicPhone}
                       onChange={(e) => setClinicPhone(e.target.value)}
                       placeholder="(11) 99999-9999"
-                      readOnly={clinicLocked}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Email</Label>
+                    <Label className="text-xs">E-mail da clínica</Label>
                     <Input
-                      className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
+                      className="h-8 text-sm"
                       type="email"
                       value={clinicEmail}
                       onChange={(e) => setClinicEmail(e.target.value)}
                       placeholder="contato@clinica.com"
-                      readOnly={clinicLocked}
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Endereço</Label>
-                  <Input
-                    className={clinicLocked ? savedInputClass : 'h-8 text-sm'}
-                    value={clinicAddress}
-                    onChange={(e) => setClinicAddress(e.target.value)}
-                    placeholder="Rua, número - Cidade, UF"
-                    readOnly={clinicLocked}
-                  />
+
+                <div className="pt-2 border-t">
+                  <Label className="text-xs mb-2 block font-medium">Endereço</Label>
+                  <AddressFieldsCep value={address} onChange={setAddress} compact />
                 </div>
+
                 <Button
                   size="sm"
-                  variant={clinicLocked ? 'outline' : 'default'}
-                  className={clinicLocked ? 'w-full' : 'w-full btn-vibrant'}
+                  className="w-full btn-vibrant"
                   onClick={handleSaveClinic}
                   disabled={updateSettings.isPending}
                 >
-                  {updateSettings.isPending
-                    ? 'Salvando...'
-                    : clinicLocked
-                    ? 'Editar Informações'
-                    : clinicSaved
-                    ? 'Salvar Alterações'
-                    : 'Salvar Informações'}
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Informações'}
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Conexão com o WhatsApp (cada profissional conecta o próprio número) */}
-          <WhatsappSettings />
+          {/* E-mail e celular de acesso (verificação obrigatória) */}
+          <Card className="card-hover">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-medium">E-mail e celular de acesso</CardTitle>
+                  <CardDescription className="text-xs">
+                    Para alterar, enviamos um código de 6 dígitos para o seu e-mail atual
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-end gap-2">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Mail className="h-3 w-3" /> E-mail
+                  </Label>
+                  <Input className="h-8 text-sm" value={accountEmail} readOnly />
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openChange('email')}>
+                  Alterar
+                </Button>
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> Celular
+                  </Label>
+                  <Input
+                    className="h-8 text-sm"
+                    value={accountPhone}
+                    readOnly
+                    placeholder="Não cadastrado"
+                  />
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openChange('phone')}>
+                  Alterar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Mensagens de WhatsApp */}
+          <WhatsappSettings />
           <WhatsappTemplatesSettings />
 
-          {/* Aparência (preferência por usuário) */}
+          {/* Aparência */}
           <Card className="card-hover">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
@@ -178,7 +280,7 @@ const Configuracoes = () => {
               <div className="space-y-2">
                 <Label className="text-xs">Cor Principal</Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Escolha a cor que será aplicada em toda a agenda. A escolha é salva apenas para você.
+                  Escolha a cor que será aplicada em toda a agenda.
                 </p>
                 <div className="grid grid-cols-8 gap-2 pt-1">
                   {PRIMARY_COLOR_PALETTE.map((color) => {
@@ -235,12 +337,8 @@ const Configuracoes = () => {
             </CardContent>
           </Card>
 
-          {/* Integridade Financeiro × Agenda agora roda automaticamente em background (useSaleFlowIntegrityAutoCheck) */}
-
-          {/* Bulk Delete (apenas administradores) */}
           {isAdmin && <BulkDeleteDialog />}
 
-          {/* Sua Conta - Exclusão definitiva */}
           <Card className="card-hover border-destructive/30">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
@@ -258,10 +356,7 @@ const Configuracoes = () => {
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Ao excluir sua conta, todos os clientes, agendamentos, pacotes, registros financeiros e
-                configurações serão apagados de forma <strong>irreversível</strong>. Por questões de
-                segurança, o e-mail, CPF, CNPJ e telefone usados ficarão bloqueados para reutilização
-                do <strong>período gratuito de 7 dias</strong> por <strong>6 meses</strong> após a
-                exclusão — para voltar antes desse prazo será necessário contratar um plano pago.
+                configurações serão apagados de forma <strong>irreversível</strong>.
               </p>
               <div className="flex justify-end">
                 <DeleteMyAccountDialog />
@@ -271,6 +366,73 @@ const Configuracoes = () => {
 
           <ChangeMyPasswordCard />
         </div>
+
+        {/* Dialog de alteração de e-mail / celular */}
+        <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Alterar {changeType === 'email' ? 'e-mail' : 'celular'}
+              </DialogTitle>
+              <DialogDescription>
+                Por segurança, enviaremos um código de 6 dígitos para o seu e-mail atual
+                ({accountEmail}).
+              </DialogDescription>
+            </DialogHeader>
+
+            {changeStep === 'input' ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    Novo {changeType === 'email' ? 'e-mail' : 'celular'}
+                  </Label>
+                  <Input
+                    autoFocus
+                    type={changeType === 'email' ? 'email' : 'tel'}
+                    placeholder={changeType === 'email' ? 'novo@email.com' : '(11) 99999-9999'}
+                    value={changeNewValue}
+                    onChange={(e) => setChangeNewValue(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setChangeOpen(false)} disabled={sending}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSendChange} disabled={sending}>
+                    {sending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Enviar código
+                  </Button>
+                </DialogFooter>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Digite o código de 6 dígitos enviado para <strong>{accountEmail}</strong>.
+                </p>
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={changeCode} onChange={setChangeCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button variant="ghost" onClick={() => setChangeStep('input')} disabled={verifying}>
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={handleVerifyChange}
+                    disabled={verifying || changeCode.length !== 6}
+                  >
+                    {verifying && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Confirmar alteração
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </PageTransition>
     </AppLayout>
   );

@@ -55,7 +55,7 @@ export function useBusinessSettings() {
       // fetched separately through get_sensitive_business_settings RPC.
       const { data, error } = await supabase
         .from('business_settings')
-        .select('id, opening_time, closing_time, slot_interval, work_saturdays, work_sundays, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, drag_and_drop_enabled, auto_complete_appointments, timezone, overdue_days_threshold, automation_whatsapp_reminders, automation_waitlist, automation_gap_finder, automation_occupancy_dashboard, automation_smart_recurrence, reminder_hours_before, reminder_provider, clinic_name, clinic_phone, clinic_address, clinic_email, created_at, updated_at')
+        .select('id, opening_time, closing_time, slot_interval, work_saturdays, work_sundays, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, drag_and_drop_enabled, auto_complete_appointments, timezone, overdue_days_threshold, automation_whatsapp_reminders, automation_waitlist, automation_gap_finder, automation_occupancy_dashboard, automation_smart_recurrence, reminder_hours_before, reminder_provider, clinic_name, clinic_phone, clinic_address, clinic_email, professional_name, clinic_cep, clinic_street, clinic_number, clinic_complement, clinic_neighborhood, clinic_city, clinic_state, created_at, updated_at')
         .limit(1)
         .maybeSingle();
 

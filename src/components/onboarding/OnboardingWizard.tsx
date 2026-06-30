@@ -50,16 +50,18 @@ export function OnboardingWizard({ open }: Props) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [takenColors, setTakenColors] = useState<string[]>([]);
 
   // Campos pré-preenchidos a partir do cadastro
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [birthdate, setBirthdate] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [agendaColor, setAgendaColor] = useState(AGENDA_COLORS[0]);
+  const [agendaColor, setAgendaColor] = useState<string>(DEFAULT_AGENDA_COLOR);
   const [specialty, setSpecialty] = useState('');
   const [isCommission, setIsCommission] = useState(false);
   const [commissionPct, setCommissionPct] = useState<string>('');
+
 
   useEffect(() => {
     if (!open || !user) return;

@@ -95,26 +95,38 @@ const Configuracoes = () => {
   }, [user?.email, profile]);
 
   const handleSaveClinic = async () => {
-    // Salva business_settings
-    updateSettings.mutate({
-      clinic_name: clinicName,
-      clinic_phone: clinicPhone,
-      clinic_email: clinicEmail,
-      professional_name: professionalName,
-      clinic_cep: address.cep,
-      clinic_street: address.street,
-      clinic_number: address.number,
-      clinic_complement: address.complement,
-      clinic_neighborhood: address.neighborhood,
-      clinic_city: address.city,
-      clinic_state: address.state,
-      business_type: businessType,
-      business_type_label: businessType === 'outro' ? businessTypeLabel : null,
-    } as any);
+    try {
+      // Salva business_settings e AGUARDA a confirmação do servidor antes de
+      // tocar o profile, garantindo que o usuário só veja sucesso quando os
+      // dois lados realmente persistirem.
+      await updateSettings.mutateAsync({
+        clinic_name: clinicName,
+        clinic_phone: clinicPhone,
+        clinic_email: clinicEmail,
+        professional_name: professionalName,
+        clinic_cep: address.cep,
+        clinic_street: address.street,
+        clinic_number: address.number,
+        clinic_complement: address.complement,
+        clinic_neighborhood: address.neighborhood,
+        clinic_city: address.city,
+        clinic_state: address.state,
+        business_type: businessType,
+        business_type_label: businessType === 'outro' ? businessTypeLabel : null,
+      } as any);
 
-    // Atualiza nome do profissional no perfil
-    if (professionalName && user?.id && professionalName !== profile?.full_name) {
-      await supabase.from('profiles').update({ full_name: professionalName }).eq('id', user.id);
+      if (professionalName && user?.id && professionalName !== profile?.full_name) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ full_name: professionalName })
+          .eq('id', user.id);
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      // updateSettings já mostra toast de erro; aqui só capturamos a falha do profile.
+      if (err?.message && !String(err.message).toLowerCase().includes('configurações')) {
+        toast.error('Erro ao atualizar nome do profissional: ' + err.message);
+      }
     }
   };
 

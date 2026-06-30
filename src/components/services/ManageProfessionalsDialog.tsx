@@ -229,7 +229,13 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       toast.error('Apenas administradores podem cadastrar ou editar profissionais.');
       return;
     }
+    // Garante cor única na agenda por profissional.
+    if (data.agenda_color && takenColorSet.has(data.agenda_color.toLowerCase())) {
+      toast.error('Esta cor já está sendo usada por outro profissional. Escolha uma cor diferente.');
+      return;
+    }
     setIsLoading(true);
+
     try {
       const specialtiesArray = data.specialties
         ? data.specialties.split(',').map(s => s.trim()).filter(Boolean)

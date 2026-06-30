@@ -12,7 +12,7 @@ import {
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
-import { WhatsappServerQueuePanel } from './WhatsappServerQueuePanel';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -418,7 +418,7 @@ export function WhatsappSettings() {
         )}
 
         <WhatsappQueueStatusPanel />
-        <WhatsappServerQueuePanel autoDrainKey={connected ? selectedCreds?.last_connected_at ?? null : null} />
+        
 
         {/* Botões de ação */}
         <div className="flex flex-wrap gap-2">

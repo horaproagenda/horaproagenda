@@ -753,15 +753,33 @@ export function AppointmentDetailDialog({
     const originalDuration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + originalDuration);
     try {
-      await updateAppointment.mutateAsync({
-        id: appointment.id,
-        updates: {
-          start_time: newStart.toISOString(),
-          end_time: newEnd.toISOString(),
-          status: 'scheduled' as AppointmentStatus,
-        },
-        expectedVersion: appointment.version,
-      });
+      // Para agendamentos vinculados a pacote, usa a RPC segura que mantém
+      // o mesmo package_appointment_id (evita duplicar sessões / criar 11ª aplicação).
+      if (appointment.package_appointment) {
+        const { error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
+          p_appointment_id: appointment.id,
+          p_new_start: newStart.toISOString(),
+          p_new_end: newEnd.toISOString(),
+          p_expected_version: appointment.version,
+        });
+        if (error) throw error;
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+          queryClient.invalidateQueries({ queryKey: ['service_packages'] }),
+          queryClient.invalidateQueries({ queryKey: ['package_appointments'] }),
+          queryClient.invalidateQueries({ queryKey: ['client_packages'] }),
+        ]);
+      } else {
+        await updateAppointment.mutateAsync({
+          id: appointment.id,
+          updates: {
+            start_time: newStart.toISOString(),
+            end_time: newEnd.toISOString(),
+            status: 'scheduled' as AppointmentStatus,
+          },
+          expectedVersion: appointment.version,
+        });
+      }
       toast.success(`Reagendado para ${format(newStart, "dd/MM/yyyy 'às' HH:mm")}.`);
       setRescheduleStatusDialog({ open: false, date: '', time: '' });
     } catch (err: any) {

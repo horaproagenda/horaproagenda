@@ -42,17 +42,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
+import {
+  AGENDA_COLOR_PALETTE,
+  DEFAULT_AGENDA_COLOR,
+  pickNextAvailableColor,
+  getAgendaColorLabel,
+} from '@/lib/agendaColors';
 
-const AGENDA_COLORS = [
-  { value: '#3B82F6', label: 'Azul' },
-  { value: '#10B981', label: 'Verde' },
-  { value: '#F59E0B', label: 'Amarelo' },
-  { value: '#EF4444', label: 'Vermelho' },
-  { value: '#8B5CF6', label: 'Roxo' },
-  { value: '#EC4899', label: 'Rosa' },
-  { value: '#06B6D4', label: 'Ciano' },
-  { value: '#F97316', label: 'Laranja' },
-];
+const AGENDA_COLORS = AGENDA_COLOR_PALETTE;
+
 
 const APP_ROLES = [
   { value: 'admin', label: 'Administrador' },

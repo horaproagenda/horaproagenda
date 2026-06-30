@@ -748,7 +748,15 @@ export function NewAppointmentDialog({
     
     const serviceCount: Record<string, number> = {};
     appointments.forEach(apt => {
-      if (apt.client_id === selectedClient && apt.service_id && !['cancelled', 'missed'].includes(apt.status)) {
+      // Exclude package-linked sessions: they belong to a package, not to a standalone service.
+      // Counting them here causes "Axila 10x agendado" when the client only owns a package.
+      const isPackageSession = !!(apt as any).package_appointment_id || !!(apt as any).package_appointment?.id;
+      if (
+        apt.client_id === selectedClient &&
+        apt.service_id &&
+        !isPackageSession &&
+        !['cancelled', 'missed', 'rescheduled'].includes(apt.status)
+      ) {
         serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
       }
     });

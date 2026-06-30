@@ -1004,8 +1004,17 @@ export function AppointmentDetailDialog({
   const status = statusConfig[appointment.status];
   
   // Check if this is a package appointment that's already paid
-  const isPackageAppointment = !!appointment.package_appointment;
+  // Detect package linkage robustly: even when package_appointment_id was lost,
+  // the notes/snapshot fields preserve the original package identification.
+  const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
+  const serviceNameSnapshot = (appointment as any).service_name_snapshot as string | null | undefined;
+  const notesPackageMatch = appointment.notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
+  const notesPackageName = notesPackageMatch?.[1]?.trim() || null;
+  const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot || !!notesPackageName;
   const packageData = appointment.package_appointment?.package;
+  const resolvedPackageName = packageData?.name || packageNameSnapshot || notesPackageName || 'Sessão de Pacote';
+  const resolvedServiceName = appointment.service?.name || serviceNameSnapshot || 'Serviço';
+
   
   // Package payment must reflect the synchronized amount on appointments, not only the existence of a payment method.
   
@@ -1493,9 +1502,7 @@ export function AppointmentDetailDialog({
               ) : (
                 <Sparkles className="h-5 w-5" style={{ color: dialogProfColor }} />
               )}
-              {isPackageAppointment 
-                ? packageData?.name || 'Sessão de Pacote'
-                : appointment.service?.name || 'Serviço'}
+              {isPackageAppointment ? resolvedPackageName : resolvedServiceName}
             </DialogTitle>
           </DialogHeader>
 

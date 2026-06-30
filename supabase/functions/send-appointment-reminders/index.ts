@@ -273,18 +273,33 @@ async function processQueue(supabase: any, summary: any) {
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
       const body = await rebuildQueuedBodyIfNeeded(supabase, row);
+      // Lock atômico: tenta reservar o log antes de enviar para não duplicar
+      // com o caminho síncrono nem com outra execução paralela do cron.
+      if (row.appointment_id && row.provider) {
+        const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+          appointment_id: row.appointment_id,
+          hours_before: row.hours_before ?? 0,
+          provider: row.provider,
+          channel: 'whatsapp',
+          status: 'pending',
+        });
+        if (lockErr) {
+          await supabase.from('whatsapp_send_queue').update({
+            status: 'sent', last_error: 'duplicate (already logged)', updated_at: new Date().toISOString(),
+          }).eq('id', row.id);
+          continue;
+        }
+      }
       await ultramsgSendText({ to: row.to_phone, body }, creds);
       await supabase.from('whatsapp_send_queue').update({
         body, status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);
       if (row.appointment_id && row.provider) {
-        await supabase.from('appointment_reminder_log').insert({
-          appointment_id: row.appointment_id,
-          hours_before: row.hours_before ?? 0,
-          provider: row.provider,
-          channel: 'whatsapp',
-          status: 'sent',
-        });
+        await supabase.from('appointment_reminder_log')
+          .update({ status: 'sent' })
+          .eq('appointment_id', row.appointment_id)
+          .eq('hours_before', row.hours_before ?? 0)
+          .eq('provider', row.provider);
       }
       summary.retriedSent = (summary.retriedSent || 0) + 1;
     } catch (e) {

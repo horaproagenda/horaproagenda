@@ -656,7 +656,7 @@ serve(async (req) => {
             const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
             if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
           }
-          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
@@ -675,12 +675,19 @@ serve(async (req) => {
             dedup_key: `confirmation-${apt.id}-${h}`,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
+          const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+            appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'pending',
+          });
+          if (lockErr) { summary.skipped++; continue; }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
-            await supabase.from('appointment_reminder_log').insert({
-              appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
-            });
+            await supabase.from('appointment_reminder_log')
+              .update({ status: 'sent' })
+              .eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation');
             summary.sent++; summary.byType.confirmation++;
+          } else {
+            await supabase.from('appointment_reminder_log')
+              .delete().eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').eq('status', 'pending');
           }
           }
         }

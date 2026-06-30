@@ -623,34 +623,20 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Telefone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(11) 99999-9999" className="h-9 text-sm" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="whatsapp_from_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Nº WhatsApp do remetente</FormLabel>
-                        <FormControl>
-                          <Input placeholder="instância ou whatsapp:+55..." className="h-9 text-sm" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">WhatsApp</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(11) 99999-9999" className="h-9 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
 
                 <div className="grid grid-cols-2 gap-3">
                   <FormField

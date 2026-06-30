@@ -616,6 +616,11 @@ serve(async (req) => {
           const phone = (apt as any).client?.phone;
           const clientActive = (apt as any).client?.is_active !== false;
           if (!phone || !clientActive) { summary.skipped++; continue; }
+          if (!isValidBrPhone(phone)) {
+            summary.skippedInvalidPhone++;
+            summary.invalidPhones.push(`${(apt as any).client?.name || apt.id}: ${phone}`);
+            continue;
+          }
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;

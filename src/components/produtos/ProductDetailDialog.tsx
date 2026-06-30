@@ -392,6 +392,17 @@ export function ProductDetailDialog({
       return t <= endDate;
     });
 
+    // Detecta se algum vínculo usa recipiente (modo estimated com container_amount)
+    const hasContainerLink = productServiceLinks.some(
+      sp => sp.tracking_method === 'estimated' && Number(sp.container_amount || 0) > 0,
+    ) || productTemplateLinks.some(
+      (tp: any) => tp.tracking_method === 'estimated' && Number(tp.container_amount || 0) > 0,
+    );
+
+    // Modo "produto a granel": sem vínculo com serviço/pacote E sem recipiente.
+    // Toda a quantidade da compra ativa (ou o estoque atual) é o consumo do ciclo.
+    const isBulk = !hasLinks && !hasContainerLink;
+
     // Quantidade que será deduzida do estoque total (mesma lógica do handler real)
     const containerDeductions = new Map<string, number>();
     let exactDeduction = 0;
@@ -418,8 +429,17 @@ export function ProductDetailDialog({
       }
     }
     const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
-    const totalDeduction = estimatedDeduction + exactDeduction;
     const stockBefore = Number(product.current_stock || 0);
+    let totalDeduction = estimatedDeduction + exactDeduction;
+
+    if (isBulk) {
+      // Produto sem vínculo e sem recipiente: consome a quantidade total da compra ativa
+      // (papel toalha, álcool a granel, etc.). Se não houver compra ativa registrada,
+      // usa o estoque atual como referência.
+      const bulkQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? stockBefore);
+      totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
+    }
+
     const remainingStock = Math.max(0, stockBefore - totalDeduction);
     return {
       days,
@@ -428,11 +448,13 @@ export function ProductDetailDialog({
       stockBefore,
       remainingStock,
       hasLinks,
+      hasContainerLink,
+      isBulk,
       activePurchase,
       cycleApts,
       usedCrossFamilyConversion,
     };
-  }, [product, pendingEndDate, productPurchases, productServiceLinks, appointments]);
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
   const runStartCycle = async (dateStr: string) => {
     if (!product) return;

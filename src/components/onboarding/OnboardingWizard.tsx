@@ -69,27 +69,42 @@ export function OnboardingWizard({ open }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
-          .from('professionals')
-          .select('id, name, cpf, birthdate, phone, agenda_color, specialties, is_commission_based, commission_percentage')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const [{ data }, { data: allProfs }] = await Promise.all([
+          supabase
+            .from('professionals')
+            .select('id, name, cpf, birthdate, phone, agenda_color, specialties, is_commission_based, commission_percentage')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+          supabase.from('professionals').select('id, agenda_color'),
+        ]);
         if (cancelled) return;
 
         const fallbackName = profile?.full_name || user.email?.split('@')[0] || '';
         const fallbackPhone = profile?.phone || '';
 
-        setProfessionalId((data as any)?.id ?? null);
+        const meId = (data as any)?.id ?? null;
+        const otherColors = (allProfs || [])
+          .filter((p: any) => p.id !== meId)
+          .map((p: any) => (p.agenda_color || '').toLowerCase())
+          .filter(Boolean);
+        setTakenColors(otherColors);
+
+        const existingColor = (data as any)?.agenda_color as string | null;
+        const initialColor =
+          existingColor || pickNextAvailableColor(otherColors);
+
+        setProfessionalId(meId);
         setName(((data as any)?.name as string) || fallbackName);
         setCpf(formatCpfMask(((data as any)?.cpf as string) || ''));
         setBirthdate(((data as any)?.birthdate as string) || '');
         setWhatsapp(formatPhoneMask(((data as any)?.phone as string) || fallbackPhone));
-        setAgendaColor(((data as any)?.agenda_color as string) || AGENDA_COLORS[0]);
+        setAgendaColor(initialColor);
         const specs = ((data as any)?.specialties as string[]) || [];
         setSpecialty(specs[0] || '');
         setIsCommission(Boolean((data as any)?.is_commission_based));
         const pct = (data as any)?.commission_percentage;
         setCommissionPct(pct != null ? String(pct) : '');
+
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -398,10 +398,21 @@ export default function Produtos() {
     });
   };
 
-  // Bidirectional price calc helpers
-  const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
-  const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
-  const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
+  // Bidirectional price calc helpers — sempre normaliza para pt-BR (2 casas)
+  // para evitar que valores em centavos/x1000 escapem da máscara R$.
+  const round2 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+  const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => {
+    const p = round2(normalizeBrazilianCurrency(price));
+    return { ...prev, unit_price: p, total_price: round2(prev.quantity * p) };
+  });
+  const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => {
+    const t = round2(normalizeBrazilianCurrency(total));
+    return { ...prev, total_price: t, unit_price: prev.quantity > 0 ? round2(t / prev.quantity) : 0 };
+  });
+  const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => {
+    const q = Number.isFinite(qty) && qty > 0 ? qty : 0;
+    return { ...prev, quantity: q, total_price: round2(q * prev.unit_price) };
+  });
 
 
   const handlePurchaseProductSelect = (productId: string) => {

@@ -61,8 +61,14 @@ const Configuracoes = () => {
   const [changeStep, setChangeStep] = useState<'input' | 'code'>('input');
   const { sendCode, verifyCode, sending, verifying } = useContactChangeVerification();
 
+  const [clinicInitialized, setClinicInitialized] = useState(false);
+
+  // Inicializa UMA VEZ ao carregar as configurações. Refetches em background
+  // (realtime, cross-device, invalidações de queries) não devem descartar
+  // edições em andamento. Após salvar, os campos já refletem o que o usuário
+  // digitou — não há necessidade de re-sincronizar.
   useEffect(() => {
-    if (settings) {
+    if (settings && !clinicInitialized) {
       const s = settings as any;
       setProfessionalName(s.professional_name || profile?.full_name || '');
       setClinicName(s.clinic_name || '');
@@ -79,8 +85,9 @@ const Configuracoes = () => {
       });
       setBusinessType(s.business_type || 'clinica');
       setBusinessTypeLabel(s.business_type_label || '');
+      setClinicInitialized(true);
     }
-  }, [settings, profile?.full_name]);
+  }, [settings, profile?.full_name, clinicInitialized]);
 
   useEffect(() => {
     setAccountEmail(user?.email || '');

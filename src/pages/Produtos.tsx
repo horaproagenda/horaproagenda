@@ -78,7 +78,7 @@ import {
   
   AlertCircle,
 } from 'lucide-react';
-import { cn, normalizeBrazilianCurrency } from '@/lib/utils';
+import { cn, normalizeBrazilianCurrency, parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -398,10 +398,21 @@ export default function Produtos() {
     });
   };
 
-  // Bidirectional price calc helpers
-  const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => ({ ...prev, unit_price: price, total_price: prev.quantity * price }));
-  const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => ({ ...prev, total_price: total, unit_price: prev.quantity > 0 ? total / prev.quantity : 0 }));
-  const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => ({ ...prev, quantity: qty, total_price: qty * prev.unit_price }));
+  // Bidirectional price calc helpers — sempre normaliza para pt-BR (2 casas)
+  // para evitar que valores em centavos/x1000 escapem da máscara R$.
+  const round2 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+  const updatePurchaseUnitPrice = (price: number) => setPurchaseForm(prev => {
+    const p = round2(normalizeBrazilianCurrency(price));
+    return { ...prev, unit_price: p, total_price: round2(prev.quantity * p) };
+  });
+  const updatePurchaseTotalPrice = (total: number) => setPurchaseForm(prev => {
+    const t = round2(normalizeBrazilianCurrency(total));
+    return { ...prev, total_price: t, unit_price: prev.quantity > 0 ? round2(t / prev.quantity) : 0 };
+  });
+  const updatePurchaseQuantity = (qty: number) => setPurchaseForm(prev => {
+    const q = Number.isFinite(qty) && qty > 0 ? qty : 0;
+    return { ...prev, quantity: q, total_price: round2(q * prev.unit_price) };
+  });
 
 
   const handlePurchaseProductSelect = (productId: string) => {
@@ -549,7 +560,18 @@ export default function Produtos() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <Label className="text-xs">Quantidade *{purchaseForm.product_id ? ` (${getUnitLabel(products.find(p => p.id === purchaseForm.product_id)?.unit || 'un')})` : ''}</Label>
-                        <Input type="number" value={purchaseForm.quantity || ''} onChange={(e) => updatePurchaseQuantity(parseFloat(e.target.value) || 0)} min="0" step="0.01" className="h-7 text-xs" />
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={purchaseForm.quantity ? String(purchaseForm.quantity).replace('.', ',') : ''}
+                          onChange={(e) => {
+                            // Aceita apenas dígitos e UMA vírgula (sem ponto, evitando confusão BR/EUA)
+                            const cleaned = e.target.value.replace(/[^\d,]/g, '').replace(/(,.*),/g, '$1');
+                            updatePurchaseQuantity(parseBrazilianCurrency(cleaned));
+                          }}
+                          placeholder="0"
+                          className="h-7 text-xs"
+                        />
                       </div>
                       <div>
                         <Label className="text-xs">Preço Unitário (R$)</Label>
@@ -560,6 +582,15 @@ export default function Produtos() {
                         <CurrencyInput value={purchaseForm.total_price} onValueChange={updatePurchaseTotalPrice} className="h-7 text-xs" />
                       </div>
                     </div>
+                    {(purchaseForm.quantity > 0 || purchaseForm.unit_price > 0) && (
+                      <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-[10px] text-muted-foreground">
+                        Cálculo: <strong className="text-foreground">{purchaseForm.quantity.toLocaleString('pt-BR')}</strong>
+                        {' × '}
+                        <strong className="text-foreground">{formatCurrency(purchaseForm.unit_price)}</strong>
+                        {' = '}
+                        <strong className="text-foreground">{formatCurrency(purchaseForm.total_price)}</strong>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Fornecedor</Label>

@@ -373,18 +373,28 @@ serve(async (req) => {
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   let catchup = true;
   let drain = false;
+  let force = false;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       catchup = body?.catchup !== false;
       drain = body?.drain === true;
+      force = body?.force === true;
     } else {
       const url = new URL(req.url);
       catchup = url.searchParams.get('catchup') !== 'false';
       drain = url.searchParams.get('drain') === 'true';
+      force = url.searchParams.get('force') === 'true';
     }
   } catch (_) { /* ignore */ }
-  const summary: any = { catchup, drain, sent: 0, skipped: 0, skippedByWindow: 0, queued: 0, retriedSent: 0, retriedFailed: 0, drained: 0, errors: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  const summary: any = { catchup, drain, force, sent: 0, skipped: 0, skippedByWindow: 0, skippedInvalidPhone: 0, queued: 0, retriedSent: 0, retriedFailed: 0, drained: 0, errors: [] as string[], invalidPhones: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+
+  // Phone helper: skip clearly invalid numbers and surface them so admin can fix.
+  const isValidBrPhone = (raw: string | null | undefined): boolean => {
+    const digits = String(raw || '').replace(/\D/g, '');
+    // Brazilian mobile/landline with optional country code 55, 10 or 11 local digits.
+    return digits.length >= 10 && digits.length <= 13;
+  };
 
   try {
     const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
@@ -530,6 +540,11 @@ serve(async (req) => {
           const phone = (apt as any).client?.phone;
           const clientActive = (apt as any).client?.is_active !== false;
           if (!phone || !clientActive) { summary.skipped++; continue; }
+          if (!isValidBrPhone(phone)) {
+            summary.skippedInvalidPhone++;
+            summary.invalidPhones.push(`${(apt as any).client?.name || apt.id}: ${phone}`);
+            continue;
+          }
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
@@ -558,7 +573,7 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').maybeSingle();
-          if (existing) continue;
+          if (existing && !force) continue;
 
           const message = maybeAppendButtons(
             renderTemplate(tpl.message, buildVars(apt, start)),
@@ -601,6 +616,11 @@ serve(async (req) => {
           const phone = (apt as any).client?.phone;
           const clientActive = (apt as any).client?.is_active !== false;
           if (!phone || !clientActive) { summary.skipped++; continue; }
+          if (!isValidBrPhone(phone)) {
+            summary.skippedInvalidPhone++;
+            summary.invalidPhones.push(`${(apt as any).client?.name || apt.id}: ${phone}`);
+            continue;
+          }
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
@@ -627,7 +647,7 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').maybeSingle();
-          if (existing) continue;
+          if (existing && !force) continue;
 
           const message = maybeAppendButtons(
             renderTemplate(tpl.message, buildVars(apt, start)),

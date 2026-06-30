@@ -16,6 +16,7 @@ import {
   pickNextAvailableColor,
   getAgendaColorLabel,
 } from '@/lib/agendaColors';
+import { parseBrazilianCurrency } from '@/lib/utils';
 
 interface Props {
   open: boolean;

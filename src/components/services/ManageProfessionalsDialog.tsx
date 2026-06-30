@@ -196,7 +196,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       whatsapp_from_number: '',
       specialties: '',
       bio: '',
-      agenda_color: '#3B82F6',
+      agenda_color: DEFAULT_AGENDA_COLOR,
       app_role: 'professional',
       is_commission_based: false,
       commission_type: 'percentage',

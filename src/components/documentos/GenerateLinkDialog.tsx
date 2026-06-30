@@ -37,11 +37,12 @@ import { useDocumentFillLinks } from '@/hooks/useDocumentFillLinks';
 import { supabase } from '@/integrations/supabase/client';
 import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
+import { parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 
 const formatBRL = (n: number | string | null | undefined): string => {
-  const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
+  const v = typeof n === 'number' ? n : parseBrazilianCurrency(n);
   if (!Number.isFinite(v)) return '';
-  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatCurrency(v);
 };
 
 const buildClientAddress = (c: any): string => {

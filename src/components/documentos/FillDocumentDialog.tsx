@@ -41,9 +41,9 @@ import { htmlToPlainText } from '@/lib/documentTemplateFields';
 import { SignaturePad } from './SignaturePad';
 
 const formatBRL = (n: number | string | null | undefined): string => {
-  const v = typeof n === 'number' ? n : parseFloat(String(n ?? '0').replace(',', '.'));
+  const v = typeof n === 'number' ? n : parseBrazilianCurrency(n);
   if (!Number.isFinite(v)) return '';
-  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatCurrency(v);
 };
 
 const buildClientAddress = (c: any): string => {

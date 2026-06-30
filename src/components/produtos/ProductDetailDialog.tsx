@@ -1130,13 +1130,21 @@ export function ProductDetailDialog({
                                     <> ({format(parseISO(product.started_using_at + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
                                   )}.
                                 </li>
-                                <li>
-                                  <strong>Atendimentos:</strong> agendamentos concluídos no período de uso
-                                  {cycleSummary.hasServiceLinks
-                                    ? ' que utilizam algum dos serviços vinculados a este produto'
-                                    : ' (todos os atendimentos concluídos, pois o produto não está vinculado a serviços específicos)'}
-                                  → {cycleSummary.currentAppointments} atend.
-                                </li>
+                                {!isBulkProduct && (
+                                  <li>
+                                    <strong>Atendimentos:</strong> agendamentos concluídos no período de uso
+                                    {cycleSummary.hasServiceLinks
+                                      ? ' que utilizam algum dos serviços vinculados a este produto'
+                                      : ' (todos os atendimentos concluídos, pois o produto não está vinculado a serviços específicos)'}
+                                    → {cycleSummary.currentAppointments} atend.
+                                  </li>
+                                )}
+                                {isBulkProduct && (
+                                  <li>
+                                    <strong>Modo a granel:</strong> este produto não tem vínculo com serviços, pacotes nem recipiente.
+                                    Ao encerrar o ciclo, será descontada a <strong>quantidade total comprada</strong> do estoque.
+                                  </li>
+                                )}
                                 <li>
                                   <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
                                 </li>

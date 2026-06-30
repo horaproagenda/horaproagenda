@@ -38,6 +38,7 @@ import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { supabase } from '@/integrations/supabase/client';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
+import { parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { SignaturePad } from './SignaturePad';
 
 const formatBRL = (n: number | string | null | undefined): string => {

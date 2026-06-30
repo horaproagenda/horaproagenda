@@ -5055,6 +5055,10 @@ export type Database = {
         Args: { _package_id: string }
         Returns: Json
       }
+      ensure_admin_professional: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       expire_old_temp_passwords: { Args: never; Returns: undefined }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
       force_delete_professional: {

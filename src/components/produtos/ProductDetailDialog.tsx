@@ -1136,8 +1136,8 @@ export function ProductDetailDialog({
                               <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
                                 <li>
                                   <strong>Dias:</strong> diferença entre hoje e a data de início do uso
-                                  {product.started_using_at && (
-                                    <> ({format(parseISO(product.started_using_at + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
+                                  {cycleSummary.effectiveCycleStart && (
+                                    <> ({format(parseISO(cycleSummary.effectiveCycleStart + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
                                   )}.
                                 </li>
                                 {!isBulkProduct && (

@@ -42,17 +42,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
+import {
+  AGENDA_COLOR_PALETTE,
+  DEFAULT_AGENDA_COLOR,
+  pickNextAvailableColor,
+  getAgendaColorLabel,
+} from '@/lib/agendaColors';
 
-const AGENDA_COLORS = [
-  { value: '#3B82F6', label: 'Azul' },
-  { value: '#10B981', label: 'Verde' },
-  { value: '#F59E0B', label: 'Amarelo' },
-  { value: '#EF4444', label: 'Vermelho' },
-  { value: '#8B5CF6', label: 'Roxo' },
-  { value: '#EC4899', label: 'Rosa' },
-  { value: '#06B6D4', label: 'Ciano' },
-  { value: '#F97316', label: 'Laranja' },
-];
+const AGENDA_COLORS = AGENDA_COLOR_PALETTE;
+
 
 const APP_ROLES = [
   { value: 'admin', label: 'Administrador' },
@@ -198,7 +196,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       whatsapp_from_number: '',
       specialties: '',
       bio: '',
-      agenda_color: '#3B82F6',
+      agenda_color: DEFAULT_AGENDA_COLOR,
       app_role: 'professional',
       is_commission_based: false,
       commission_type: 'percentage',
@@ -216,13 +214,28 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
   const permissions = form.watch('permissions');
+  const currentColor = form.watch('agenda_color');
+
+  // Cores já usadas por outros profissionais (excluindo o que está sendo editado).
+  const takenColors = professionals
+    .filter((p) => p.id !== editingId)
+    .map((p) => (p.agenda_color || '').toLowerCase())
+    .filter(Boolean);
+  const takenColorSet = new Set(takenColors);
+
 
   const onSubmit = async (data: ProfessionalFormData) => {
     if (!isAdmin) {
       toast.error('Apenas administradores podem cadastrar ou editar profissionais.');
       return;
     }
+    // Garante cor única na agenda por profissional.
+    if (data.agenda_color && takenColorSet.has(data.agenda_color.toLowerCase())) {
+      toast.error('Esta cor já está sendo usada por outro profissional. Escolha uma cor diferente.');
+      return;
+    }
     setIsLoading(true);
+
     try {
       const specialtiesArray = data.specialties
         ? data.specialties.split(',').map(s => s.trim()).filter(Boolean)
@@ -404,9 +417,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
                 </div>
                 {isAdmin && (
-                  <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
+                  <Button
+                    onClick={() => {
+                      const nextColor = pickNextAvailableColor(
+                        professionals.map((p) => p.agenda_color),
+                      );
+                      form.setValue('agenda_color', nextColor);
+                      setShowForm(true);
+                    }}
+                    className="gap-2 btn-vibrant shrink-0"
+                  >
                     <Plus className="h-4 w-4" />
                     Novo Profissional
+
                   </Button>
                 )}
               </div>
@@ -655,25 +678,39 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                     style={{ backgroundColor: field.value }}
                                   />
                                   <span className="text-xs">
-                                    {AGENDA_COLORS.find(c => c.value === field.value)?.label}
+                                    {getAgendaColorLabel(field.value)}
                                   </span>
                                 </div>
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            {AGENDA_COLORS.map(color => (
-                              <SelectItem key={color.value} value={color.value}>
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className="w-3 h-3 rounded"
-                                    style={{ backgroundColor: color.value }}
-                                  />
-                                  <span className="text-xs">{color.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
+                          <SelectContent className="max-h-72">
+                            {AGENDA_COLORS.map(color => {
+                              const taken = takenColorSet.has(color.value.toLowerCase())
+                                && color.value.toLowerCase() !== (field.value || '').toLowerCase();
+                              return (
+                                <SelectItem
+                                  key={color.value}
+                                  value={color.value}
+                                  disabled={taken}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded"
+                                      style={{ backgroundColor: color.value }}
+                                    />
+                                    <span className="text-xs">{color.label}</span>
+                                    {taken && (
+                                      <span className="text-[10px] text-muted-foreground ml-auto">
+                                        em uso
+                                      </span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
+
                         </Select>
                         <FormMessage className="text-xs" />
                       </FormItem>

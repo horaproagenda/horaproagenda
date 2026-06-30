@@ -10,16 +10,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { toast } from 'sonner';
 import { Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  AGENDA_COLOR_PALETTE,
+  DEFAULT_AGENDA_COLOR,
+  pickNextAvailableColor,
+  getAgendaColorLabel,
+} from '@/lib/agendaColors';
 
 interface Props {
   open: boolean;
 }
 
-// Cores sugeridas para identificação na agenda
-const AGENDA_COLORS = [
-  '#7C3AED', '#2563EB', '#0EA5E9', '#10B981',
-  '#F59E0B', '#EF4444', '#EC4899', '#6366F1',
-];
 
 function formatCpfMask(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -49,16 +50,18 @@ export function OnboardingWizard({ open }: Props) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [takenColors, setTakenColors] = useState<string[]>([]);
 
   // Campos pré-preenchidos a partir do cadastro
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [birthdate, setBirthdate] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [agendaColor, setAgendaColor] = useState(AGENDA_COLORS[0]);
+  const [agendaColor, setAgendaColor] = useState<string>(DEFAULT_AGENDA_COLOR);
   const [specialty, setSpecialty] = useState('');
   const [isCommission, setIsCommission] = useState(false);
   const [commissionPct, setCommissionPct] = useState<string>('');
+
 
   useEffect(() => {
     if (!open || !user) return;
@@ -66,27 +69,42 @@ export function OnboardingWizard({ open }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
-          .from('professionals')
-          .select('id, name, cpf, birthdate, phone, agenda_color, specialties, is_commission_based, commission_percentage')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const [{ data }, { data: allProfs }] = await Promise.all([
+          supabase
+            .from('professionals')
+            .select('id, name, cpf, birthdate, phone, agenda_color, specialties, is_commission_based, commission_percentage')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+          supabase.from('professionals').select('id, agenda_color'),
+        ]);
         if (cancelled) return;
 
         const fallbackName = profile?.full_name || user.email?.split('@')[0] || '';
         const fallbackPhone = profile?.phone || '';
 
-        setProfessionalId((data as any)?.id ?? null);
+        const meId = (data as any)?.id ?? null;
+        const otherColors = (allProfs || [])
+          .filter((p: any) => p.id !== meId)
+          .map((p: any) => (p.agenda_color || '').toLowerCase())
+          .filter(Boolean);
+        setTakenColors(otherColors);
+
+        const existingColor = (data as any)?.agenda_color as string | null;
+        const initialColor =
+          existingColor || pickNextAvailableColor(otherColors);
+
+        setProfessionalId(meId);
         setName(((data as any)?.name as string) || fallbackName);
         setCpf(formatCpfMask(((data as any)?.cpf as string) || ''));
         setBirthdate(((data as any)?.birthdate as string) || '');
         setWhatsapp(formatPhoneMask(((data as any)?.phone as string) || fallbackPhone));
-        setAgendaColor(((data as any)?.agenda_color as string) || AGENDA_COLORS[0]);
+        setAgendaColor(initialColor);
         const specs = ((data as any)?.specialties as string[]) || [];
         setSpecialty(specs[0] || '');
         setIsCommission(Boolean((data as any)?.is_commission_based));
         const pct = (data as any)?.commission_percentage;
         setCommissionPct(pct != null ? String(pct) : '');
+
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -111,7 +129,12 @@ export function OnboardingWizard({ open }: Props) {
       toast.error('Informe o nome do profissional.');
       return;
     }
+    if (takenColors.includes((agendaColor || '').toLowerCase())) {
+      toast.error('Esta cor já está em uso por outro profissional. Escolha outra.');
+      return;
+    }
     setSaving(true);
+
     try {
       const cpfDigits = cpf.replace(/\D/g, '') || null;
       const phoneDigits = whatsapp.replace(/\D/g, '') || null;
@@ -220,28 +243,42 @@ export function OnboardingWizard({ open }: Props) {
 
             <div>
               <Label>Cor na agenda</Label>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Cada profissional tem uma cor única. Cores em uso ficam indisponíveis.
+              </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                {AGENDA_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setAgendaColor(c)}
-                    className={`h-8 w-8 rounded-full border-2 transition ${
-                      agendaColor === c ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: c }}
-                    aria-label={`Cor ${c}`}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={agendaColor}
-                  onChange={(e) => setAgendaColor(e.target.value)}
-                  className="h-8 w-8 cursor-pointer rounded border bg-transparent p-0"
-                  aria-label="Cor personalizada"
-                />
+                {AGENDA_COLOR_PALETTE.map((c) => {
+                  const isTaken =
+                    takenColors.includes(c.value.toLowerCase()) &&
+                    c.value.toLowerCase() !== agendaColor.toLowerCase();
+                  const isSelected = agendaColor.toLowerCase() === c.value.toLowerCase();
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      disabled={isTaken}
+                      onClick={() => setAgendaColor(c.value)}
+                      title={isTaken ? `${c.label} (em uso)` : c.label}
+                      className={`relative h-8 w-8 rounded-full border-2 transition ${
+                        isSelected ? 'border-foreground scale-110' : 'border-transparent'
+                      } ${isTaken ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
+                      style={{ backgroundColor: c.value }}
+                      aria-label={`${c.label}${isTaken ? ' (em uso)' : ''}`}
+                    >
+                      {isTaken && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                          ✕
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Selecionada: <strong>{getAgendaColorLabel(agendaColor)}</strong>
+              </p>
             </div>
+
 
             <div>
               <Label htmlFor="ob-spec">Especialidade</Label>

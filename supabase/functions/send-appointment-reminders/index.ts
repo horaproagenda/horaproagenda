@@ -647,7 +647,7 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').maybeSingle();
-          if (existing) continue;
+          if (existing && !force) continue;
 
           const message = maybeAppendButtons(
             renderTemplate(tpl.message, buildVars(apt, start)),

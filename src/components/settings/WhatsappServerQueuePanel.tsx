@@ -198,6 +198,19 @@ export function WhatsappServerQueuePanel({
         </Alert>
       )}
 
+      {invalidPhones.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          <AlertTitle className="text-xs">Clientes sem telefone válido para WhatsApp</AlertTitle>
+          <AlertDescription className="text-[11px] space-y-1">
+            <p>Estes clientes não receberam a mensagem porque o telefone cadastrado é inválido. Corrija o cadastro e clique em "Reenviar confirmações":</p>
+            <ul className="list-disc pl-4">
+              {invalidPhones.slice(0, 20).map((p, i) => (<li key={i}>{p}</li>))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {total === 0 && (
         <p className="text-[10px] text-muted-foreground">
           Nenhuma mensagem na fila — todas as mensagens automáticas estão sendo enviadas em dia.

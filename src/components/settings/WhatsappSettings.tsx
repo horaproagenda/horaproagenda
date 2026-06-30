@@ -418,7 +418,7 @@ export function WhatsappSettings() {
         )}
 
         <WhatsappQueueStatusPanel />
-        <WhatsappServerQueuePanel autoDrainKey={connected ? selectedCreds?.last_connected_at ?? null : null} />
+        
 
         {/* Botões de ação */}
         <div className="flex flex-wrap gap-2">

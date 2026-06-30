@@ -12,7 +12,7 @@ import {
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
-import { WhatsappServerQueuePanel } from './WhatsappServerQueuePanel';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 

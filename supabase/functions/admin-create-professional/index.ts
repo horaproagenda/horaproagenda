@@ -84,15 +84,50 @@ serve(async (req) => {
     }
     if (!userId) throw new Error('Falha ao obter user id.');
 
-    // 2. Insert/update professional record
+    // 2. Resolve caller's tenant (account_owner_id) for tenant isolation
+    const { data: callerProfileForTenant } = await supaAdmin
+      .from('profiles').select('account_owner_id').eq('id', callerId).maybeSingle();
+    const callerOwnerId = (callerProfileForTenant as any)?.account_owner_id ?? callerId;
+
+    // Whitelist of safe columns that an admin may set on a professional record.
+    // NEVER spread `payload` directly — it would allow account_owner_id /
+    // whatsapp_release_approved / permissions / app_role injection.
+    const p = (payload || {}) as Record<string, any>;
+    const safePayload: Record<string, any> = {};
+    const ALLOWED_FIELDS = [
+      'name', 'phone', 'cpf', 'birthdate', 'specialty', 'specialties',
+      'bio', 'color', 'avatar_url', 'commission_percentage',
+      'receives_commission', 'active', 'notes',
+    ] as const;
+    for (const k of ALLOWED_FIELDS) {
+      if (p[k] !== undefined) safePayload[k] = p[k];
+    }
+
+    // 3. Insert/update professional record (tenant-locked)
     let profId = professional_id ?? null;
     if (!profId) {
-      const insertPayload = { ...(payload || {}), email, name: payload?.name || full_name || email, user_id: userId };
+      const insertPayload = {
+        ...safePayload,
+        email,
+        name: safePayload.name || full_name || email,
+        user_id: userId,
+        account_owner_id: callerOwnerId, // always from server context
+      };
       const { data: inserted, error: insErr } = await supaAdmin.from('professionals').insert(insertPayload).select('id').single();
       if (insErr) throw insErr;
       profId = inserted.id;
     } else {
-      const { error: updErr } = await supaAdmin.from('professionals').update({ user_id: userId, email, ...(payload || {}) }).eq('id', profId);
+      // Tenant check: target professional must belong to caller's account
+      const { data: targetProf } = await supaAdmin
+        .from('professionals').select('account_owner_id').eq('id', profId).maybeSingle();
+      if (!targetProf || (targetProf as any).account_owner_id !== callerOwnerId) {
+        return new Response(JSON.stringify({ success: false, error: 'Profissional não pertence à sua conta.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { error: updErr } = await supaAdmin
+        .from('professionals')
+        .update({ ...safePayload, user_id: userId, email })
+        .eq('id', profId);
       if (updErr) throw updErr;
     }
 

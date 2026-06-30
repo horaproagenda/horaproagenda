@@ -567,7 +567,10 @@ serve(async (req) => {
             const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
             if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
           }
-          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          // Catchup: só recupera disparos perdidos por até 1h. Antes disso
+          // permitir hoursDiff <= h fazia o template de 5 dias (120h) disparar
+          // junto com o de 24h quando o agendamento era criado tarde.
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
@@ -586,12 +589,24 @@ serve(async (req) => {
             dedup_key: `reminder-${apt.id}-${h}`,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
+          // Lock atômico via UNIQUE(appointment_id, hours_before, provider):
+          // insere o log ANTES de enviar para que duas execuções paralelas do
+          // cron não disparem o mesmo lembrete duas vezes.
+          const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+            appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'pending',
+          });
+          if (lockErr) { summary.skipped++; continue; }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
-            await supabase.from('appointment_reminder_log').insert({
-              appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
-            });
+            await supabase.from('appointment_reminder_log')
+              .update({ status: 'sent' })
+              .eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp');
             summary.sent++; summary.byType.reminder++;
+          } else {
+            // Envio falhou e foi enfileirado em whatsapp_send_queue; remove o lock
+            // para que o processQueue possa tentar de novo sem violar o UNIQUE.
+            await supabase.from('appointment_reminder_log')
+              .delete().eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').eq('status', 'pending');
           }
           }
         }

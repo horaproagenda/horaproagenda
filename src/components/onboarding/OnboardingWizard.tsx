@@ -139,7 +139,7 @@ export function OnboardingWizard({ open }: Props) {
     try {
       const cpfDigits = cpf.replace(/\D/g, '') || null;
       const phoneDigits = whatsapp.replace(/\D/g, '') || null;
-      const pctNum = commissionPct.trim() ? Number(commissionPct.replace(',', '.')) : null;
+      const pctNum = commissionPct.trim() ? parseBrazilianCurrency(commissionPct) : null;
 
       const payload: any = {
         name: name.trim(),

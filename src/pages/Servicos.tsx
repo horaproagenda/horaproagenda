@@ -329,6 +329,15 @@ const Servicos: React.FC = () => {
     setPackageFilters({ category: null, professional: null, room: null, sessions: null, status: null, sort: 'name-asc' });
   };
 
+  const equipmentNameById = useMemo(
+    () => new Map((equipmentList || []).map((e: any) => [e.id, e.name] as const)),
+    [equipmentList],
+  );
+  const resolveEquipmentNames = (ids: unknown): string =>
+    Array.isArray(ids) && ids.length
+      ? (ids as string[]).map((id) => equipmentNameById.get(id) || id).join(', ')
+      : '-';
+
   const exportServicesCSV = () => {
     const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
     const profById = new Map(professionals.map(p => [p.id, p] as const));
@@ -340,7 +349,7 @@ const Servicos: React.FC = () => {
         s.category,
         s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
         s.room?.name || '-',
-        Array.isArray(s.equipment) && s.equipment.length ? s.equipment.join(', ') : '-',
+        resolveEquipmentNames(s.equipment),
         Number(s.price).toFixed(2),
         s.duration,
         s.return_days || '-',

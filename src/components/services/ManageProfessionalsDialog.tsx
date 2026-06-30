@@ -214,6 +214,15 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
   const permissions = form.watch('permissions');
+  const currentColor = form.watch('agenda_color');
+
+  // Cores já usadas por outros profissionais (excluindo o que está sendo editado).
+  const takenColors = professionals
+    .filter((p) => p.id !== editingId)
+    .map((p) => (p.agenda_color || '').toLowerCase())
+    .filter(Boolean);
+  const takenColorSet = new Set(takenColors);
+
 
   const onSubmit = async (data: ProfessionalFormData) => {
     if (!isAdmin) {

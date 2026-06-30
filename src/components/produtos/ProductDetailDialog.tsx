@@ -303,12 +303,23 @@ export function ProductDetailDialog({
 
     const activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at) || null;
 
+    // Fonte de verdade do ciclo ativo: a compra ativa. O campo
+    // product.started_using_at é apenas um cache denormalizado que pode ficar
+    // defasado quando uma nova compra é promovida fora do fluxo principal
+    // (edição manual de compra, encerramento + nova compra etc.). Sempre que
+    // houver uma compra ativa, usamos a data dela.
+    const effectiveCycleStart =
+      activePurchase?.started_using_at
+      || (product.finished_at ? null : product.started_using_at)
+      || null;
+    const isCycleActive = !!activePurchase || (!!product.started_using_at && !product.finished_at);
+
     let currentDays = 0;
     let currentAppointments = 0;
     let currentConsumed = 0;
     let initialQty = 0;
-    if (product.started_using_at && !product.finished_at) {
-      const start = parseISO(product.started_using_at + 'T00:00:00');
+    if (effectiveCycleStart && isCycleActive) {
+      const start = parseISO(effectiveCycleStart + 'T00:00:00');
       currentDays = Math.max(0, differenceInDays(new Date(), start));
       currentAppointments = appointments.filter(a => {
         if (a.status !== 'completed') return false;
@@ -322,7 +333,7 @@ export function ProductDetailDialog({
     const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
 
     let runningOutAlert: string | null = null;
-    if (lastCycle && product.started_using_at && !product.finished_at) {
+    if (lastCycle && isCycleActive && effectiveCycleStart) {
       const pctDays = currentDays / lastCycle.days;
       const pctApts = lastCycle.appointments > 0 ? currentAppointments / lastCycle.appointments : 0;
       const pctQty = lastCycle.qtyConsumed > 0 ? currentConsumed / lastCycle.qtyConsumed : 0;
@@ -333,14 +344,11 @@ export function ProductDetailDialog({
     }
 
     // Detecta necessidade de iniciar manualmente: produto tem estoque, mas não está com ciclo ativo.
-    // Dispara quando:
-    //  (a) nunca foi iniciado (!started_using_at) e há histórico/compras, OU
-    //  (b) o ciclo anterior foi encerrado (started_using_at + finished_at preenchidos)
-    //      e ainda há estoque — sinal de que o recipiente foi reabastecido.
     const stock = Number(product.current_stock || 0);
     const cycleClosedWithStock =
-      !!product.started_using_at && !!product.finished_at && stock > 0;
+      !activePurchase && !!product.started_using_at && !!product.finished_at && stock > 0;
     const neverStartedWithHistory =
+      !activePurchase &&
       !product.started_using_at &&
       stock > 0 &&
       (finishedCycles.length > 0 || productPurchases.length > 0);
@@ -376,6 +384,8 @@ export function ProductDetailDialog({
       needsManualStart,
       inconsistencies,
       hasServiceLinks,
+      effectiveCycleStart,
+      isCycleActive,
     };
   }, [product, productPurchases, appointments, productServiceLinks]);
 
@@ -1090,7 +1100,7 @@ export function ProductDetailDialog({
                             <div className="rounded-lg border bg-muted/30 p-2.5">
                               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
                               <div className="text-xs tabular-nums mt-1">
-                                {product.started_using_at && !product.finished_at
+                                {cycleSummary.isCycleActive
                                   ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
                                   : 'Não iniciado'}
                               </div>
@@ -1126,8 +1136,8 @@ export function ProductDetailDialog({
                               <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
                                 <li>
                                   <strong>Dias:</strong> diferença entre hoje e a data de início do uso
-                                  {product.started_using_at && (
-                                    <> ({format(parseISO(product.started_using_at + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
+                                  {cycleSummary.effectiveCycleStart && (
+                                    <> ({format(parseISO(cycleSummary.effectiveCycleStart + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
                                   )}.
                                 </li>
                                 {!isBulkProduct && (
@@ -1172,7 +1182,7 @@ export function ProductDetailDialog({
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
-                            value={product.started_using_at || ''}
+                            value={cycleSummary?.effectiveCycleStart || ''}
                             onCommit={(v) => {
                               if (!v) {
                                 onUpdateProduct({
@@ -1187,8 +1197,8 @@ export function ProductDetailDialog({
                           />
                         ) : (
                           <span className="text-sm">
-                            {product.started_using_at
-                              ? format(parseISO(product.started_using_at), 'dd/MM/yyyy', { locale: ptBR })
+                            {cycleSummary?.effectiveCycleStart
+                              ? format(parseISO(cycleSummary.effectiveCycleStart), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Não iniciado'}
                           </span>
                         )}
@@ -1441,6 +1451,27 @@ export function ProductDetailDialog({
                                         supplier: purchaseEditForm.supplier || null,
                                         started_using_at: purchaseEditForm.started_using_at || null,
                                         finished_at: purchaseEditForm.finished_at || null,
+                                      });
+                                    }
+                                    // Mantém product.started_using_at / finished_at em sincronia
+                                    // com a compra ativa, evitando que o cache do produto fique
+                                    // defasado (ex.: alerta "ciclo anterior" continuar mostrando
+                                    // a data antiga após promover uma nova compra).
+                                    const startedAt = purchaseEditForm.started_using_at || null;
+                                    const finishedAt = purchaseEditForm.finished_at || null;
+                                    if (startedAt && !finishedAt) {
+                                      await onUpdateProduct({
+                                        id: product!.id,
+                                        started_using_at: startedAt,
+                                        finished_at: null as any,
+                                      });
+                                    } else if (
+                                      finishedAt &&
+                                      product?.started_using_at === purchase.started_using_at
+                                    ) {
+                                      await onUpdateProduct({
+                                        id: product!.id,
+                                        finished_at: finishedAt,
                                       });
                                     }
                                     setEditingPurchaseId(null);

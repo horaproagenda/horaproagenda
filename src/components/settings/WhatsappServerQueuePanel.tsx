@@ -31,6 +31,8 @@ export function WhatsappServerQueuePanel({
   const [counts, setCounts] = useState<Counts>({ pending: 0, failed: 0, oldestPendingAt: null });
   const [loading, setLoading] = useState(false);
   const [draining, setDraining] = useState(false);
+  const [forcing, setForcing] = useState(false);
+  const [invalidPhones, setInvalidPhones] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -79,6 +81,33 @@ export function WhatsappServerQueuePanel({
     }
   }, [refresh]);
 
+  /**
+   * Reprocessa TODAS as confirmações/lembretes da janela atual ignorando o log
+   * de envios anteriores. Útil quando algum cliente (ex.: Isadora) não recebeu
+   * a mensagem por instância desconectada, número inválido temporário ou
+   * janela silenciosa que já passou.
+   */
+  const forceResend = useCallback(async () => {
+    setForcing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-appointment-reminders', {
+        body: { drain: true, catchup: true, force: true },
+      });
+      if (error) throw error;
+      const s = (data as any)?.summary || {};
+      const invalids: string[] = Array.isArray(s.invalidPhones) ? s.invalidPhones : [];
+      setInvalidPhones(invalids);
+      toast.success(
+        `Reenvio concluído: ${s.sent ?? 0} enviadas · ${s.queued ?? 0} na fila · ${s.skippedInvalidPhone ?? 0} com telefone inválido.`,
+      );
+      void refresh();
+    } catch (e: any) {
+      toast.error('Não foi possível reenviar confirmações: ' + (e?.message || 'erro'));
+    } finally {
+      setForcing(false);
+    }
+  }, [refresh]);
+
   // Bootstrap + realtime
   useEffect(() => {
     void refresh();
@@ -114,17 +143,31 @@ export function WhatsappServerQueuePanel({
           <Mailbox className="h-3.5 w-3.5" />
           Fila do servidor (lembretes, confirmações, cobranças)
         </div>
-        <Button
-          size="sm"
-          variant={stuck ? 'default' : 'ghost'}
-          onClick={() => drain(false)}
-          disabled={draining}
-          className="h-7 px-2 text-[11px]"
-        >
-          {draining ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCw className="h-3 w-3 mr-1" />}
-          Forçar envio agora
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={forceResend}
+            disabled={forcing || draining}
+            className="h-7 px-2 text-[11px]"
+            title="Reenvia confirmações e lembretes da janela atual ignorando o log de envios anteriores"
+          >
+            {forcing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCw className="h-3 w-3 mr-1" />}
+            Reenviar confirmações
+          </Button>
+          <Button
+            size="sm"
+            variant={stuck ? 'default' : 'ghost'}
+            onClick={() => drain(false)}
+            disabled={draining}
+            className="h-7 px-2 text-[11px]"
+          >
+            {draining ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCw className="h-3 w-3 mr-1" />}
+            Forçar envio agora
+          </Button>
+        </div>
       </div>
+
 
       <div className="flex flex-wrap gap-1.5">
         <Badge variant="outline" className="text-[10px]">

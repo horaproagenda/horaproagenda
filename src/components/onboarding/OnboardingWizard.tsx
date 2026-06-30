@@ -10,16 +10,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { toast } from 'sonner';
 import { Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  AGENDA_COLOR_PALETTE,
+  DEFAULT_AGENDA_COLOR,
+  pickNextAvailableColor,
+  getAgendaColorLabel,
+} from '@/lib/agendaColors';
 
 interface Props {
   open: boolean;
 }
 
-// Cores sugeridas para identificação na agenda
-const AGENDA_COLORS = [
-  '#7C3AED', '#2563EB', '#0EA5E9', '#10B981',
-  '#F59E0B', '#EF4444', '#EC4899', '#6366F1',
-];
 
 function formatCpfMask(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);

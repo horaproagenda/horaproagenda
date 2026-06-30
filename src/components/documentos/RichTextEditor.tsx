@@ -16,7 +16,7 @@ import {
   Minus,
   Trash2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, parseBrazilianCurrency } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
@@ -102,13 +102,7 @@ const formatCurrency = (n: number): string =>
 const parseCellNumber = (raw: string): number => {
   if (!raw) return 0;
   // Accept "R$ 1.234,56", "1.234,56", "1234.56", "-3"
-  const cleaned = raw
-    .replace(/R\$\s?/gi, '')
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : 0;
+  return parseBrazilianCurrency(raw);
 };
 
 const evaluateFormula = (formula: string, table: HTMLTableElement): number | string => {

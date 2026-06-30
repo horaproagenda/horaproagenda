@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { parseBrazilianCurrency } from '@/lib/utils';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -204,7 +205,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         professional_id: professionalId || null,
         notes: singleNotes,
       });
-      const amount = parseFloat(singleAmount.replace(',', '.')) || 0;
+      const amount = parseBrazilianCurrency(singleAmount);
       if (amount > 0) {
         await createFinancialEntry({
           amount,
@@ -251,7 +252,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       return;
     }
     const remainingSessions = Math.max(0, total - filledSessions.length);
-    const totalPrice = parseFloat(pkgTotalPrice.replace(',', '.')) || 0;
+    const totalPrice = parseBrazilianCurrency(pkgTotalPrice);
     // Nome do pacote é derivado automaticamente do serviço selecionado
     const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
 
@@ -323,7 +324,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pa.id);
 
         // Per-session financial (optional)
-        const amt = parseFloat((row.amount_paid || '').replace(',', '.')) || 0;
+        const amt = parseBrazilianCurrency(row.amount_paid);
         if (amt > 0) {
           await createFinancialEntry({
             amount: amt,
@@ -359,7 +360,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
       // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
-      const anyPerSession = filledSessions.some((r) => parseFloat((r.amount_paid || '').replace(',', '.')) > 0);
+      const anyPerSession = filledSessions.some((r) => parseBrazilianCurrency(r.amount_paid) > 0);
       if (totalPrice > 0 && !anyPerSession) {
         await createFinancialEntry({
           amount: totalPrice,
@@ -461,7 +462,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             notes: cNotes >= 0 ? cols[cNotes] : '',
           });
 
-          const amt = cAmt >= 0 ? parseFloat((cols[cAmt] || '').replace('.', '').replace(',', '.')) : 0;
+          const amt = cAmt >= 0 ? parseBrazilianCurrency(cols[cAmt]) : 0;
           const payDate = cPay >= 0 ? parseBrDate(cols[cPay] || '') || dateIso : dateIso;
           if (amt > 0) {
             await createFinancialEntry({

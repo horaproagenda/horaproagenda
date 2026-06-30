@@ -15,6 +15,8 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
 import { useContactChangeVerification, type ContactChangeType } from '@/hooks/useContactChangeVerification';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ESTABLISHMENT_TYPES } from '@/lib/establishmentType';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -44,6 +46,8 @@ const Configuracoes = () => {
   const [clinicPhone, setClinicPhone] = useState('');
   const [clinicEmail, setClinicEmail] = useState('');
   const [address, setAddress] = useState<AddressFields>(emptyAddress);
+  const [businessType, setBusinessType] = useState<string>('clinica');
+  const [businessTypeLabel, setBusinessTypeLabel] = useState('');
 
   // E-mail / celular de login (com verificação)
   const [accountEmail, setAccountEmail] = useState('');
@@ -73,6 +77,8 @@ const Configuracoes = () => {
         city: s.clinic_city || '',
         state: s.clinic_state || '',
       });
+      setBusinessType(s.business_type || 'clinica');
+      setBusinessTypeLabel(s.business_type_label || '');
     }
   }, [settings, profile?.full_name]);
 
@@ -95,6 +101,8 @@ const Configuracoes = () => {
       clinic_neighborhood: address.neighborhood,
       clinic_city: address.city,
       clinic_state: address.state,
+      business_type: businessType,
+      business_type_label: businessType === 'outro' ? businessTypeLabel : null,
     } as any);
 
     // Atualiza nome do profissional no perfil

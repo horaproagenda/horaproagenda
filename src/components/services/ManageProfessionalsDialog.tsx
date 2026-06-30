@@ -417,9 +417,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
                 </div>
                 {isAdmin && (
-                  <Button onClick={() => setShowForm(true)} className="gap-2 btn-vibrant shrink-0">
+                  <Button
+                    onClick={() => {
+                      const nextColor = pickNextAvailableColor(
+                        professionals.map((p) => p.agenda_color),
+                      );
+                      form.setValue('agenda_color', nextColor);
+                      setShowForm(true);
+                    }}
+                    className="gap-2 btn-vibrant shrink-0"
+                  >
                     <Plus className="h-4 w-4" />
                     Novo Profissional
+
                   </Button>
                 )}
               </div>

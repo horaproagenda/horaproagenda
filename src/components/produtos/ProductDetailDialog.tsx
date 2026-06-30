@@ -1214,7 +1214,9 @@ export function ProductDetailDialog({
                           </span>
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                          Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.
+                          {isBulkProduct
+                            ? 'Encerra este ciclo de consumo. A quantidade total da compra será baixada do estoque.'
+                            : 'Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.'}
                         </p>
                       </div>
 

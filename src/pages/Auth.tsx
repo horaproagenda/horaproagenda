@@ -17,6 +17,8 @@ import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ESTABLISHMENT_TYPES } from '@/lib/establishmentType';
 
 const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
 const TERMS_VERSION = 'v1';
@@ -152,6 +154,8 @@ function AuthInner() {
   // Dados da clínica
   const [signupClinicName, setSignupClinicName] = useState('');
   const [signupClinicPhone, setSignupClinicPhone] = useState('');
+  const [signupBusinessType, setSignupBusinessType] = useState<string>('clinica');
+  const [signupBusinessTypeLabel, setSignupBusinessTypeLabel] = useState('');
   // Endereço estruturado
   const [signupAddress, setSignupAddress] = useState<AddressFields>(emptyAddress);
   const [acceptedTerms, setAcceptedTerms] = useState<boolean>(() => {
@@ -226,6 +230,9 @@ function AuthInner() {
     if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
     if (!signupClinicName.trim()) return 'Informe o nome da clínica.';
     if (!signupClinicPhone.trim()) return 'Informe o telefone da clínica.';
+    if (!signupBusinessType) return 'Selecione a área de atuação.';
+    if (signupBusinessType === 'outro' && !signupBusinessTypeLabel.trim())
+      return 'Informe qual é a sua área de atuação.';
     const cepDigits = signupAddress.cep.replace(/\D/g, '');
     if (cepDigits.length !== 8) return 'CEP inválido (8 dígitos).';
     if (!signupAddress.number.trim()) return 'Informe o número do endereço.';

@@ -1182,7 +1182,7 @@ export function ProductDetailDialog({
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
-                            value={product.started_using_at || ''}
+                            value={cycleSummary?.effectiveCycleStart || ''}
                             onCommit={(v) => {
                               if (!v) {
                                 onUpdateProduct({
@@ -1197,8 +1197,8 @@ export function ProductDetailDialog({
                           />
                         ) : (
                           <span className="text-sm">
-                            {product.started_using_at
-                              ? format(parseISO(product.started_using_at), 'dd/MM/yyyy', { locale: ptBR })
+                            {cycleSummary?.effectiveCycleStart
+                              ? format(parseISO(cycleSummary.effectiveCycleStart), 'dd/MM/yyyy', { locale: ptBR })
                               : 'Não iniciado'}
                           </span>
                         )}

@@ -129,7 +129,12 @@ export function OnboardingWizard({ open }: Props) {
       toast.error('Informe o nome do profissional.');
       return;
     }
+    if (takenColors.includes((agendaColor || '').toLowerCase())) {
+      toast.error('Esta cor já está em uso por outro profissional. Escolha outra.');
+      return;
+    }
     setSaving(true);
+
     try {
       const cpfDigits = cpf.replace(/\D/g, '') || null;
       const phoneDigits = whatsapp.replace(/\D/g, '') || null;

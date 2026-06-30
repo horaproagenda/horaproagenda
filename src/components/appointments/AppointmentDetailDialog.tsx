@@ -1502,9 +1502,7 @@ export function AppointmentDetailDialog({
               ) : (
                 <Sparkles className="h-5 w-5" style={{ color: dialogProfColor }} />
               )}
-              {isPackageAppointment 
-                ? packageData?.name || 'Sessão de Pacote'
-                : appointment.service?.name || 'Serviço'}
+              {isPackageAppointment ? resolvedPackageName : resolvedServiceName}
             </DialogTitle>
           </DialogHeader>
 

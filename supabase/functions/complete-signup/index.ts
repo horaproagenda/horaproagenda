@@ -418,7 +418,8 @@ serve(async (req) => {
         await supabaseAdmin.from("professionals").insert({
           name: fullName.trim(),
           email: normalizedEmail,
-          phone: clinicPhone?.trim() || phoneE164 || null,
+          phone: phoneE164 || clinicPhone?.trim() || null,
+          cpf: cpfDigits || null,
           is_active: true,
           user_id: userId,
           account_owner_id: userId,

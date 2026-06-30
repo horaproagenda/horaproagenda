@@ -770,15 +770,16 @@ export function useClientProfile(clientId: string) {
 
         const servicePrice = Number(a.service?.price || 0);
         const packagePrice = Number(pkg?.total_price || 0);
-        const totalPrice = packageId ? packagePrice : servicePrice;
+        const totalPrice = isLikelyPackageSession ? (packagePrice || amountPaidPreview(a)) : servicePrice;
         const amountPaid = Number(a.amount_paid || 0);
         const paymentMethodNames = (a.payment_methods || [])
           .map(m => getPaymentMethodName(m))
           .filter(Boolean)
           .join(', ');
-        const displayName = packageId
-          ? (pkg?.name || 'Pacote')
-          : (a.service?.name || 'Atendimento');
+        const displayName = isLikelyPackageSession
+          ? (pkg?.name || packageNameSnapshot || notesPackageMatch?.[1]?.trim() || 'Pacote')
+          : (a.service?.name || (a as any).service_name_snapshot || 'Atendimento');
+
 
         items.push({
           id: packageId ? `pkg-${packageId}` : `apt-${a.id}`,

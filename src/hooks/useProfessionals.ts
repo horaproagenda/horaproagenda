@@ -20,8 +20,10 @@ export function useProfessionals() {
       // Admin (owner) profissional sempre aparece primeiro na lista
       const list = (data as Professional[]) ?? [];
       list.sort((a, b) => {
-        const aIsAdmin = a.user_id && a.user_id === a.account_owner_id ? 0 : 1;
-        const bIsAdmin = b.user_id && b.user_id === b.account_owner_id ? 0 : 1;
+        const ar = a as unknown as { user_id?: string | null; account_owner_id?: string | null };
+        const br = b as unknown as { user_id?: string | null; account_owner_id?: string | null };
+        const aIsAdmin = ar.user_id && ar.user_id === ar.account_owner_id ? 0 : 1;
+        const bIsAdmin = br.user_id && br.user_id === br.account_owner_id ? 0 : 1;
         if (aIsAdmin !== bIsAdmin) return aIsAdmin - bIsAdmin;
         return (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR');
       });

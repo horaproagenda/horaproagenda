@@ -1,7 +1,7 @@
 // __APP_BUILD_TIME__ is injected at build time by Vite (define).
 declare const __APP_BUILD_TIME__: string;
 
-export const APP_VERSION = 'v1.0.3';
+export const APP_VERSION = 'v1.0.4';
 
 export const APP_BUILD_TIME: string =
   typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : new Date().toISOString();

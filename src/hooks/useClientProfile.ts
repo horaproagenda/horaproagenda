@@ -770,7 +770,7 @@ export function useClientProfile(clientId: string) {
 
         const servicePrice = Number(a.service?.price || 0);
         const packagePrice = Number(pkg?.total_price || 0);
-        const totalPrice = isLikelyPackageSession ? (packagePrice || amountPaidPreview(a)) : servicePrice;
+        const totalPrice = isLikelyPackageSession ? (packagePrice || Number(a.amount_paid || 0)) : servicePrice;
         const amountPaid = Number(a.amount_paid || 0);
         const paymentMethodNames = (a.payment_methods || [])
           .map(m => getPaymentMethodName(m))

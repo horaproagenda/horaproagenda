@@ -384,6 +384,8 @@ export function ProductDetailDialog({
       needsManualStart,
       inconsistencies,
       hasServiceLinks,
+      effectiveCycleStart,
+      isCycleActive,
     };
   }, [product, productPurchases, appointments, productServiceLinks]);
 

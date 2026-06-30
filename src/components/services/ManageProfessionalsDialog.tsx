@@ -678,25 +678,39 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                     style={{ backgroundColor: field.value }}
                                   />
                                   <span className="text-xs">
-                                    {AGENDA_COLORS.find(c => c.value === field.value)?.label}
+                                    {getAgendaColorLabel(field.value)}
                                   </span>
                                 </div>
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            {AGENDA_COLORS.map(color => (
-                              <SelectItem key={color.value} value={color.value}>
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className="w-3 h-3 rounded"
-                                    style={{ backgroundColor: color.value }}
-                                  />
-                                  <span className="text-xs">{color.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
+                          <SelectContent className="max-h-72">
+                            {AGENDA_COLORS.map(color => {
+                              const taken = takenColorSet.has(color.value.toLowerCase())
+                                && color.value.toLowerCase() !== (field.value || '').toLowerCase();
+                              return (
+                                <SelectItem
+                                  key={color.value}
+                                  value={color.value}
+                                  disabled={taken}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded"
+                                      style={{ backgroundColor: color.value }}
+                                    />
+                                    <span className="text-xs">{color.label}</span>
+                                    {taken && (
+                                      <span className="text-[10px] text-muted-foreground ml-auto">
+                                        em uso
+                                      </span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
+
                         </Select>
                         <FormMessage className="text-xs" />
                       </FormItem>

@@ -24,16 +24,22 @@ export function MinhasPreferenciasSettings() {
   const [workSat, setWorkSat] = useState<boolean | null>(null);
   const [workSun, setWorkSun] = useState<boolean | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
+  // Inicializa UMA VEZ ao carregar prefs. Refetches subsequentes (realtime/
+  // cross-device) não devem sobrescrever edições em andamento do usuário —
+  // após salvar, a UI já reflete os novos valores; após "Voltar ao padrão",
+  // re-sincroniza explicitamente.
   useEffect(() => {
-    if (prefs) {
+    if (prefs && !initialized) {
       setOpening(prefs.opening_time?.substring(0, 5) ?? '');
       setClosing(prefs.closing_time?.substring(0, 5) ?? '');
       setSlot(prefs.slot_interval ?? '');
       setWorkSat(prefs.work_saturdays);
       setWorkSun(prefs.work_sundays);
+      setInitialized(true);
     }
-  }, [prefs]);
+  }, [prefs, initialized]);
 
   // Detecta alterações pendentes (campos editados que ainda não foram salvos)
   const isDirty = (() => {

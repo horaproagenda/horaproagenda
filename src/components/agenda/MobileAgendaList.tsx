@@ -496,7 +496,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
 
       <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1 pl-1">
         <div className={cn('h-1.5 w-1.5 rounded-full', dot)} />
-        <PaymentIcon className={cn('h-3 w-3', payment.className)} />
+        {!packageData && <PaymentIcon className={cn('h-3 w-3', payment.className)} />}
       </div>
     </div>
   );

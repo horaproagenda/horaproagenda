@@ -244,20 +244,35 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         {/* Footer */}
         <div className="mt-2 pt-2 border-t border-border/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span 
-              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-medium transition-colors duration-200"
-              style={{ backgroundColor: softHexColor, color: hexColor }}
-            >
-              {appointment.service?.category}
-            </span>
-            <div className={cn('flex items-center gap-0.5', paymentStatus.className)}>
-              <PaymentIcon className="h-3 w-3" />
-              <span className="text-[9px] font-medium">{paymentStatus.label}</span>
-            </div>
+            {isPackageAppointment ? (
+              <span
+                className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-medium"
+                style={{ backgroundColor: softHexColor, color: hexColor }}
+              >
+                Pacote
+              </span>
+            ) : (
+              <>
+                {appointment.service?.category && (
+                  <span
+                    className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-medium transition-colors duration-200"
+                    style={{ backgroundColor: softHexColor, color: hexColor }}
+                  >
+                    {appointment.service.category}
+                  </span>
+                )}
+                <div className={cn('flex items-center gap-0.5', paymentStatus.className)}>
+                  <PaymentIcon className="h-3 w-3" />
+                  <span className="text-[9px] font-medium">{paymentStatus.label}</span>
+                </div>
+              </>
+            )}
           </div>
-          <span className="text-xs font-medium text-foreground/70">
-            R$ {appointment.service?.price.toFixed(2)}
-          </span>
+          {!isPackageAppointment && typeof appointment.service?.price === 'number' && (
+            <span className="text-xs font-medium text-foreground/70">
+              R$ {appointment.service.price.toFixed(2)}
+            </span>
+          )}
         </div>
       </div>
 

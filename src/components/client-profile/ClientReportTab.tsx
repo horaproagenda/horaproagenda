@@ -572,10 +572,8 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                     const primaryLabel = isPackage
                       ? (packageName || serviceName || 'Pacote (registro removido)')
                       : (serviceName || 'Atendimento');
-                    // Secondary line: service name when primary is a package, else nothing
-                    const secondaryLabel = isPackage && packageName && serviceName && serviceName !== packageName
-                      ? `Aplicação: ${serviceName}`
-                      : null;
+                    // Secondary line: indicates it is a package entry
+                    const secondaryLabel = isPackage ? 'Pacote' : null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
                     const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));

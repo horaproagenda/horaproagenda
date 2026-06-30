@@ -4887,6 +4887,10 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      audit_package_reschedule: {
+        Args: { p_appointment_id: string; p_new_start?: string }
+        Returns: Json
+      }
       audit_package_session_integrity: {
         Args: never
         Returns: {

@@ -238,28 +238,42 @@ export function OnboardingWizard({ open }: Props) {
 
             <div>
               <Label>Cor na agenda</Label>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Cada profissional tem uma cor única. Cores em uso ficam indisponíveis.
+              </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                {AGENDA_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setAgendaColor(c)}
-                    className={`h-8 w-8 rounded-full border-2 transition ${
-                      agendaColor === c ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: c }}
-                    aria-label={`Cor ${c}`}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={agendaColor}
-                  onChange={(e) => setAgendaColor(e.target.value)}
-                  className="h-8 w-8 cursor-pointer rounded border bg-transparent p-0"
-                  aria-label="Cor personalizada"
-                />
+                {AGENDA_COLOR_PALETTE.map((c) => {
+                  const isTaken =
+                    takenColors.includes(c.value.toLowerCase()) &&
+                    c.value.toLowerCase() !== agendaColor.toLowerCase();
+                  const isSelected = agendaColor.toLowerCase() === c.value.toLowerCase();
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      disabled={isTaken}
+                      onClick={() => setAgendaColor(c.value)}
+                      title={isTaken ? `${c.label} (em uso)` : c.label}
+                      className={`relative h-8 w-8 rounded-full border-2 transition ${
+                        isSelected ? 'border-foreground scale-110' : 'border-transparent'
+                      } ${isTaken ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
+                      style={{ backgroundColor: c.value }}
+                      aria-label={`${c.label}${isTaken ? ' (em uso)' : ''}`}
+                    >
+                      {isTaken && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                          ✕
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Selecionada: <strong>{getAgendaColorLabel(agendaColor)}</strong>
+              </p>
             </div>
+
 
             <div>
               <Label htmlFor="ob-spec">Especialidade</Label>

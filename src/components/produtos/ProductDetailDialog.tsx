@@ -206,6 +206,18 @@ export function ProductDetailDialog({
     return templateProducts.filter(tp => tp.product_id === product.id);
   }, [product, templateProducts]);
 
+  // Produto "a granel": sem vínculo a serviços/pacotes E sem nenhum vínculo com recipiente.
+  // Nesse caso o ciclo refere-se à quantidade total comprada, não a um recipiente.
+  const isBulkProduct = useMemo(() => {
+    const hasServiceLink = productServiceLinks.length > 0;
+    const hasTemplateLink = productTemplateLinks.length > 0;
+    const hasContainerLink =
+      productServiceLinks.some(sp => sp.tracking_method === 'estimated' && Number(sp.container_amount || 0) > 0) ||
+      productTemplateLinks.some((tp: any) => tp.tracking_method === 'estimated' && Number(tp.container_amount || 0) > 0);
+    return !hasServiceLink && !hasTemplateLink && !hasContainerLink;
+  }, [productServiceLinks, productTemplateLinks]);
+
+
   // Get consumption report for this product
   const productConsumption = useMemo(() => {
     if (!product) return null;

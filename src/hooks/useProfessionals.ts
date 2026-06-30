@@ -15,9 +15,17 @@ export function useProfessionals() {
         .select('*')
         .eq('account_owner_id', accountOwnerId)
         .order('name', { ascending: true });
-      
+
       if (error) throw error;
-      return data as Professional[];
+      // Admin (owner) profissional sempre aparece primeiro na lista
+      const list = (data as Professional[]) ?? [];
+      list.sort((a, b) => {
+        const aIsAdmin = a.user_id && a.user_id === a.account_owner_id ? 0 : 1;
+        const bIsAdmin = b.user_id && b.user_id === b.account_owner_id ? 0 : 1;
+        if (aIsAdmin !== bIsAdmin) return aIsAdmin - bIsAdmin;
+        return (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR');
+      });
+      return list;
     },
     enabled: !!accountOwnerId,
   });

@@ -18,6 +18,7 @@ import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 import { mapHeaders } from '@/lib/importMapping';
+import { parseBrazilianCurrency } from '@/lib/utils';
 
 interface ParsedService {
   name: string;

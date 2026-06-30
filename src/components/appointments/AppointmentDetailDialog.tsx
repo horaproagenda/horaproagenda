@@ -791,6 +791,8 @@ export function AppointmentDetailDialog({
       // Para agendamentos vinculados a pacote, usa a RPC segura que mantém
       // o mesmo package_appointment_id (evita duplicar sessões / criar 11ª aplicação).
       if (appointment.package_appointment) {
+        const proceed = await runPackageRescheduleAudit(newStart.toISOString());
+        if (!proceed) return;
         const { error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
           p_appointment_id: appointment.id,
           p_new_start: newStart.toISOString(),

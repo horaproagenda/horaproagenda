@@ -373,6 +373,8 @@ function AuthInner() {
         clinicNeighborhood: signupAddress.neighborhood.trim(),
         clinicCity: signupAddress.city.trim(),
         clinicState: signupAddress.state.trim().toUpperCase(),
+        businessType: signupBusinessType,
+        businessTypeLabel: signupBusinessType === 'outro' ? signupBusinessTypeLabel.trim() : undefined,
         code,
       });
 
@@ -774,6 +776,32 @@ function AuthInner() {
                       <div className="space-y-2">
                         <Label htmlFor="signup-clinic-name">Nome da clínica *</Label>
                         <Input id="signup-clinic-name" type="text" placeholder="Ex: Studio Bella" value={signupClinicName} onChange={(e) => setSignupClinicName(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-business-type">Área de atuação *</Label>
+                        <Select value={signupBusinessType} onValueChange={setSignupBusinessType}>
+                          <SelectTrigger id="signup-business-type">
+                            <SelectValue placeholder="Selecione a área de atuação" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ESTABLISHMENT_TYPES.map((t) => (
+                              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Usado para o app se referir corretamente ao seu negócio (clínica, salão, consultório...).
+                        </p>
+                        {signupBusinessType === 'outro' && (
+                          <Input
+                            id="signup-business-type-label"
+                            type="text"
+                            className="mt-2"
+                            placeholder="Informe sua área (ex: tatuagem, acupuntura...)"
+                            value={signupBusinessTypeLabel}
+                            onChange={(e) => setSignupBusinessTypeLabel(e.target.value)}
+                          />
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="signup-clinic-phone">Telefone da clínica *</Label>

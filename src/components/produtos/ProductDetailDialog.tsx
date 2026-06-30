@@ -1453,6 +1453,27 @@ export function ProductDetailDialog({
                                         finished_at: purchaseEditForm.finished_at || null,
                                       });
                                     }
+                                    // Mantém product.started_using_at / finished_at em sincronia
+                                    // com a compra ativa, evitando que o cache do produto fique
+                                    // defasado (ex.: alerta "ciclo anterior" continuar mostrando
+                                    // a data antiga após promover uma nova compra).
+                                    const startedAt = purchaseEditForm.started_using_at || null;
+                                    const finishedAt = purchaseEditForm.finished_at || null;
+                                    if (startedAt && !finishedAt) {
+                                      await onUpdateProduct({
+                                        id: product!.id,
+                                        started_using_at: startedAt,
+                                        finished_at: null as any,
+                                      });
+                                    } else if (
+                                      finishedAt &&
+                                      product?.started_using_at === purchase.started_using_at
+                                    ) {
+                                      await onUpdateProduct({
+                                        id: product!.id,
+                                        finished_at: finishedAt,
+                                      });
+                                    }
                                     setEditingPurchaseId(null);
                                   }}
                                 >

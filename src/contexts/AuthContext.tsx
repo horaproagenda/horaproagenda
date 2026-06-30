@@ -24,6 +24,9 @@ type SignupMetadata = {
   clinicNeighborhood?: string;
   clinicCity?: string;
   clinicState?: string;
+  // Área de atuação / tipo de estabelecimento
+  businessType?: string;
+  businessTypeLabel?: string;
 };
 
 interface AuthContextType {

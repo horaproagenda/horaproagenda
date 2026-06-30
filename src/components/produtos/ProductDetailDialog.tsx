@@ -1185,7 +1185,9 @@ export function ProductDetailDialog({
                           </span>
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                          Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.
+                          {isBulkProduct
+                            ? 'Data em que esta compra começou a ser usada. O ciclo considera a quantidade total comprada.'
+                            : 'Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.'}
                         </p>
                       </div>
                       <div>

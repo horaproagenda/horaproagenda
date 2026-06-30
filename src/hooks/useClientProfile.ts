@@ -738,26 +738,48 @@ export function useClientProfile(clientId: string) {
         if ((a.amount_paid || 0) <= 0) continue;
 
         const pkg = a.package_appointment?.package;
-        const packageId = pkg?.id;
+        let packageId = pkg?.id as string | undefined;
 
-        if (packageId) {
-          if (seenPackageIds.has(packageId)) continue;
-          // Skip if there is already a sale registered for this package
-          if (appointmentSaleIds.has(packageId)) continue;
-          seenPackageIds.add(packageId);
+        // Robust package detection: even when the link was lost (e.g. the
+        // session was rescheduled and re-linked to another appointment),
+        // the snapshot and notes still identify it as a package session.
+        // Without this, the orphaned session shows up as a standalone
+        // service (e.g. "Axila R$50") in the payment history.
+        const packageNameSnapshot = (a as any).package_name_snapshot as string | null | undefined;
+        const notesPackageMatch = (a as any).notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
+        const isLikelyPackageSession = !!packageId || !!packageNameSnapshot || !!notesPackageMatch;
+
+        if (isLikelyPackageSession) {
+          // If we already registered a sale for any package of this client,
+          // the payment is represented there and we must not duplicate it.
+          if (salePackageIds.size > 0) continue;
+          // Fallback de-dupe key when there is no link nor a sale: prefer the
+          // snapshot/notes-derived name so multiple orphan sessions collapse.
+          const fallbackKey = packageNameSnapshot || notesPackageMatch?.[1]?.trim();
+          if (packageId) {
+            if (seenPackageIds.has(packageId)) continue;
+            if (appointmentSaleIds.has(packageId)) continue;
+            seenPackageIds.add(packageId);
+          } else if (fallbackKey) {
+            const key = `name:${fallbackKey.toLowerCase()}`;
+            if (seenPackageIds.has(key)) continue;
+            seenPackageIds.add(key);
+          }
         }
+
 
         const servicePrice = Number(a.service?.price || 0);
         const packagePrice = Number(pkg?.total_price || 0);
-        const totalPrice = packageId ? packagePrice : servicePrice;
+        const totalPrice = isLikelyPackageSession ? (packagePrice || Number(a.amount_paid || 0)) : servicePrice;
         const amountPaid = Number(a.amount_paid || 0);
         const paymentMethodNames = (a.payment_methods || [])
           .map(m => getPaymentMethodName(m))
           .filter(Boolean)
           .join(', ');
-        const displayName = packageId
-          ? (pkg?.name || 'Pacote')
-          : (a.service?.name || 'Atendimento');
+        const displayName = isLikelyPackageSession
+          ? (pkg?.name || packageNameSnapshot || notesPackageMatch?.[1]?.trim() || 'Pacote')
+          : (a.service?.name || (a as any).service_name_snapshot || 'Atendimento');
+
 
         items.push({
           id: packageId ? `pkg-${packageId}` : `apt-${a.id}`,

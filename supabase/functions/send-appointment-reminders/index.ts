@@ -304,8 +304,15 @@ async function processQueue(supabase: any, summary: any) {
       summary.retriedSent = (summary.retriedSent || 0) + 1;
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      // Erros de "WhatsApp não conectado" não devem consumir tentativas:
-      // assim que a conexão voltar, a fila precisa drenar normalmente.
+      // Libera o lock pending criado antes do envio para permitir nova tentativa.
+      if (row.appointment_id && row.provider) {
+        await supabase.from('appointment_reminder_log')
+          .delete()
+          .eq('appointment_id', row.appointment_id)
+          .eq('hours_before', row.hours_before ?? 0)
+          .eq('provider', row.provider)
+          .eq('status', 'pending');
+      }
       const isDisconnected = /n[ãa]o conectado|not connected|estado: desconhecido|qr code|disconnect/i.test(errMsg);
       const nextAttempts = isDisconnected ? (row.attempts ?? 0) : (row.attempts ?? 0) + 1;
       const isFinal = !isDisconnected && nextAttempts >= (row.max_attempts ?? 8);

@@ -2092,18 +2092,24 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingEndDate} onOpenChange={(o) => { if (!o) setPendingEndDate(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Registrar término do uso do recipiente</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isBulkProduct ? 'Registrar término do uso' : 'Registrar término do uso do recipiente'}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
                 Será encerrado o ciclo em{' '}
-                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>{' '}
-                com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.
+                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>
+                {isBulkProduct
+                  ? <> com base na <strong>quantidade total comprada</strong> deste produto.</>
+                  : <> com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.</>}
               </p>
               {endCyclePreview && product && (
                 <div className="rounded-md border bg-muted/30 p-2 text-xs space-y-1">
                   <div>Período: <strong>{endCyclePreview.days} dia(s)</strong></div>
-                  <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  {!endCyclePreview.isBulk && (
+                    <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  )}
                   <div>
                     Será descontado do estoque total:{' '}
                     <strong>
@@ -2120,7 +2126,7 @@ export function ProductDetailDialog({
                       com o estoque.
                     </div>
                   )}
-                  {!endCyclePreview.hasLinks && (
+                  {!endCyclePreview.hasLinks && !endCyclePreview.isBulk && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.
                     </div>

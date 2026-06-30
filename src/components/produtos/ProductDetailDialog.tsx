@@ -1192,7 +1192,7 @@ export function ProductDetailDialog({
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Término do uso do recipiente
+                          {isBulkProduct ? 'Término do uso do pacote' : 'Término do uso do recipiente'}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput

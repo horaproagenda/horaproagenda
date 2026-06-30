@@ -4887,6 +4887,18 @@ export type Database = {
         Args: { schema_name: string; table_name: string }
         Returns: string
       }
+      audit_package_session_integrity: {
+        Args: never
+        Returns: {
+          client_id: string
+          duplicate_sequences: number
+          existing_sessions: number
+          issue: string
+          package_id: string
+          package_name: string
+          total_sessions: number
+        }[]
+      }
       audit_payment_integrity: { Args: never; Returns: Json }
       audit_sale_flow_integrity: { Args: never; Returns: Json }
       authenticate_document_fill_link: {

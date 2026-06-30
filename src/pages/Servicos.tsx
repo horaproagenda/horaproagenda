@@ -29,6 +29,7 @@ import { useServices } from '@/hooks/useServices';
 import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -198,6 +199,7 @@ const Servicos: React.FC = () => {
   const { templates: packages, isLoading: packagesLoading, refetch: refetchPackages } = usePackageTemplates();
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
+  const { equipment: equipmentList } = useEquipment();
   const { clients } = useClients();
   const { appointments } = useAppointments();
 

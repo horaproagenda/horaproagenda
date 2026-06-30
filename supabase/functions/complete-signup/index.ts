@@ -30,6 +30,9 @@ interface CompleteSignupRequest {
   clinicNeighborhood?: string;
   clinicCity?: string;
   clinicState?: string;
+  // Área de atuação
+  businessType?: string;
+  businessTypeLabel?: string;
 }
 
 // CPF validator (matches src/lib/cpfValidator.ts)
@@ -111,6 +114,7 @@ serve(async (req) => {
       clinicName, clinicPhone, clinicEmail,
       clinicCep, clinicStreet, clinicNumber, clinicComplement,
       clinicNeighborhood, clinicCity, clinicState,
+      businessType, businessTypeLabel,
     } = requestBody;
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedCode = (code ?? "").toString().replace(/\D/g, "").trim();
@@ -386,6 +390,8 @@ serve(async (req) => {
         clinic_neighborhood: clinicNeighborhood?.trim() || null,
         clinic_city: clinicCity?.trim() || city?.trim() || null,
         clinic_state: (clinicState || state || "").toUpperCase() || null,
+        business_type: businessType?.trim() || null,
+        business_type_label: businessTypeLabel?.trim() || null,
         account_owner_id: userId,
         onboarding_completed_at: clinicName ? nowIso : null,
       };

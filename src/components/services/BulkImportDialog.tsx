@@ -135,7 +135,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
         data.push({
           name,
           category: cell(values, idx.category) || 'Outros',
-          price: parseFloat((cell(values, idx.price) || '0').replace(',', '.')) || 0,
+          price: parseBrazilianCurrency(cell(values, idx.price)),
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           description: cell(values, idx.description) || undefined,
           return_days: retorno ? parseInt(retorno) || undefined : undefined,
@@ -158,7 +158,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           name,
           description: cell(values, idx.description) || undefined,
           total_sessions: parseInt(cell(values, idx.total_sessions) || '10') || 10,
-          price: parseFloat((cell(values, idx.price) || '0').replace(',', '.')) || 0,
+          price: parseBrazilianCurrency(cell(values, idx.price)),
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           interval_days: parseInt(cell(values, idx.interval_days) || '7') || 7,
         } as ParsedPackageTemplate);

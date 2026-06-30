@@ -2750,7 +2750,7 @@ export function AppointmentDetailDialog({
         const perSession = totalSessions > 0 ? packageTotalPaid / totalSessions : 0;
         const consumedValue = refundDeductConsumed ? perSession * realized : 0;
         const baseRefundable = Math.max(0, packageTotalPaid - consumedValue);
-        const feeNum = parseFloat((refundFeeValue || '0').replace(',', '.')) || 0;
+        const feeNum = parseBrazilianCurrency(refundFeeValue);
         const feeAmount = refundFeeType === 'percent'
           ? Math.max(0, (baseRefundable * feeNum) / 100)
           : Math.max(0, Math.min(feeNum, baseRefundable));

@@ -273,24 +273,46 @@ async function processQueue(supabase: any, summary: any) {
     try {
       const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
       const body = await rebuildQueuedBodyIfNeeded(supabase, row);
+      // Lock atômico: tenta reservar o log antes de enviar para não duplicar
+      // com o caminho síncrono nem com outra execução paralela do cron.
+      if (row.appointment_id && row.provider) {
+        const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+          appointment_id: row.appointment_id,
+          hours_before: row.hours_before ?? 0,
+          provider: row.provider,
+          channel: 'whatsapp',
+          status: 'pending',
+        });
+        if (lockErr) {
+          await supabase.from('whatsapp_send_queue').update({
+            status: 'sent', last_error: 'duplicate (already logged)', updated_at: new Date().toISOString(),
+          }).eq('id', row.id);
+          continue;
+        }
+      }
       await ultramsgSendText({ to: row.to_phone, body }, creds);
       await supabase.from('whatsapp_send_queue').update({
         body, status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);
       if (row.appointment_id && row.provider) {
-        await supabase.from('appointment_reminder_log').insert({
-          appointment_id: row.appointment_id,
-          hours_before: row.hours_before ?? 0,
-          provider: row.provider,
-          channel: 'whatsapp',
-          status: 'sent',
-        });
+        await supabase.from('appointment_reminder_log')
+          .update({ status: 'sent' })
+          .eq('appointment_id', row.appointment_id)
+          .eq('hours_before', row.hours_before ?? 0)
+          .eq('provider', row.provider);
       }
       summary.retriedSent = (summary.retriedSent || 0) + 1;
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      // Erros de "WhatsApp não conectado" não devem consumir tentativas:
-      // assim que a conexão voltar, a fila precisa drenar normalmente.
+      // Libera o lock pending criado antes do envio para permitir nova tentativa.
+      if (row.appointment_id && row.provider) {
+        await supabase.from('appointment_reminder_log')
+          .delete()
+          .eq('appointment_id', row.appointment_id)
+          .eq('hours_before', row.hours_before ?? 0)
+          .eq('provider', row.provider)
+          .eq('status', 'pending');
+      }
       const isDisconnected = /n[ãa]o conectado|not connected|estado: desconhecido|qr code|disconnect/i.test(errMsg);
       const nextAttempts = isDisconnected ? (row.attempts ?? 0) : (row.attempts ?? 0) + 1;
       const isFinal = !isDisconnected && nextAttempts >= (row.max_attempts ?? 8);
@@ -567,7 +589,10 @@ serve(async (req) => {
             const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
             if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
           }
-          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          // Catchup: só recupera disparos perdidos por até 1h. Antes disso
+          // permitir hoursDiff <= h fazia o template de 5 dias (120h) disparar
+          // junto com o de 24h quando o agendamento era criado tarde.
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
@@ -586,12 +611,24 @@ serve(async (req) => {
             dedup_key: `reminder-${apt.id}-${h}`,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
+          // Lock atômico via UNIQUE(appointment_id, hours_before, provider):
+          // insere o log ANTES de enviar para que duas execuções paralelas do
+          // cron não disparem o mesmo lembrete duas vezes.
+          const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+            appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'pending',
+          });
+          if (lockErr) { summary.skipped++; continue; }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
-            await supabase.from('appointment_reminder_log').insert({
-              appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'sent',
-            });
+            await supabase.from('appointment_reminder_log')
+              .update({ status: 'sent' })
+              .eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp');
             summary.sent++; summary.byType.reminder++;
+          } else {
+            // Envio falhou e foi enfileirado em whatsapp_send_queue; remove o lock
+            // para que o processQueue possa tentar de novo sem violar o UNIQUE.
+            await supabase.from('appointment_reminder_log')
+              .delete().eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').eq('status', 'pending');
           }
           }
         }
@@ -641,7 +678,7 @@ serve(async (req) => {
             const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
             if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
           }
-          const catchupOk = catchup && hoursDiff > 0 && hoursDiff <= h;
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
@@ -660,12 +697,19 @@ serve(async (req) => {
             dedup_key: `confirmation-${apt.id}-${h}`,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
+          const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
+            appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'pending',
+          });
+          if (lockErr) { summary.skipped++; continue; }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
-            await supabase.from('appointment_reminder_log').insert({
-              appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'sent',
-            });
+            await supabase.from('appointment_reminder_log')
+              .update({ status: 'sent' })
+              .eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation');
             summary.sent++; summary.byType.confirmation++;
+          } else {
+            await supabase.from('appointment_reminder_log')
+              .delete().eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').eq('status', 'pending');
           }
           }
         }

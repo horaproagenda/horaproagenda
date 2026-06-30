@@ -2044,17 +2044,26 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingStartDate} onOpenChange={(o) => { if (!o) setPendingStartDate(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Registrar início do uso do recipiente</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isBulkProduct ? 'Registrar início do uso' : 'Registrar início do uso do recipiente'}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
                 Você está iniciando um <strong>novo ciclo</strong> em{' '}
                 <strong>{pendingStartDate ? format(parseISO(pendingStartDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>.
               </p>
-              <p>
-                Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
-                (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
-              </p>
+              {isBulkProduct ? (
+                <p>
+                  Será contabilizada a <strong>quantidade total comprada</strong> deste produto no ciclo,
+                  já que ele não tem vínculo com serviços, pacotes ou recipientes.
+                </p>
+              ) : (
+                <p>
+                  Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
+                  (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+                </p>
+              )}
               {product && (
                 <p className="text-xs text-muted-foreground">
                   Estoque total atual: {Number(product.current_stock || 0)}{' '}

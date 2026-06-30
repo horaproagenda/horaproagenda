@@ -666,12 +666,42 @@ export function AppointmentDetailDialog({
     }
   };
 
+  const runPackageRescheduleAudit = async (newStartIso: string): Promise<boolean> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('audit_package_reschedule', {
+        p_appointment_id: appointment.id,
+        p_new_start: newStartIso,
+      });
+      if (error) {
+        console.warn('[audit_package_reschedule] failed:', error);
+        return true; // do not block on audit failure
+      }
+      const result = data as { ok?: boolean; blocking?: boolean; warnings?: string[] } | null;
+      const warnings = Array.isArray(result?.warnings) ? result!.warnings : [];
+      if (warnings.length === 0) return true;
+      for (const w of warnings) toast.warning(w);
+      if (result?.blocking) {
+        const proceed = window.confirm(
+          'Divergência detectada no pacote. Reagendar pode alterar a quantidade total de aplicações. Deseja continuar mesmo assim?'
+        );
+        return proceed;
+      }
+      return true;
+    } catch (e) {
+      console.warn('[audit_package_reschedule] error:', e);
+      return true;
+    }
+  };
+
   const handleRescheduleAndDelete = async () => {
     if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
 
     const newStartTime = createDateTimeInTimeZone(new Date(`${rescheduleDate}T12:00:00`), rescheduleTime, settings?.timezone);
     const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEndTime = new Date(newStartTime.getTime() + duration);
+
+    const ok = await runPackageRescheduleAudit(newStartTime.toISOString());
+    if (!ok) return;
 
     try {
       // Pacote: usar RPC segura para preservar a mesma sessão (não duplicar).
@@ -761,6 +791,8 @@ export function AppointmentDetailDialog({
       // Para agendamentos vinculados a pacote, usa a RPC segura que mantém
       // o mesmo package_appointment_id (evita duplicar sessões / criar 11ª aplicação).
       if (appointment.package_appointment) {
+        const proceed = await runPackageRescheduleAudit(newStart.toISOString());
+        if (!proceed) return;
         const { error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
           p_appointment_id: appointment.id,
           p_new_start: newStart.toISOString(),

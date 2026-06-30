@@ -183,6 +183,30 @@ const Configuracoes = () => {
                     placeholder="Nome do estabelecimento"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Área de atuação</Label>
+                  <Select value={businessType} onValueChange={setBusinessType}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione a área" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESTABLISHMENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Define como o app se refere ao seu negócio (clínica, salão, consultório...).
+                  </p>
+                  {businessType === 'outro' && (
+                    <Input
+                      className="h-8 text-sm mt-2"
+                      placeholder="Informe sua área (ex: tatuagem, acupuntura...)"
+                      value={businessTypeLabel}
+                      onChange={(e) => setBusinessTypeLabel(e.target.value)}
+                    />
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Telefone da clínica</Label>

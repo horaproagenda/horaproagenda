@@ -206,6 +206,18 @@ export function ProductDetailDialog({
     return templateProducts.filter(tp => tp.product_id === product.id);
   }, [product, templateProducts]);
 
+  // Produto "a granel": sem vínculo a serviços/pacotes E sem nenhum vínculo com recipiente.
+  // Nesse caso o ciclo refere-se à quantidade total comprada, não a um recipiente.
+  const isBulkProduct = useMemo(() => {
+    const hasServiceLink = productServiceLinks.length > 0;
+    const hasTemplateLink = productTemplateLinks.length > 0;
+    const hasContainerLink =
+      productServiceLinks.some(sp => sp.tracking_method === 'estimated' && Number(sp.container_amount || 0) > 0) ||
+      productTemplateLinks.some((tp: any) => tp.tracking_method === 'estimated' && Number(tp.container_amount || 0) > 0);
+    return !hasServiceLink && !hasTemplateLink && !hasContainerLink;
+  }, [productServiceLinks, productTemplateLinks]);
+
+
   // Get consumption report for this product
   const productConsumption = useMemo(() => {
     if (!product) return null;
@@ -392,6 +404,17 @@ export function ProductDetailDialog({
       return t <= endDate;
     });
 
+    // Detecta se algum vínculo usa recipiente (modo estimated com container_amount)
+    const hasContainerLink = productServiceLinks.some(
+      sp => sp.tracking_method === 'estimated' && Number(sp.container_amount || 0) > 0,
+    ) || productTemplateLinks.some(
+      (tp: any) => tp.tracking_method === 'estimated' && Number(tp.container_amount || 0) > 0,
+    );
+
+    // Modo "produto a granel": sem vínculo com serviço/pacote E sem recipiente.
+    // Toda a quantidade da compra ativa (ou o estoque atual) é o consumo do ciclo.
+    const isBulk = !hasLinks && !hasContainerLink;
+
     // Quantidade que será deduzida do estoque total (mesma lógica do handler real)
     const containerDeductions = new Map<string, number>();
     let exactDeduction = 0;
@@ -418,8 +441,17 @@ export function ProductDetailDialog({
       }
     }
     const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
-    const totalDeduction = estimatedDeduction + exactDeduction;
     const stockBefore = Number(product.current_stock || 0);
+    let totalDeduction = estimatedDeduction + exactDeduction;
+
+    if (isBulk) {
+      // Produto sem vínculo e sem recipiente: consome a quantidade total da compra ativa
+      // (papel toalha, álcool a granel, etc.). Se não houver compra ativa registrada,
+      // usa o estoque atual como referência.
+      const bulkQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? stockBefore);
+      totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
+    }
+
     const remainingStock = Math.max(0, stockBefore - totalDeduction);
     return {
       days,
@@ -428,11 +460,13 @@ export function ProductDetailDialog({
       stockBefore,
       remainingStock,
       hasLinks,
+      hasContainerLink,
+      isBulk,
       activePurchase,
       cycleApts,
       usedCrossFamilyConversion,
     };
-  }, [product, pendingEndDate, productPurchases, productServiceLinks, appointments]);
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
   const runStartCycle = async (dateStr: string) => {
     if (!product) return;
@@ -1096,13 +1130,21 @@ export function ProductDetailDialog({
                                     <> ({format(parseISO(product.started_using_at + 'T00:00:00'), 'dd/MM/yyyy')}) → {cycleSummary.currentDays} dia(s)</>
                                   )}.
                                 </li>
-                                <li>
-                                  <strong>Atendimentos:</strong> agendamentos concluídos no período de uso
-                                  {cycleSummary.hasServiceLinks
-                                    ? ' que utilizam algum dos serviços vinculados a este produto'
-                                    : ' (todos os atendimentos concluídos, pois o produto não está vinculado a serviços específicos)'}
-                                  → {cycleSummary.currentAppointments} atend.
-                                </li>
+                                {!isBulkProduct && (
+                                  <li>
+                                    <strong>Atendimentos:</strong> agendamentos concluídos no período de uso
+                                    {cycleSummary.hasServiceLinks
+                                      ? ' que utilizam algum dos serviços vinculados a este produto'
+                                      : ' (todos os atendimentos concluídos, pois o produto não está vinculado a serviços específicos)'}
+                                    → {cycleSummary.currentAppointments} atend.
+                                  </li>
+                                )}
+                                {isBulkProduct && (
+                                  <li>
+                                    <strong>Modo a granel:</strong> este produto não tem vínculo com serviços, pacotes nem recipiente.
+                                    Ao encerrar o ciclo, será descontada a <strong>quantidade total comprada</strong> do estoque.
+                                  </li>
+                                )}
                                 <li>
                                   <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
                                 </li>
@@ -1126,7 +1168,7 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Início do uso do recipiente
+                          {isBulkProduct ? 'Início do uso do pacote' : 'Início do uso do recipiente'}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
@@ -1151,12 +1193,14 @@ export function ProductDetailDialog({
                           </span>
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                          Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.
+                          {isBulkProduct
+                            ? 'Data em que esta compra começou a ser usada. O ciclo considera a quantidade total comprada.'
+                            : 'Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.'}
                         </p>
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Término do uso do recipiente
+                          {isBulkProduct ? 'Término do uso do pacote' : 'Término do uso do recipiente'}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
@@ -1178,7 +1222,9 @@ export function ProductDetailDialog({
                           </span>
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                          Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.
+                          {isBulkProduct
+                            ? 'Encerra este ciclo de consumo. A quantidade total da compra será baixada do estoque.'
+                            : 'Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.'}
                         </p>
                       </div>
 
@@ -2006,17 +2052,26 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingStartDate} onOpenChange={(o) => { if (!o) setPendingStartDate(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Registrar início do uso do recipiente</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isBulkProduct ? 'Registrar início do uso' : 'Registrar início do uso do recipiente'}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
                 Você está iniciando um <strong>novo ciclo</strong> em{' '}
                 <strong>{pendingStartDate ? format(parseISO(pendingStartDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>.
               </p>
-              <p>
-                Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
-                (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
-              </p>
+              {isBulkProduct ? (
+                <p>
+                  Será contabilizada a <strong>quantidade total comprada</strong> deste produto no ciclo,
+                  já que ele não tem vínculo com serviços, pacotes ou recipientes.
+                </p>
+              ) : (
+                <p>
+                  Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
+                  (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+                </p>
+              )}
               {product && (
                 <p className="text-xs text-muted-foreground">
                   Estoque total atual: {Number(product.current_stock || 0)}{' '}
@@ -2045,18 +2100,24 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingEndDate} onOpenChange={(o) => { if (!o) setPendingEndDate(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Registrar término do uso do recipiente</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isBulkProduct ? 'Registrar término do uso' : 'Registrar término do uso do recipiente'}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
                 Será encerrado o ciclo em{' '}
-                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>{' '}
-                com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.
+                <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>
+                {isBulkProduct
+                  ? <> com base na <strong>quantidade total comprada</strong> deste produto.</>
+                  : <> com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.</>}
               </p>
               {endCyclePreview && product && (
                 <div className="rounded-md border bg-muted/30 p-2 text-xs space-y-1">
                   <div>Período: <strong>{endCyclePreview.days} dia(s)</strong></div>
-                  <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  {!endCyclePreview.isBulk && (
+                    <div>Atendimentos no período: <strong>{endCyclePreview.appointments}</strong></div>
+                  )}
                   <div>
                     Será descontado do estoque total:{' '}
                     <strong>
@@ -2073,7 +2134,7 @@ export function ProductDetailDialog({
                       com o estoque.
                     </div>
                   )}
-                  {!endCyclePreview.hasLinks && (
+                  {!endCyclePreview.hasLinks && !endCyclePreview.isBulk && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ Nenhum vínculo com serviços/pacotes — nada será deduzido. Cadastre os vínculos antes.
                     </div>

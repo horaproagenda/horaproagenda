@@ -199,7 +199,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           data.push({
             name: row.nome || row.name || '',
             category: row.categoria || row.category || 'Outros',
-            price: parseFloat(row.preco || row.price || '0') || 0,
+            price: parseBrazilianCurrency(row.preco || row.price),
             duration: parseInt(row.duracao || row.duration || '60') || 60,
             description: row.descricao || row.description || undefined,
           } as ParsedService);
@@ -216,7 +216,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
             name: row.nome || row.name || '',
             description: row.descricao || row.description || undefined,
             total_sessions: parseInt(row.sessoes || row.total_sessions || '10') || 10,
-            price: parseFloat(row.preco || row.price || '0') || 0,
+            price: parseBrazilianCurrency(row.preco || row.price),
             duration: parseInt(row.duracao || row.duration || '60') || 60,
             interval_days: parseInt(row.intervalo || row.interval_days || '7') || 7,
           } as ParsedPackageTemplate);

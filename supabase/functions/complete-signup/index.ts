@@ -393,7 +393,10 @@ serve(async (req) => {
         business_type: businessType?.trim() || null,
         business_type_label: businessTypeLabel?.trim() || null,
         account_owner_id: userId,
-        onboarding_completed_at: clinicName ? nowIso : null,
+        // Não marca onboarding como concluído aqui — o admin completa
+        // os dados do profissional (CPF, nascimento, cor, especialidade,
+        // comissão) no primeiro acesso pelo OnboardingWizard.
+        onboarding_completed_at: null,
       };
 
       if (existingBs?.id) {

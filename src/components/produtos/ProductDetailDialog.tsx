@@ -1100,7 +1100,7 @@ export function ProductDetailDialog({
                             <div className="rounded-lg border bg-muted/30 p-2.5">
                               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
                               <div className="text-xs tabular-nums mt-1">
-                                {product.started_using_at && !product.finished_at
+                                {cycleSummary.isCycleActive
                                   ? `${cycleSummary.currentDays}d · ${cycleSummary.currentAppointments} atend.`
                                   : 'Não iniciado'}
                               </div>

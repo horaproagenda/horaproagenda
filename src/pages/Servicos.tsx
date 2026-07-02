@@ -339,11 +339,10 @@ const Servicos: React.FC = () => {
       ? (ids as string[]).map((id) => equipmentNameById.get(id) || id).join(', ')
       : '-';
 
-  const exportServicesCSV = () => {
+  const buildServicesRows = () => {
     const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
     const profById = new Map(professionals.map(p => [p.id, p] as const));
-    exportToCSV({
-      filename: 'servicos',
+    return {
       headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Duração (min)', 'Retorno (dias)', 'Status'],
       rows: onlyServices.map(s => [
         s.name,
@@ -355,17 +354,23 @@ const Servicos: React.FC = () => {
         s.duration,
         s.return_days || '-',
         s.is_active ? 'Ativo' : 'Inativo',
-      ]),
-      successMessage: 'Serviços exportados com sucesso!',
-    });
+      ] as (string | number)[]),
+    };
+  };
+  const exportServicesCSV = () => {
+    const p = buildServicesRows();
+    exportToCSV({ filename: 'servicos', ...p, successMessage: 'Serviços exportados!' });
+  };
+  const exportServicesPDF = () => {
+    const p = buildServicesRows();
+    exportTableToPdf({ filename: 'servicos', title: 'Serviços', subtitle: `${p.rows.length} serviço(s)`, orientation: 'landscape', ...p });
   };
 
 
-  const exportKitServicesCSV = () => {
+  const buildKitsRows = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);
     const serviceById = new Map(services.map(s => [s.id, s] as const));
-    exportToCSV({
-      filename: 'kits-de-servicos',
+    return {
       headers: ['Nome', 'Categoria', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Status'],
       rows: onlyKits.map(s => {
         const comps: { service_id: string; interval_days: number; price: number }[] =
@@ -387,18 +392,24 @@ const Servicos: React.FC = () => {
           comps.length,
           detail,
           s.is_active ? 'Ativo' : 'Inativo',
-        ];
+        ] as (string | number)[];
       }),
-      successMessage: 'Kits de serviços exportados com sucesso!',
-    });
+    };
+  };
+  const exportKitServicesCSV = () => {
+    const p = buildKitsRows();
+    exportToCSV({ filename: 'kits-de-servicos', ...p, successMessage: 'Kits exportados!' });
+  };
+  const exportKitServicesPDF = () => {
+    const p = buildKitsRows();
+    exportTableToPdf({ filename: 'kits-de-servicos', title: 'Kits de serviços', subtitle: `${p.rows.length} kit(s)`, orientation: 'landscape', ...p });
   };
 
 
-  const exportStandardPackagesCSV = () => {
+  const buildStandardPackagesRows = () => {
     const onlyStandard = filteredPackages.filter(p => p.package_type !== 'sequential');
     const profById = new Map(professionals.map(p => [p.id, p] as const));
-    exportToCSV({
-      filename: 'pacotes-comuns',
+    return {
       headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Status'],
       rows: onlyStandard.map(p => [
         p.name,
@@ -411,16 +422,22 @@ const Servicos: React.FC = () => {
         p.duration || 60,
         p.interval_days || 7,
         p.is_active ? 'Ativo' : 'Inativo',
-      ]),
-      successMessage: 'Pacotes comuns exportados com sucesso!',
-    });
+      ] as (string | number)[]),
+    };
+  };
+  const exportStandardPackagesCSV = () => {
+    const p = buildStandardPackagesRows();
+    exportToCSV({ filename: 'pacotes-comuns', ...p, successMessage: 'Pacotes comuns exportados!' });
+  };
+  const exportStandardPackagesPDF = () => {
+    const p = buildStandardPackagesRows();
+    exportTableToPdf({ filename: 'pacotes-comuns', title: 'Pacotes comuns', subtitle: `${p.rows.length} pacote(s)`, orientation: 'landscape', ...p });
   };
 
-  const exportSequentialPackagesCSV = () => {
+  const buildSequentialPackagesRows = () => {
     const onlySeq = filteredPackages.filter(p => p.package_type === 'sequential');
     const profById = new Map(professionals.map(p => [p.id, p] as const));
-    exportToCSV({
-      filename: 'pacotes-sequenciais',
+    return {
       headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Status'],
       rows: onlySeq.map(p => [
         p.name,
@@ -433,10 +450,18 @@ const Servicos: React.FC = () => {
         p.duration || 60,
         p.interval_days || 7,
         p.is_active ? 'Ativo' : 'Inativo',
-      ]),
-      successMessage: 'Pacotes sequenciais exportados com sucesso!',
-    });
+      ] as (string | number)[]),
+    };
   };
+  const exportSequentialPackagesCSV = () => {
+    const p = buildSequentialPackagesRows();
+    exportToCSV({ filename: 'pacotes-sequenciais', ...p, successMessage: 'Pacotes sequenciais exportados!' });
+  };
+  const exportSequentialPackagesPDF = () => {
+    const p = buildSequentialPackagesRows();
+    exportTableToPdf({ filename: 'pacotes-sequenciais', title: 'Pacotes sequenciais', subtitle: `${p.rows.length} pacote(s)`, orientation: 'landscape', ...p });
+  };
+
 
 
   const renderPackageCards = (items: PackageTemplate[]) => (

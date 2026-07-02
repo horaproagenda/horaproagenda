@@ -39,6 +39,7 @@ import {
 } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { exportToCSV as exportRowsToCSV } from '@/lib/exportUtils';
+import { paymentMethodLabel } from '@/lib/paymentLabels';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -238,10 +239,13 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
   
   const getPaymentMethodName = (methodIdOrName: string): string => {
     if (!methodIdOrName || methodIdOrName === '-') return methodIdOrName;
+    // UUID → busca nome cadastrado; caso contrário, normaliza chaves cruas
+    // (`credit_card`, `pix`, `boleto`, …) para pt-BR.
     if (methodIdOrName.includes('-') && methodIdOrName.length > 30) {
-      return paymentMethodMap.get(methodIdOrName) || methodIdOrName;
+      const resolved = paymentMethodMap.get(methodIdOrName) || methodIdOrName;
+      return paymentMethodLabel(resolved);
     }
-    return methodIdOrName;
+    return paymentMethodLabel(methodIdOrName);
   };
 
   // Calculate summary for filtered month (or all if 'all' selected)

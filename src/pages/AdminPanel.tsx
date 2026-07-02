@@ -21,6 +21,8 @@ import { ManageProfessionalsDialog } from '@/components/services/ManageProfessio
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { AssinaturaSection } from '@/components/admin/AssinaturaSection';
 import { exportToCSV } from '@/lib/exportUtils';
+import { exportTableToPdf } from '@/lib/pdfExport';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   moduleLabels,
   labelField,
@@ -182,22 +184,34 @@ export default function AdminPanel() {
 
   const clearFilters = () => setFilters({ user: '', module: 'all', action: 'all', field: '', startDate: '', endDate: '' });
 
+  const buildLogsExport = () => ({
+    headers: ['Data/Hora', 'Profissional', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Resumo', 'Campos exibidos', 'Campos alterados'],
+    rows: filteredLogs.map(log => [
+      format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
+      resolveUserName(log),
+      log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '-',
+      moduleLabels[log.module] ?? log.module,
+      actionMap[log.action]?.label ?? log.action,
+      describeTarget(log),
+      summarizeLog(log),
+      (log.fields_viewed ?? []).map(labelField).join(', '),
+      (log.fields_changed ?? []).map(labelField).join(', '),
+    ] as (string | number)[]),
+  });
+
   const handleExport = () => {
-    exportToCSV({
+    const p = buildLogsExport();
+    exportToCSV({ filename: 'logs_de_acesso', ...p, successMessage: 'Logs exportados em CSV!' });
+  };
+
+  const handleExportPdf = () => {
+    const p = buildLogsExport();
+    exportTableToPdf({
       filename: 'logs_de_acesso',
-      headers: ['Data/Hora', 'Profissional', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Resumo', 'Campos exibidos', 'Campos alterados'],
-      rows: filteredLogs.map(log => [
-        format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
-        resolveUserName(log),
-        log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '-',
-        moduleLabels[log.module] ?? log.module,
-        actionMap[log.action]?.label ?? log.action,
-        describeTarget(log),
-        summarizeLog(log),
-        (log.fields_viewed ?? []).map(labelField).join(', '),
-        (log.fields_changed ?? []).map(labelField).join(', '),
-      ]),
-      successMessage: 'Logs exportados!',
+      title: 'Logs de acesso',
+      subtitle: `${p.rows.length} registro(s)`,
+      orientation: 'landscape',
+      ...p,
     });
   };
 
@@ -306,9 +320,21 @@ export default function AdminPanel() {
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => refetch()}>
                 <RefreshCw className="h-3.5 w-3.5" /> Atualizar
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleExport}>
-                <FileDown className="h-3.5 w-3.5" /> Exportar CSV
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <FileDown className="h-3.5 w-3.5" /> Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExport}>
+                    <FileDown className="h-3.5 w-3.5 mr-2" /> CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPdf}>
+                    <FileDown className="h-3.5 w-3.5 mr-2" /> PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {activeFiltersCount > 0 && (

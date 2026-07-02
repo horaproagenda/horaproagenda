@@ -93,6 +93,7 @@ import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';
+import { exportTableToPdf } from '@/lib/pdfExport';
 import { isProductExpired } from '@/lib/productExpiry';
 
 const PRODUCT_TYPES: { value: ProductType; label: string; icon: React.ReactNode }[] = [
@@ -383,18 +384,30 @@ export default function Produtos() {
   };
 
 
+  const buildExportPayload = () => ({
+    headers: ['Nome', 'Marca', 'Categoria', 'Tipo', 'Estoque', 'Unidade', 'Tipo Uso', 'Status', 'Atendimentos'],
+    rows: filteredProducts.map(p => [
+      p.name, p.brand || '-', p.category || '-', getTypeLabel(p.product_type),
+      p.current_stock, getUnitLabel(p.unit),
+      p.is_for_sale ? 'Venda' : 'Clínica',
+      p.is_active ? 'Ativo' : 'Inativo',
+      getProductAppointments(p.id),
+    ] as (string | number)[]),
+  });
+
   const handleExport = () => {
-    exportToCSV({
+    const payload = buildExportPayload();
+    exportToCSV({ filename: 'produtos', ...payload, successMessage: 'Produtos exportados em CSV!' });
+  };
+
+  const handleExportPdf = () => {
+    const payload = buildExportPayload();
+    exportTableToPdf({
       filename: 'produtos',
-      headers: ['Nome', 'Marca', 'Categoria', 'Tipo', 'Estoque', 'Unidade', 'Tipo Uso', 'Status', 'Atendimentos'],
-      rows: filteredProducts.map(p => [
-        p.name, p.brand || '-', p.category || '-', getTypeLabel(p.product_type),
-        p.current_stock, getUnitLabel(p.unit),
-        p.is_for_sale ? 'Venda' : 'Clínica',
-        p.is_active ? 'Ativo' : 'Inativo',
-        getProductAppointments(p.id),
-      ]),
-      successMessage: 'Produtos exportados com sucesso!'
+      title: 'Produtos',
+      subtitle: `${payload.rows.length} produto(s)`,
+      orientation: 'landscape',
+      ...payload,
     });
   };
 

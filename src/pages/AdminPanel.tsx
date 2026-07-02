@@ -320,9 +320,21 @@ export default function AdminPanel() {
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => refetch()}>
                 <RefreshCw className="h-3.5 w-3.5" /> Atualizar
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleExport}>
-                <FileDown className="h-3.5 w-3.5" /> Exportar CSV
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <FileDown className="h-3.5 w-3.5" /> Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExport}>
+                    <FileDown className="h-3.5 w-3.5 mr-2" /> CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPdf}>
+                    <FileDown className="h-3.5 w-3.5 mr-2" /> PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {activeFiltersCount > 0 && (

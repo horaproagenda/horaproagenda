@@ -583,11 +583,19 @@ const Servicos: React.FC = () => {
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem onClick={exportServicesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Serviços avulsos
+                      Serviços avulsos — CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportServicesPDF}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Serviços avulsos — PDF
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportKitServicesCSV}>
                       <Download className="h-3.5 w-3.5 mr-2" />
-                      Exportar Kits de serviços
+                      Kits de serviços — CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportKitServicesPDF}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Kits de serviços — PDF
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -137,11 +137,11 @@ serve(async (req) => {
       await supaAdmin.from('user_roles').insert({ user_id: userId, role: 'professional' });
     }
 
-    // 4. Save credentials record (temp password + force-change flag)
+    // 4. Save credentials record (force-change flag only — plaintext password never stored)
     await supaAdmin.from('professional_credentials').upsert({
       professional_id: profId,
       user_id: userId,
-      temp_password: store_temp_password ? password : null,
+      temp_password: null,
       must_change_password: !!require_password_change,
       set_at: new Date().toISOString(),
       set_by: callerId,

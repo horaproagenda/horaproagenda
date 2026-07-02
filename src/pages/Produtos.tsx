@@ -526,7 +526,8 @@ export default function Produtos() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={handleExport}><Download className="h-4 w-4 mr-2" />Exportar Produtos</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport}><Download className="h-4 w-4 mr-2" />Exportar CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><Download className="h-4 w-4 mr-2" />Exportar PDF</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

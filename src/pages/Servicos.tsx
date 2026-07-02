@@ -35,6 +35,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useInfiniteList } from '@/hooks/useInfiniteList';
 import { exportToCSV } from '@/lib/exportUtils';
+import { exportTableToPdf } from '@/lib/pdfExport';
 import { Service, PackageTemplate } from '@/types';
 import { Clock, DollarSign, Layers, Search } from 'lucide-react';
 import { getCategoryColor } from '@/lib/categoryColors';

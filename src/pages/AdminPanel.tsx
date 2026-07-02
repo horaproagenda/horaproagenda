@@ -21,6 +21,8 @@ import { ManageProfessionalsDialog } from '@/components/services/ManageProfessio
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { AssinaturaSection } from '@/components/admin/AssinaturaSection';
 import { exportToCSV } from '@/lib/exportUtils';
+import { exportTableToPdf } from '@/lib/pdfExport';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   moduleLabels,
   labelField,
@@ -182,22 +184,34 @@ export default function AdminPanel() {
 
   const clearFilters = () => setFilters({ user: '', module: 'all', action: 'all', field: '', startDate: '', endDate: '' });
 
+  const buildLogsExport = () => ({
+    headers: ['Data/Hora', 'Profissional', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Resumo', 'Campos exibidos', 'Campos alterados'],
+    rows: filteredLogs.map(log => [
+      format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
+      resolveUserName(log),
+      log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '-',
+      moduleLabels[log.module] ?? log.module,
+      actionMap[log.action]?.label ?? log.action,
+      describeTarget(log),
+      summarizeLog(log),
+      (log.fields_viewed ?? []).map(labelField).join(', '),
+      (log.fields_changed ?? []).map(labelField).join(', '),
+    ] as (string | number)[]),
+  });
+
   const handleExport = () => {
-    exportToCSV({
+    const p = buildLogsExport();
+    exportToCSV({ filename: 'logs_de_acesso', ...p, successMessage: 'Logs exportados em CSV!' });
+  };
+
+  const handleExportPdf = () => {
+    const p = buildLogsExport();
+    exportTableToPdf({
       filename: 'logs_de_acesso',
-      headers: ['Data/Hora', 'Profissional', 'Papel', 'Módulo', 'Ação', 'Alvo', 'Resumo', 'Campos exibidos', 'Campos alterados'],
-      rows: filteredLogs.map(log => [
-        format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
-        resolveUserName(log),
-        log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '-',
-        moduleLabels[log.module] ?? log.module,
-        actionMap[log.action]?.label ?? log.action,
-        describeTarget(log),
-        summarizeLog(log),
-        (log.fields_viewed ?? []).map(labelField).join(', '),
-        (log.fields_changed ?? []).map(labelField).join(', '),
-      ]),
-      successMessage: 'Logs exportados!',
+      title: 'Logs de acesso',
+      subtitle: `${p.rows.length} registro(s)`,
+      orientation: 'landscape',
+      ...p,
     });
   };
 

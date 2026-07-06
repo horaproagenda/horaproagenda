@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,6 +132,16 @@ const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','
 
 function AuthInner() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Preserva ?next=/caminho para retorno pós-login (fluxo OAuth MCP).
+  // Só aceita paths relativos same-origin — nunca redireciona para outra origem.
+  const nextParam = (() => {
+    const raw = searchParams.get('next');
+    if (!raw) return null;
+    if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+    return raw;
+  })();
+  const postLoginTarget = nextParam ?? '/agenda';
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2 } from 'lucide-react';
+import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +62,7 @@ const Configuracoes = () => {
   const { sendCode, verifyCode, sending, verifying } = useContactChangeVerification();
 
   const [clinicInitialized, setClinicInitialized] = useState(false);
+  const [isEditingClinic, setIsEditingClinic] = useState(false);
 
   // Inicializa UMA VEZ ao carregar as configurações. Refetches em background
   // (realtime, cross-device, invalidações de queries) não devem descartar
@@ -96,9 +97,6 @@ const Configuracoes = () => {
 
   const handleSaveClinic = async () => {
     try {
-      // Salva business_settings e AGUARDA a confirmação do servidor antes de
-      // tocar o profile, garantindo que o usuário só veja sucesso quando os
-      // dois lados realmente persistirem.
       await updateSettings.mutateAsync({
         clinic_name: clinicName,
         clinic_phone: clinicPhone,
@@ -122,12 +120,37 @@ const Configuracoes = () => {
           .eq('id', user.id);
         if (error) throw error;
       }
+
+      toast.success('Informações da clínica salvas com sucesso!');
+      setIsEditingClinic(false);
     } catch (err: any) {
-      // updateSettings já mostra toast de erro; aqui só capturamos a falha do profile.
       if (err?.message && !String(err.message).toLowerCase().includes('configurações')) {
         toast.error('Erro ao atualizar nome do profissional: ' + err.message);
       }
     }
+  };
+
+  const handleCancelEditClinic = () => {
+    // Restaura valores originais do settings
+    if (settings) {
+      const s = settings as any;
+      setProfessionalName(s.professional_name || profile?.full_name || '');
+      setClinicName(s.clinic_name || '');
+      setClinicPhone(s.clinic_phone || '');
+      setClinicEmail(s.clinic_email || '');
+      setAddress({
+        cep: s.clinic_cep || '',
+        street: s.clinic_street || '',
+        number: s.clinic_number || '',
+        complement: s.clinic_complement || '',
+        neighborhood: s.clinic_neighborhood || '',
+        city: s.clinic_city || '',
+        state: s.clinic_state || '',
+      });
+      setBusinessType(s.business_type || 'clinica');
+      setBusinessTypeLabel(s.business_type_label || '');
+    }
+    setIsEditingClinic(false);
   };
 
   const openChange = (type: ContactChangeType) => {

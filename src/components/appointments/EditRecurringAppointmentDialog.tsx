@@ -257,13 +257,21 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 px-6 pt-6 text-center">
-              Editar Agendamento
-              {isRecurringSeries && (
-                <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                  <Repeat className="h-3 w-3" />
-                  {seriesIndex} de {seriesCount}
-                </Badge>
+            <DialogTitle className="flex flex-col items-center justify-center gap-1 px-6 pt-6 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <span>Editar Agendamento</span>
+                {isRecurringSeries && (
+                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                    <Repeat className="h-3 w-3" />
+                    {seriesIndex} de {seriesCount}
+                  </Badge>
+                )}
+              </div>
+              {appointment?.client?.name && (
+                <div className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground">{appointment.client.name}</span>
+                </div>
               )}
             </DialogTitle>
             {isRecurringSeries && (
@@ -308,7 +316,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 <Input
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   disabled={isLockedByOther}
                 />
               </div>

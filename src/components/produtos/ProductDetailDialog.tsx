@@ -1246,7 +1246,7 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          {isBulkProduct ? 'Início do uso do pacote' : 'Início do uso do recipiente'}
+                          {isBulkProduct ? 'Início do uso do pacote' : containerTerms.startLabel}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput

@@ -448,9 +448,28 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
 
                       <div className="flex items-center gap-1 flex-wrap justify-start md:justify-end">
                         {isPackage && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
-                            {applicationLabel}
-                          </Badge>
+                          <>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
+                              {applicationLabel}
+                            </Badge>
+                            {(() => {
+                              const s = getPackageApplicationStatusLabel(appointment.status);
+                              if (!s) return null;
+                              const tone =
+                                s.tone === 'done'
+                                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'
+                                  : s.tone === 'missed'
+                                    ? 'bg-red-500/10 text-red-700 border-red-500/30'
+                                    : s.tone === 'cancelled'
+                                      ? 'bg-muted text-muted-foreground border-border'
+                                      : 'bg-amber-500/10 text-amber-700 border-amber-500/30';
+                              return (
+                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 ${tone}`}>
+                                  {s.label}
+                                </Badge>
+                              );
+                            })()}
+                          </>
                         )}
                         {!isPackage && recurringLabel && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">

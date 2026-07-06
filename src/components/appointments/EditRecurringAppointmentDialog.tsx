@@ -623,6 +623,21 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* WhatsApp Preview — sempre exibe prévia editável antes do envio */}
+      <WhatsappPreviewDialog
+        open={whatsappOpen}
+        onOpenChange={(o) => {
+          setWhatsappOpen(o);
+          if (!o) onOpenChange(false);
+        }}
+        phone={appointment?.client?.phone}
+        initialMessage={whatsappMessage}
+        onMessageChange={setWhatsappMessage}
+        title="Enviar aviso ao cliente"
+        description="Revise e edite a mensagem antes de enviar no WhatsApp."
+      />
     </>
+
   );
 }

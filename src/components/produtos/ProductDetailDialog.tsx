@@ -277,6 +277,14 @@ export function ProductDetailDialog({
     return !hasServiceLink && !hasTemplateLink && !hasContainerLink;
   }, [productServiceLinks, productTemplateLinks]);
 
+  // Nomenclatura adaptada à unidade cadastrada (sólido = "unidade", líquido = "recipiente", etc.)
+  const containerTerms = useMemo(
+    () => getContainerTerms(product?.unit as any),
+    [product?.unit],
+  );
+
+
+
 
   // Get consumption report for this product
   const productConsumption = useMemo(() => {

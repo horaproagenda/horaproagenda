@@ -182,10 +182,23 @@ export default function ClienteDetalhes() {
 
       {/* Edit Appointment Dialog */}
       <EditRecurringAppointmentDialog
-        appointment={editingAppointment}
+        appointment={
+          editingAppointment
+            ? ({
+                ...editingAppointment,
+                client: editingAppointment.client ?? {
+                  id: client.id,
+                  name: client.name,
+                  phone: client.phone,
+                  cpf: client.cpf,
+                } as any,
+              } as Appointment)
+            : null
+        }
         open={!!editingAppointment}
         onOpenChange={(open) => !open && setEditingAppointment(null)}
       />
+
 
       <LegacyHistoryDialog
         open={legacyOpen}

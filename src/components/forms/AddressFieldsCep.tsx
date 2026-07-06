@@ -92,11 +92,11 @@ export function AddressFieldsCep({ value, onChange, required, compact, disabled 
                 const masked = formatCep(e.target.value);
                 update({ cep: masked });
                 const digits = masked.replace(/\D/g, '');
-                if (digits.length === 8) void lookup(digits);
+                if (digits.length === 8) void lookup(digits, { ...value, cep: masked });
               }}
               onBlur={(e) => {
                 const digits = e.target.value.replace(/\D/g, '');
-                if (digits.length === 8) void lookup(digits);
+                if (digits.length === 8) void lookup(digits, { ...value, cep: formatCep(digits) });
               }}
             />
             {searching && (

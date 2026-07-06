@@ -3134,7 +3134,7 @@ export type Database = {
           work_sundays: boolean | null
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           auto_complete_appointments?: boolean | null
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null

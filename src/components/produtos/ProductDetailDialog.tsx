@@ -1273,12 +1273,12 @@ export function ProductDetailDialog({
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
                             ? 'Data em que esta compra começou a ser usada. O ciclo considera a quantidade total comprada.'
-                            : 'Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.'}
+                            : `Refere-se à ${containerTerms.noun}, não ao total comprado. ${containerTerms.exampleHint}`}
                         </p>
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          {isBulkProduct ? 'Término do uso do pacote' : 'Término do uso do recipiente'}
+                          {isBulkProduct ? 'Término do uso do pacote' : containerTerms.endLabel}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
@@ -1302,8 +1302,9 @@ export function ProductDetailDialog({
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
                             ? 'Encerra este ciclo de consumo. A quantidade total da compra será baixada do estoque.'
-                            : 'Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.'}
+                            : `Encerra o ciclo da ${containerTerms.nounShort} atual. Atendimentos do período serão contabilizados.`}
                         </p>
+
                       </div>
 
 

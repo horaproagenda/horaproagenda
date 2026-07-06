@@ -40,6 +40,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [originalDuration, setOriginalDuration] = useState<number>(0);
   const [professionalId, setProfessionalId] = useState<string>('none');
   const [roomId, setRoomId] = useState<string>('none');
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
@@ -87,6 +88,8 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     if (appointment) {
       const start = parseISO(appointment.start_time);
       const end = parseISO(appointment.end_time);
+      const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+      setOriginalDuration(durationMinutes);
       setDate(format(start, 'yyyy-MM-dd'));
       setStartTime(format(start, 'HH:mm'));
       setEndTime(format(end, 'HH:mm'));
@@ -96,6 +99,20 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       setSelectedEquipment(room?.equipment || []);
     }
   }, [appointment, rooms]);
+
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    // Auto-atualiza horário de término preservando a duração original
+    if (originalDuration > 0 && date && newStartTime) {
+      try {
+        const newStart = new Date(`${date}T${newStartTime}`);
+        if (!isNaN(newStart.getTime())) {
+          const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
+          setEndTime(format(newEnd, 'HH:mm'));
+        }
+      } catch { /* ignore */ }
+    }
+  };
 
   useEffect(() => {
     if (!open || !appointment) return;

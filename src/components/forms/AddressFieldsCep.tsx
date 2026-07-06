@@ -42,7 +42,10 @@ export function AddressFieldsCep({ value, onChange, required, compact, disabled 
 
   const update = (patch: Partial<AddressFields>) => onChange({ ...value, ...patch });
 
-  const lookup = async (raw: string) => {
+  // `base` freezes the address state at call time so the async ViaCEP result
+  // doesn't overwrite fields (like the 8th CEP digit) that were updated in the
+  // same tick as this lookup.
+  const lookup = async (raw: string, base: AddressFields) => {
     const digits = raw.replace(/\D/g, '');
     if (digits.length !== 8) return;
     setSearching(true);
@@ -52,11 +55,13 @@ export function AddressFieldsCep({ value, onChange, required, compact, disabled 
         toast.error('CEP não encontrado. Preencha o endereço manualmente.');
         return;
       }
-      update({
-        street: result.logradouro || value.street,
-        neighborhood: result.bairro || value.neighborhood,
-        city: result.localidade || value.city,
-        state: (result.uf || value.state).toUpperCase(),
+      onChange({
+        ...base,
+        cep: formatCep(digits),
+        street: result.logradouro || base.street,
+        neighborhood: result.bairro || base.neighborhood,
+        city: result.localidade || base.city,
+        state: (result.uf || base.state).toUpperCase(),
       });
       // Foca o campo "Número" após preencher
       setTimeout(() => {
@@ -87,11 +92,11 @@ export function AddressFieldsCep({ value, onChange, required, compact, disabled 
                 const masked = formatCep(e.target.value);
                 update({ cep: masked });
                 const digits = masked.replace(/\D/g, '');
-                if (digits.length === 8) void lookup(digits);
+                if (digits.length === 8) void lookup(digits, { ...value, cep: masked });
               }}
               onBlur={(e) => {
                 const digits = e.target.value.replace(/\D/g, '');
-                if (digits.length === 8) void lookup(digits);
+                if (digits.length === 8) void lookup(digits, { ...value, cep: formatCep(digits) });
               }}
             />
             {searching && (

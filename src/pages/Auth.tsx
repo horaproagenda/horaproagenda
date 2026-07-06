@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,6 +132,16 @@ const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','
 
 function AuthInner() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Preserva ?next=/caminho para retorno pós-login (fluxo OAuth MCP).
+  // Só aceita paths relativos same-origin — nunca redireciona para outra origem.
+  const nextParam = (() => {
+    const raw = searchParams.get('next');
+    if (!raw) return null;
+    if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+    return raw;
+  })();
+  const postLoginTarget = nextParam ?? '/agenda';
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -187,7 +197,7 @@ function AuthInner() {
 
   useEffect(() => {
     if (user) {
-      navigate('/agenda', { replace: true });
+      navigate(postLoginTarget, { replace: true });
     }
   }, [user, navigate]);
 
@@ -388,7 +398,7 @@ function AuthInner() {
           const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
           if (!loginErr) {
             toast({ title: 'Bem-vindo(a) de volta!', description: 'Sua conta já estava criada — você foi conectado.' });
-            navigate('/agenda', { replace: true });
+            navigate(postLoginTarget, { replace: true });
             return;
           }
           toast({
@@ -430,7 +440,7 @@ function AuthInner() {
       toast({ title: 'Bem-vindo(a) ao Hora Pro!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
 
       // Navegação explícita — não dependemos apenas do useEffect.
-      navigate('/agenda', { replace: true });
+      navigate(postLoginTarget, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });

@@ -58,6 +58,7 @@ const TermosDeServico = lazy(lazyWithRetry(() => import("./pages/TermosDeServico
 const PoliticaDePrivacidade = lazy(lazyWithRetry(() => import("./pages/PoliticaDePrivacidade")));
 const ContaInativa = lazy(lazyWithRetry(() => import("./pages/ContaInativa")));
 const ConfirmarAgendamento = lazy(lazyWithRetry(() => import("./pages/ConfirmarAgendamento")));
+const OAuthConsent = lazy(lazyWithRetry(() => import("./pages/OAuthConsent")));
 
 // Fallback minimalista enquanto o chunk da rota carrega.
 function RouteFallback() {
@@ -135,6 +136,7 @@ const App = () => {
               <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 {/* Public routes */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />

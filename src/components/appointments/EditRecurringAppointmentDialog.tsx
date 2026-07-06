@@ -161,6 +161,41 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     }
   };
 
+  const buildRescheduleMessage = (newStart: Date) => {
+    const name = appointment?.client?.name || 'Cliente';
+    const dateStr = format(newStart, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    const followingNote = rescheduleFollowing
+      ? '\n\nOs próximos agendamentos da série também serão ajustados mantendo o intervalo original.'
+      : '';
+    return `Olá ${name}! 👋
+
+⚠️ *Alteração no seu agendamento*
+
+Seu agendamento foi reagendado para:
+📅 ${dateStr}${followingNote}
+
+Em caso de dúvidas, entre em contato conosco.
+
+Até breve! ✨`;
+  };
+
+  const buildDeleteMessage = () => {
+    const name = appointment?.client?.name || 'Cliente';
+    const scope =
+      deleteType === 'all'
+        ? 'todos os agendamentos da sua série'
+        : deleteType === 'following'
+          ? 'este e os próximos agendamentos da sua série'
+          : 'seu agendamento';
+    return `Olá ${name}! 👋
+
+⚠️ *Cancelamento de agendamento*
+
+Informamos que ${scope} foi(foram) cancelado(s).
+
+Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
+  };
+
   const handleSeriesSubmit = async () => {
     if (!appointment) return;
 
@@ -176,7 +211,8 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           new_start_time: newStartTime,
           new_end_time: newEndTime,
           reschedule_following: rescheduleFollowing,
-          send_whatsapp: sendWhatsapp,
+          // Sempre falso: a mensagem passa pelo diálogo de prévia do WhatsApp
+          send_whatsapp: false,
           client_phone: appointment.client?.phone,
           client_name: appointment.client?.name,
         });
@@ -210,7 +246,13 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
       setShowRescheduleDialog(false);
       await releaseLock();
-      onOpenChange(false);
+
+      if (sendWhatsapp && appointment.client?.phone) {
+        setWhatsappMessage(buildRescheduleMessage(newStartTime));
+        setWhatsappOpen(true);
+      } else {
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error('Error rescheduling series:', error);
     } finally {
@@ -228,16 +270,23 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           recurring_group_id: appointment.recurring_group_id!,
           appointment_id: appointment.id,
           delete_type: deleteType,
-          send_whatsapp: sendWhatsapp,
+          // Sempre falso: a mensagem passa pelo diálogo de prévia do WhatsApp
+          send_whatsapp: false,
           client_phone: appointment.client?.phone,
           client_name: appointment.client?.name,
         });
       } else {
         await deleteAppointment.mutateAsync(appointment.id);
       }
-      
+
       setShowDeleteDialog(false);
-      onOpenChange(false);
+
+      if (sendWhatsapp && appointment.client?.phone) {
+        setWhatsappMessage(buildDeleteMessage());
+        setWhatsappOpen(true);
+      } else {
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error('Error deleting appointment:', error);
       toast.error('Erro ao excluir agendamento');
@@ -245,6 +294,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       setLoading(false);
     }
   };
+
 
   const handleEquipmentChange = (equipmentName: string) => {
     setSelectedEquipment(prev => 

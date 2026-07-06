@@ -61,19 +61,49 @@ export function FinancialDashboard() {
         .gte('created_at', dateRange.from.toISOString())
         .lte('created_at', dateRange.to.toISOString());
 
-      // Boleto installments
-      const { data: boletos } = await supabase
-        .from('boleto_installments')
-        .select('id, amount, status, due_date, paid_at, installment_number, total_installments');
+      // Boleto installments — buscar TODOS os relevantes ao período:
+      //   - Pagos com paid_at dentro do intervalo
+      //   - Ainda em aberto (pending/overdue) com due_date dentro do intervalo
+      const fromISO = dateRange.from.toISOString();
+      const toISO = dateRange.to.toISOString();
+      const fromDate = format(dateRange.from, 'yyyy-MM-dd');
+      const toDate = format(dateRange.to, 'yyyy-MM-dd');
 
-      // Financial entries for compensation tracking
-      const { data: finEntries } = await supabase
-        .from('financial_entries')
-        .select('id, amount, type, status, due_date, description, payment_method')
-        .gte('due_date', dateRange.from.toISOString())
-        .lte('due_date', dateRange.to.toISOString());
+      const [paidBoletosRes, openBoletosRes] = await Promise.all([
+        supabase
+          .from('boleto_installments')
+          .select('id, amount, status, due_date, paid_at, installment_number, total_installments')
+          .eq('status', 'paid')
+          .gte('paid_at', fromISO)
+          .lte('paid_at', toISO),
+        supabase
+          .from('boleto_installments')
+          .select('id, amount, status, due_date, paid_at, installment_number, total_installments')
+          .neq('status', 'paid')
+          .gte('due_date', fromDate)
+          .lte('due_date', toDate),
+      ]);
+      const boletos = [...(paidBoletosRes.data || []), ...(openBoletosRes.data || [])];
 
-      return { sales: sales || [], cashTx: cashTx || [], boletos: boletos || [], finEntries: finEntries || [] };
+      // Financial entries: usar paid_at para pagos e due_date para pendentes,
+      // pois é assim que o dinheiro efetivamente entra/sai no período.
+      const [paidEntriesRes, pendingEntriesRes] = await Promise.all([
+        supabase
+          .from('financial_entries')
+          .select('id, amount, type, status, due_date, paid_at, description, payment_method')
+          .eq('status', 'paid')
+          .gte('paid_at', fromISO)
+          .lte('paid_at', toISO),
+        supabase
+          .from('financial_entries')
+          .select('id, amount, type, status, due_date, paid_at, description, payment_method')
+          .eq('status', 'pending')
+          .gte('due_date', fromISO)
+          .lte('due_date', toISO),
+      ]);
+      const finEntries = [...(paidEntriesRes.data || []), ...(pendingEntriesRes.data || [])];
+
+      return { sales: sales || [], cashTx: cashTx || [], boletos, finEntries };
     },
     staleTime: 0,
     refetchInterval: 2000,

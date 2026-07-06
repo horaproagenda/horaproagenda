@@ -124,6 +124,66 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'other', label: 'Outros' },
 ];
 
+/**
+ * Retorna a nomenclatura correta para o "recipiente/embalagem em uso"
+ * de acordo com a unidade de medida cadastrada do produto. Evita chamar
+ * de "recipiente de 500 ml" um produto sólido contabilizado em unidades.
+ */
+function getContainerTerms(unit: ProductUnit | string | null | undefined) {
+  const u = (unit || '').toString().toLowerCase();
+  if (u === 'un') {
+    return {
+      noun: 'unidade em uso',
+      nounShort: 'unidade',
+      exampleHint: 'Ex.: 1 caixa, 1 pacote, 1 frasco.',
+      startLabel: 'Início do uso da unidade',
+      endLabel: 'Término do uso da unidade',
+      quantityLabel: 'Quantidade por unidade em uso',
+      refillTitle: 'Nova unidade iniciada?',
+      refillDesc: 'iniciou uma nova unidade',
+      calcOption: 'Não sei — calcular por unidade / atendimentos',
+    };
+  }
+  if (u === 'ml' || u === 'l') {
+    return {
+      noun: 'recipiente em uso',
+      nounShort: 'recipiente',
+      exampleHint: 'Ex.: 500 ml do recipiente em uso.',
+      startLabel: 'Início do uso do recipiente',
+      endLabel: 'Término do uso do recipiente',
+      quantityLabel: 'Quantidade no recipiente em uso',
+      refillTitle: 'Recipiente reabastecido?',
+      refillDesc: 'reabasteceu o recipiente',
+      calcOption: 'Não sei — calcular por recipiente / atendimentos',
+    };
+  }
+  if (u === 'g' || u === 'kg') {
+    return {
+      noun: 'embalagem em uso',
+      nounShort: 'embalagem',
+      exampleHint: 'Ex.: 500 g da embalagem em uso.',
+      startLabel: 'Início do uso da embalagem',
+      endLabel: 'Término do uso da embalagem',
+      quantityLabel: 'Quantidade na embalagem em uso',
+      refillTitle: 'Embalagem reposta?',
+      refillDesc: 'iniciou uma nova embalagem',
+      calcOption: 'Não sei — calcular por embalagem / atendimentos',
+    };
+  }
+  return {
+    noun: 'embalagem em uso',
+    nounShort: 'embalagem',
+    exampleHint: 'Refere-se ao volume/quantidade da embalagem em uso, não ao total comprado.',
+    startLabel: 'Início do uso da embalagem',
+    endLabel: 'Término do uso da embalagem',
+    quantityLabel: 'Quantidade na embalagem em uso',
+    refillTitle: 'Embalagem reposta?',
+    refillDesc: 'iniciou uma nova embalagem',
+    calcOption: 'Não sei — calcular por embalagem / atendimentos',
+  };
+}
+
+
 export function ProductDetailDialog({
   product,
   purchases,

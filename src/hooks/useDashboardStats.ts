@@ -12,39 +12,12 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
   const today = new Date();
   const { professionalId } = filters;
 
-  // Sales data query
+  // Sales data query — usa financial_entries (dinheiro efetivamente recebido)
+  // como fonte de verdade. Assim, pacotes já pagos anteriormente NÃO são
+  // contados de novo em "Vendas Hoje" quando uma sessão do pacote ocorre hoje.
   const { data: salesData, isLoading: salesLoading } = useQuery({
     queryKey: ['dashboard_sales', professionalId],
     queryFn: async () => {
-      // Get appointments with payment_status = 'paid'
-      let appointmentsQuery = supabase
-        .from('appointments')
-        .select(`
-          id,
-          start_time,
-          amount_paid,
-          payment_status,
-          professional_id,
-          service:services(id, name, price)
-        `)
-        .eq('payment_status', 'paid');
-
-      if (professionalId) {
-        appointmentsQuery = appointmentsQuery.eq('professional_id', professionalId);
-      }
-
-      const { data: appointments, error: appointmentsError } = await appointmentsQuery;
-      if (appointmentsError) throw appointmentsError;
-
-      // Get single sales
-      let salesQuery = supabase
-        .from('single_sales')
-        .select('*');
-
-      const { data: singleSales, error: salesError } = await salesQuery;
-      if (salesError) throw salesError;
-
-      // Calculate periods
       const todayStart = startOfDay(today);
       const todayEnd = endOfDay(today);
       const monthStart = startOfMonth(today);
@@ -54,48 +27,68 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
       const lastMonthStart = startOfMonth(subMonths(today, 1));
       const lastMonthEnd = endOfMonth(subMonths(today, 1));
 
-      // Filter appointments by period
-      const filterByPeriod = (items: any[], start: Date, end: Date, dateField: string = 'start_time') => {
-        return items.filter(item => {
-          const date = parseISO(item[dateField]);
-          return date >= start && date <= end;
-        });
-      };
+      // Receita recebida: financial_entries type=income + status=paid + paid_at no período
+      let entriesQuery = supabase
+        .from('financial_entries')
+        .select('amount, paid_at, professional_id, type, status')
+        .eq('type', 'income')
+        .eq('status', 'paid')
+        .gte('paid_at', yearStart.toISOString())
+        .lte('paid_at', yearEnd.toISOString())
+        .not('paid_at', 'is', null);
 
-      // Calculate appointment revenue
-      const getAppointmentRevenue = (items: any[]) => {
-        return items.reduce((sum, item) => sum + (Number(item.amount_paid) || Number(item.service?.price) || 0), 0);
-      };
+      if (professionalId) {
+        entriesQuery = entriesQuery.eq('professional_id', professionalId);
+      }
 
-      // Calculate single sales revenue
-      const getSalesRevenue = (items: any[]) => {
-        return items.reduce((sum, item) => sum + Number(item.final_amount || 0), 0);
-      };
+      const { data: entries, error: entriesError } = await entriesQuery;
+      if (entriesError) throw entriesError;
 
-      // Today
-      const todayAppointments = filterByPeriod(appointments || [], todayStart, todayEnd);
-      const todaySales = filterByPeriod(singleSales || [], todayStart, todayEnd, 'sale_date');
-      const dailyRevenue = getAppointmentRevenue(todayAppointments) + getSalesRevenue(todaySales);
+      // Mês anterior separado (fora do intervalo do ano quando janeiro)
+      let lastMonthQuery = supabase
+        .from('financial_entries')
+        .select('amount')
+        .eq('type', 'income')
+        .eq('status', 'paid')
+        .gte('paid_at', lastMonthStart.toISOString())
+        .lte('paid_at', lastMonthEnd.toISOString());
+      if (professionalId) lastMonthQuery = lastMonthQuery.eq('professional_id', professionalId);
+      const { data: lastMonthEntries } = await lastMonthQuery;
 
-      // This month
-      const monthAppointments = filterByPeriod(appointments || [], monthStart, monthEnd);
-      const monthSales = filterByPeriod(singleSales || [], monthStart, monthEnd, 'sale_date');
-      const monthlyRevenue = getAppointmentRevenue(monthAppointments) + getSalesRevenue(monthSales);
+      // Contagem de agendamentos (para métrica de "atendimentos", não receita)
+      let apptQuery = supabase
+        .from('appointments')
+        .select('id, start_time, professional_id, status')
+        .gte('start_time', monthStart.toISOString())
+        .lte('start_time', monthEnd.toISOString())
+        .not('status', 'eq', 'cancelled');
+      if (professionalId) apptQuery = apptQuery.eq('professional_id', professionalId);
+      const { data: appointments } = await apptQuery;
 
-      // Last month (for comparison)
-      const lastMonthAppointments = filterByPeriod(appointments || [], lastMonthStart, lastMonthEnd);
-      const lastMonthSales = filterByPeriod(singleSales || [], lastMonthStart, lastMonthEnd, 'sale_date');
-      const lastMonthRevenue = getAppointmentRevenue(lastMonthAppointments) + getSalesRevenue(lastMonthSales);
+      const sumInRange = (items: any[] | null, start: Date, end: Date) =>
+        (items || []).reduce((sum, it) => {
+          const d = it.paid_at ? parseISO(it.paid_at) : null;
+          if (!d || d < start || d > end) return sum;
+          return sum + Number(it.amount || 0);
+        }, 0);
 
-      // This year
-      const yearAppointments = filterByPeriod(appointments || [], yearStart, yearEnd);
-      const yearSales = filterByPeriod(singleSales || [], yearStart, yearEnd, 'sale_date');
-      const yearlyRevenue = getAppointmentRevenue(yearAppointments) + getSalesRevenue(yearSales);
+      const dailyRevenue = sumInRange(entries, todayStart, todayEnd);
+      const monthlyRevenue = sumInRange(entries, monthStart, monthEnd);
+      const yearlyRevenue = sumInRange(entries, yearStart, yearEnd);
+      const lastMonthRevenue = (lastMonthEntries || []).reduce(
+        (s, e) => s + Number(e.amount || 0),
+        0,
+      );
 
-      // Monthly comparison percentage
-      const monthlyComparison = lastMonthRevenue > 0 
-        ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
-        : 0;
+      const todayAppointmentsCount = (appointments || []).filter((a) => {
+        const d = parseISO(a.start_time);
+        return d >= todayStart && d <= todayEnd;
+      }).length;
+
+      const monthlyComparison =
+        lastMonthRevenue > 0
+          ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+          : 0;
 
       return {
         daily: dailyRevenue,
@@ -103,13 +96,13 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
         yearly: yearlyRevenue,
         lastMonth: lastMonthRevenue,
         monthlyComparison,
-        todayAppointmentsCount: todayAppointments.length,
-        monthAppointmentsCount: monthAppointments.length,
+        todayAppointmentsCount,
+        monthAppointmentsCount: (appointments || []).length,
       };
     },
   });
 
-  // Monthly sales chart data (last 6 months)
+  // Monthly sales chart data (last 6 months) — usa financial_entries pagos
   const { data: monthlySalesChart, isLoading: chartLoading } = useQuery({
     queryKey: ['dashboard_monthly_chart', professionalId],
     queryFn: async () => {
@@ -119,34 +112,22 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
         const start = startOfMonth(date);
         const end = endOfMonth(date);
 
-        let appointmentsQuery = supabase
-          .from('appointments')
-          .select('amount_paid, service:services(price)')
-          .eq('payment_status', 'paid')
-          .gte('start_time', start.toISOString())
-          .lte('start_time', end.toISOString());
+        let q = supabase
+          .from('financial_entries')
+          .select('amount')
+          .eq('type', 'income')
+          .eq('status', 'paid')
+          .gte('paid_at', start.toISOString())
+          .lte('paid_at', end.toISOString());
+        if (professionalId) q = q.eq('professional_id', professionalId);
+        const { data: entries } = await q;
 
-        if (professionalId) {
-          appointmentsQuery = appointmentsQuery.eq('professional_id', professionalId);
-        }
-
-        const { data: appointments } = await appointmentsQuery;
-
-        const { data: sales } = await supabase
-          .from('single_sales')
-          .select('final_amount')
-          .gte('sale_date', start.toISOString())
-          .lte('sale_date', end.toISOString());
-
-        const appointmentRevenue = (appointments || []).reduce(
-          (sum, a) => sum + (Number(a.amount_paid) || Number(a.service?.price) || 0), 0
-        );
-        const salesRevenue = (sales || []).reduce((sum, s) => sum + Number(s.final_amount || 0), 0);
+        const revenue = (entries || []).reduce((s, e) => s + Number(e.amount || 0), 0);
 
         months.push({
           month: format(date, 'MMM'),
           fullMonth: format(date, 'MMMM yyyy'),
-          revenue: appointmentRevenue + salesRevenue,
+          revenue,
         });
       }
       return months;

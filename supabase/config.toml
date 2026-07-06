@@ -57,3 +57,10 @@ project_id = "nsgcllrbswodjoadybsj"
   [functions.verify-contact-change]
     verify_jwt = true
 
+  # MCP server (Agent Integrations) — bearer token é validado pelo
+  # @lovable.dev/mcp-js dentro da função (issuer OAuth Supabase).
+  [functions.mcp]
+    verify_jwt = false
+
+
+

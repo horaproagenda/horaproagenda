@@ -2205,7 +2205,7 @@ export function ProductDetailDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {isBulkProduct ? 'Registrar término do uso' : 'Registrar término do uso do recipiente'}
+            {isBulkProduct ? 'Registrar término do uso' : `Registrar término do uso da ${containerTerms.nounShort}`}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">

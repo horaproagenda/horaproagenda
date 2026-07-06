@@ -137,6 +137,7 @@ const App = () => {
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+                <Route path="/oauth/consent" element={<OAuthConsent />} />
                 {/* Public routes */}
                 <Route path="/preencher-documento" element={<PreencherDocumento />} />
                 <Route path="/preencher-documento/:slug" element={<PreencherDocumento />} />

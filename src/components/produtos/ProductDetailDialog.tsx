@@ -1992,7 +1992,7 @@ export function ProductDetailDialog({
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
-                              <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                              <SelectItem value="no">{containerTerms.calcOption}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

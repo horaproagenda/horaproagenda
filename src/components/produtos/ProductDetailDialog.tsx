@@ -2157,7 +2157,7 @@ export function ProductDetailDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {isBulkProduct ? 'Registrar início do uso' : 'Registrar início do uso do recipiente'}
+            {isBulkProduct ? 'Registrar início do uso' : `Registrar início do uso da ${containerTerms.nounShort}`}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">

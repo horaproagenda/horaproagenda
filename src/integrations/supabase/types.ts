@@ -1583,7 +1583,7 @@ export type Database = {
           sent_date: string
         }
         Insert: {
-          account_owner_id: string
+          account_owner_id?: string
           bills_count?: number
           created_at?: string
           id?: string
@@ -4231,7 +4231,7 @@ export type Database = {
           trial_ended_at: string | null
           trial_started_at: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           city?: string | null
@@ -4252,7 +4252,7 @@ export type Database = {
           trial_ended_at?: string | null
           trial_started_at?: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           city?: string | null
@@ -4273,7 +4273,7 @@ export type Database = {
           trial_ended_at?: string | null
           trial_started_at?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

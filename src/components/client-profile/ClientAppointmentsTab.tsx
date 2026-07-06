@@ -19,6 +19,7 @@ import {
   formatAppointmentNotesWithRecurringSequence,
   getAppointmentRecurringSessionLabel,
   getPackageApplicationLabel,
+  getPackageApplicationStatusLabel,
 } from '@/lib/packageSequence';
 
 interface ClientAppointmentsTabProps {

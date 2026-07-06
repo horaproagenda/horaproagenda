@@ -40,6 +40,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [originalDuration, setOriginalDuration] = useState<number>(0);
   const [professionalId, setProfessionalId] = useState<string>('none');
   const [roomId, setRoomId] = useState<string>('none');
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
@@ -87,6 +88,8 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     if (appointment) {
       const start = parseISO(appointment.start_time);
       const end = parseISO(appointment.end_time);
+      const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+      setOriginalDuration(durationMinutes);
       setDate(format(start, 'yyyy-MM-dd'));
       setStartTime(format(start, 'HH:mm'));
       setEndTime(format(end, 'HH:mm'));
@@ -96,6 +99,20 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       setSelectedEquipment(room?.equipment || []);
     }
   }, [appointment, rooms]);
+
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    // Auto-atualiza horário de término preservando a duração original
+    if (originalDuration > 0 && date && newStartTime) {
+      try {
+        const newStart = new Date(`${date}T${newStartTime}`);
+        if (!isNaN(newStart.getTime())) {
+          const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
+          setEndTime(format(newEnd, 'HH:mm'));
+        }
+      } catch { /* ignore */ }
+    }
+  };
 
   useEffect(() => {
     if (!open || !appointment) return;
@@ -240,13 +257,21 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 px-6 pt-6 text-center">
-              Editar Agendamento
-              {isRecurringSeries && (
-                <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                  <Repeat className="h-3 w-3" />
-                  {seriesIndex} de {seriesCount}
-                </Badge>
+            <DialogTitle className="flex flex-col items-center justify-center gap-1 px-6 pt-6 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <span>Editar Agendamento</span>
+                {isRecurringSeries && (
+                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                    <Repeat className="h-3 w-3" />
+                    {seriesIndex} de {seriesCount}
+                  </Badge>
+                )}
+              </div>
+              {appointment?.client?.name && (
+                <div className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground">{appointment.client.name}</span>
+                </div>
               )}
             </DialogTitle>
             {isRecurringSeries && (
@@ -291,7 +316,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
                 <Input
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   disabled={isLockedByOther}
                 />
               </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2 } from 'lucide-react';
+import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +62,7 @@ const Configuracoes = () => {
   const { sendCode, verifyCode, sending, verifying } = useContactChangeVerification();
 
   const [clinicInitialized, setClinicInitialized] = useState(false);
+  const [isEditingClinic, setIsEditingClinic] = useState(false);
 
   // Inicializa UMA VEZ ao carregar as configurações. Refetches em background
   // (realtime, cross-device, invalidações de queries) não devem descartar
@@ -96,9 +97,6 @@ const Configuracoes = () => {
 
   const handleSaveClinic = async () => {
     try {
-      // Salva business_settings e AGUARDA a confirmação do servidor antes de
-      // tocar o profile, garantindo que o usuário só veja sucesso quando os
-      // dois lados realmente persistirem.
       await updateSettings.mutateAsync({
         clinic_name: clinicName,
         clinic_phone: clinicPhone,
@@ -122,12 +120,37 @@ const Configuracoes = () => {
           .eq('id', user.id);
         if (error) throw error;
       }
+
+      toast.success('Informações da clínica salvas com sucesso!');
+      setIsEditingClinic(false);
     } catch (err: any) {
-      // updateSettings já mostra toast de erro; aqui só capturamos a falha do profile.
       if (err?.message && !String(err.message).toLowerCase().includes('configurações')) {
         toast.error('Erro ao atualizar nome do profissional: ' + err.message);
       }
     }
+  };
+
+  const handleCancelEditClinic = () => {
+    // Restaura valores originais do settings
+    if (settings) {
+      const s = settings as any;
+      setProfessionalName(s.professional_name || profile?.full_name || '');
+      setClinicName(s.clinic_name || '');
+      setClinicPhone(s.clinic_phone || '');
+      setClinicEmail(s.clinic_email || '');
+      setAddress({
+        cep: s.clinic_cep || '',
+        street: s.clinic_street || '',
+        number: s.clinic_number || '',
+        complement: s.clinic_complement || '',
+        neighborhood: s.clinic_neighborhood || '',
+        city: s.clinic_city || '',
+        state: s.clinic_state || '',
+      });
+      setBusinessType(s.business_type || 'clinica');
+      setBusinessTypeLabel(s.business_type_label || '');
+    }
+    setIsEditingClinic(false);
   };
 
   const openChange = (type: ContactChangeType) => {
@@ -171,16 +194,31 @@ const Configuracoes = () => {
           {isAdmin && (
             <Card className="card-hover">
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Building2 className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm font-medium">Informações da Clínica</CardTitle>
+                      <CardDescription className="text-xs">
+                        {isEditingClinic
+                          ? 'Atualize os dados e clique em "Salvar informações".'
+                          : 'Clique em "Editar" para atualizar os dados da clínica.'}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-sm font-medium">Informações da Clínica</CardTitle>
-                    <CardDescription className="text-xs">
-                      Aproveitados do seu cadastro — pode editar a qualquer momento
-                    </CardDescription>
-                  </div>
+                  {!isEditingClinic && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 shrink-0"
+                      onClick={() => setIsEditingClinic(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -191,6 +229,8 @@ const Configuracoes = () => {
                     value={professionalName}
                     onChange={(e) => setProfessionalName(e.target.value)}
                     placeholder="Seu nome completo"
+                    disabled={!isEditingClinic}
+                    readOnly={!isEditingClinic}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -200,11 +240,13 @@ const Configuracoes = () => {
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
                     placeholder="Nome do estabelecimento"
+                    disabled={!isEditingClinic}
+                    readOnly={!isEditingClinic}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Área de atuação</Label>
-                  <Select value={businessType} onValueChange={setBusinessType}>
+                  <Select value={businessType} onValueChange={setBusinessType} disabled={!isEditingClinic}>
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Selecione a área" />
                     </SelectTrigger>
@@ -223,6 +265,8 @@ const Configuracoes = () => {
                       placeholder="Informe sua área (ex: tatuagem, acupuntura...)"
                       value={businessTypeLabel}
                       onChange={(e) => setBusinessTypeLabel(e.target.value)}
+                      disabled={!isEditingClinic}
+                      readOnly={!isEditingClinic}
                     />
                   )}
                 </div>
@@ -234,6 +278,8 @@ const Configuracoes = () => {
                       value={clinicPhone}
                       onChange={(e) => setClinicPhone(e.target.value)}
                       placeholder="(11) 99999-9999"
+                      disabled={!isEditingClinic}
+                      readOnly={!isEditingClinic}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -244,23 +290,42 @@ const Configuracoes = () => {
                       value={clinicEmail}
                       onChange={(e) => setClinicEmail(e.target.value)}
                       placeholder="contato@clinica.com"
+                      disabled={!isEditingClinic}
+                      readOnly={!isEditingClinic}
                     />
                   </div>
                 </div>
 
                 <div className="pt-2 border-t">
                   <Label className="text-xs mb-2 block font-medium">Endereço</Label>
-                  <AddressFieldsCep value={address} onChange={setAddress} compact />
+                  <fieldset disabled={!isEditingClinic} className={!isEditingClinic ? 'opacity-90 pointer-events-none' : ''}>
+                    <AddressFieldsCep value={address} onChange={setAddress} compact />
+                  </fieldset>
                 </div>
 
-                <Button
-                  size="sm"
-                  className="w-full btn-vibrant"
-                  onClick={handleSaveClinic}
-                  disabled={updateSettings.isPending}
-                >
-                  {updateSettings.isPending ? 'Salvando...' : 'Salvar Informações'}
-                </Button>
+                {isEditingClinic && (
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={handleCancelEditClinic}
+                      disabled={updateSettings.isPending}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 btn-vibrant gap-1"
+                      onClick={handleSaveClinic}
+                      disabled={updateSettings.isPending}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {updateSettings.isPending ? 'Salvando...' : 'Salvar informações'}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

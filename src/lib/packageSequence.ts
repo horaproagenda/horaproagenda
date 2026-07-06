@@ -169,7 +169,45 @@ export const formatAppointmentNotesWithRecurringSequence = (
   sequence?: { index: number; total: number } | null,
 ) => {
   if (!notes) return notes;
+  let out = notes;
+  // Remove marcadores automáticos que hoje são representados por badge/status
+  // ("Aplicação N/M — Aplicação de pacote" e o legado "Serviço pago utilizado").
+  out = out
+    .replace(/Aplicação\s+\d+\s*\/\s*\d+\s*(?:[—-]\s*)?/gi, '')
+    .replace(/Aplicação de pacote/gi, '')
+    .replace(/Serviço pago utilizado/gi, '')
+    .replace(/\s*[—-]\s*[—-]\s*/g, ' — ')
+    .replace(/^\s*[—-]\s*/, '')
+    .replace(/\s*[—-]\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   const label = getAppointmentRecurringSessionLabel(sequence);
-  if (!label) return notes;
-  return notes.replace(/Sessão\s+\d+\s+de\s+\d+/gi, label);
+  if (label) {
+    out = out.replace(/Sessão\s+\d+\s+de\s+\d+/gi, label);
+  }
+  return out || null;
+};
+
+/**
+ * Rótulo dinâmico "Aplicação realizada" / "Aplicação agendada" para um
+ * agendamento de pacote, baseado no status atual do agendamento.
+ * Retorna null se não for aplicável.
+ */
+export const getPackageApplicationStatusLabel = (
+  status?: string | null,
+): { label: string; tone: 'done' | 'scheduled' | 'missed' | 'cancelled' } | null => {
+  switch (status) {
+    case 'completed':
+      return { label: 'Aplicação realizada', tone: 'done' };
+    case 'missed':
+      return { label: 'Aplicação não realizada', tone: 'missed' };
+    case 'cancelled':
+      return { label: 'Aplicação cancelada', tone: 'cancelled' };
+    case 'rescheduled':
+      return { label: 'Aplicação reagendada', tone: 'scheduled' };
+    case 'scheduled':
+    case 'confirmed':
+    default:
+      return { label: 'Aplicação agendada', tone: 'scheduled' };
+  }
 };

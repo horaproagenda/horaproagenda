@@ -2000,7 +2000,8 @@ export function ProductDetailDialog({
                         {knowsQuantity === 'no' ? (
                           <div>
                             <Label className="text-xs text-muted-foreground mb-1 block">
-                              Quantidade no recipiente em uso
+                              {containerTerms.quantityLabel}
+
                             </Label>
                             <div className="flex gap-2">
                               <Input

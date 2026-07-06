@@ -197,7 +197,7 @@ function AuthInner() {
 
   useEffect(() => {
     if (user) {
-      navigate('/agenda', { replace: true });
+      navigate(postLoginTarget, { replace: true });
     }
   }, [user, navigate]);
 
@@ -398,7 +398,7 @@ function AuthInner() {
           const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
           if (!loginErr) {
             toast({ title: 'Bem-vindo(a) de volta!', description: 'Sua conta já estava criada — você foi conectado.' });
-            navigate('/agenda', { replace: true });
+            navigate(postLoginTarget, { replace: true });
             return;
           }
           toast({
@@ -440,7 +440,7 @@ function AuthInner() {
       toast({ title: 'Bem-vindo(a) ao Hora Pro!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
 
       // Navegação explícita — não dependemos apenas do useEffect.
-      navigate('/agenda', { replace: true });
+      navigate(postLoginTarget, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });

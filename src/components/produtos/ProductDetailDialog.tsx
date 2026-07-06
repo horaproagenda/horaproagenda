@@ -2267,7 +2267,7 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingRefill} onOpenChange={(o) => { if (!o) setPendingRefill(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Recipiente reabastecido?</AlertDialogTitle>
+          <AlertDialogTitle>{containerTerms.refillTitle}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
@@ -2279,9 +2279,10 @@ export function ProductDetailDialog({
                 no estoque total.
               </p>
               <p>
-                Se você reabasteceu o recipiente em uso, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
-                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando reabastecer.
+                Se você {containerTerms.refillDesc}, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
+                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando repor.
               </p>
+
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

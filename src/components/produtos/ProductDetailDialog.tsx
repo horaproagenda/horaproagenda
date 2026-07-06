@@ -2173,7 +2173,7 @@ export function ProductDetailDialog({
               ) : (
                 <p>
                   Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
-                  (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+                  (o conteúdo da {containerTerms.nounShort} em uso) — <strong>não</strong> a quantidade total comprada do produto.
                 </p>
               )}
               {product && (

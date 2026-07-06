@@ -22,6 +22,8 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
+
 
 interface EditRecurringAppointmentDialogProps {
   appointment: Appointment | null;

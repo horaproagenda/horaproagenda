@@ -124,6 +124,66 @@ const PRODUCT_UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'other', label: 'Outros' },
 ];
 
+/**
+ * Retorna a nomenclatura correta para o "recipiente/embalagem em uso"
+ * de acordo com a unidade de medida cadastrada do produto. Evita chamar
+ * de "recipiente de 500 ml" um produto sólido contabilizado em unidades.
+ */
+function getContainerTerms(unit: ProductUnit | string | null | undefined) {
+  const u = (unit || '').toString().toLowerCase();
+  if (u === 'un') {
+    return {
+      noun: 'unidade em uso',
+      nounShort: 'unidade',
+      exampleHint: 'Ex.: 1 caixa, 1 pacote, 1 frasco.',
+      startLabel: 'Início do uso da unidade',
+      endLabel: 'Término do uso da unidade',
+      quantityLabel: 'Quantidade por unidade em uso',
+      refillTitle: 'Nova unidade iniciada?',
+      refillDesc: 'iniciou uma nova unidade',
+      calcOption: 'Não sei — calcular por unidade / atendimentos',
+    };
+  }
+  if (u === 'ml' || u === 'l') {
+    return {
+      noun: 'recipiente em uso',
+      nounShort: 'recipiente',
+      exampleHint: 'Ex.: 500 ml do recipiente em uso.',
+      startLabel: 'Início do uso do recipiente',
+      endLabel: 'Término do uso do recipiente',
+      quantityLabel: 'Quantidade no recipiente em uso',
+      refillTitle: 'Recipiente reabastecido?',
+      refillDesc: 'reabasteceu o recipiente',
+      calcOption: 'Não sei — calcular por recipiente / atendimentos',
+    };
+  }
+  if (u === 'g' || u === 'kg') {
+    return {
+      noun: 'embalagem em uso',
+      nounShort: 'embalagem',
+      exampleHint: 'Ex.: 500 g da embalagem em uso.',
+      startLabel: 'Início do uso da embalagem',
+      endLabel: 'Término do uso da embalagem',
+      quantityLabel: 'Quantidade na embalagem em uso',
+      refillTitle: 'Embalagem reposta?',
+      refillDesc: 'iniciou uma nova embalagem',
+      calcOption: 'Não sei — calcular por embalagem / atendimentos',
+    };
+  }
+  return {
+    noun: 'embalagem em uso',
+    nounShort: 'embalagem',
+    exampleHint: 'Refere-se ao volume/quantidade da embalagem em uso, não ao total comprado.',
+    startLabel: 'Início do uso da embalagem',
+    endLabel: 'Término do uso da embalagem',
+    quantityLabel: 'Quantidade na embalagem em uso',
+    refillTitle: 'Embalagem reposta?',
+    refillDesc: 'iniciou uma nova embalagem',
+    calcOption: 'Não sei — calcular por embalagem / atendimentos',
+  };
+}
+
+
 export function ProductDetailDialog({
   product,
   purchases,
@@ -216,6 +276,14 @@ export function ProductDetailDialog({
       productTemplateLinks.some((tp: any) => tp.tracking_method === 'estimated' && Number(tp.container_amount || 0) > 0);
     return !hasServiceLink && !hasTemplateLink && !hasContainerLink;
   }, [productServiceLinks, productTemplateLinks]);
+
+  // Nomenclatura adaptada à unidade cadastrada (sólido = "unidade", líquido = "recipiente", etc.)
+  const containerTerms = useMemo(
+    () => getContainerTerms(product?.unit as any),
+    [product?.unit],
+  );
+
+
 
 
   // Get consumption report for this product
@@ -1073,8 +1141,9 @@ export function ProductDetailDialog({
                                 <span>
                                   Este produto tem <strong>{Number(product.current_stock)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}</strong> em estoque mas <strong>nenhum ciclo ativo</strong>.
                                   {product.started_using_at && product.finished_at
-                                    ? ' O ciclo anterior foi encerrado em ' + format(parseISO(product.finished_at + 'T00:00:00'), 'dd/MM/yyyy') + '. Se o recipiente foi reabastecido, registre o novo início para retomar a contagem.'
+                                    ? ` O ciclo anterior foi encerrado em ${format(parseISO(product.finished_at + 'T00:00:00'), 'dd/MM/yyyy')}. Se ${containerTerms.refillDesc}, registre o novo início para retomar a contagem.`
                                     : ' Os atendimentos não estão sendo contabilizados. Informe o início do uso para retomar a contagem.'}
+
                                 </span>
                               </div>
                               <Button
@@ -1178,7 +1247,7 @@ export function ProductDetailDialog({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          {isBulkProduct ? 'Início do uso do pacote' : 'Início do uso do recipiente'}
+                          {isBulkProduct ? 'Início do uso do pacote' : containerTerms.startLabel}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
@@ -1205,12 +1274,12 @@ export function ProductDetailDialog({
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
                             ? 'Data em que esta compra começou a ser usada. O ciclo considera a quantidade total comprada.'
-                            : 'Refere-se ao recipiente em uso (ex.: 500 ml), não ao total comprado.'}
+                            : `Refere-se à ${containerTerms.noun}, não ao total comprado. ${containerTerms.exampleHint}`}
                         </p>
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          {isBulkProduct ? 'Término do uso do pacote' : 'Término do uso do recipiente'}
+                          {isBulkProduct ? 'Término do uso do pacote' : containerTerms.endLabel}
                         </Label>
                         {canEdit ? (
                           <SafeDateInput
@@ -1234,8 +1303,9 @@ export function ProductDetailDialog({
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
                             ? 'Encerra este ciclo de consumo. A quantidade total da compra será baixada do estoque.'
-                            : 'Encerra o ciclo do recipiente atual. Atendimentos do período serão contabilizados.'}
+                            : `Encerra o ciclo da ${containerTerms.nounShort} atual. Atendimentos do período serão contabilizados.`}
                         </p>
+
                       </div>
 
 
@@ -1672,7 +1742,8 @@ export function ProductDetailDialog({
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
-                          <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                          <SelectItem value="no">{containerTerms.calcOption}</SelectItem>
+
                         </SelectContent>
                       </Select>
                     </div>
@@ -1680,7 +1751,8 @@ export function ProductDetailDialog({
                     {knowsQuantity === 'no' ? (
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Quantidade no recipiente em uso
+                          {containerTerms.quantityLabel}
+
                         </Label>
                         <div className="flex gap-2">
                           <Input
@@ -1920,7 +1992,7 @@ export function ProductDetailDialog({
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="yes">Sim, sei a quantidade exata</SelectItem>
-                              <SelectItem value="no">Não sei — calcular por recipiente / atendimentos</SelectItem>
+                              <SelectItem value="no">{containerTerms.calcOption}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1928,7 +2000,8 @@ export function ProductDetailDialog({
                         {knowsQuantity === 'no' ? (
                           <div>
                             <Label className="text-xs text-muted-foreground mb-1 block">
-                              Quantidade no recipiente em uso
+                              {containerTerms.quantityLabel}
+
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -2084,7 +2157,7 @@ export function ProductDetailDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {isBulkProduct ? 'Registrar início do uso' : 'Registrar início do uso do recipiente'}
+            {isBulkProduct ? 'Registrar início do uso' : `Registrar início do uso da ${containerTerms.nounShort}`}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
@@ -2100,7 +2173,7 @@ export function ProductDetailDialog({
               ) : (
                 <p>
                   Será contabilizada a quantidade informada nos <strong>vínculos com serviços e pacotes</strong>{' '}
-                  (o conteúdo do recipiente em uso) — <strong>não</strong> a quantidade total comprada do produto.
+                  (o conteúdo da {containerTerms.nounShort} em uso) — <strong>não</strong> a quantidade total comprada do produto.
                 </p>
               )}
               {product && (
@@ -2132,7 +2205,7 @@ export function ProductDetailDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {isBulkProduct ? 'Registrar término do uso' : 'Registrar término do uso do recipiente'}
+            {isBulkProduct ? 'Registrar término do uso' : `Registrar término do uso da ${containerTerms.nounShort}`}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
@@ -2194,7 +2267,7 @@ export function ProductDetailDialog({
     <AlertDialog open={!!pendingRefill} onOpenChange={(o) => { if (!o) setPendingRefill(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Recipiente reabastecido?</AlertDialogTitle>
+          <AlertDialogTitle>{containerTerms.refillTitle}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm">
               <p>
@@ -2206,9 +2279,10 @@ export function ProductDetailDialog({
                 no estoque total.
               </p>
               <p>
-                Se você reabasteceu o recipiente em uso, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
-                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando reabastecer.
+                Se você {containerTerms.refillDesc}, podemos iniciar um <strong>novo ciclo hoje</strong>{' '}
+                automaticamente. Caso contrário, deixe o produto sem ciclo ativo e inicie manualmente quando repor.
               </p>
+
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

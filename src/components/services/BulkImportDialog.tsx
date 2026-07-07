@@ -16,6 +16,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 import { mapHeaders } from '@/lib/importMapping';
 import { parseBrazilianCurrency } from '@/lib/utils';
@@ -27,6 +30,10 @@ interface ParsedService {
   duration: number;
   description?: string;
   return_days?: number;
+  professional_id?: string | null;
+  room_id?: string | null;
+  equipment?: string[] | null;
+  is_active?: boolean;
 }
 
 interface ParsedClient {
@@ -45,6 +52,11 @@ interface ParsedPackageTemplate {
   price: number;
   duration: number;
   interval_days: number;
+  return_days?: number;
+  professional_id?: string | null;
+  room_id?: string | null;
+  equipment?: string[] | null;
+  is_active?: boolean;
 }
 
 interface ImportResult {
@@ -59,6 +71,20 @@ interface BulkImportDialogProps {
   trigger?: React.ReactNode;
 }
 
+const normalizeName = (v: string) =>
+  (v ?? '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+const parseStatusActive = (v: string): boolean => {
+  const s = normalizeName(v);
+  if (!s) return true;
+  return !['inativo', 'inactive', 'inativa', 'nao', 'no', 'false', '0', 'desativado'].includes(s);
+};
+
 export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,10 +92,41 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
   const [result, setResult] = useState<ImportResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { professionalId } = useCurrentProfessional();
   const { hasRole } = useAuth();
+  const { professionals } = useProfessionals();
+  const { rooms } = useRooms();
+  const { equipment } = useEquipment();
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
+
+  const professionalIdByName = new Map(
+    (professionals || []).map((p: any) => [normalizeName(p.name), p.id] as const),
+  );
+  const roomIdByName = new Map(
+    (rooms || []).map((r: any) => [normalizeName(r.name), r.id] as const),
+  );
+  const equipmentIdByName = new Map(
+    (equipment || []).map((e: any) => [normalizeName(e.name), e.id] as const),
+  );
+
+  const resolveProfessional = (raw: string): string | null => {
+    if (!raw) return null;
+    return professionalIdByName.get(normalizeName(raw)) || null;
+  };
+  const resolveRoom = (raw: string): string | null => {
+    if (!raw) return null;
+    return roomIdByName.get(normalizeName(raw)) || null;
+  };
+  const resolveEquipment = (raw: string): string[] | null => {
+    if (!raw) return null;
+    const ids = raw
+      .split(/[;,|]/)
+      .map((n) => equipmentIdByName.get(normalizeName(n)))
+      .filter((v): v is string => Boolean(v));
+    return ids.length ? ids : null;
+  };
+
 
   const parseBirthdate = (dateStr: string): string | undefined => {
     if (!dateStr) return undefined;

@@ -509,70 +509,130 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="total_sessions"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total de Aplicações</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {isSequential ? (
+                  <>
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Sequência de serviços</Label>
+                        <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={addSeqStep}>
+                          <Plus className="h-3 w-3" /> Etapa
+                        </Button>
+                      </div>
+                      {sequentialSteps.map((step, index) => (
+                        <div key={index} className="grid grid-cols-[1fr_56px_66px_28px] gap-2 items-end">
+                          <div className="min-w-0">
+                            <Label className="text-[10px]">{index + 1}º serviço</Label>
+                            <SearchableSelect
+                              className="h-8 text-xs"
+                              value={step.service_id}
+                              onChange={(value) => updateSeqStep(index, { service_id: value })}
+                              options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
+                              placeholder="Selecione o serviço"
+                              searchPlaceholder="Buscar serviço..."
+                              emptyMessage="Nenhum serviço encontrado."
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Qtd.</Label>
+                            <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateSeqStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Após (dias)</Label>
+                            <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateSeqStep(index, { interval_after_days: Number(e.target.value) })} />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-muted-foreground pt-1">
+                        Total de aplicações: <span className="font-medium text-foreground">{sequentialSteps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0)}</span>
+                      </p>
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor</FormLabel>
-                        <FormControl>
-                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor do kit (editável)</FormLabel>
+                          <FormControl>
+                            <CurrencyInput value={field.value} onValueChange={field.onChange} />
+                          </FormControl>
+                          <p className="text-[10px] text-muted-foreground">Você pode editar manualmente o valor total do kit.</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="total_sessions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total de Aplicações</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duração (min)</FormLabel>
-                        <FormControl>
-                          <DurationSelect
-                            value={field.value}
-                            onChange={field.onChange}
-                            minDuration={5}
-                            maxDuration={480}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valor</FormLabel>
+                            <FormControl>
+                              <CurrencyInput value={field.value} onValueChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="interval_days"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Intervalo (dias)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="duration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Duração (min)</FormLabel>
+                            <FormControl>
+                              <DurationSelect
+                                value={field.value}
+                                onChange={field.onChange}
+                                minDuration={5}
+                                maxDuration={480}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="interval_days"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Intervalo (dias)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <FormField

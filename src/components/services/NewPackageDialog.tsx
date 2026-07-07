@@ -58,6 +58,7 @@ type PackageFormData = z.infer<typeof packageSchema>;
 interface SequentialStep {
   service_id: string;
   interval_after_days: number;
+  quantity: number;
 }
 
 interface NewPackageDialogProps {

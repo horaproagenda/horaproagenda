@@ -334,10 +334,16 @@ const Servicos: React.FC = () => {
     () => new Map((equipmentList || []).map((e: any) => [e.id, e.name] as const)),
     [equipmentList],
   );
+  const roomNameById = useMemo(
+    () => new Map((rooms || []).map((r: any) => [r.id, r.name] as const)),
+    [rooms],
+  );
   const resolveEquipmentNames = (ids: unknown): string =>
     Array.isArray(ids) && ids.length
       ? (ids as string[]).map((id) => equipmentNameById.get(id) || id).join(', ')
       : '-';
+  const resolveRoomName = (item: any): string =>
+    item?.room?.name || (item?.room_id ? roomNameById.get(item.room_id) : null) || '-';
 
   const buildServicesRows = () => {
     const onlyServices = filteredServices.filter(s => !isKitServiceItem(s));
@@ -348,7 +354,7 @@ const Servicos: React.FC = () => {
         s.name,
         s.category,
         s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
-        s.room?.name || '-',
+        resolveRoomName(s),
         resolveEquipmentNames(s.equipment),
         Number(s.price).toFixed(2),
         s.duration,
@@ -372,7 +378,7 @@ const Servicos: React.FC = () => {
     const serviceById = new Map(services.map(s => [s.id, s] as const));
     const profById = new Map(professionals.map(p => [p.id, p] as const));
     return {
-      headers: ['Nome', 'Categoria', 'Profissional', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Retorno (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Retorno (dias)', 'Status'],
       rows: onlyKits.map(s => {
         const comps: { service_id: string; interval_days: number; price: number }[] =
           Array.isArray((s as any).service_components)
@@ -389,6 +395,8 @@ const Servicos: React.FC = () => {
           s.name,
           s.category,
           s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
+          resolveRoomName(s),
+          resolveEquipmentNames((s as any).equipment),
           Number(s.price).toFixed(2),
           s.duration,
           comps.length,
@@ -418,7 +426,7 @@ const Servicos: React.FC = () => {
         p.name,
         p.category || '-',
         p.professional_id ? (profById.get(p.professional_id)?.name || '-') : '-',
-        p.room?.name || '-',
+        resolveRoomName(p),
         resolveEquipmentNames(p.equipment),
         Number(p.price).toFixed(2),
         p.total_sessions,
@@ -447,7 +455,7 @@ const Servicos: React.FC = () => {
         p.name,
         p.category || '-',
         p.professional_id ? (profById.get(p.professional_id)?.name || '-') : '-',
-        p.room?.name || '-',
+        resolveRoomName(p),
         resolveEquipmentNames(p.equipment),
         Number(p.price).toFixed(2),
         p.total_sessions,

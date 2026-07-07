@@ -16,6 +16,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 import { mapHeaders } from '@/lib/importMapping';
 import { parseBrazilianCurrency } from '@/lib/utils';
@@ -27,6 +30,10 @@ interface ParsedService {
   duration: number;
   description?: string;
   return_days?: number;
+  professional_id?: string | null;
+  room_id?: string | null;
+  equipment?: string[] | null;
+  is_active?: boolean;
 }
 
 interface ParsedClient {
@@ -45,6 +52,11 @@ interface ParsedPackageTemplate {
   price: number;
   duration: number;
   interval_days: number;
+  return_days?: number;
+  professional_id?: string | null;
+  room_id?: string | null;
+  equipment?: string[] | null;
+  is_active?: boolean;
 }
 
 interface ImportResult {
@@ -59,6 +71,20 @@ interface BulkImportDialogProps {
   trigger?: React.ReactNode;
 }
 
+const normalizeName = (v: string) =>
+  (v ?? '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+const parseStatusActive = (v: string): boolean => {
+  const s = normalizeName(v);
+  if (!s) return true;
+  return !['inativo', 'inactive', 'inativa', 'nao', 'no', 'false', '0', 'desativado'].includes(s);
+};
+
 export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,10 +92,41 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
   const [result, setResult] = useState<ImportResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { professionalId } = useCurrentProfessional();
   const { hasRole } = useAuth();
+  const { professionals } = useProfessionals();
+  const { rooms } = useRooms();
+  const { equipment } = useEquipment();
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
+
+  const professionalIdByName = new Map(
+    (professionals || []).map((p: any) => [normalizeName(p.name), p.id] as const),
+  );
+  const roomIdByName = new Map(
+    (rooms || []).map((r: any) => [normalizeName(r.name), r.id] as const),
+  );
+  const equipmentIdByName = new Map(
+    (equipment || []).map((e: any) => [normalizeName(e.name), e.id] as const),
+  );
+
+  const resolveProfessional = (raw: string): string | null => {
+    if (!raw) return null;
+    return professionalIdByName.get(normalizeName(raw)) || null;
+  };
+  const resolveRoom = (raw: string): string | null => {
+    if (!raw) return null;
+    return roomIdByName.get(normalizeName(raw)) || null;
+  };
+  const resolveEquipment = (raw: string): string[] | null => {
+    if (!raw) return null;
+    const ids = raw
+      .split(/[;,|]/)
+      .map((n) => equipmentIdByName.get(normalizeName(n)))
+      .filter((v): v is string => Boolean(v));
+    return ids.length ? ids : null;
+  };
+
 
   const parseBirthdate = (dateStr: string): string | undefined => {
     if (!dateStr) return undefined;
@@ -139,6 +196,10 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           description: cell(values, idx.description) || undefined,
           return_days: retorno ? parseInt(retorno) || undefined : undefined,
+          professional_id: resolveProfessional(cell(values, idx.professional)),
+          room_id: resolveRoom(cell(values, idx.room)),
+          equipment: resolveEquipment(cell(values, idx.equipment)),
+          is_active: parseStatusActive(cell(values, idx.status)),
         } as ParsedService);
       } else if (type === 'clients') {
         const name = cell(values, idx.name);
@@ -154,6 +215,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
       } else if (type === 'package_templates') {
         const name = cell(values, idx.name);
         if (!name) continue;
+        const retorno = cell(values, idx.return_days);
         data.push({
           name,
           description: cell(values, idx.description) || undefined,
@@ -161,6 +223,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           price: parseBrazilianCurrency(cell(values, idx.price)),
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           interval_days: parseInt(cell(values, idx.interval_days) || '7') || 7,
+          return_days: retorno ? parseInt(retorno) || undefined : undefined,
+          professional_id: resolveProfessional(cell(values, idx.professional)),
+          room_id: resolveRoom(cell(values, idx.room)),
+          equipment: resolveEquipment(cell(values, idx.equipment)),
+          is_active: parseStatusActive(cell(values, idx.status)),
         } as ParsedPackageTemplate);
       }
     }
@@ -303,8 +370,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               duration: service.duration,
               description: service.description || null,
               return_days: service.return_days || null,
-              is_active: true,
-              professional_id: isAdminOrReceptionist ? null : professionalId,
+              is_active: service.is_active ?? true,
+              professional_id: service.professional_id
+                ?? (isAdminOrReceptionist ? null : professionalId),
+              room_id: service.room_id ?? null,
+              equipment: service.equipment ?? null,
             });
 
             if (error) {
@@ -361,8 +431,12 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               price: template.price,
               duration: template.duration,
               interval_days: template.interval_days,
-              is_active: true,
-            });
+              return_days: template.return_days ?? null,
+              is_active: template.is_active ?? true,
+              professional_id: template.professional_id ?? null,
+              room_id: template.room_id ?? null,
+              equipment: template.equipment ?? null,
+            } as any);
 
             if (error) {
               errors.push(`${template.name}: ${error.message}`);
@@ -424,11 +498,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                 <strong>Formato esperado (CSV):</strong>
                 <br />
                 {type === 'services' ? (
-                  <code className="text-xs">Nome,Categoria,Preço,Duração,Descrição,Retorno</code>
+                  <code className="text-xs">Nome,Categoria,Preço,Duração,Descrição,Retorno,Profissional,Sala,Equipamento,Status</code>
                 ) : type === 'clients' ? (
                   <code className="text-xs">Nome,Telefone,Email,CPF,Nascimento,Observações</code>
                 ) : (
-                  <code className="text-xs">Nome,Sessões,Preço,Duração,Intervalo,Descrição</code>
+                  <code className="text-xs">Nome,Sessões,Preço,Duração,Intervalo,Descrição,Retorno,Profissional,Sala,Equipamento,Status</code>
                 )}
                 <br />
                 <span className="text-xs text-muted-foreground mt-1 block">
@@ -460,10 +534,10 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                   const templates = {
                     services: {
                       filename: 'modelo_importacao_servicos',
-                      headers: ['Nome', 'Categoria', 'Preço', 'Duração', 'Descrição', 'Retorno'],
+                      headers: ['Nome', 'Categoria', 'Preço', 'Duração', 'Descrição', 'Retorno', 'Profissional', 'Sala', 'Equipamento', 'Status'],
                       sampleRows: [
-                        ['Limpeza de Pele', 'Estética Facial', '120,00', '60', 'Limpeza profunda', '30'],
-                        ['Massagem; Relaxante', 'Bem-estar', '150,00', '50', 'Inclui aromaterapia', ''],
+                        ['Limpeza de Pele', 'Estética Facial', '120,00', '60', 'Limpeza profunda', '30', 'Ana Souza', 'Sala 1', 'Alta Frequência', 'Ativo'],
+                        ['Massagem; Relaxante', 'Bem-estar', '150,00', '50', 'Inclui aromaterapia', '', '', '', '', 'Ativo'],
                       ],
                     },
                     clients: {
@@ -476,9 +550,9 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                     },
                     package_templates: {
                       filename: 'modelo_importacao_pacotes',
-                      headers: ['Nome', 'Sessões', 'Preço', 'Duração', 'Intervalo', 'Descrição'],
+                      headers: ['Nome', 'Sessões', 'Preço', 'Duração', 'Intervalo', 'Descrição', 'Retorno', 'Profissional', 'Sala', 'Equipamento', 'Status'],
                       sampleRows: [
-                        ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa'],
+                        ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa', '30', 'Ana Souza', 'Sala 1', 'Vapor de Ozônio', 'Ativo'],
                       ],
                     },
                   };

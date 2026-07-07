@@ -496,15 +496,19 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             />
 
             {/* Equipment */}
-            {equipment.filter(e => e.is_active).length > 0 && (
-              <FormField
-                control={form.control}
-                name="equipment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Equipamento</FormLabel>
-                    <Select 
-                      onValueChange={(val) => field.onChange(val && val !== '_none' ? [val] : [])} 
+            <FormField
+              control={form.control}
+              name="equipment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Equipamento</FormLabel>
+                  {equipment.filter(e => e.is_active).length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground border rounded-md p-2">
+                      Nenhum equipamento cadastrado. Cadastre em Configurações › Equipamentos para vincular ao pacote.
+                    </p>
+                  ) : (
+                    <Select
+                      onValueChange={(val) => field.onChange(val && val !== '_none' ? [val] : [])}
                       value={field.value?.[0] || '_none'}
                     >
                       <FormControl>
@@ -519,11 +523,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-            )}
+                  )}
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">

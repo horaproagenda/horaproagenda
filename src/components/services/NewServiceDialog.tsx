@@ -511,10 +511,14 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
 
 
             {/* Equipment */}
-            {equipment.filter(e => e.is_active).length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Equipamentos</Label>
-                <div className="border rounded-md p-2 max-h-20 overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Equipamentos</Label>
+              <div className="border rounded-md p-2 max-h-24 overflow-y-auto">
+                {equipment.filter(e => e.is_active).length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Nenhum equipamento cadastrado. Cadastre em Configurações › Equipamentos para vincular ao serviço.
+                  </p>
+                ) : (
                   <div className="flex flex-wrap gap-2">
                     {equipment.filter(e => e.is_active).map((eq) => (
                       <label key={eq.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -535,9 +539,9 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                       </label>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Active switch */}
             <FormField

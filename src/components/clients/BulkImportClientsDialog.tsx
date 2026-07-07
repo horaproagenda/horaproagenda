@@ -336,11 +336,12 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
   const handleDownloadTemplate = () => {
     downloadCsvTemplate({
       filename: 'modelo_importacao_clientes',
-      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações', 'Indicação', 'Profissional'],
+      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações', 'Indicação', 'Profissional', 'Status'],
       sampleRows: [
-        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP', 'Instagram', activeProfessionals[0]?.name || 'Dra. Ana'],
-        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere horário pela manhã', 'Amigo', ''],
+        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP', 'Instagram', activeProfessionals[0]?.name || 'Dra. Ana', 'Ativo'],
+        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere horário pela manhã', 'Amigo', '', 'Inativo'],
       ],
+
     });
   };
 

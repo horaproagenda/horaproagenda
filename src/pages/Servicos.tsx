@@ -370,8 +370,9 @@ const Servicos: React.FC = () => {
   const buildKitsRows = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);
     const serviceById = new Map(services.map(s => [s.id, s] as const));
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     return {
-      headers: ['Nome', 'Categoria', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Retorno (dias)', 'Status'],
       rows: onlyKits.map(s => {
         const comps: { service_id: string; interval_days: number; price: number }[] =
           Array.isArray((s as any).service_components)
@@ -387,10 +388,12 @@ const Servicos: React.FC = () => {
         return [
           s.name,
           s.category,
+          s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
           Number(s.price).toFixed(2),
           s.duration,
           comps.length,
           detail,
+          s.return_days || '-',
           s.is_active ? 'Ativo' : 'Inativo',
         ] as (string | number)[];
       }),

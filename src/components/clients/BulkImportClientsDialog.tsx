@@ -422,7 +422,7 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
         notes: c.notes || null,
         referral_source: c.referral_source || null,
         assigned_professional_id: c.assigned_professional_id || fallbackProfId,
-        is_active: true,
+        is_active: c.is_active,
         credit_balance: 0,
       }));
 

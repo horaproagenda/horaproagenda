@@ -125,7 +125,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [packageType, sequentialTotalPrice, form]);
 
-  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
+  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const updateStep = (index: number, updates: Partial<SequentialStep>) => {
     setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));

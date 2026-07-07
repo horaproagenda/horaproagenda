@@ -407,15 +407,15 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>Importar {type === 'services' ? 'Serviços' : type === 'clients' ? 'Clientes' : 'Modelos de Pacote'} em Massa</DialogTitle>
           <DialogDescription>
             Faça upload de um arquivo CSV ou TXT com os dados para importar.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           <div className="space-y-4">
             {/* File format info */}
             <Alert>

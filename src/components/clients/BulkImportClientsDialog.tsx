@@ -43,9 +43,11 @@ interface ParsedClient {
   referral_source?: string;
   professional_name?: string;
   assigned_professional_id?: string | null;
+  is_active: boolean;
   valid: boolean;
   error?: string;
 }
+
 
 interface BulkImportClientsDialogProps {
   onImported?: () => void;

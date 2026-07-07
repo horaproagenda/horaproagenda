@@ -24,6 +24,10 @@ const COLUMN_SPECS: Record<ImportType, ColumnSpec[]> = {
     { key: 'duration', label: 'Duração', aliases: ['duracao', 'duration', 'tempo'] },
     { key: 'description', label: 'Descrição', aliases: ['descricao', 'description', 'desc'] },
     { key: 'return_days', label: 'Retorno', aliases: ['retorno', 'return_days', 'return'] },
+    { key: 'professional', label: 'Profissional', aliases: ['profissional', 'professional', 'colaborador'] },
+    { key: 'room', label: 'Sala', aliases: ['sala', 'room'] },
+    { key: 'equipment', label: 'Equipamento', aliases: ['equipamento', 'equipamentos', 'equipment'] },
+    { key: 'status', label: 'Status', aliases: ['status', 'ativo', 'situacao'] },
   ],
   clients: [
     { key: 'name', label: 'Nome', required: true, aliases: ['nome', 'name', 'cliente'] },
@@ -41,6 +45,11 @@ const COLUMN_SPECS: Record<ImportType, ColumnSpec[]> = {
     { key: 'duration', label: 'Duração', aliases: ['duracao', 'duration', 'tempo'] },
     { key: 'interval_days', label: 'Intervalo', aliases: ['intervalo', 'interval_days', 'intervalo_dias', 'interval'] },
     { key: 'description', label: 'Descrição', aliases: ['descricao', 'description', 'desc'] },
+    { key: 'return_days', label: 'Retorno', aliases: ['retorno', 'return_days', 'return'] },
+    { key: 'professional', label: 'Profissional', aliases: ['profissional', 'professional', 'colaborador'] },
+    { key: 'room', label: 'Sala', aliases: ['sala', 'room'] },
+    { key: 'equipment', label: 'Equipamento', aliases: ['equipamento', 'equipamentos', 'equipment'] },
+    { key: 'status', label: 'Status', aliases: ['status', 'ativo', 'situacao'] },
   ],
   appointments: [
     { key: 'date', label: 'Data', required: true, aliases: ['data', 'date', 'dia'] },

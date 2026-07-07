@@ -370,8 +370,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               duration: service.duration,
               description: service.description || null,
               return_days: service.return_days || null,
-              is_active: true,
-              professional_id: isAdminOrReceptionist ? null : professionalId,
+              is_active: service.is_active ?? true,
+              professional_id: service.professional_id
+                ?? (isAdminOrReceptionist ? null : professionalId),
+              room_id: service.room_id ?? null,
+              equipment: service.equipment ?? null,
             });
 
             if (error) {

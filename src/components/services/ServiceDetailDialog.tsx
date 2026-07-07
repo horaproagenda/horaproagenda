@@ -796,7 +796,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   </div>
                 )}
 
-                {/* Kit composto: sequência de serviços (igual pacote sequencial), com valor por etapa */}
+                {/* Kit composto: exibido apenas para serviços que já são kits. Novos kits são criados em formulário próprio. */}
+                {(Array.isArray((service as any).service_components) && (service as any).service_components.length > 0) ||
+                 (Array.isArray((service as any).component_service_ids) && (service as any).component_service_ids.length > 0) ? (
                 <div className="space-y-2 rounded-md border p-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Kit de serviços (sequencial)</Label>
@@ -899,6 +901,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     </div>
                   )}
                 </div>
+                ) : null}
 
 
 

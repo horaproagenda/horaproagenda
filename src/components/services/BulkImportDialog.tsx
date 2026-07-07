@@ -618,9 +618,9 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="flex justify-end pt-4 border-t">
+        <div className="flex justify-end px-6 py-4 border-t">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Fechar
           </Button>

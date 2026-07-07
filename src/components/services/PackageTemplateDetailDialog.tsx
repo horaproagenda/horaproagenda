@@ -173,6 +173,27 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       } else {
         setEquipmentNames([]);
       }
+      // Load sequential steps and group consecutive same-service into (qty, interval)
+      if (isSequential) {
+        const { data: stepsData } = await (supabase as any)
+          .from('package_template_steps')
+          .select('service_id, sequence_order, interval_after_days')
+          .eq('template_id', pkg.id)
+          .order('sequence_order', { ascending: true });
+
+        const grouped: Array<{ service_id: string; interval_after_days: number; quantity: number }> = [];
+        (stepsData || []).forEach((row: any, idx: number, arr: any[]) => {
+          const isLast = idx === arr.length - 1;
+          const effectiveInterval = isLast ? (grouped[grouped.length - 1]?.interval_after_days ?? Number(row.interval_after_days) ?? 7) : Number(row.interval_after_days) || 0;
+          const last = grouped[grouped.length - 1];
+          if (last && last.service_id === row.service_id && last.interval_after_days === effectiveInterval) {
+            last.quantity += 1;
+          } else {
+            grouped.push({ service_id: row.service_id, interval_after_days: effectiveInterval || 7, quantity: 1 });
+          }
+        });
+        setSequentialSteps(grouped.length > 0 ? grouped : [{ service_id: '', interval_after_days: 7, quantity: 1 }]);
+      }
     } catch (error) {
       console.error('Error fetching package stats:', error);
     } finally {

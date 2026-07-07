@@ -221,6 +221,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
             notes: notesIdx >= 0 ? getValue(notesIdx) : undefined,
             referral_source: referralIdx >= 0 ? getValue(referralIdx) : undefined,
             professional_name: profIdx >= 0 ? getValue(profIdx) : undefined,
+            status: statusIdx >= 0 ? getValue(statusIdx) : undefined,
+
           }),
         );
       }

@@ -58,6 +58,7 @@ type PackageFormData = z.infer<typeof packageSchema>;
 interface SequentialStep {
   service_id: string;
   interval_after_days: number;
+  quantity: number;
 }
 
 interface NewPackageDialogProps {
@@ -81,8 +82,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
-    { service_id: '', interval_after_days: 7 },
-    { service_id: '', interval_after_days: 7 },
+    { service_id: '', interval_after_days: 7, quantity: 1 },
+    { service_id: '', interval_after_days: 7, quantity: 1 },
   ]);
 
   const form = useForm<PackageFormData>({
@@ -105,7 +106,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');
   const watchRoomId = form.watch('room_id');
-  const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
+  const sequentialTotalCount = steps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0);
+  const effectiveSessions = packageType === 'sequential' ? sequentialTotalCount : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
   const packageScope = {
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
@@ -115,7 +117,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;
-    return total + (Number(service?.price) || 0);
+    const qty = Math.max(1, Number(step.quantity) || 1);
+    return total + ((Number(service?.price) || 0) * qty);
   }, 0);
 
   useEffect(() => {
@@ -124,7 +127,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [packageType, sequentialTotalPrice, form]);
 
-  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
+  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const updateStep = (index: number, updates: Partial<SequentialStep>) => {
     setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));
@@ -156,8 +159,19 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
         return;
       }
 
+      // Expand each step by quantity into individual rows
+      const expandedSteps = packageType === 'sequential'
+        ? steps.flatMap(step => {
+            const qty = Math.max(1, Number(step.quantity) || 1);
+            return Array.from({ length: qty }, () => ({
+              service_id: step.service_id,
+              interval_after_days: step.interval_after_days,
+            }));
+          })
+        : [];
+
       const sequentialDuration = packageType === 'sequential'
-        ? steps.reduce((total, step) => total + (activeServices.find(service => service.id === step.service_id)?.duration || data.duration), 0)
+        ? expandedSteps.reduce((total, step) => total + (activeServices.find(service => service.id === step.service_id)?.duration || data.duration), 0)
         : data.duration;
 
       // Create in package_templates (like services catalog)
@@ -167,8 +181,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
           name: data.name,
           description: data.description || null,
           category: data.category,
-          total_sessions: packageType === 'sequential' ? steps.length : data.total_sessions,
-          interval_days: packageType === 'sequential' ? steps[0]?.interval_after_days || data.interval_days : data.interval_days,
+          total_sessions: packageType === 'sequential' ? expandedSteps.length : data.total_sessions,
+          interval_days: packageType === 'sequential' ? expandedSteps[0]?.interval_after_days || data.interval_days : data.interval_days,
           duration: sequentialDuration,
           price: data.price,
           package_type: packageType,
@@ -185,11 +199,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       if (packageType === 'sequential' && template) {
         const { error: stepsError } = await (supabase as any)
           .from('package_template_steps')
-          .insert(steps.map((step, index) => ({
+          .insert(expandedSteps.map((step, index) => ({
             template_id: template.id,
             service_id: step.service_id,
             sequence_order: index + 1,
-            interval_after_days: index === steps.length - 1 ? 0 : step.interval_after_days,
+            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
           })));
 
         if (stepsError) throw stepsError;
@@ -198,7 +212,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       toast.success('Pacote cadastrado!');
       form.reset();
       setPackageType('standard');
-      setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
+      setSteps([{ service_id: '', interval_after_days: 7, quantity: 1 }, { service_id: '', interval_after_days: 7, quantity: 1 }]);
       setOpen(false);
       onPackageCreated?.();
     } catch (error: any) {
@@ -349,7 +363,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   </Button>
                 </div>
                 {steps.map((step, index) => (
-                  <div key={index} className="grid grid-cols-[1fr_76px_28px] gap-2 items-end">
+                  <div key={index} className="grid grid-cols-[1fr_56px_66px_28px] gap-2 items-end">
                     <div className="min-w-0">
                       <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
                       <SearchableSelect
@@ -367,6 +381,10 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                       />
                     </div>
                     <div>
+                      <FormLabel className="text-[10px]">Qtd.</FormLabel>
+                      <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
+                    </div>
+                    <div>
                       <FormLabel className="text-[10px]">Após (dias)</FormLabel>
                       <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
                     </div>
@@ -375,6 +393,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     </Button>
                   </div>
                 ))}
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  Total de aplicações: <span className="font-medium text-foreground">{sequentialTotalCount}</span>
+                </p>
               </div>
             )}
 

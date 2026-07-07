@@ -43,6 +43,9 @@ import { PackageTemplate } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 
@@ -82,10 +85,13 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isSequential = pkg.package_type === 'sequential';
+  const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number; quantity: number }>>([]);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
+  const { activeServices } = useServices();
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
@@ -166,6 +172,27 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       } else {
         setEquipmentNames([]);
       }
+      // Load sequential steps and group consecutive same-service into (qty, interval)
+      if (isSequential) {
+        const { data: stepsData } = await (supabase as any)
+          .from('package_template_steps')
+          .select('service_id, sequence_order, interval_after_days')
+          .eq('template_id', pkg.id)
+          .order('sequence_order', { ascending: true });
+
+        const grouped: Array<{ service_id: string; interval_after_days: number; quantity: number }> = [];
+        (stepsData || []).forEach((row: any, idx: number, arr: any[]) => {
+          const isLast = idx === arr.length - 1;
+          const effectiveInterval = isLast ? (grouped[grouped.length - 1]?.interval_after_days ?? Number(row.interval_after_days) ?? 7) : Number(row.interval_after_days) || 0;
+          const last = grouped[grouped.length - 1];
+          if (last && last.service_id === row.service_id && last.interval_after_days === effectiveInterval) {
+            last.quantity += 1;
+          } else {
+            grouped.push({ service_id: row.service_id, interval_after_days: effectiveInterval || 7, quantity: 1 });
+          }
+        });
+        setSequentialSteps(grouped.length > 0 ? grouped : [{ service_id: '', interval_after_days: 7, quantity: 1 }]);
+      }
     } catch (error) {
       console.error('Error fetching package stats:', error);
     } finally {
@@ -176,16 +203,42 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const onSubmit = async (data: PackageFormData) => {
     setIsSaving(true);
     try {
+      let totalSessions = data.total_sessions;
+      let duration = data.duration;
+      let intervalDays = data.interval_days;
+      let expandedSteps: Array<{ service_id: string; interval_after_days: number }> = [];
+
+      if (isSequential) {
+        if (sequentialSteps.some(s => !s.service_id)) {
+          toast.error('Selecione um serviço para cada etapa.');
+          setIsSaving(false);
+          return;
+        }
+        expandedSteps = sequentialSteps.flatMap(step => {
+          const qty = Math.max(1, Number(step.quantity) || 1);
+          return Array.from({ length: qty }, () => ({
+            service_id: step.service_id,
+            interval_after_days: Number(step.interval_after_days) || 0,
+          }));
+        });
+        totalSessions = expandedSteps.length;
+        intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
+        duration = expandedSteps.reduce((sum, s) => {
+          const svc = activeServices.find(a => a.id === s.service_id);
+          return sum + (svc?.duration || 0);
+        }, 0) || duration;
+      }
+
       const { error } = await (supabase as any)
         .from('package_templates')
         .update({
           name: data.name,
           description: data.description || null,
           category: data.category,
-          total_sessions: data.total_sessions,
+          total_sessions: totalSessions,
           price: data.price,
-          duration: data.duration,
-          interval_days: data.interval_days,
+          duration,
+          interval_days: intervalDays,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
@@ -194,6 +247,19 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         .eq('id', pkg.id);
 
       if (error) throw error;
+
+      if (isSequential) {
+        await (supabase as any).from('package_template_steps').delete().eq('template_id', pkg.id);
+        const { error: stepsError } = await (supabase as any)
+          .from('package_template_steps')
+          .insert(expandedSteps.map((step, index) => ({
+            template_id: pkg.id,
+            service_id: step.service_id,
+            sequence_order: index + 1,
+            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
+          })));
+        if (stepsError) throw stepsError;
+      }
 
       toast.success('Pacote atualizado com sucesso!');
       setIsEditing(false);
@@ -205,6 +271,25 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       setIsSaving(false);
     }
   };
+
+  const addSeqStep = () => setSequentialSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+  const removeSeqStep = (idx: number) => setSequentialSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
+  const updateSeqStep = (idx: number, updates: Partial<{ service_id: string; interval_after_days: number; quantity: number }>) => {
+    setSequentialSteps(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
+  };
+
+  // interval range for display
+  const intervalRange = (() => {
+    if (!isSequential || sequentialSteps.length === 0) return null;
+    const vals = sequentialSteps
+      .slice(0, sequentialSteps.length > 1 ? -1 : sequentialSteps.length)
+      .map(s => Number(s.interval_after_days) || 0)
+      .filter(v => v > 0);
+    if (vals.length === 0) return null;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    return min === max ? `${min} dias` : `de ${min} a ${max} dias`;
+  })();
 
   const handleDelete = async () => {
     try {
@@ -301,7 +386,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <Timer className="h-5 w-5 text-orange-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-semibold">{pkg.interval_days || 7} dias</p>
+                      <p className="font-semibold">{isSequential && intervalRange ? intervalRange : `${pkg.interval_days || 7} dias`}</p>
                     </div>
                   </div>
 
@@ -423,70 +508,130 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="total_sessions"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total de Aplicações</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {isSequential ? (
+                  <>
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Sequência de serviços</Label>
+                        <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={addSeqStep}>
+                          <Plus className="h-3 w-3" /> Etapa
+                        </Button>
+                      </div>
+                      {sequentialSteps.map((step, index) => (
+                        <div key={index} className="grid grid-cols-[1fr_56px_66px_28px] gap-2 items-end">
+                          <div className="min-w-0">
+                            <Label className="text-[10px]">{index + 1}º serviço</Label>
+                            <SearchableSelect
+                              className="h-8 text-xs"
+                              value={step.service_id}
+                              onChange={(value) => updateSeqStep(index, { service_id: value })}
+                              options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
+                              placeholder="Selecione o serviço"
+                              searchPlaceholder="Buscar serviço..."
+                              emptyMessage="Nenhum serviço encontrado."
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Qtd.</Label>
+                            <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateSeqStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Após (dias)</Label>
+                            <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateSeqStep(index, { interval_after_days: Number(e.target.value) })} />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-muted-foreground pt-1">
+                        Total de aplicações: <span className="font-medium text-foreground">{sequentialSteps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0)}</span>
+                      </p>
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor</FormLabel>
-                        <FormControl>
-                          <CurrencyInput value={field.value} onValueChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor do kit (editável)</FormLabel>
+                          <FormControl>
+                            <CurrencyInput value={field.value} onValueChange={field.onChange} />
+                          </FormControl>
+                          <p className="text-[10px] text-muted-foreground">Você pode editar manualmente o valor total do kit.</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="total_sessions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total de Aplicações</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duração (min)</FormLabel>
-                        <FormControl>
-                          <DurationSelect
-                            value={field.value}
-                            onChange={field.onChange}
-                            minDuration={5}
-                            maxDuration={480}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valor</FormLabel>
+                            <FormControl>
+                              <CurrencyInput value={field.value} onValueChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="interval_days"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Intervalo (dias)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="duration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Duração (min)</FormLabel>
+                            <FormControl>
+                              <DurationSelect
+                                value={field.value}
+                                onChange={field.onChange}
+                                minDuration={5}
+                                maxDuration={480}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="interval_days"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Intervalo (dias)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <FormField

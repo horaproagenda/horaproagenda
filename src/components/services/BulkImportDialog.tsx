@@ -407,15 +407,15 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>Importar {type === 'services' ? 'Serviços' : type === 'clients' ? 'Clientes' : 'Modelos de Pacote'} em Massa</DialogTitle>
           <DialogDescription>
             Faça upload de um arquivo CSV ou TXT com os dados para importar.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           <div className="space-y-4">
             {/* File format info */}
             <Alert>
@@ -572,19 +572,6 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                   )}
                 </div>
 
-                <Button onClick={handleImport} disabled={isLoading} className="w-full">
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Importando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Importar {parsedData.length} {type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote'}
-                    </>
-                  )}
-                </Button>
               </div>
             )}
 
@@ -618,12 +605,27 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="flex justify-end pt-4 border-t">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Fechar
           </Button>
+          {parsedData.length > 0 && !result && (
+            <Button onClick={handleImport} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar {parsedData.length} {type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote'}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

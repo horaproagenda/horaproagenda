@@ -370,8 +370,9 @@ const Servicos: React.FC = () => {
   const buildKitsRows = () => {
     const onlyKits = filteredServices.filter(isKitServiceItem);
     const serviceById = new Map(services.map(s => [s.id, s] as const));
+    const profById = new Map(professionals.map(p => [p.id, p] as const));
     return {
-      headers: ['Nome', 'Categoria', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Preço total (R$)', 'Duração total (min)', 'Nº de etapas', 'Etapas (detalhe)', 'Retorno (dias)', 'Status'],
       rows: onlyKits.map(s => {
         const comps: { service_id: string; interval_days: number; price: number }[] =
           Array.isArray((s as any).service_components)
@@ -387,10 +388,12 @@ const Servicos: React.FC = () => {
         return [
           s.name,
           s.category,
+          s.professional_id ? (profById.get(s.professional_id)?.name || '-') : '-',
           Number(s.price).toFixed(2),
           s.duration,
           comps.length,
           detail,
+          s.return_days || '-',
           s.is_active ? 'Ativo' : 'Inativo',
         ] as (string | number)[];
       }),
@@ -410,7 +413,7 @@ const Servicos: React.FC = () => {
     const onlyStandard = filteredPackages.filter(p => p.package_type !== 'sequential');
     const profById = new Map(professionals.map(p => [p.id, p] as const));
     return {
-      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Aplicações', 'Duração (min)', 'Intervalo (dias)', 'Retorno (dias)', 'Status'],
       rows: onlyStandard.map(p => [
         p.name,
         p.category || '-',
@@ -421,6 +424,7 @@ const Servicos: React.FC = () => {
         p.total_sessions,
         p.duration || 60,
         p.interval_days || 7,
+        (p as any).return_days || '-',
         p.is_active ? 'Ativo' : 'Inativo',
       ] as (string | number)[]),
     };
@@ -438,7 +442,7 @@ const Servicos: React.FC = () => {
     const onlySeq = filteredPackages.filter(p => p.package_type === 'sequential');
     const profById = new Map(professionals.map(p => [p.id, p] as const));
     return {
-      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Status'],
+      headers: ['Nome', 'Categoria', 'Profissional', 'Sala', 'Equipamentos', 'Preço (R$)', 'Nº de etapas', 'Duração (min)', 'Intervalo (dias)', 'Retorno (dias)', 'Status'],
       rows: onlySeq.map(p => [
         p.name,
         p.category || '-',
@@ -449,6 +453,7 @@ const Servicos: React.FC = () => {
         p.total_sessions,
         p.duration || 60,
         p.interval_days || 7,
+        (p as any).return_days || '-',
         p.is_active ? 'Ativo' : 'Inativo',
       ] as (string | number)[]),
     };

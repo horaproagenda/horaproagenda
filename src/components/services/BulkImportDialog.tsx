@@ -572,19 +572,6 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                   )}
                 </div>
 
-                <Button onClick={handleImport} disabled={isLoading} className="w-full">
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Importando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Importar {parsedData.length} {type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote'}
-                    </>
-                  )}
-                </Button>
               </div>
             )}
 

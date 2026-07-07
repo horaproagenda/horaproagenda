@@ -124,7 +124,16 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
     return undefined;
   };
 
-  const validateClient = (client: Partial<ParsedClient>): ParsedClient => {
+  const parseIsActive = (value?: string): boolean => {
+    if (value === undefined || value === null) return true;
+    const v = value.toString().trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!v) return true;
+    if (['inativo', 'inactive', 'inativa', 'nao', 'no', 'false', '0', 'desativado', 'desativada'].includes(v)) return false;
+    return true;
+  };
+
+  const validateClient = (client: Partial<ParsedClient> & { status?: string }): ParsedClient => {
     const errors: string[] = [];
 
     if (!client.name || client.name.trim().length < 2) errors.push('Nome inválido');
@@ -153,10 +162,12 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       referral_source: client.referral_source?.trim() || undefined,
       professional_name: professionalName,
       assigned_professional_id: assignedProfId,
+      is_active: parseIsActive(client.status),
       valid: errors.length === 0,
       error: errors.length > 0 ? errors.join(', ') : undefined,
     };
   };
+
 
   const parseExcelFile = async (file: File): Promise<ParsedClient[]> => {
     try {

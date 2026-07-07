@@ -387,7 +387,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <Timer className="h-5 w-5 text-orange-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-semibold">{pkg.interval_days || 7} dias</p>
+                      <p className="font-semibold">{isSequential && intervalRange ? intervalRange : `${pkg.interval_days || 7} dias`}</p>
                     </div>
                   </div>
 

@@ -159,8 +159,19 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
         return;
       }
 
+      // Expand each step by quantity into individual rows
+      const expandedSteps = packageType === 'sequential'
+        ? steps.flatMap(step => {
+            const qty = Math.max(1, Number(step.quantity) || 1);
+            return Array.from({ length: qty }, () => ({
+              service_id: step.service_id,
+              interval_after_days: step.interval_after_days,
+            }));
+          })
+        : [];
+
       const sequentialDuration = packageType === 'sequential'
-        ? steps.reduce((total, step) => total + (activeServices.find(service => service.id === step.service_id)?.duration || data.duration), 0)
+        ? expandedSteps.reduce((total, step) => total + (activeServices.find(service => service.id === step.service_id)?.duration || data.duration), 0)
         : data.duration;
 
       // Create in package_templates (like services catalog)
@@ -170,8 +181,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
           name: data.name,
           description: data.description || null,
           category: data.category,
-          total_sessions: packageType === 'sequential' ? steps.length : data.total_sessions,
-          interval_days: packageType === 'sequential' ? steps[0]?.interval_after_days || data.interval_days : data.interval_days,
+          total_sessions: packageType === 'sequential' ? expandedSteps.length : data.total_sessions,
+          interval_days: packageType === 'sequential' ? expandedSteps[0]?.interval_after_days || data.interval_days : data.interval_days,
           duration: sequentialDuration,
           price: data.price,
           package_type: packageType,
@@ -188,11 +199,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       if (packageType === 'sequential' && template) {
         const { error: stepsError } = await (supabase as any)
           .from('package_template_steps')
-          .insert(steps.map((step, index) => ({
+          .insert(expandedSteps.map((step, index) => ({
             template_id: template.id,
             service_id: step.service_id,
             sequence_order: index + 1,
-            interval_after_days: index === steps.length - 1 ? 0 : step.interval_after_days,
+            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
           })));
 
         if (stepsError) throw stepsError;

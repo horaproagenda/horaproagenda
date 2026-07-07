@@ -186,6 +186,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       const notesIdx = findColumnIndex(['observ', 'notes', 'obs']);
       const referralIdx = findColumnIndex(['indica', 'referral', 'origem']);
       const profIdx = findColumnIndex(['profissional', 'professional', 'colaborador', 'responsavel', 'responsável']);
+      const statusIdx = findColumnIndex(['status', 'ativo', 'situacao', 'situação']);
+
 
       const hasHeader = nameIdx >= 0 || phoneIdx >= 0;
       const startRow = hasHeader ? 1 : 0;

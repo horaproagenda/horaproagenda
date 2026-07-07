@@ -43,9 +43,11 @@ interface ParsedClient {
   referral_source?: string;
   professional_name?: string;
   assigned_professional_id?: string | null;
+  is_active: boolean;
   valid: boolean;
   error?: string;
 }
+
 
 interface BulkImportClientsDialogProps {
   onImported?: () => void;
@@ -122,7 +124,16 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
     return undefined;
   };
 
-  const validateClient = (client: Partial<ParsedClient>): ParsedClient => {
+  const parseIsActive = (value?: string): boolean => {
+    if (value === undefined || value === null) return true;
+    const v = value.toString().trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!v) return true;
+    if (['inativo', 'inactive', 'inativa', 'nao', 'no', 'false', '0', 'desativado', 'desativada'].includes(v)) return false;
+    return true;
+  };
+
+  const validateClient = (client: Partial<ParsedClient> & { status?: string }): ParsedClient => {
     const errors: string[] = [];
 
     if (!client.name || client.name.trim().length < 2) errors.push('Nome inválido');
@@ -151,10 +162,12 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       referral_source: client.referral_source?.trim() || undefined,
       professional_name: professionalName,
       assigned_professional_id: assignedProfId,
+      is_active: parseIsActive(client.status),
       valid: errors.length === 0,
       error: errors.length > 0 ? errors.join(', ') : undefined,
     };
   };
+
 
   const parseExcelFile = async (file: File): Promise<ParsedClient[]> => {
     try {
@@ -173,6 +186,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
       const notesIdx = findColumnIndex(['observ', 'notes', 'obs']);
       const referralIdx = findColumnIndex(['indica', 'referral', 'origem']);
       const profIdx = findColumnIndex(['profissional', 'professional', 'colaborador', 'responsavel', 'responsável']);
+      const statusIdx = findColumnIndex(['status', 'ativo', 'situacao', 'situação']);
+
 
       const hasHeader = nameIdx >= 0 || phoneIdx >= 0;
       const startRow = hasHeader ? 1 : 0;
@@ -206,6 +221,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
             notes: notesIdx >= 0 ? getValue(notesIdx) : undefined,
             referral_source: referralIdx >= 0 ? getValue(referralIdx) : undefined,
             professional_name: profIdx >= 0 ? getValue(profIdx) : undefined,
+            status: statusIdx >= 0 ? getValue(statusIdx) : undefined,
+
           }),
         );
       }
@@ -242,7 +259,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
             birthdateIdx = 4,
             notesIdx = 5,
             referralIdx = 6,
-            profIdx = -1;
+            profIdx = -1,
+            statusIdx = -1;
+
 
           if (hasHeader) {
             const headers = rows[0].map((h) => h.trim().toLowerCase());
@@ -268,6 +287,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
                 h.includes('colaborador') ||
                 h.includes('responsav'),
             );
+            statusIdx = headers.findIndex(
+              (h) => h.includes('status') || h.includes('ativo') || h.includes('situa'),
+            );
             if (nameIdx === -1) nameIdx = 0;
             if (phoneIdx === -1) phoneIdx = 1;
           }
@@ -290,7 +312,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
                   referralIdx >= 0 ? parts[referralIdx] || undefined : undefined,
                 professional_name:
                   profIdx >= 0 ? parts[profIdx] || undefined : undefined,
+                status: statusIdx >= 0 ? parts[statusIdx] || undefined : undefined,
               }),
+
             );
           }
 
@@ -312,11 +336,12 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
   const handleDownloadTemplate = () => {
     downloadCsvTemplate({
       filename: 'modelo_importacao_clientes',
-      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações', 'Indicação', 'Profissional'],
+      headers: ['Nome', 'Telefone', 'Email', 'CPF', 'Nascimento', 'Observações', 'Indicação', 'Profissional', 'Status'],
       sampleRows: [
-        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP', 'Instagram', activeProfessionals[0]?.name || 'Dra. Ana'],
-        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere horário pela manhã', 'Amigo', ''],
+        ['Maria Silva', '11987654321', 'maria@email.com', '12345678900', '15/03/1990', 'Cliente VIP', 'Instagram', activeProfessionals[0]?.name || 'Dra. Ana', 'Ativo'],
+        ['João Souza, Jr.', '11912345678', '', '', '', 'Prefere horário pela manhã', 'Amigo', '', 'Inativo'],
       ],
+
     });
   };
 
@@ -397,7 +422,7 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
         notes: c.notes || null,
         referral_source: c.referral_source || null,
         assigned_professional_id: c.assigned_professional_id || fallbackProfId,
-        is_active: true,
+        is_active: c.is_active,
         credit_balance: 0,
       }));
 
@@ -527,6 +552,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
               <Badge variant="outline">Observações</Badge>
               <Badge variant="outline">Indicação</Badge>
               <Badge variant="outline">Profissional</Badge>
+              <Badge variant="outline">Status (Ativo/Inativo)</Badge>
+
             </div>
             <p className="text-muted-foreground text-xs mt-2">
               * Campos obrigatórios. O nome do profissional deve corresponder a um profissional cadastrado.

@@ -196,6 +196,10 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           description: cell(values, idx.description) || undefined,
           return_days: retorno ? parseInt(retorno) || undefined : undefined,
+          professional_id: resolveProfessional(cell(values, idx.professional)),
+          room_id: resolveRoom(cell(values, idx.room)),
+          equipment: resolveEquipment(cell(values, idx.equipment)),
+          is_active: parseStatusActive(cell(values, idx.status)),
         } as ParsedService);
       } else if (type === 'clients') {
         const name = cell(values, idx.name);
@@ -211,6 +215,7 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
       } else if (type === 'package_templates') {
         const name = cell(values, idx.name);
         if (!name) continue;
+        const retorno = cell(values, idx.return_days);
         data.push({
           name,
           description: cell(values, idx.description) || undefined,
@@ -218,6 +223,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           price: parseBrazilianCurrency(cell(values, idx.price)),
           duration: parseInt(cell(values, idx.duration) || '60') || 60,
           interval_days: parseInt(cell(values, idx.interval_days) || '7') || 7,
+          return_days: retorno ? parseInt(retorno) || undefined : undefined,
+          professional_id: resolveProfessional(cell(values, idx.professional)),
+          room_id: resolveRoom(cell(values, idx.room)),
+          equipment: resolveEquipment(cell(values, idx.equipment)),
+          is_active: parseStatusActive(cell(values, idx.status)),
         } as ParsedPackageTemplate);
       }
     }

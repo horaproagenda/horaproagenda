@@ -431,8 +431,12 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
               price: template.price,
               duration: template.duration,
               interval_days: template.interval_days,
-              is_active: true,
-            });
+              return_days: template.return_days ?? null,
+              is_active: template.is_active ?? true,
+              professional_id: template.professional_id ?? null,
+              room_id: template.room_id ?? null,
+              equipment: template.equipment ?? null,
+            } as any);
 
             if (error) {
               errors.push(`${template.name}: ${error.message}`);

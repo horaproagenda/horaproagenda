@@ -552,6 +552,8 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
               <Badge variant="outline">Observações</Badge>
               <Badge variant="outline">Indicação</Badge>
               <Badge variant="outline">Profissional</Badge>
+              <Badge variant="outline">Status (Ativo/Inativo)</Badge>
+
             </div>
             <p className="text-muted-foreground text-xs mt-2">
               * Campos obrigatórios. O nome do profissional deve corresponder a um profissional cadastrado.

@@ -607,10 +607,25 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           </div>
         </div>
 
-        <div className="flex justify-end px-6 py-4 border-t">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Fechar
           </Button>
+          {parsedData.length > 0 && !result && (
+            <Button onClick={handleImport} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar {parsedData.length} {type === 'services' ? 'serviços' : type === 'clients' ? 'clientes' : 'modelos de pacote'}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

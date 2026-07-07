@@ -204,16 +204,42 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const onSubmit = async (data: PackageFormData) => {
     setIsSaving(true);
     try {
+      let totalSessions = data.total_sessions;
+      let duration = data.duration;
+      let intervalDays = data.interval_days;
+      let expandedSteps: Array<{ service_id: string; interval_after_days: number }> = [];
+
+      if (isSequential) {
+        if (sequentialSteps.some(s => !s.service_id)) {
+          toast.error('Selecione um serviço para cada etapa.');
+          setIsSaving(false);
+          return;
+        }
+        expandedSteps = sequentialSteps.flatMap(step => {
+          const qty = Math.max(1, Number(step.quantity) || 1);
+          return Array.from({ length: qty }, () => ({
+            service_id: step.service_id,
+            interval_after_days: Number(step.interval_after_days) || 0,
+          }));
+        });
+        totalSessions = expandedSteps.length;
+        intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
+        duration = expandedSteps.reduce((sum, s) => {
+          const svc = activeServices.find(a => a.id === s.service_id);
+          return sum + (svc?.duration || 0);
+        }, 0) || duration;
+      }
+
       const { error } = await (supabase as any)
         .from('package_templates')
         .update({
           name: data.name,
           description: data.description || null,
           category: data.category,
-          total_sessions: data.total_sessions,
+          total_sessions: totalSessions,
           price: data.price,
-          duration: data.duration,
-          interval_days: data.interval_days,
+          duration,
+          interval_days: intervalDays,
           room_id: data.room_id || null,
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
@@ -222,6 +248,19 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         .eq('id', pkg.id);
 
       if (error) throw error;
+
+      if (isSequential) {
+        await (supabase as any).from('package_template_steps').delete().eq('template_id', pkg.id);
+        const { error: stepsError } = await (supabase as any)
+          .from('package_template_steps')
+          .insert(expandedSteps.map((step, index) => ({
+            template_id: pkg.id,
+            service_id: step.service_id,
+            sequence_order: index + 1,
+            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
+          })));
+        if (stepsError) throw stepsError;
+      }
 
       toast.success('Pacote atualizado com sucesso!');
       setIsEditing(false);
@@ -233,6 +272,25 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       setIsSaving(false);
     }
   };
+
+  const addSeqStep = () => setSequentialSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+  const removeSeqStep = (idx: number) => setSequentialSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
+  const updateSeqStep = (idx: number, updates: Partial<{ service_id: string; interval_after_days: number; quantity: number }>) => {
+    setSequentialSteps(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
+  };
+
+  // interval range for display
+  const intervalRange = (() => {
+    if (!isSequential || sequentialSteps.length === 0) return null;
+    const vals = sequentialSteps
+      .slice(0, sequentialSteps.length > 1 ? -1 : sequentialSteps.length)
+      .map(s => Number(s.interval_after_days) || 0)
+      .filter(v => v > 0);
+    if (vals.length === 0) return null;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    return min === max ? `${min} dias` : `de ${min} a ${max} dias`;
+  })();
 
   const handleDelete = async () => {
     try {

@@ -287,6 +287,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
                 h.includes('colaborador') ||
                 h.includes('responsav'),
             );
+            statusIdx = headers.findIndex(
+              (h) => h.includes('status') || h.includes('ativo') || h.includes('situa'),
+            );
             if (nameIdx === -1) nameIdx = 0;
             if (phoneIdx === -1) phoneIdx = 1;
           }
@@ -309,7 +312,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
                   referralIdx >= 0 ? parts[referralIdx] || undefined : undefined,
                 professional_name:
                   profIdx >= 0 ? parts[profIdx] || undefined : undefined,
+                status: statusIdx >= 0 ? parts[statusIdx] || undefined : undefined,
               }),
+
             );
           }
 

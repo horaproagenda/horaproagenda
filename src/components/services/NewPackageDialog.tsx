@@ -106,7 +106,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');
   const watchRoomId = form.watch('room_id');
-  const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
+  const sequentialTotalCount = steps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0);
+  const effectiveSessions = packageType === 'sequential' ? sequentialTotalCount : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
   const packageScope = {
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
@@ -116,7 +117,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;
-    return total + (Number(service?.price) || 0);
+    const qty = Math.max(1, Number(step.quantity) || 1);
+    return total + ((Number(service?.price) || 0) * qty);
   }, 0);
 
   useEffect(() => {

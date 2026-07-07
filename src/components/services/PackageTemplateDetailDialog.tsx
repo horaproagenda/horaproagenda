@@ -43,6 +43,9 @@ import { PackageTemplate } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServices } from '@/hooks/useServices';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 

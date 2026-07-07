@@ -534,10 +534,10 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                   const templates = {
                     services: {
                       filename: 'modelo_importacao_servicos',
-                      headers: ['Nome', 'Categoria', 'Preço', 'Duração', 'Descrição', 'Retorno'],
+                      headers: ['Nome', 'Categoria', 'Preço', 'Duração', 'Descrição', 'Retorno', 'Profissional', 'Sala', 'Equipamento', 'Status'],
                       sampleRows: [
-                        ['Limpeza de Pele', 'Estética Facial', '120,00', '60', 'Limpeza profunda', '30'],
-                        ['Massagem; Relaxante', 'Bem-estar', '150,00', '50', 'Inclui aromaterapia', ''],
+                        ['Limpeza de Pele', 'Estética Facial', '120,00', '60', 'Limpeza profunda', '30', 'Ana Souza', 'Sala 1', 'Alta Frequência', 'Ativo'],
+                        ['Massagem; Relaxante', 'Bem-estar', '150,00', '50', 'Inclui aromaterapia', '', '', '', '', 'Ativo'],
                       ],
                     },
                     clients: {
@@ -550,9 +550,9 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                     },
                     package_templates: {
                       filename: 'modelo_importacao_pacotes',
-                      headers: ['Nome', 'Sessões', 'Preço', 'Duração', 'Intervalo', 'Descrição'],
+                      headers: ['Nome', 'Sessões', 'Preço', 'Duração', 'Intervalo', 'Descrição', 'Retorno', 'Profissional', 'Sala', 'Equipamento', 'Status'],
                       sampleRows: [
-                        ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa'],
+                        ['Pacote Hidratação 10x', '10', '1200,00', '50', '7', 'Hidratação facial completa', '30', 'Ana Souza', 'Sala 1', 'Vapor de Ozônio', 'Ativo'],
                       ],
                     },
                   };

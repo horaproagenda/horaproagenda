@@ -235,10 +235,13 @@ function PermissionsDialog({ userId, userName, onClose }: { userId: string; user
   });
   const initial: PermRow[] = APP_MODULES.map(m => {
     const found = (existing || []).find((p: { module: string }) => p.module === m.key);
+    // Sem registro salvo => tudo ativo por padrão (novos módulos entram liberados).
     return {
       module: m.key,
-      can_view: !!found?.can_view, can_create: !!found?.can_create,
-      can_edit: !!found?.can_edit, can_delete: !!found?.can_delete,
+      can_view: found ? !!found.can_view : true,
+      can_create: found ? !!found.can_create : true,
+      can_edit: found ? !!found.can_edit : true,
+      can_delete: found ? !!found.can_delete : true,
     };
   });
   const [perms, setPerms] = useState<PermRow[]>(initial);

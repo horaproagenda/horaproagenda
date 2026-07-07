@@ -259,7 +259,9 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
             birthdateIdx = 4,
             notesIdx = 5,
             referralIdx = 6,
-            profIdx = -1;
+            profIdx = -1,
+            statusIdx = -1;
+
 
           if (hasHeader) {
             const headers = rows[0].map((h) => h.trim().toLowerCase());

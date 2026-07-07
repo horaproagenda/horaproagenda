@@ -498,11 +498,11 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
                 <strong>Formato esperado (CSV):</strong>
                 <br />
                 {type === 'services' ? (
-                  <code className="text-xs">Nome,Categoria,Preço,Duração,Descrição,Retorno</code>
+                  <code className="text-xs">Nome,Categoria,Preço,Duração,Descrição,Retorno,Profissional,Sala,Equipamento,Status</code>
                 ) : type === 'clients' ? (
                   <code className="text-xs">Nome,Telefone,Email,CPF,Nascimento,Observações</code>
                 ) : (
-                  <code className="text-xs">Nome,Sessões,Preço,Duração,Intervalo,Descrição</code>
+                  <code className="text-xs">Nome,Sessões,Preço,Duração,Intervalo,Descrição,Retorno,Profissional,Sala,Equipamento,Status</code>
                 )}
                 <br />
                 <span className="text-xs text-muted-foreground mt-1 block">

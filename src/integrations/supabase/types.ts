@@ -2511,6 +2511,7 @@ export type Database = {
           payment_type: string | null
           price: number
           professional_id: string | null
+          return_days: number | null
           room_id: string | null
           total_sessions: number
           updated_at: string
@@ -2530,6 +2531,7 @@ export type Database = {
           payment_type?: string | null
           price: number
           professional_id?: string | null
+          return_days?: number | null
           room_id?: string | null
           total_sessions?: number
           updated_at?: string
@@ -2549,6 +2551,7 @@ export type Database = {
           payment_type?: string | null
           price?: number
           professional_id?: string | null
+          return_days?: number | null
           room_id?: string | null
           total_sessions?: number
           updated_at?: string

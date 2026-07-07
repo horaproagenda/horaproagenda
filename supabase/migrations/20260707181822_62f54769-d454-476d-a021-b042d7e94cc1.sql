@@ -1,0 +1,1 @@
+ALTER TABLE public.package_templates ADD COLUMN IF NOT EXISTS return_days INTEGER;

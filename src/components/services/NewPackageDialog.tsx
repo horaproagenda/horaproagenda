@@ -363,7 +363,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   </Button>
                 </div>
                 {steps.map((step, index) => (
-                  <div key={index} className="grid grid-cols-[1fr_76px_28px] gap-2 items-end">
+                  <div key={index} className="grid grid-cols-[1fr_56px_66px_28px] gap-2 items-end">
                     <div className="min-w-0">
                       <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
                       <SearchableSelect
@@ -381,6 +381,10 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                       />
                     </div>
                     <div>
+                      <FormLabel className="text-[10px]">Qtd.</FormLabel>
+                      <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
+                    </div>
+                    <div>
                       <FormLabel className="text-[10px]">Após (dias)</FormLabel>
                       <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
                     </div>
@@ -389,6 +393,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     </Button>
                   </div>
                 ))}
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  Total de aplicações: <span className="font-medium text-foreground">{sequentialTotalCount}</span>
+                </p>
               </div>
             )}
 

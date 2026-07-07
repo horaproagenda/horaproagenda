@@ -17,7 +17,9 @@ import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 type PermRow = { module: AppModuleKey; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean };
 
 function emptyPermissions(): PermRow[] {
-  return APP_MODULES.map(m => ({ module: m.key, can_view: false, can_create: false, can_edit: false, can_delete: false }));
+  // Novos usuários iniciam com acesso total a todos os módulos.
+  // O administrador pode restringir depois, se desejar.
+  return APP_MODULES.map(m => ({ module: m.key, can_view: true, can_create: true, can_edit: true, can_delete: true }));
 }
 
 export function UsuariosContaSection() {

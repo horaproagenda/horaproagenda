@@ -82,8 +82,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
-    { service_id: '', interval_after_days: 7 },
-    { service_id: '', interval_after_days: 7 },
+    { service_id: '', interval_after_days: 7, quantity: 1 },
+    { service_id: '', interval_after_days: 7, quantity: 1 },
   ]);
 
   const form = useForm<PackageFormData>({

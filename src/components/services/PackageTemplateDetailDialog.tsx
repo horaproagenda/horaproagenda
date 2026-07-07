@@ -85,10 +85,14 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isSequential = pkg.package_type === 'sequential';
+  const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number; quantity: number }>>([]);
+  const [servicesMap, setServicesMap] = useState<Record<string, { name: string; price: number; duration: number }>>({});
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
+  const { activeServices } = useServices();
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),

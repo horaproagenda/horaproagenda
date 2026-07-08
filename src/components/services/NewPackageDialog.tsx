@@ -213,7 +213,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       toast.success('Pacote cadastrado!');
       form.reset();
       setPackageType('standard');
-      setSteps([{ service_id: '', interval_after_days: 7, quantity: 1 }, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+      setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
       setPriceManuallyEdited(false);
       setOpen(false);
       onPackageCreated?.();

@@ -395,11 +395,38 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     </div>
                   );
                 })}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                  <p className="text-[10px] text-muted-foreground">
-                    Total de aplicações: <span className="font-medium text-foreground">{steps.length}</span>
-                  </p>
-                </div>
+                {(() => {
+                  const counts = steps.reduce<Record<string, number>>((acc, s) => {
+                    if (s.service_id) acc[s.service_id] = (acc[s.service_id] || 0) + 1;
+                    return acc;
+                  }, {});
+                  const entries = Object.entries(counts);
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[10px] text-muted-foreground">
+                        Total de aplicações: <span className="font-medium text-foreground">{steps.length}</span>
+                      </p>
+                      {entries.length > 0 && (
+                        <div className="rounded-md border bg-muted/30 p-2">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {entries.map(([sid, qty]) => {
+                              const svc = activeServices.find((s: any) => s.id === sid) as any;
+                              const c = getSequentialServiceColor(sid, colorMap);
+                              return (
+                                <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>
+                                  <span className={`h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
+                                  <span className="font-medium text-foreground">{svc?.name || 'Serviço'}</span>
+                                  <span className="text-muted-foreground">×{qty}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

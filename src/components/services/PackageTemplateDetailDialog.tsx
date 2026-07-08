@@ -541,6 +541,32 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                       <p className="text-[10px] text-muted-foreground pt-1">
                         Total de aplicações: <span className="font-medium text-foreground">{sequentialSteps.length}</span>
                       </p>
+                      {(() => {
+                        const counts = sequentialSteps.reduce<Record<string, number>>((acc, s) => {
+                          if (s.service_id) acc[s.service_id] = (acc[s.service_id] || 0) + 1;
+                          return acc;
+                        }, {});
+                        const entries = Object.entries(counts);
+                        if (entries.length === 0) return null;
+                        return (
+                          <div className="rounded-md border bg-muted/30 p-2 mt-1">
+                            <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {entries.map(([sid, qty]) => {
+                                const svc = activeServices.find((s: any) => s.id === sid) as any;
+                                const c = getSequentialServiceColor(sid, seqColorMap);
+                                return (
+                                  <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>
+                                    <span className={`h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
+                                    <span className="font-medium text-foreground">{svc?.name || 'Serviço'}</span>
+                                    <span className="text-muted-foreground">×{qty}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <FormField

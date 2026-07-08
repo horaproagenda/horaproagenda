@@ -263,9 +263,9 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
     }
   };
 
-  const addSeqStep = () => setSequentialSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+  const addSeqStep = () => setSequentialSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeSeqStep = (idx: number) => setSequentialSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
-  const updateSeqStep = (idx: number, updates: Partial<{ service_id: string; interval_after_days: number; quantity: number }>) => {
+  const updateSeqStep = (idx: number, updates: Partial<{ service_id: string; interval_after_days: number }>) => {
     setSequentialSteps(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
   };
 
@@ -282,21 +282,8 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
     return min === max ? `${min} dias` : `de ${min} a ${max} dias`;
   })();
 
-  // Cores por serviço e contagem agrupada — apoia a leitura visual da sequência.
+  // Cores por serviço — apoia a leitura visual da sequência.
   const seqColorMap = buildSequentialServiceColorMap(sequentialSteps.map(s => s.service_id));
-  const seqCountEntries = (() => {
-    const map = new Map<string, { name: string; quantity: number }>();
-    sequentialSteps.forEach(step => {
-      if (!step.service_id) return;
-      const svc = activeServices.find(s => s.id === step.service_id);
-      if (!svc) return;
-      const qty = Math.max(1, Number(step.quantity) || 1);
-      const existing = map.get(step.service_id);
-      if (existing) existing.quantity += qty;
-      else map.set(step.service_id, { name: svc.name, quantity: qty });
-    });
-    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v }));
-  })();
 
   const handleDelete = async () => {
     try {

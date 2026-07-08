@@ -537,7 +537,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                       {sequentialSteps.map((step, index) => {
                         const color = getSequentialServiceColor(step.service_id, seqColorMap);
                         return (
-                          <div key={index} className={`grid grid-cols-[16px_1fr_56px_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
+                          <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_56px_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
                             <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
                             <div className="min-w-0">
                               <Label className="text-[10px]">{index + 1}º serviço</Label>

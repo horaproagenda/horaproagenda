@@ -234,6 +234,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     qc.invalidateQueries({ queryKey: ['client_profile', clientId] });
     qc.invalidateQueries({ queryKey: ['service_packages'] });
     qc.invalidateQueries({ queryKey: ['financial_entries'] });
+    qc.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+    qc.invalidateQueries({ queryKey: ['clients'] });
+    qc.invalidateQueries({ queryKey: ['client', clientId] });
   };
 
   // ============ SINGLE ============

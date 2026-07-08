@@ -372,7 +372,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
               </div>
             ) : (
               <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-                No kit sequencial, <span className="font-medium text-foreground">duração, intervalo de retorno e valor</span> de cada etapa vêm do próprio serviço cadastrado.
+                No pacote sequencial, <span className="font-medium text-foreground">a duração e o intervalo</span> de cada etapa vêm do próprio serviço cadastrado. O <span className="font-medium text-foreground">valor total é sugerido pela soma das etapas</span> e pode ser editado manualmente abaixo.
               </div>
             )}
 

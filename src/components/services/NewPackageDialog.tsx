@@ -256,7 +256,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">{lockType ? (packageType === 'sequential' ? 'Novo Kit de Serviços' : 'Novo Pacote Comum') : 'Novo Pacote'}</DialogTitle>
+          <DialogTitle className="text-base">{lockType ? (packageType === 'sequential' ? 'Novo Pacote Sequencial' : 'Novo Pacote Comum') : 'Novo Pacote'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">

@@ -763,7 +763,7 @@ export function ProductDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <DialogTitle className="text-xl">{product.name}</DialogTitle>
               <DialogDescription>
@@ -771,6 +771,17 @@ export function ProductDetailDialog({
                 {product.category && <Badge variant="outline">{product.category}</Badge>}
               </DialogDescription>
             </div>
+            {canEdit && !isEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStartEdit}
+                className="mr-8"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar informações
+              </Button>
+            )}
           </div>
         </DialogHeader>
 

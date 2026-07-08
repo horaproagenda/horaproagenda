@@ -59,7 +59,6 @@ type PackageFormData = z.infer<typeof packageSchema>;
 interface SequentialStep {
   service_id: string;
   interval_after_days: number;
-  quantity: number;
 }
 
 interface NewPackageDialogProps {
@@ -83,8 +82,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
-    { service_id: '', interval_after_days: 7, quantity: 1 },
-    { service_id: '', interval_after_days: 7, quantity: 1 },
+    { service_id: '', interval_after_days: 7 },
+    { service_id: '', interval_after_days: 7 },
   ]);
   const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
 
@@ -108,8 +107,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');
   const watchRoomId = form.watch('room_id');
-  const sequentialTotalCount = steps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0);
-  const effectiveSessions = packageType === 'sequential' ? sequentialTotalCount : watchTotalSessions;
+  const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
   const packageScope = {
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
@@ -119,8 +117,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;
-    const qty = Math.max(1, Number(step.quantity) || 1);
-    return total + ((Number(service?.price) || 0) * qty);
+    return total + (Number(service?.price) || 0);
   }, 0);
 
   // Só recalcula o valor sugerido enquanto o profissional não tiver ajustado
@@ -131,24 +128,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [packageType, sequentialTotalPrice, priceManuallyEdited, form]);
 
-  // Agrupamento por serviço para exibir a contagem final (ex.: 4x Axila).
+  // Agrupamento por serviço para exibir a contagem final (ex.: Axila).
   const stepServiceIds = steps.map(s => s.service_id).filter(Boolean);
   const colorMap = buildSequentialServiceColorMap(stepServiceIds);
-  const serviceCountEntries = (() => {
-    const map = new Map<string, { name: string; quantity: number }>();
-    steps.forEach(step => {
-      if (!step.service_id) return;
-      const svc = activeServices.find(s => s.id === step.service_id);
-      if (!svc) return;
-      const qty = Math.max(1, Number(step.quantity) || 1);
-      const existing = map.get(step.service_id);
-      if (existing) existing.quantity += qty;
-      else map.set(step.service_id, { name: svc.name, quantity: qty });
-    });
-    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v }));
-  })();
 
-  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const updateStep = (index: number, updates: Partial<SequentialStep>) => {
     setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));
@@ -180,15 +164,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
         return;
       }
 
-      // Expand each step by quantity into individual rows
       const expandedSteps = packageType === 'sequential'
-        ? steps.flatMap(step => {
-            const qty = Math.max(1, Number(step.quantity) || 1);
-            return Array.from({ length: qty }, () => ({
-              service_id: step.service_id,
-              interval_after_days: step.interval_after_days,
-            }));
-          })
+        ? steps.map(step => ({
+            service_id: step.service_id,
+            interval_after_days: step.interval_after_days,
+          }))
         : [];
 
       const sequentialDuration = packageType === 'sequential'
@@ -233,7 +213,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       toast.success('Pacote cadastrado!');
       form.reset();
       setPackageType('standard');
-      setSteps([{ service_id: '', interval_after_days: 7, quantity: 1 }, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+      setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
       setPriceManuallyEdited(false);
       setOpen(false);
       onPackageCreated?.();
@@ -387,7 +367,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 {steps.map((step, index) => {
                   const color = getSequentialServiceColor(step.service_id, colorMap);
                   return (
-                    <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_56px_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
+                    <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
                       <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
                       <div className="min-w-0">
                         <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
@@ -406,10 +386,6 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                         />
                       </div>
                       <div>
-                        <FormLabel className="text-[10px]">Qtd.</FormLabel>
-                        <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
-                      </div>
-                      <div>
                         <FormLabel className="text-[10px]">Após (dias)</FormLabel>
                         <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
                       </div>
@@ -421,26 +397,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 })}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <p className="text-[10px] text-muted-foreground">
-                    Total de aplicações: <span className="font-medium text-foreground">{sequentialTotalCount}</span>
+                    Total de aplicações: <span className="font-medium text-foreground">{steps.length}</span>
                   </p>
                 </div>
-                {serviceCountEntries.length > 0 && (
-                  <div className="rounded-md border bg-muted/20 p-2">
-                    <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Total por serviço</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {serviceCountEntries.map(entry => {
-                        const color = getSequentialServiceColor(entry.id, colorMap);
-                        return (
-                          <span key={entry.id} className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${color.bg} ${color.text} ${color.border}`}>
-                            <span className={`h-2 w-2 rounded-full ${color.dot}`} aria-hidden />
-                            <span className="font-semibold">{entry.quantity}x</span>
-                            <span>{entry.name}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

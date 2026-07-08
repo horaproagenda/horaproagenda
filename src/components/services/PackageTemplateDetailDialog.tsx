@@ -208,13 +208,10 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           setIsSaving(false);
           return;
         }
-        expandedSteps = sequentialSteps.flatMap(step => {
-          const qty = Math.max(1, Number(step.quantity) || 1);
-          return Array.from({ length: qty }, () => ({
-            service_id: step.service_id,
-            interval_after_days: Number(step.interval_after_days) || 0,
-          }));
-        });
+        expandedSteps = sequentialSteps.map(step => ({
+          service_id: step.service_id,
+          interval_after_days: Number(step.interval_after_days) || 0,
+        }));
         totalSessions = expandedSteps.length;
         intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
         duration = expandedSteps.reduce((sum, s) => {

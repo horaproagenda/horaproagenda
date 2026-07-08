@@ -367,7 +367,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 {steps.map((step, index) => {
                   const color = getSequentialServiceColor(step.service_id, colorMap);
                   return (
-                    <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_56px_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
+                    <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
                       <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
                       <div className="min-w-0">
                         <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
@@ -386,10 +386,6 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                         />
                       </div>
                       <div>
-                        <FormLabel className="text-[10px]">Qtd.</FormLabel>
-                        <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
-                      </div>
-                      <div>
                         <FormLabel className="text-[10px]">Após (dias)</FormLabel>
                         <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
                       </div>
@@ -401,26 +397,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 })}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <p className="text-[10px] text-muted-foreground">
-                    Total de aplicações: <span className="font-medium text-foreground">{sequentialTotalCount}</span>
+                    Total de aplicações: <span className="font-medium text-foreground">{steps.length}</span>
                   </p>
                 </div>
-                {serviceCountEntries.length > 0 && (
-                  <div className="rounded-md border bg-muted/20 p-2">
-                    <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Total por serviço</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {serviceCountEntries.map(entry => {
-                        const color = getSequentialServiceColor(entry.id, colorMap);
-                        return (
-                          <span key={entry.id} className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${color.bg} ${color.text} ${color.border}`}>
-                            <span className={`h-2 w-2 rounded-full ${color.dot}`} aria-hidden />
-                            <span className="font-semibold">{entry.quantity}x</span>
-                            <span>{entry.name}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

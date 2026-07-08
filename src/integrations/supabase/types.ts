@@ -5376,6 +5376,10 @@ export type Database = {
         Returns: string
       }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
+      seed_default_payment_methods: {
+        Args: { _owner_id: string }
+        Returns: undefined
+      }
       set_appointment_status_with_package_mode: {
         Args: {
           p_appointment_id: string

@@ -302,7 +302,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   Pacote padrão
                 </Button>
                 <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
-                  Sequencial (Kit)
+                  Sequencial
                 </Button>
               </div>
             )}

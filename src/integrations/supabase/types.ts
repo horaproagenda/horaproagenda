@@ -3112,6 +3112,7 @@ export type Database = {
       professional_preferences: {
         Row: {
           account_owner_id: string
+          animations: boolean | null
           auto_complete_appointments: boolean | null
           automation_gap_finder: boolean | null
           automation_occupancy_dashboard: boolean | null
@@ -3120,8 +3121,10 @@ export type Database = {
           automation_whatsapp_reminders: boolean | null
           closing_time: string | null
           created_at: string
+          dark_mode: boolean | null
           drag_and_drop_enabled: boolean | null
           opening_time: string | null
+          primary_color: string | null
           quiet_hours_end: number | null
           quiet_hours_start: number | null
           reminder_hours_before: number[] | null
@@ -3138,6 +3141,7 @@ export type Database = {
         }
         Insert: {
           account_owner_id?: string
+          animations?: boolean | null
           auto_complete_appointments?: boolean | null
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -3146,8 +3150,10 @@ export type Database = {
           automation_whatsapp_reminders?: boolean | null
           closing_time?: string | null
           created_at?: string
+          dark_mode?: boolean | null
           drag_and_drop_enabled?: boolean | null
           opening_time?: string | null
+          primary_color?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           reminder_hours_before?: number[] | null
@@ -3164,6 +3170,7 @@ export type Database = {
         }
         Update: {
           account_owner_id?: string
+          animations?: boolean | null
           auto_complete_appointments?: boolean | null
           automation_gap_finder?: boolean | null
           automation_occupancy_dashboard?: boolean | null
@@ -3172,8 +3179,10 @@ export type Database = {
           automation_whatsapp_reminders?: boolean | null
           closing_time?: string | null
           created_at?: string
+          dark_mode?: boolean | null
           drag_and_drop_enabled?: boolean | null
           opening_time?: string | null
+          primary_color?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           reminder_hours_before?: number[] | null

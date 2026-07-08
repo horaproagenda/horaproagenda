@@ -27,6 +27,9 @@ interface CreateRecurringAppointmentsParams {
   duration_minutes?: number;
   // Discount: aplica em todos os agendamentos da série
   discount_amount?: number;
+  // When true, do not auto-send WhatsApp; return the composed message so the
+  // caller can show a preview dialog before sending.
+  defer_whatsapp_preview?: boolean;
 }
 
 
@@ -148,14 +151,14 @@ export function useRecurringAppointments() {
       }
     }
 
-    // Send WhatsApp notification if requested
+    // Compose WhatsApp notification message (may defer sending for preview)
+    let whatsappPreview: { phone: string; message: string } | undefined;
     if (params.send_whatsapp && params.client_phone && createdAppointments.length > 0) {
-      try {
-        const sessionsList = createdAppointments.map((apt, i) => 
-          `📅 Sessão ${i + 1}: ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-        ).join('\n');
+      const sessionsList = createdAppointments.map((apt, i) =>
+        `📅 Sessão ${i + 1}: ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+      ).join('\n');
 
-        const message = `Olá ${params.client_name || 'Cliente'}! 👋
+      const message = `Olá ${params.client_name || 'Cliente'}! 👋
 
 Seus ${createdAppointments.length} agendamentos de *${params.service_name || 'serviço'}* foram criados com sucesso! 🎉
 
@@ -165,19 +168,21 @@ Se precisar reagendar alguma sessão, entre em contato conosco.
 
 Até breve! ✨`;
 
-        await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            phone: params.client_phone,
-            message,
-          }),
-        });
-      } catch (error) {
-        console.error('Error sending WhatsApp notification:', error);
+      if (params.defer_whatsapp_preview) {
+        whatsappPreview = { phone: params.client_phone, message };
+      } else {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ phone: params.client_phone, message }),
+          });
+        } catch (error) {
+          console.error('Error sending WhatsApp notification:', error);
+        }
       }
     }
 
@@ -197,6 +202,7 @@ Até breve! ✨`;
       created: createdAppointments.length,
       failed: failedAppointments,
       appointments: createdAppointments,
+      whatsappPreview,
     };
   };
 

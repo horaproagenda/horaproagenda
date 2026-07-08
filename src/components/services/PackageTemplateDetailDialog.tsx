@@ -87,7 +87,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isSequential = pkg.package_type === 'sequential';
-  const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number; quantity: number }>>([]);
+  const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number }>>([]);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();

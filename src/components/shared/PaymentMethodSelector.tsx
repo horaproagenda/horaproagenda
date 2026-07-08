@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useBanks } from '@/hooks/useBanks';
+import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 interface PaymentMethodSelectorProps {
   paymentMethodId: string;

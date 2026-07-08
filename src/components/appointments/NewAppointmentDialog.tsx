@@ -53,6 +53,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
 import { Appointment } from '@/types';
@@ -139,6 +140,11 @@ export function NewAppointmentDialog({
   const [editingServiceDateIndex, setEditingServiceDateIndex] = useState<number | null>(null);
   const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
   const [holidayConfirmed, setHolidayConfirmed] = useState(false);
+
+  // WhatsApp preview dialog (shown after creating appointments if toggle on)
+  const [whatsappPreviewOpen, setWhatsappPreviewOpen] = useState(false);
+  const [whatsappPreviewPhone, setWhatsappPreviewPhone] = useState<string | undefined>(undefined);
+  const [whatsappPreviewMessage, setWhatsappPreviewMessage] = useState('');
 
   // Discount applied when scheduling
   const [discountValue, setDiscountValue] = useState<number>(0);
@@ -957,14 +963,13 @@ export function NewAppointmentDialog({
             toast.success(`${createdCount + 1} agendamentos criados automaticamente!`);
           }
 
-          // Send WhatsApp notification for all scheduled sessions
+          // Compose WhatsApp notification and open preview (do NOT auto-send)
           if (sendWhatsappNotification && clientData?.phone) {
-            try {
-              const sessionsList = editablePreviewDates.map((d, i) => 
-                `📅 Sessão ${i + 1}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-              ).join('\n');
+            const sessionsList = editablePreviewDates.map((d, i) =>
+              `📅 Sessão ${i + 1}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+            ).join('\n');
 
-              const message = `Olá ${clientData.name}! 👋
+            const message = `Olá ${clientData.name}! 👋
 
 Seu pacote *${packageData?.name}* foi agendado com sucesso! 🎉
 
@@ -976,12 +981,9 @@ Se precisar reagendar alguma sessão, entre em contato conosco.
 
 Até breve! ✨`;
 
-              await sendWhatsappMessage(clientData.phone, message);
-              toast.success('Notificação WhatsApp enviada!');
-            } catch (error) {
-              console.error('Error sending WhatsApp notification:', error);
-              // Don't fail the whole operation if WhatsApp fails
-            }
+            setWhatsappPreviewPhone(clientData.phone);
+            setWhatsappPreviewMessage(message);
+            setWhatsappPreviewOpen(true);
           }
         }
       } else {
@@ -1033,7 +1035,8 @@ Até breve! ✨`;
             notes: notes || undefined,
             repeat_count: editableServiceDates.length,
             interval_days: serviceIntervalDays,
-            send_whatsapp: sendWhatsappNotification && !!clientData?.phone,
+            // Preview handled below on the client; do NOT auto-send from the hook.
+            send_whatsapp: false,
             client_phone: clientData?.phone,
             client_name: clientData?.name,
             service_name: selectedServiceData?.name,
@@ -1043,6 +1046,25 @@ Até breve! ✨`;
             // Aplicar desconto na série apenas se "aplicar em todos" estiver marcado
             discount_amount: discountValue > 0 && discountApplyToAll ? discountValue : 0,
           });
+
+          // Compose WhatsApp preview from the dates the user configured
+          if (sendWhatsappNotification && clientData?.phone) {
+            const sessionsList = editableServiceDates.map((d, i) =>
+              `📅 Sessão ${i + 1}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+            ).join('\n');
+            const message = `Olá ${clientData.name || 'Cliente'}! 👋
+
+Seus ${editableServiceDates.length} agendamentos de *${selectedServiceData?.name || 'serviço'}* foram criados com sucesso! 🎉
+
+${sessionsList}
+
+Se precisar reagendar alguma sessão, entre em contato conosco.
+
+Até breve! ✨`;
+            setWhatsappPreviewPhone(clientData.phone);
+            setWhatsappPreviewMessage(message);
+            setWhatsappPreviewOpen(true);
+          }
 
           // If discount applies to only the first appointment (not "all"), update it after
           // creation. Since recurring runs in background, we defer with a small delay.
@@ -1631,7 +1653,133 @@ Até breve! ✨`;
 
                   
                   {/* Recurring service options - only if not using a paid service */}
-                  {selectedClient && (!usingPaidServiceId || paidSiblingCount > 1) && (
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
+              <div className="space-y-2">
+                <Label className="text-sky-700 dark:text-sky-300 font-medium">Data *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !date && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-50" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                      disabled={(date) => {
+                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+                        if (!isWorkDay(date)) return true;
+                        return false;
+                      }}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-sky-700 dark:text-sky-300">Início *</Label>
+                  <div className="flex items-center gap-1">
+                    <div className="relative flex-1">
+                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="time"
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        className="pl-8 h-9"
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2 z-50" align="end">
+                        <p className="text-xs font-medium mb-2">Horários sugeridos</p>
+                        <ScrollArea className="h-[200px]">
+                          <div className="space-y-1">
+                            {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
+                              <Button
+                                key={slot}
+                                variant={time === slot ? "default" : "ghost"}
+                                size="sm"
+                                type="button"
+                                className={cn(
+                                  "w-full justify-start text-left h-8",
+                                  !isAvailable && "opacity-50"
+                                )}
+                                onClick={() => {
+                                  setTime(slot);
+                                }}
+                              >
+                                <div className="flex items-center gap-2 w-full">
+                                  {isAvailable ? (
+                                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                  ) : (
+                                    <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                                  )}
+                                  <span>{slot}</span>
+                                  {!isAvailable && (
+                                    <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
+                                  )}
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-sky-700 dark:text-sky-300 flex items-center justify-between">
+                    <span>Término</span>
+                    {endTimeOverride && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setEndTimeOverride('')}
+                        title="Restaurar término automático"
+                      >
+                        Auto
+                      </button>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={endTimeOverride || (appointmentTimes ? format(appointmentTimes.endTime, 'HH:mm') : '')}
+                      onChange={(e) => setEndTimeOverride(e.target.value)}
+                      className="pl-8 h-9"
+                      placeholder="HH:MM"
+                      disabled={!appointmentTimes}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                O término é calculado pela duração do serviço, mas pode ser editado manualmente.
+              </p>
+            </div>
+
+                  {selectedServiceData && serviceType === 'service' && selectedClient && (!usingPaidServiceId || paidSiblingCount > 1) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
@@ -1804,6 +1952,7 @@ Até breve! ✨`;
                                           <Calendar
                                             mode="single"
                                             selected={previewDate}
+                                            defaultMonth={previewDate}
                                             onSelect={(d) => {
                                               if (!d) return;
                                               const next = new Date(d);
@@ -1860,8 +2009,7 @@ Até breve! ✨`;
                       )}
                     </div>
                   )}
-                </div>
-              )}
+
               {selectedPackageData && serviceType === 'package' && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-muted-foreground">
@@ -2021,6 +2169,7 @@ Até breve! ✨`;
                                                 <Calendar
                                                   mode="single"
                                                   selected={previewDate}
+                                                  defaultMonth={previewDate}
                                                   onSelect={(d) => {
                                                     if (!d) return;
                                                     const merged = new Date(d);
@@ -2118,7 +2267,6 @@ Até breve! ✨`;
                   )}
                 </div>
               )}
-            </div>
 
             <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
               <Label className="text-violet-700 dark:text-violet-300 font-medium">Profissional *</Label>
@@ -2196,128 +2344,6 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
-              <div className="space-y-2">
-                <Label className="text-sky-700 dark:text-sky-300 font-medium">Data *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !date && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                      disabled={(date) => {
-                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
-                        if (!isWorkDay(date)) return true;
-                        return false;
-                      }}
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-sky-700 dark:text-sky-300">Início *</Label>
-                  <div className="flex items-center gap-1">
-                    <div className="relative flex-1">
-                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="time"
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className="pl-8 h-9"
-                        placeholder="HH:MM"
-                      />
-                    </div>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-2 z-50" align="end">
-                        <p className="text-xs font-medium mb-2">Horários sugeridos</p>
-                        <ScrollArea className="h-[200px]">
-                          <div className="space-y-1">
-                            {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
-                              <Button
-                                key={slot}
-                                variant={time === slot ? "default" : "ghost"}
-                                size="sm"
-                                type="button"
-                                className={cn(
-                                  "w-full justify-start text-left h-8",
-                                  !isAvailable && "opacity-50"
-                                )}
-                                onClick={() => {
-                                  setTime(slot);
-                                }}
-                              >
-                                <div className="flex items-center gap-2 w-full">
-                                  {isAvailable ? (
-                                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                                  ) : (
-                                    <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
-                                  )}
-                                  <span>{slot}</span>
-                                  {!isAvailable && (
-                                    <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
-                                  )}
-                                </div>
-                              </Button>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-sky-700 dark:text-sky-300 flex items-center justify-between">
-                    <span>Término</span>
-                    {endTimeOverride && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-primary hover:underline"
-                        onClick={() => setEndTimeOverride('')}
-                        title="Restaurar término automático"
-                      >
-                        Auto
-                      </button>
-                    )}
-                  </Label>
-                  <div className="relative">
-                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="time"
-                      value={endTimeOverride || (appointmentTimes ? format(appointmentTimes.endTime, 'HH:mm') : '')}
-                      onChange={(e) => setEndTimeOverride(e.target.value)}
-                      className="pl-8 h-9"
-                      placeholder="HH:MM"
-                      disabled={!appointmentTimes}
-                    />
-                  </div>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                O término é calculado pela duração do serviço, mas pode ser editado manualmente.
-              </p>
-            </div>
-
 
             {/* Show appointment summary */}
             {date && time && appointmentTimes && (selectedServiceData || selectedPackageData) && (
@@ -2367,6 +2393,17 @@ Até breve! ✨`;
         </div>
       </DialogContent>
     </Dialog>
+
+    <WhatsappPreviewDialog
+      open={whatsappPreviewOpen}
+      onOpenChange={setWhatsappPreviewOpen}
+      phone={whatsappPreviewPhone}
+      initialMessage={whatsappPreviewMessage}
+      title="Enviar confirmação no WhatsApp"
+      description="Revise e edite a mensagem antes de enviar para o cliente."
+    />
+
+
 
     <AlertDialog open={showHolidayConfirm} onOpenChange={setShowHolidayConfirm}>
       <AlertDialogContent>

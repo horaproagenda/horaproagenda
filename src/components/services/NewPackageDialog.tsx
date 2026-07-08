@@ -534,12 +534,37 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 )}
               />
             ) : (
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Valor total do kit (soma das etapas)</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(sequentialTotalPrice)}</span>
-                </div>
-              </div>
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Valor total do pacote sequencial (R$) *</FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onValueChange={(v) => { setPriceManuallyEdited(true); field.onChange(v); }}
+                        className="h-8 text-sm"
+                      />
+                    </FormControl>
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <p className="text-[10px] text-muted-foreground">
+                        Sugerido (soma das etapas): <span className="font-medium text-foreground">{formatCurrency(sequentialTotalPrice)}</span>
+                      </p>
+                      {priceManuallyEdited && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-primary underline underline-offset-2"
+                          onClick={() => { setPriceManuallyEdited(false); form.setValue('price', sequentialTotalPrice); }}
+                        >
+                          Usar valor sugerido
+                        </button>
+                      )}
+                    </div>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
             )}
 
             {/* Description */}

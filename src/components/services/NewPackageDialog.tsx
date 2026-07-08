@@ -59,7 +59,6 @@ type PackageFormData = z.infer<typeof packageSchema>;
 interface SequentialStep {
   service_id: string;
   interval_after_days: number;
-  quantity: number;
 }
 
 interface NewPackageDialogProps {
@@ -83,8 +82,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
   const [steps, setSteps] = useState<SequentialStep[]>([
-    { service_id: '', interval_after_days: 7, quantity: 1 },
-    { service_id: '', interval_after_days: 7, quantity: 1 },
+    { service_id: '', interval_after_days: 7 },
+    { service_id: '', interval_after_days: 7 },
   ]);
   const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
 
@@ -108,8 +107,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');
   const watchRoomId = form.watch('room_id');
-  const sequentialTotalCount = steps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0);
-  const effectiveSessions = packageType === 'sequential' ? sequentialTotalCount : watchTotalSessions;
+  const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
   const packageScope = {
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
@@ -131,24 +129,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [packageType, sequentialTotalPrice, priceManuallyEdited, form]);
 
-  // Agrupamento por serviço para exibir a contagem final (ex.: 4x Axila).
+  // Agrupamento por serviço para exibir a contagem final (ex.: Axila).
   const stepServiceIds = steps.map(s => s.service_id).filter(Boolean);
   const colorMap = buildSequentialServiceColorMap(stepServiceIds);
-  const serviceCountEntries = (() => {
-    const map = new Map<string, { name: string; quantity: number }>();
-    steps.forEach(step => {
-      if (!step.service_id) return;
-      const svc = activeServices.find(s => s.id === step.service_id);
-      if (!svc) return;
-      const qty = Math.max(1, Number(step.quantity) || 1);
-      const existing = map.get(step.service_id);
-      if (existing) existing.quantity += qty;
-      else map.set(step.service_id, { name: svc.name, quantity: qty });
-    });
-    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v }));
-  })();
 
-  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const updateStep = (index: number, updates: Partial<SequentialStep>) => {
     setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));
@@ -180,15 +165,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
         return;
       }
 
-      // Expand each step by quantity into individual rows
       const expandedSteps = packageType === 'sequential'
-        ? steps.flatMap(step => {
-            const qty = Math.max(1, Number(step.quantity) || 1);
-            return Array.from({ length: qty }, () => ({
-              service_id: step.service_id,
-              interval_after_days: step.interval_after_days,
-            }));
-          })
+        ? steps.map(step => ({
+            service_id: step.service_id,
+            interval_after_days: step.interval_after_days,
+          }))
         : [];
 
       const sequentialDuration = packageType === 'sequential'

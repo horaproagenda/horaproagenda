@@ -534,36 +534,57 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                           <Plus className="h-3 w-3" /> Etapa
                         </Button>
                       </div>
-                      {sequentialSteps.map((step, index) => (
-                        <div key={index} className="grid grid-cols-[1fr_56px_66px_28px] gap-2 items-end">
-                          <div className="min-w-0">
-                            <Label className="text-[10px]">{index + 1}º serviço</Label>
-                            <SearchableSelect
-                              className="h-8 text-xs"
-                              value={step.service_id}
-                              onChange={(value) => updateSeqStep(index, { service_id: value })}
-                              options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
-                              placeholder="Selecione o serviço"
-                              searchPlaceholder="Buscar serviço..."
-                              emptyMessage="Nenhum serviço encontrado."
-                            />
+                      {sequentialSteps.map((step, index) => {
+                        const color = getSequentialServiceColor(step.service_id, seqColorMap);
+                        return (
+                          <div key={index} className={`grid grid-cols-[16px_1fr_56px_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
+                            <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
+                            <div className="min-w-0">
+                              <Label className="text-[10px]">{index + 1}º serviço</Label>
+                              <SearchableSelect
+                                className="h-8 text-xs"
+                                value={step.service_id}
+                                onChange={(value) => updateSeqStep(index, { service_id: value })}
+                                options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
+                                placeholder="Selecione o serviço"
+                                searchPlaceholder="Buscar serviço..."
+                                emptyMessage="Nenhum serviço encontrado."
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Qtd.</Label>
+                              <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateSeqStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Após (dias)</Label>
+                              <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateSeqStep(index, { interval_after_days: Number(e.target.value) })} />
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
-                          <div>
-                            <Label className="text-[10px]">Qtd.</Label>
-                            <Input type="number" min={1} max={100} className="h-8 text-xs" value={step.quantity} onChange={(e) => updateSeqStep(index, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px]">Após (dias)</Label>
-                            <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateSeqStep(index, { interval_after_days: Number(e.target.value) })} />
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
+                        );
+                      })}
                       <p className="text-[10px] text-muted-foreground pt-1">
                         Total de aplicações: <span className="font-medium text-foreground">{sequentialSteps.reduce((sum, s) => sum + Math.max(1, Number(s.quantity) || 1), 0)}</span>
                       </p>
+                      {seqCountEntries.length > 0 && (
+                        <div className="rounded-md border bg-muted/20 p-2">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Total por serviço</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {seqCountEntries.map(entry => {
+                              const color = getSequentialServiceColor(entry.id, seqColorMap);
+                              return (
+                                <span key={entry.id} className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${color.bg} ${color.text} ${color.border}`}>
+                                  <span className={`h-2 w-2 rounded-full ${color.dot}`} aria-hidden />
+                                  <span className="font-semibold">{entry.quantity}x</span>
+                                  <span>{entry.name}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <FormField
@@ -571,11 +592,11 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                       name="price"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valor do kit (editável)</FormLabel>
+                          <FormLabel>Valor do pacote sequencial (editável)</FormLabel>
                           <FormControl>
                             <CurrencyInput value={field.value} onValueChange={field.onChange} />
                           </FormControl>
-                          <p className="text-[10px] text-muted-foreground">Você pode editar manualmente o valor total do kit.</p>
+                          <p className="text-[10px] text-muted-foreground">Você pode editar manualmente o valor total do pacote sequencial.</p>
                           <FormMessage />
                         </FormItem>
                       )}

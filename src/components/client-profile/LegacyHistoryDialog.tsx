@@ -170,12 +170,28 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     if (!params.amount || !params.payment_date) return;
     const { data: { user } } = await supabase.auth.getUser();
 
+    // 0) Sync payment fields onto the appointment itself so it shows up in
+    //    "Histórico de Pagamentos" (which is built from appointments.amount_paid).
+    if (params.appointment_id) {
+      const methodName = selectedPaymentMethodName || null;
+      const { error: aptErr } = await supabase
+        .from('appointments')
+        .update({
+          amount_paid: params.amount,
+          payment_status: 'paid',
+          payment_date: params.payment_date,
+          payment_methods: methodName ? [methodName] : [],
+        })
+        .eq('id', params.appointment_id);
+      if (aptErr) throw aptErr;
+    }
+
     // 1) Financial entry — always created when payment method is client credit
     //    (so the payment appears in the client's financial history), or when the
     //    "lançar no financeiro" toggle is on for other methods.
     if (createFinancial || isCreditPayment) {
       const { error } = await supabase.from('financial_entries').insert({
-        type: 'income',
+        type: 'receivable',
         status: 'paid',
         amount: params.amount,
         original_amount: params.amount,
@@ -227,6 +243,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       if (txErr) throw txErr;
     }
   };
+
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['appointments'] });

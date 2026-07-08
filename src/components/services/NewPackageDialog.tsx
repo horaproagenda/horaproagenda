@@ -234,6 +234,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       form.reset();
       setPackageType('standard');
       setSteps([{ service_id: '', interval_after_days: 7, quantity: 1 }, { service_id: '', interval_after_days: 7, quantity: 1 }]);
+      setPriceManuallyEdited(false);
       setOpen(false);
       onPackageCreated?.();
     } catch (error: any) {

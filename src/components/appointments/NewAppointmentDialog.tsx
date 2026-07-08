@@ -2394,6 +2394,17 @@ Até breve! ✨`;
       </DialogContent>
     </Dialog>
 
+    <WhatsappPreviewDialog
+      open={whatsappPreviewOpen}
+      onOpenChange={setWhatsappPreviewOpen}
+      phone={whatsappPreviewPhone}
+      initialMessage={whatsappPreviewMessage}
+      title="Enviar confirmação no WhatsApp"
+      description="Revise e edite a mensagem antes de enviar para o cliente."
+    />
+
+
+
     <AlertDialog open={showHolidayConfirm} onOpenChange={setShowHolidayConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>

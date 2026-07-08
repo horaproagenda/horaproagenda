@@ -23,6 +23,7 @@ import { parseBrazilianCurrency } from '@/lib/utils';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 interface LegacyHistoryDialogProps {
   open: boolean;
@@ -154,30 +155,77 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     return json.data;
   };
 
+  const selectedPaymentMethodName = useMemo(() => {
+    const found = (paymentMethods || []).find((m: any) => m.id === paymentMethodId);
+    return found?.name || '';
+  }, [paymentMethods, paymentMethodId]);
+  const isCreditPayment = isClientCreditPaymentMethod(selectedPaymentMethodName);
+
   const createFinancialEntry = async (params: {
     amount: number;
     payment_date: string; // yyyy-mm-dd
     description: string;
     appointment_id?: string | null;
   }) => {
-    if (!createFinancial || !params.amount || !params.payment_date) return;
+    if (!params.amount || !params.payment_date) return;
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('financial_entries').insert({
-      type: 'income',
-      status: 'paid',
-      amount: params.amount,
-      original_amount: params.amount,
-      due_date: params.payment_date,
-      paid_date: params.payment_date,
-      description: params.description,
-      client_id: clientId,
-      appointment_id: params.appointment_id || null,
-      payment_method_id: paymentMethodId || null,
-      professional_id: professionalId || null,
-      created_by: user?.id,
-      notes: 'Lançamento retroativo (histórico antigo)',
-    });
-    if (error) throw error;
+
+    // 1) Financial entry — always created when payment method is client credit
+    //    (so the payment appears in the client's financial history), or when the
+    //    "lançar no financeiro" toggle is on for other methods.
+    if (createFinancial || isCreditPayment) {
+      const { error } = await supabase.from('financial_entries').insert({
+        type: 'income',
+        status: 'paid',
+        amount: params.amount,
+        original_amount: params.amount,
+        due_date: params.payment_date,
+        paid_date: params.payment_date,
+        description: params.description,
+        client_id: clientId,
+        appointment_id: params.appointment_id || null,
+        payment_method_id: paymentMethodId || null,
+        professional_id: professionalId || null,
+        created_by: user?.id,
+        notes: 'Lançamento retroativo (histórico antigo)',
+      });
+      if (error) throw error;
+    }
+
+    // 2) When paying with "Crédito ao Cliente", debit the client's credit
+    //    balance and register a credit_used transaction so the profile stays
+    //    consistent — mirrors the behavior of Caixa/SaleForm.
+    if (isCreditPayment) {
+      const { data: cli, error: cliErr } = await supabase
+        .from('clients')
+        .select('credit_balance')
+        .eq('id', clientId)
+        .maybeSingle();
+      if (cliErr) throw cliErr;
+      const currentBalance = Number(cli?.credit_balance || 0);
+      const newBalance = Math.max(0, currentBalance - params.amount);
+
+      const { error: updErr } = await supabase
+        .from('clients')
+        .update({ credit_balance: newBalance })
+        .eq('id', clientId);
+      if (updErr) throw updErr;
+
+      const { error: txErr } = await (supabase as any)
+        .from('client_credit_transactions')
+        .insert({
+          client_id: clientId,
+          transaction_type: 'credit_used',
+          amount: params.amount,
+          previous_balance: currentBalance,
+          new_balance: newBalance,
+          description: `Uso de crédito (histórico): ${params.description}`,
+          appointment_id: params.appointment_id || null,
+          professional_id: professionalId || null,
+          created_by: user?.id,
+        });
+      if (txErr) throw txErr;
+    }
   };
 
   const invalidateAll = () => {
@@ -186,6 +234,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     qc.invalidateQueries({ queryKey: ['client_profile', clientId] });
     qc.invalidateQueries({ queryKey: ['service_packages'] });
     qc.invalidateQueries({ queryKey: ['financial_entries'] });
+    qc.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+    qc.invalidateQueries({ queryKey: ['clients'] });
+    qc.invalidateQueries({ queryKey: ['client', clientId] });
   };
 
   // ============ SINGLE ============

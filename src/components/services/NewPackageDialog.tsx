@@ -117,8 +117,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;
-    const qty = Math.max(1, Number(step.quantity) || 1);
-    return total + ((Number(service?.price) || 0) * qty);
+    return total + (Number(service?.price) || 0);
   }, 0);
 
   // Só recalcula o valor sugerido enquanto o profissional não tiver ajustado

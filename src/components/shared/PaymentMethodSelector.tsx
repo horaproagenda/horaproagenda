@@ -52,16 +52,20 @@ export function PaymentMethodSelector({
     [activePaymentMethods, paymentMethodId]
   );
 
-  // Determine if it's a card payment
+  // Determine if it's a card payment (exclude "Crédito ao Cliente" which is not a card)
   const isCardPayment = useMemo(() => {
     if (!selectedPaymentMethod) return false;
+    if (isClientCreditPaymentMethod(selectedPaymentMethod.name)) return false;
     const name = selectedPaymentMethod.name.toLowerCase();
     return name.includes('crédito') || name.includes('débito') || name.includes('cartão');
   }, [selectedPaymentMethod]);
 
   const isCreditCard = useMemo(() => {
     if (!selectedPaymentMethod) return false;
-    return selectedPaymentMethod.name.toLowerCase().includes('crédito');
+    if (isClientCreditPaymentMethod(selectedPaymentMethod.name)) return false;
+    const name = selectedPaymentMethod.name.toLowerCase();
+    // Requires the word "cartão" OR "crédito" but not the client-credit method
+    return name.includes('crédito') && (name.includes('cartão') || name.includes('crédito'));
   }, [selectedPaymentMethod]);
 
   const isDebitCard = useMemo(() => {

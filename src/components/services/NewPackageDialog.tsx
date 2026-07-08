@@ -86,6 +86,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     { service_id: '', interval_after_days: 7, quantity: 1 },
     { service_id: '', interval_after_days: 7, quantity: 1 },
   ]);
+  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
@@ -122,11 +123,30 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     return total + ((Number(service?.price) || 0) * qty);
   }, 0);
 
+  // Só recalcula o valor sugerido enquanto o profissional não tiver ajustado
+  // manualmente. Assim o valor do pacote sequencial pode ser editado.
   useEffect(() => {
-    if (packageType === 'sequential') {
+    if (packageType === 'sequential' && !priceManuallyEdited) {
       form.setValue('price', sequentialTotalPrice, { shouldValidate: false });
     }
-  }, [packageType, sequentialTotalPrice, form]);
+  }, [packageType, sequentialTotalPrice, priceManuallyEdited, form]);
+
+  // Agrupamento por serviço para exibir a contagem final (ex.: 4x Axila).
+  const stepServiceIds = steps.map(s => s.service_id).filter(Boolean);
+  const colorMap = buildSequentialServiceColorMap(stepServiceIds);
+  const serviceCountEntries = (() => {
+    const map = new Map<string, { name: string; quantity: number }>();
+    steps.forEach(step => {
+      if (!step.service_id) return;
+      const svc = activeServices.find(s => s.id === step.service_id);
+      if (!svc) return;
+      const qty = Math.max(1, Number(step.quantity) || 1);
+      const existing = map.get(step.service_id);
+      if (existing) existing.quantity += qty;
+      else map.set(step.service_id, { name: svc.name, quantity: qty });
+    });
+    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v }));
+  })();
 
   const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7, quantity: 1 }]);
   const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);

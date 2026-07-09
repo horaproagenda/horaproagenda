@@ -143,31 +143,36 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (!open || !user?.id) return;
     (async () => {
+      const selectCols = 'id, name, company_name, cnpj, cpf, beneficiary_address, beneficiary_cep, beneficiary_city, beneficiary_state, cep, street, number, neighborhood, city, state';
       let { data: prof } = await supabase
         .from('professionals')
-        .select('id, name, company_name, cnpj, beneficiary_address, beneficiary_cep, beneficiary_city, beneficiary_state, cpf')
+        .select(selectCols)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!prof) {
         const { data: any1 } = await supabase
           .from('professionals')
-          .select('id, name, company_name, cnpj, beneficiary_address, beneficiary_cep, beneficiary_city, beneficiary_state, cpf')
+          .select(selectCols)
           .eq('is_active', true)
           .limit(1)
           .maybeSingle();
-        prof = any1;
+        prof = any1 as any;
       }
 
       if (prof) {
+        const p: any = prof;
+        const fullAddress = p.beneficiary_address
+          || [p.street, p.number, p.neighborhood].filter(Boolean).join(', ')
+          || '';
         setBeneficiary({
-          professional_id: prof.id,
-          name: prof.company_name || prof.name || '',
-          cnpj: prof.cnpj || prof.cpf || '',
-          address: prof.beneficiary_address || '',
-          cep: prof.beneficiary_cep || '',
-          city: prof.beneficiary_city || '',
-          state: prof.beneficiary_state || '',
+          professional_id: p.id,
+          name: p.company_name || p.name || '',
+          cnpj: p.cnpj || p.cpf || '',
+          address: fullAddress,
+          cep: p.beneficiary_cep || p.cep || '',
+          city: p.beneficiary_city || p.city || '',
+          state: p.beneficiary_state || p.state || '',
         });
       }
     })();

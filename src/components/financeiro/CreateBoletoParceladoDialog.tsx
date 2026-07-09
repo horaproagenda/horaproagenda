@@ -777,9 +777,18 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                       onChange={e => setIntervalDays(Number(e.target.value))} />
                   ) : (
                     <Input
-                      value={firstDueDate ? `Dia ${new Date(firstDueDate + 'T12:00:00').getDate()}` : '-'}
-                      disabled
-                      title="Definido pelo vencimento da 1ª parcela"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={firstDueDate ? new Date(firstDueDate + 'T12:00:00').getDate() : ''}
+                      onChange={e => {
+                        const day = Math.max(1, Math.min(31, Number(e.target.value) || 1));
+                        const base = firstDueDate ? new Date(firstDueDate + 'T12:00:00') : new Date();
+                        const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+                        const d = new Date(base.getFullYear(), base.getMonth(), Math.min(day, lastDay), 12, 0, 0);
+                        setFirstDueDate(d.toISOString().split('T')[0]);
+                      }}
+                      title="Dia fixo do mês para vencimento"
                     />
                   )}
                 </div>

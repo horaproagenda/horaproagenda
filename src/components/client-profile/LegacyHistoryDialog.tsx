@@ -176,6 +176,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     professional_id?: string | null;
     package_appointment_id?: string | null;
     notes?: string;
+    status?: string;
   }) => {
     const token = await ensureAuth();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
@@ -189,7 +190,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         start_time: params.start_time,
         end_time: params.end_time,
         notes: params.notes ? `[Histórico] ${params.notes}` : '[Histórico] Cadastro retroativo',
-        status: 'completed',
+        status: params.status || 'completed',
         package_appointment_id: params.package_appointment_id || null,
         legacy: true,
       }),

@@ -5294,6 +5294,10 @@ export type Database = {
         Args: { _account_owner_id?: string; _client_id?: string }
         Returns: Json
       }
+      purge_my_account_test_data: {
+        Args: { _before_date?: string }
+        Returns: Json
+      }
       purge_orphan_cancelled_appointments: {
         Args: { _account_owner_id?: string; _client_id?: string }
         Returns: Json

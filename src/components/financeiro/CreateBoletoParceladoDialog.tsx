@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
-import type { BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
+import { syncBoletoPackageAvailability, type BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
 
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {

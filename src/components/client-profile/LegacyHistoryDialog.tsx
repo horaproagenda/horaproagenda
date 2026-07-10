@@ -652,7 +652,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         const statusRe = /\b(atendid[oa]|conclu[ií]d[oa]|realizad[oa]|cancelad[oa]|faltou|no.?show|ausente|agendad[oa]|confirmad[oa]|pend\w*)/i;
         const moneyRe = /R?\$?\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2})|\d+(?:[.,]\d{2}))/;
 
+        // Padrões de linhas de cabeçalho/metadados de PDF que devem ser ignoradas
+        const noiseRe = /^(hist[oó]rico|cliente\s*:|cpf\s*:|data de emiss[aã]o|servi[cç]o\s+data\s+hor[aá]rio|p[aá]gina|telefone\s*:|endere[cç]o\s*:|profissional\s*:|per[ií]odo\s*:)/i;
+
         for (const line of rawLines) {
+          if (noiseRe.test(line)) continue;
+
           const dMatch = line.match(dateRe);
           if (!dMatch) continue;
           const date = parseBrDate(dMatch[1]);
@@ -660,11 +665,13 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
           const times = [...line.matchAll(timeRe)].map((m) => parseTime(m[1])).filter(Boolean) as string[];
           const time = times[0];
-          const endTime = times[1];
+          let endTime = times[1];
           if (!time) continue;
 
+          // Descarta linhas que parecem "Data de emissão: dd/mm/aaaa as hh:mm" (só 1 horário e sem status/serviço)
           const sMatch = line.match(statusRe);
           const mMatch = line.match(moneyRe);
+          if (!sMatch && times.length < 2 && /emiss[aã]o|gerado|impress[aã]o/i.test(line)) continue;
 
           // Service = the remaining text with dates/times/status/money stripped out
           let service = line
@@ -672,6 +679,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             .replace(timeRe, ' ')
             .replace(statusRe, ' ')
             .replace(moneyRe, ' ')
+            .replace(/\s*[-–—]\s*/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
 

@@ -66,25 +66,16 @@ export async function redistributeActiveBoletoInstallments(saleId: string) {
 export async function syncBoletoPackageAvailability(saleId: string) {
   const { data: sale, error: saleError } = await supabase
     .from('single_sales')
-    .select('id, item_type, package_id')
+    .select('id, item_type, package_id, paid_at, final_amount, original_amount')
     .eq('id', saleId)
     .maybeSingle();
 
   if (saleError) throw saleError;
-  if (!sale?.package_id || sale.item_type !== 'package') return;
-
-  const { data: pkg, error: packageError } = await supabase
-    .from('service_packages')
-    .select('id, is_active, payment_type')
-    .eq('id', sale.package_id)
-    .maybeSingle();
-
-  if (packageError) throw packageError;
-  if (!pkg || !['boleto_first_paid', 'boleto_all_paid'].includes(String(pkg.payment_type))) return;
+  if (!sale) return;
 
   const { data: installments, error: installmentsError } = await supabase
     .from('boleto_installments')
-    .select('status, installment_number, due_date')
+    .select('status, installment_number, due_date, paid_date')
     .eq('sale_id', saleId);
 
   if (installmentsError) throw installmentsError;
@@ -97,9 +88,38 @@ export async function syncBoletoPackageAvailability(saleId: string) {
       return String(a.due_date || '').localeCompare(String(b.due_date || ''));
     });
   const paidCount = activeInstallments.filter((item: any) => item.status === 'paid').length;
+  const allPaid = activeInstallments.length > 0 && paidCount === activeInstallments.length;
+
+  // Marca a venda como paga quando todas as parcelas estiverem pagas — habilita
+  // fluxos que dependem de single_sales.paid_at (histórico do cliente, gatilhos).
+  if (allPaid && !sale.paid_at) {
+    const lastPaidDate = activeInstallments
+      .map((item: any) => item.paid_date)
+      .filter(Boolean)
+      .sort()
+      .pop() || new Date().toISOString().split('T')[0];
+    await supabase
+      .from('single_sales')
+      .update({ paid_at: new Date(`${lastPaidDate}T12:00:00`).toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', saleId);
+  }
+
+  if (!sale.package_id || sale.item_type !== 'package') return;
+
+  const { data: pkg, error: packageError } = await supabase
+    .from('service_packages')
+    .select('id, is_active, payment_type')
+    .eq('id', sale.package_id)
+    .maybeSingle();
+
+  if (packageError) throw packageError;
+  if (!pkg) return;
+
+  // Regra de liberação: se a config estiver em um dos modos de boleto usa a regra;
+  // caso contrário, libera assim que TODAS estiverem pagas (compatibilidade retroativa).
   const shouldActivate = pkg.payment_type === 'boleto_first_paid'
     ? activeInstallments[0]?.status === 'paid'
-    : activeInstallments.length > 0 && paidCount === activeInstallments.length;
+    : allPaid;
 
   if (shouldActivate && !pkg.is_active) {
     const { error } = await supabase

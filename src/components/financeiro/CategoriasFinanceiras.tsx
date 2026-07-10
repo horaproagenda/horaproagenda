@@ -68,7 +68,7 @@ interface GroupedEntry {
 }
 
 export function CategoriasFinanceiras() {
-  const { categories, incomeCategories, expenseCategories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
+  const { categories, incomeCategories, expenseCategories, isLoading: loadingCategories, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
   const { payables, receivables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeBanks } = useBanks();
@@ -127,9 +127,15 @@ export function CategoriasFinanceiras() {
   const [seededDefaults, setSeededDefaults] = useState(false);
   useEffect(() => {
     if (seededDefaults) return;
+    // Aguarda o fetch inicial antes de decidir — evita seed duplicado enquanto categories=[] por loading
+    if (loadingCategories) return;
     if (categories.length > 0) { setSeededDefaults(true); return; }
     setSeededDefaults(true);
+    // Filtra defaults que já existem no servidor (normalizado por nome+tipo)
+    const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const existing = new Set(categories.map(c => `${norm(c.name)}|${c.type}`));
     DEFAULT_CATEGORIES.forEach(cat => {
+      if (existing.has(`${norm(cat.name)}|${cat.type}`)) return;
       createCategory.mutate({
         name: cat.name,
         type: cat.type,
@@ -139,7 +145,7 @@ export function CategoriasFinanceiras() {
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories.length]);
+  }, [categories.length, loadingCategories]);
 
 
   // Use deduplicated categories from hook

@@ -65,6 +65,8 @@ export function useFinancialCategories() {
       toast.success('Categoria criada com sucesso!');
     },
     onError: (error: any) => {
+      // 23505 = unique_violation — categoria já existe (seed idempotente). Silencia o toast.
+      if (error?.code === '23505' || String(error?.message || '').includes('uq_financial_categories')) return;
       toast.error('Erro ao criar categoria: ' + error.message);
     },
   });

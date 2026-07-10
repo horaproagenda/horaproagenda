@@ -444,6 +444,17 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       ]);
       if (instErr) throw instErr;
 
+      // Se algum boleto já nasceu pago (retroativo), liberar o pacote conforme a regra
+      if (itemType === 'package' && records.some(r => r.status === 'paid')) {
+        try {
+          await syncBoletoPackageAvailability(sale.id);
+        } catch (syncErr) {
+          console.error('[CreateBoletoParcelado] Falha ao sincronizar liberação do pacote:', syncErr);
+        }
+      }
+
+
+
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
       // Invalidação única via predicate — uma só passada pelo cache
       const KEYS = new Set([

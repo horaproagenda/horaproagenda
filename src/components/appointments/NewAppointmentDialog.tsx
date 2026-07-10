@@ -987,7 +987,7 @@ export function NewAppointmentDialog({
           service_id: packageServiceId,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
-          notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
+          notes: `${nextPackageStepService?.name ? nextPackageStepService.name + ' — ' : ''}${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,
           payment_status: isPackagePaid ? 'paid' : 'pending',

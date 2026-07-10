@@ -677,12 +677,25 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  Cole o CSV com cabeçalho: <strong>data;hora;duracao_min;servico;profissional;valor_pago;data_pagamento;observacoes</strong>
+                  Cole o CSV ou selecione arquivo CSV/PDF. Cabeçalho esperado: <strong>data;hora;duracao_min;servico;profissional;valor_pago;data_pagamento;observacoes</strong>
                 </AlertDescription>
               </Alert>
-              <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
-                <Download className="h-3.5 w-3.5 mr-1" /> Baixar modelo
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
+                  <Download className="h-3.5 w-3.5 mr-1" /> Baixar modelo
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => document.getElementById('legacy-history-file')?.click()} disabled={loadingFile}>
+                  {loadingFile ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                  Selecionar arquivo (CSV ou PDF)
+                </Button>
+                <input
+                  id="legacy-history-file"
+                  type="file"
+                  accept=".csv,text/csv,.pdf,application/pdf"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
+              </div>
               <Textarea
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}

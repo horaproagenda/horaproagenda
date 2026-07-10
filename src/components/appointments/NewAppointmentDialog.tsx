@@ -849,8 +849,62 @@ export function NewAppointmentDialog({
       return;
     }
 
-    // Conflitos de horário (sala/profissional) não bloqueiam mais o envio aqui:
-    // o backend valida e os indicadores inline nas listas de repetição mostram colisões.
+    // Real-time revalidation: refetch agenda and re-check every recurring date
+    // BEFORE persisting, so the professional resolves conflicts here — the
+    // server never has to reject sessions after the fact.
+    if ((repeatServiceEnabled && editableServiceDates.length > 1) || (autoScheduleEnabled && editablePreviewDates.length > 1)) {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        await queryClient.refetchQueries({ queryKey: ['appointments'] });
+      } catch (err) {
+        console.warn('Falha ao revalidar agenda antes de salvar:', err);
+      }
+
+      const datesToCheck = repeatServiceEnabled ? editableServiceDates : editablePreviewDates;
+      const duration = (serviceType === 'service' ? selectedServiceData?.duration : selectedPackageData?.duration) || 60;
+      const freshAppointments = (queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[];
+
+      const conflictingSessions: number[] = [];
+      const seen: { start: Date; end: Date }[] = [];
+      for (let i = 0; i < datesToCheck.length; i++) {
+        const start = datesToCheck[i];
+        const end = new Date(start.getTime() + duration * 60_000);
+        // Sibling collision within this series
+        const siblingCollision = seen.some((s) => start < s.end && end > s.start);
+        // External collision (professional/room busy or professional absent)
+        const externalCollision = freshAppointments.some((apt) => {
+          if (['cancelled', 'rescheduled', 'missed'].includes(apt.status)) return false;
+          const aptStart = new Date(apt.start_time);
+          const aptEnd = new Date(apt.end_time);
+          const overlaps = start < aptEnd && end > aptStart;
+          if (!overlaps) return false;
+          const aptProfId = apt.professional_id || apt.service?.professional_id;
+          const aptRoomId = apt.room_id || apt.service?.room_id;
+          if (selectedProfessional && aptProfId === selectedProfessional) return true;
+          if (selectedRoom && aptRoomId === selectedRoom) return true;
+          return false;
+        });
+        const absenceCollision = selectedProfessional && absences.some((abs) => {
+          if (abs.professional_id !== selectedProfessional) return false;
+          const aStart = new Date(abs.start_time);
+          const aEnd = new Date(abs.end_time);
+          return start < aEnd && end > aStart;
+        });
+        if (siblingCollision || externalCollision || absenceCollision) {
+          conflictingSessions.push(i + 1);
+        }
+        seen.push({ start, end });
+      }
+
+      if (conflictingSessions.length > 0) {
+        toast.error(
+          `Sessões ${conflictingSessions.join(', ')} têm conflito de horário. Ajuste as datas antes de salvar.`,
+          { duration: 8000 },
+        );
+        return;
+      }
+    }
+
 
     const holiday = getHolidayForDate(date);
     if (holiday && !holidayConfirmed) {

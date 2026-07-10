@@ -2021,7 +2021,10 @@ Até breve! ✨`;
                                               hasConflict && "text-destructive"
                                             )}
                                           >
-                                            <span className="truncate">{format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
+                                            <span className="truncate">
+                                              {selectedServiceData?.name ? <span className="font-medium">{selectedServiceData.name} · </span> : null}
+                                              {format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                            </span>
                                             <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
                                           </button>
                                         </PopoverTrigger>

@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
-import type { BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
+import { syncBoletoPackageAvailability, type BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
 
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {
@@ -443,6 +443,17 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         clientUpdatePromise,
       ]);
       if (instErr) throw instErr;
+
+      // Se algum boleto já nasceu pago (retroativo), liberar o pacote conforme a regra
+      if (itemType === 'package' && records.some(r => r.status === 'paid')) {
+        try {
+          await syncBoletoPackageAvailability(sale.id);
+        } catch (syncErr) {
+          console.error('[CreateBoletoParcelado] Falha ao sincronizar liberação do pacote:', syncErr);
+        }
+      }
+
+
 
       toast.success(`Boleto parcelado em ${installments}x criado com sucesso!`);
       // Invalidação única via predicate — uma só passada pelo cache

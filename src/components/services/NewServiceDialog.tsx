@@ -49,6 +49,7 @@ import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 
 function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
   if (!comps.length) return null;
@@ -418,12 +419,27 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
               <p className="text-[10px] text-muted-foreground">
                 Defina a sequência de serviços (pode repetir o mesmo serviço). Para cada etapa, informe quantos dias após a etapa anterior ela deve ocorrer. A primeira etapa é sempre o início (0 dias).
               </p>
-              {components.length > 0 && (
+              {components.length > 0 && (() => {
+                const colorMap = buildSequentialServiceColorMap(components.map(c => c.service_id));
+                const counts = new Map<string, { name: string; count: number }>();
+                components.forEach(c => {
+                  if (!c.service_id) return;
+                  const svc = activeServices.find(s => s.id === c.service_id);
+                  const name = svc?.name || 'Serviço';
+                  const cur = counts.get(c.service_id);
+                  counts.set(c.service_id, { name, count: (cur?.count || 0) + 1 });
+                });
+                return (
                 <div className="space-y-1.5">
-                  {components.map((c, idx) => (
-                    <div key={idx} className="rounded border bg-muted/40 p-1.5 space-y-1">
+                  {components.map((c, idx) => {
+                    const color = getSequentialServiceColor(c.service_id, colorMap);
+                    return (
+                    <div key={idx} className={`rounded border p-1.5 space-y-1 ${color.bg} ${color.border}`}>
                       <div className="flex items-center gap-1">
-                        <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
+                        <Badge variant="secondary" className={`text-[10px] h-5 ${color.text}`}>
+                          <span className={`mr-1 inline-block h-2 w-2 rounded-full ${color.dot}`} />
+                          {idx + 1}
+                        </Badge>
                         <div className="flex-1">
                           <Select
                             value={c.service_id || '_none'}
@@ -431,7 +447,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                               i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
                             ))}
                           >
-                            <SelectTrigger className="h-7 text-xs">
+                            <SelectTrigger className="h-7 text-xs bg-background">
                               <SelectValue placeholder="Selecione o serviço" />
                             </SelectTrigger>
                             <SelectContent>
@@ -484,7 +500,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                             onChange={(e) => setComponents(prev => prev.map((it, i) =>
                               i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
                             ))}
-                            className="h-7 text-xs"
+                            className="h-7 text-xs bg-background"
                           />
                         </div>
                         <div className="space-y-0.5">
@@ -494,17 +510,36 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                             onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
                               i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
                             ))}
-                            className="h-7 text-xs"
+                            className="h-7 text-xs bg-background"
                           />
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
+                  {counts.size > 0 && (
+                    <div className="rounded border bg-muted/40 p-1.5 space-y-1">
+                      <div className="text-[10px] uppercase text-muted-foreground">Resumo do kit</div>
+                      <div className="flex flex-wrap gap-1">
+                        {Array.from(counts.entries()).map(([sid, info]) => {
+                          const color = getSequentialServiceColor(sid, colorMap);
+                          return (
+                            <span key={sid} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${color.bg} ${color.text} ${color.border}`}>
+                              <span className={`inline-block h-2 w-2 rounded-full ${color.dot}`} />
+                              {info.name} × {info.count}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div className="text-[10px] text-muted-foreground text-right">
                     Total do kit: R$ {components.reduce((sum, c) => sum + Number(c.price || 0), 0).toFixed(2)}
                   </div>
                 </div>
-              )}
+                );
+              })()}
+
             </div>
             )}
 

@@ -531,7 +531,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, settings?.timezone]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, isBusinessDay, getHolidayForDate, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {

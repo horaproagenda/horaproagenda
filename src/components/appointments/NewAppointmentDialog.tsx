@@ -2292,7 +2292,15 @@ Até breve! ✨`;
                                             )}
                                             onClick={() => setEditingDateIndex(index)}
                                           >
-                                            <span className="truncate">{format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}</span>
+                                            <span className="truncate">
+                                              {(() => {
+                                                const stepServiceId = packageSequenceSteps[index]?.service_id;
+                                                const stepService = stepServiceId ? services.find(s => s.id === stepServiceId) : null;
+                                                const serviceName = stepService?.name || selectedPackageData?.name;
+                                                return serviceName ? <span className="font-medium">{serviceName} · </span> : null;
+                                              })()}
+                                              {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                                            </span>
                                             <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
                                           </button>
                                         )}

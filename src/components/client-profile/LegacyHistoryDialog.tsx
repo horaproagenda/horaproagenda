@@ -516,75 +516,223 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   };
 
   const handleSubmitCsv = async () => {
-    if (!csvText.trim()) { toast.error('Cole o conteúdo do CSV'); return; }
+    if (!csvText.trim()) { toast.error('Cole o conteúdo do CSV/PDF'); return; }
     setSubmitting(true);
     setCsvResult(null);
     const errors: string[] = [];
     let success = 0; let failed = 0;
 
-    try {
-      const lines = csvText.split('\n').filter((l) => l.trim()).map((l) => l.replace(/\r$/, ''));
-      if (lines.length < 2) throw new Error('CSV vazio');
-      const headers = lines[0].split(/[,;]/).map((h) => h.trim().toLowerCase());
-      const idx = (key: string) => headers.findIndex((h) => h.includes(key));
-      const cDate = idx('data');
-      const cTime = idx('hora');
-      const cDur = idx('dur');
-      const cSvc = idx('servico') >= 0 ? idx('servico') : idx('serviço');
-      const cProf = idx('profis');
-      const cAmt = idx('valor');
-      const cPay = idx('pagamento');
-      const cNotes = idx('obs');
-      if (cDate === -1 || cTime === -1) throw new Error('Colunas obrigatórias: data, hora');
+    const norm = (s: string) => (s || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-      const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const parseBrDate = (s: string): string | null => {
-        const cleaned = s.trim();
-        for (const fmt of ['dd/MM/yyyy', 'd/M/yyyy', 'yyyy-MM-dd', 'dd-MM-yyyy']) {
-          try {
-            const d = parseDate(cleaned, fmt, new Date());
-            if (isValidDate(d)) {
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              return `${y}-${m}-${day}`;
-            }
-          } catch {}
-        }
-        return null;
-      };
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(/[,;]/).map((c) => c.trim().replace(/^"|"$/g, ''));
+    const parseBrDate = (s: string): string | null => {
+      const cleaned = (s || '').trim();
+      if (!cleaned) return null;
+      // DD/MM/YYYY or DD-MM-YYYY
+      const dmy = cleaned.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (dmy) {
+        let [, d, m, y] = dmy;
+        let yy = parseInt(y); if (yy < 100) yy += 2000;
+        const dd = parseInt(d), mm = parseInt(m);
+        if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+        return `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      }
+      const iso = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+      for (const fmt of ['dd/MM/yyyy', 'd/M/yyyy', 'yyyy-MM-dd', 'dd-MM-yyyy']) {
         try {
-          const dateIso = parseBrDate(cols[cDate] || '');
-          const timeStr = (cols[cTime] || '').padStart(5, '0');
-          if (!dateIso || !/^\d{1,2}:\d{2}$/.test(timeStr)) throw new Error('data/hora inválidas');
-          const dur = parseInt(cols[cDur] || '60') || 60;
-          const start = buildLocalISO(dateIso, timeStr);
-          if (!start) throw new Error('falha ao montar data');
-          const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+          const d = parseDate(cleaned, fmt, new Date());
+          if (isValidDate(d)) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          }
+        } catch {}
+      }
+      return null;
+    };
 
-          const svcName = cSvc >= 0 ? cols[cSvc] : '';
-          const profName = cProf >= 0 ? cols[cProf] : '';
-          const matchedSvc = svcName ? services.find((s: any) => norm(s.name) === norm(svcName) || norm(s.name).includes(norm(svcName))) : null;
-          const matchedProf = profName ? professionals.find((p: any) => norm(p.name) === norm(profName) || norm(p.name).includes(norm(profName))) : null;
+    const parseTime = (s: string): string | null => {
+      const m = (s || '').match(/(\d{1,2})[:h](\d{2})/);
+      if (!m) return null;
+      const hh = parseInt(m[1]), mm = parseInt(m[2]);
+      if (hh > 23 || mm > 59) return null;
+      return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    };
+
+    const mapStatus = (raw: string): string => {
+      const n = norm(raw);
+      if (!n) return 'completed';
+      if (/(atend|conclu|realiz|finaliz|feit|complet|pago)/.test(n)) return 'completed';
+      if (/(cancel)/.test(n)) return 'cancelled';
+      if (/(falt|no.?show|ausen)/.test(n)) return 'no_show';
+      if (/(confirm)/.test(n)) return 'confirmed';
+      if (/(agend|schedul|pend)/.test(n)) return 'scheduled';
+      return 'completed';
+    };
+
+    // Row = list of parsed fields regardless of source (CSV, tab-delimited, PDF text)
+    interface Row {
+      date?: string; time?: string; endTime?: string; duration?: string;
+      service?: string; professional?: string; amount?: string;
+      paymentDate?: string; notes?: string; status?: string;
+    }
+
+    const rawLines = csvText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (rawLines.length === 0) throw new Error('Arquivo vazio');
+
+    // Detect the best delimiter across the file
+    const detectDelim = (line: string): string => {
+      const counts: Record<string, number> = {
+        ';': (line.match(/;/g) || []).length,
+        '\t': (line.match(/\t/g) || []).length,
+        '|': (line.match(/\|/g) || []).length,
+        ',': (line.match(/,/g) || []).length,
+      };
+      const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      return best[1] > 0 ? best[0] : '';
+    };
+    const delim = detectDelim(rawLines[0]);
+
+    const rows: Row[] = [];
+
+    try {
+      if (delim) {
+        // ---------- Delimited (CSV/TSV) ----------
+        const splitLine = (l: string) => l.split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
+        const headers = splitLine(rawLines[0]).map(norm);
+
+        const findCol = (...aliases: string[]): number => {
+          for (const a of aliases) {
+            const i = headers.findIndex((h) => h === a);
+            if (i >= 0) return i;
+          }
+          for (const a of aliases) {
+            const i = headers.findIndex((h) => h.includes(a));
+            if (i >= 0) return i;
+          }
+          return -1;
+        };
+
+        const cDate = findCol('data', 'dia', 'date');
+        const cTime = findCol('hora inicio', 'horario inicio', 'inicio', 'horario', 'hora', 'start');
+        const cEnd = findCol('hora fim', 'horario fim', 'termino', 'fim', 'end');
+        const cDur = findCol('duracao', 'duration', 'dur', 'tempo');
+        const cSvc = findCol('servico', 'atendimento', 'procedimento', 'service');
+        const cProf = findCol('profissional', 'profission', 'colaborador', 'professional');
+        const cAmt = findCol('valor pago', 'valor', 'preco', 'amount', 'total');
+        const cPay = findCol('data pagamento', 'pagamento', 'paid', 'data_pagamento');
+        const cNotes = findCol('observacoes', 'observacao', 'obs', 'notes');
+        const cStatus = findCol('status', 'situacao');
+
+        // If the first line looks like data (no date-keyword, but starts with a date), treat it as data
+        const looksLikeHeader = cDate >= 0 || cTime >= 0 || cSvc >= 0 || cStatus >= 0;
+        const startIdx = looksLikeHeader ? 1 : 0;
+
+        for (let i = startIdx; i < rawLines.length; i++) {
+          const cols = splitLine(rawLines[i]);
+          // Fallback: scan any column for date/time if headers missing
+          const scanForDate = () => cols.map(parseBrDate).find(Boolean) || undefined;
+          const scanForTime = () => cols.map(parseTime).find(Boolean) || undefined;
+
+          rows.push({
+            date: cDate >= 0 ? parseBrDate(cols[cDate] || '') || undefined : scanForDate(),
+            time: cTime >= 0 ? parseTime(cols[cTime] || '') || undefined : scanForTime(),
+            endTime: cEnd >= 0 ? parseTime(cols[cEnd] || '') || undefined : undefined,
+            duration: cDur >= 0 ? cols[cDur] : undefined,
+            service: cSvc >= 0 ? cols[cSvc] : undefined,
+            professional: cProf >= 0 ? cols[cProf] : undefined,
+            amount: cAmt >= 0 ? cols[cAmt] : undefined,
+            paymentDate: cPay >= 0 ? parseBrDate(cols[cPay] || '') || undefined : undefined,
+            notes: cNotes >= 0 ? cols[cNotes] : undefined,
+            status: cStatus >= 0 ? cols[cStatus] : undefined,
+          });
+        }
+      } else {
+        // ---------- Free text (PDF) — extract date + times per line ----------
+        const dateRe = /(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})/;
+        const timeRe = /(\d{1,2}[:h]\d{2})/g;
+        const statusRe = /\b(atendid[oa]|conclu[ií]d[oa]|realizad[oa]|cancelad[oa]|faltou|no.?show|ausente|agendad[oa]|confirmad[oa]|pend\w*)/i;
+        const moneyRe = /R?\$?\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2})|\d+(?:[.,]\d{2}))/;
+
+        for (const line of rawLines) {
+          const dMatch = line.match(dateRe);
+          if (!dMatch) continue;
+          const date = parseBrDate(dMatch[1]);
+          if (!date) continue;
+
+          const times = [...line.matchAll(timeRe)].map((m) => parseTime(m[1])).filter(Boolean) as string[];
+          const time = times[0];
+          const endTime = times[1];
+          if (!time) continue;
+
+          const sMatch = line.match(statusRe);
+          const mMatch = line.match(moneyRe);
+
+          // Service = the remaining text with dates/times/status/money stripped out
+          let service = line
+            .replace(dateRe, ' ')
+            .replace(timeRe, ' ')
+            .replace(statusRe, ' ')
+            .replace(moneyRe, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          rows.push({
+            date, time, endTime,
+            service: service || undefined,
+            amount: mMatch ? mMatch[0] : undefined,
+            status: sMatch ? sMatch[1] : undefined,
+          });
+        }
+
+        if (rows.length === 0) {
+          throw new Error('Não foi possível extrair data e horário do arquivo. Verifique o formato ou use o modelo CSV.');
+        }
+      }
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          if (!row.date) throw new Error('data ausente');
+          if (!row.time) throw new Error('horário ausente');
+
+          const start = buildLocalISO(row.date, row.time);
+          if (!start) throw new Error('data/hora inválidas');
+
+          let endIso: string;
+          if (row.endTime) {
+            const e = buildLocalISO(row.date, row.endTime);
+            endIso = e && new Date(e) > new Date(start) ? e : new Date(new Date(start).getTime() + 60 * 60_000).toISOString();
+          } else {
+            const dur = parseInt((row.duration || '').replace(/\D/g, '')) || (selectedService as any)?.duration || 60;
+            endIso = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+          }
+
+          const matchedSvc = row.service
+            ? services.find((s: any) => norm(s.name) === norm(row.service!)) ||
+              services.find((s: any) => norm(s.name).includes(norm(row.service!)) || norm(row.service!).includes(norm(s.name)))
+            : null;
+          const matchedProf = row.professional
+            ? professionals.find((p: any) => norm(p.name) === norm(row.professional!)) ||
+              professionals.find((p: any) => norm(p.name).includes(norm(row.professional!)))
+            : null;
+
+          const status = mapStatus(row.status || '');
 
           const apt = await createLegacyAppointment({
             start_time: start,
-            end_time: end,
-            service_id: matchedSvc?.id || null,
+            end_time: endIso,
+            service_id: matchedSvc?.id || serviceId || null,
             professional_id: matchedProf?.id || professionalId || null,
-            notes: cNotes >= 0 ? cols[cNotes] : '',
+            notes: row.notes || '',
+            status,
           });
 
-          const amt = cAmt >= 0 ? parseBrazilianCurrency(cols[cAmt]) : 0;
-          const payDate = cPay >= 0 ? parseBrDate(cols[cPay] || '') || dateIso : dateIso;
-          if (amt > 0) {
+          const amt = row.amount ? parseBrazilianCurrency(row.amount) : 0;
+          const payDate = row.paymentDate || row.date;
+          if (amt > 0 && status === 'completed') {
             await createFinancialEntry({
               amount: amt,
               payment_date: payDate,
-              description: `${matchedSvc?.name || 'Atendimento'} — ${clientName} (Histórico)`,
+              description: `${matchedSvc?.name || row.service || 'Atendimento'} — ${clientName} (Histórico)`,
               appointment_id: apt?.id || null,
             });
           }
@@ -599,6 +747,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       invalidateAll();
       if (success > 0) toast.success(`${success} registros importados`);
       if (failed > 0) toast.error(`${failed} linhas com erro`);
+    } catch (e: any) {
+      toast.error(e.message || 'Falha ao processar arquivo');
+    } finally {
+      setSubmitting(false);
+    }
+  };
     } catch (e: any) {
       toast.error(e.message || 'Falha ao processar CSV');
     } finally {

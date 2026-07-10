@@ -2119,6 +2119,13 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
+                  {nextPackageStepService && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>
+                      <span className="font-medium">{nextPackageStepService.name}</span>
+                      <span className="text-muted-foreground">· {selectedPackageData.name}</span>
+                    </div>
+                  )}
                   
                   {/* Show remaining sessions for existing package */}
                   {existingClientPackage && selectedClient && (

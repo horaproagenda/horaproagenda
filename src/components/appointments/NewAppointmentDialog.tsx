@@ -396,6 +396,28 @@ export function NewAppointmentDialog({
       : [];
   }, [existingClientPackage, selectedPackageData]);
 
+  // Serviço da próxima aplicação a ser agendada (pacote sequencial / kit)
+  const nextPackageStepService = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (!packageData) return null;
+    // Pacote sequencial: pega a próxima sessão pendente (sem appointment) ou a 1ª etapa
+    if (packageData.package_type === 'sequential') {
+      const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+      if (sessions?.length) {
+        const pending = [...sessions]
+          .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
+          .find((s) => !s.appointment_id && s.status === 'pending');
+        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+        return svcId ? services.find((s) => s.id === svcId) || null : null;
+      }
+      const svcId = packageSequenceSteps[0]?.service_id;
+      return svcId ? services.find((s) => s.id === svcId) || null : null;
+    }
+    // Pacote padrão: usa o service_id direto do pacote
+    const svcId = (packageData as any)?.service_id;
+    return svcId ? services.find((s) => s.id === svcId) || null : null;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
+
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     

@@ -430,14 +430,16 @@ export function NewAppointmentDialog({
         while (futureDate.getDay() !== preferredDayOfWeek) {
           futureDate.setDate(futureDate.getDate() + 1);
         }
-      }
-
-      // Skip closed days (Sundays/Saturdays)
-      while (
-        (!workSundays && futureDate.getDay() === 0) ||
-        (!workSaturdays && futureDate.getDay() === 6)
-      ) {
-        futureDate.setDate(futureDate.getDate() + 1);
+        // Skip holidays even when a specific weekday is chosen (jump 7 days
+        // to keep the same weekday)
+        while (getHolidayForDate(futureDate)?.type === 'national') {
+          futureDate.setDate(futureDate.getDate() + 7);
+        }
+      } else {
+        // "Qualquer dia útil": strictly Mon-Fri and no national holidays
+        while (!isBusinessDay(futureDate)) {
+          futureDate.setDate(futureDate.getDate() + 1);
+        }
       }
 
       // Apply preferred time if set

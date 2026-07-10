@@ -182,6 +182,17 @@ export function NewAppointmentDialog({
     if (dayOfWeek === 6 && !workSaturdays) return false; // Saturday
     return true;
   }, [workSundays, workSaturdays]);
+
+  // Strict business day: Mon-Fri and not a national holiday.
+  // Used for "Qualquer dia útil" recurring selections — ignores work_saturdays
+  // (Saturday never counts as business day) and always skips holidays.
+  const isBusinessDay = useCallback((date: Date): boolean => {
+    const dow = date.getDay();
+    if (dow === 0 || dow === 6) return false;
+    const holiday = getHolidayForDate(date);
+    if (holiday && holiday.type === 'national') return false;
+    return true;
+  }, [getHolidayForDate]);
   const catalogPackages = useMemo(() => {
     const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
     const templatePackages = packageTemplates

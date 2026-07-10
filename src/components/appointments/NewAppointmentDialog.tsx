@@ -495,11 +495,15 @@ export function NewAppointmentDialog({
         const current = futureDate.getDay();
         const diff = (servicePreferredDayOfWeek - current + 7) % 7;
         if (diff !== 0) futureDate = addDays(futureDate, diff);
-      }
-
-      // Skip non-work days
-      while (!isWorkDay(futureDate)) {
-        futureDate = addDays(futureDate, 1);
+        // Skip holidays keeping the same weekday
+        while (getHolidayForDate(futureDate)?.type === 'national') {
+          futureDate = addDays(futureDate, 7);
+        }
+      } else {
+        // "Qualquer dia útil": strictly Mon-Fri and not a national holiday
+        while (!isBusinessDay(futureDate)) {
+          futureDate = addDays(futureDate, 1);
+        }
       }
 
       // Apply preferred time if set
@@ -511,7 +515,13 @@ export function NewAppointmentDialog({
       let guard = 0;
       while (collidesWithSiblings(futureDate) && guard++ < 60) {
         futureDate = addDays(futureDate, 1);
-        while (!isWorkDay(futureDate)) futureDate = addDays(futureDate, 1);
+        if (servicePreferredDayOfWeek !== null) {
+          while (futureDate.getDay() !== servicePreferredDayOfWeek || getHolidayForDate(futureDate)?.type === 'national') {
+            futureDate = addDays(futureDate, 1);
+          }
+        } else {
+          while (!isBusinessDay(futureDate)) futureDate = addDays(futureDate, 1);
+        }
         if (preferredTime) {
           futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
         }

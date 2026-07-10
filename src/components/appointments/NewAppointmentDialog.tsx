@@ -396,6 +396,28 @@ export function NewAppointmentDialog({
       : [];
   }, [existingClientPackage, selectedPackageData]);
 
+  // Serviço da próxima aplicação a ser agendada (pacote sequencial / kit)
+  const nextPackageStepService = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (!packageData) return null;
+    // Pacote sequencial: pega a próxima sessão pendente (sem appointment) ou a 1ª etapa
+    if (packageData.package_type === 'sequential') {
+      const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+      if (sessions?.length) {
+        const pending = [...sessions]
+          .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
+          .find((s) => !s.appointment_id && s.status === 'pending');
+        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+        return svcId ? services.find((s) => s.id === svcId) || null : null;
+      }
+      const svcId = packageSequenceSteps[0]?.service_id;
+      return svcId ? services.find((s) => s.id === svcId) || null : null;
+    }
+    // Pacote padrão: usa o service_id direto do pacote
+    const svcId = (packageData as any)?.service_id;
+    return svcId ? services.find((s) => s.id === svcId) || null : null;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
+
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     
@@ -965,7 +987,7 @@ export function NewAppointmentDialog({
           service_id: packageServiceId,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
-          notes: `${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
+          notes: `${nextPackageStepService?.name ? nextPackageStepService.name + ' — ' : ''}${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,
           payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -1012,7 +1034,7 @@ export function NewAppointmentDialog({
                 service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
-                notes: `${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
+                notes: `${futureService?.name ? futureService.name + ' — ' : ''}${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
                 professional_id: selectedProfessional || packageData?.professional_id || undefined,
                 room_id: selectedRoom || packageData?.room_id || undefined,
                 payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -2097,6 +2119,13 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
+                  {nextPackageStepService && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>
+                      <span className="font-medium">{nextPackageStepService.name}</span>
+                      <span className="text-muted-foreground">· {selectedPackageData.name}</span>
+                    </div>
+                  )}
                   
                   {/* Show remaining sessions for existing package */}
                   {existingClientPackage && selectedClient && (

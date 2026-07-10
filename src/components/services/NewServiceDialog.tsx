@@ -49,6 +49,7 @@ import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 
 function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
   if (!comps.length) return null;

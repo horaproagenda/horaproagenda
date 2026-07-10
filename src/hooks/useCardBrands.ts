@@ -59,6 +59,7 @@ export function useCardBrands() {
       toast.success('Bandeira criada com sucesso!');
     },
     onError: (error: any) => {
+      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) return;
       toast.error('Erro ao criar bandeira: ' + error.message);
     },
   });

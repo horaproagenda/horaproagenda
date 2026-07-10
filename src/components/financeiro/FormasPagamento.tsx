@@ -89,32 +89,39 @@ export function FormasPagamento() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
 
+  // Normaliza nome para comparação case/acento-insensível
+  const normalize = (s: string) =>
+    s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
   useEffect(() => {
-    if (!isLoading && !defaultsInitialized && paymentMethods.length === 0) {
-      setDefaultsInitialized(true);
-      DEFAULT_PAYMENT_METHODS.forEach(name => {
-        createPaymentMethod.mutate({
-          name, is_active: true, description: null,
-          max_installments: name.includes('Crédito') || name.includes('Boleto') ? 12 : 1,
-        });
+    if (isLoading || defaultsInitialized) return;
+    setDefaultsInitialized(true);
+    const existing = new Set(paymentMethods.map(pm => normalize(pm.name)));
+    const missing = DEFAULT_PAYMENT_METHODS.filter(n => !existing.has(normalize(n)));
+    missing.forEach(name => {
+      createPaymentMethod.mutate({
+        name, is_active: true, description: null,
+        max_installments: name.includes('Crédito') || name.includes('Boleto') ? 12 : 1,
       });
-    }
-  }, [isLoading, paymentMethods.length, defaultsInitialized]);
+    });
+  }, [isLoading, defaultsInitialized]);
 
   // Seed automático das bandeiras de cartão mais usadas (executa só se a lista estiver vazia).
   useEffect(() => {
-    if (!brandDefaultsInitialized && cardBrands.length === 0) {
-      setBrandDefaultsInitialized(true);
-      DEFAULT_CARD_BRANDS.forEach(b => {
-        createCardBrand.mutate({
-          name: b.name,
-          type: b.type,
-          is_active: true,
-          fee_behavior: 'deduct_from_provider',
-        });
+    if (isLoading || brandDefaultsInitialized) return;
+    setBrandDefaultsInitialized(true);
+    const existing = new Set(cardBrands.map(b => normalize(b.name)));
+    const missing = DEFAULT_CARD_BRANDS.filter(b => !existing.has(normalize(b.name)));
+    missing.forEach(b => {
+      createCardBrand.mutate({
+        name: b.name,
+        type: b.type,
+        is_active: true,
+        fee_behavior: 'deduct_from_provider',
       });
-    }
-  }, [cardBrands.length, brandDefaultsInitialized]);
+    });
+  }, [isLoading, brandDefaultsInitialized]);
+
 
   // PM handlers
   const resetPmForm = () => { setPmForm({ name: '', description: '', is_active: true, max_installments: 1 }); setEditingPm(null); };

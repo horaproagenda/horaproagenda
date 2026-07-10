@@ -753,12 +753,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       setSubmitting(false);
     }
   };
-    } catch (e: any) {
-      toast.error(e.message || 'Falha ao processar CSV');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

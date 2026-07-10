@@ -2135,40 +2135,38 @@ Até breve! ✨`;
                         <div className="space-y-3 pt-2 border-t">
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <Label className="text-xs">Dia preferido</Label>
+                              <Label className="text-xs">Dia da semana preferido</Label>
                               <Select
                                 value={preferredDayOfWeek !== null ? preferredDayOfWeek.toString() : '_any'}
                                 onValueChange={(v) => setPreferredDayOfWeek(v === '_any' ? null : parseInt(v))}
                               >
                                 <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Qualquer dia" />
+                                  <SelectValue placeholder="Qualquer dia útil" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="_any">Qualquer dia</SelectItem>
-                                  {DAYS_OF_WEEK.map(day => (
-                                    <SelectItem key={day.value} value={day.value.toString()}>
-                                      {day.label}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="_any">Qualquer dia útil</SelectItem>
+                                  <SelectItem value="1">Segunda-feira</SelectItem>
+                                  <SelectItem value="2">Terça-feira</SelectItem>
+                                  <SelectItem value="3">Quarta-feira</SelectItem>
+                                  <SelectItem value="4">Quinta-feira</SelectItem>
+                                  <SelectItem value="5">Sexta-feira</SelectItem>
+                                  <SelectItem value="6">Sábado</SelectItem>
+                                  <SelectItem value="0">Domingo</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Horário preferido</Label>
-                              <Select
-                                value={preferredTime || '_same'}
-                                onValueChange={(v) => setPreferredTime(v === '_same' ? '' : v)}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Mesmo horário" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[200px]">
-                                  <SelectItem value="_same">Mesmo horário</SelectItem>
-                                  {timeSlots.map(slot => (
-                                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                type="time"
+                                className="h-8 text-xs"
+                                value={preferredTime}
+                                onChange={(e) => setPreferredTime(e.target.value)}
+                                placeholder="Mesmo horário"
+                              />
+                              {!preferredTime && (
+                                <p className="text-[10px] text-muted-foreground">Vazio = mesmo horário</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

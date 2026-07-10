@@ -453,7 +453,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
 
   // Update preview dates when calculation changes
   useEffect(() => {

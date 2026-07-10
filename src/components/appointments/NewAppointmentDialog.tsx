@@ -1757,7 +1757,7 @@ Até breve! ✨`;
                       onSelect={setDate}
                       initialFocus
                       disabled={(date) => {
-                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+                        // Permite selecionar datas retroativas — apenas restringe dias em que a clínica não atende
                         if (!isWorkDay(date)) return true;
                         return false;
                       }}

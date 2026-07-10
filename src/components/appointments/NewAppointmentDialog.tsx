@@ -182,6 +182,17 @@ export function NewAppointmentDialog({
     if (dayOfWeek === 6 && !workSaturdays) return false; // Saturday
     return true;
   }, [workSundays, workSaturdays]);
+
+  // Strict business day: Mon-Fri and not a national holiday.
+  // Used for "Qualquer dia útil" recurring selections — ignores work_saturdays
+  // (Saturday never counts as business day) and always skips holidays.
+  const isBusinessDay = useCallback((date: Date): boolean => {
+    const dow = date.getDay();
+    if (dow === 0 || dow === 6) return false;
+    const holiday = getHolidayForDate(date);
+    if (holiday && holiday.type === 'national') return false;
+    return true;
+  }, [getHolidayForDate]);
   const catalogPackages = useMemo(() => {
     const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
     const templatePackages = packageTemplates
@@ -419,14 +430,16 @@ export function NewAppointmentDialog({
         while (futureDate.getDay() !== preferredDayOfWeek) {
           futureDate.setDate(futureDate.getDate() + 1);
         }
-      }
-
-      // Skip closed days (Sundays/Saturdays)
-      while (
-        (!workSundays && futureDate.getDay() === 0) ||
-        (!workSaturdays && futureDate.getDay() === 6)
-      ) {
-        futureDate.setDate(futureDate.getDate() + 1);
+        // Skip holidays even when a specific weekday is chosen (jump 7 days
+        // to keep the same weekday)
+        while (getHolidayForDate(futureDate)?.type === 'national') {
+          futureDate.setDate(futureDate.getDate() + 7);
+        }
+      } else {
+        // "Qualquer dia útil": strictly Mon-Fri and no national holidays
+        while (!isBusinessDay(futureDate)) {
+          futureDate.setDate(futureDate.getDate() + 1);
+        }
       }
 
       // Apply preferred time if set
@@ -440,7 +453,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -482,11 +495,15 @@ export function NewAppointmentDialog({
         const current = futureDate.getDay();
         const diff = (servicePreferredDayOfWeek - current + 7) % 7;
         if (diff !== 0) futureDate = addDays(futureDate, diff);
-      }
-
-      // Skip non-work days
-      while (!isWorkDay(futureDate)) {
-        futureDate = addDays(futureDate, 1);
+        // Skip holidays keeping the same weekday
+        while (getHolidayForDate(futureDate)?.type === 'national') {
+          futureDate = addDays(futureDate, 7);
+        }
+      } else {
+        // "Qualquer dia útil": strictly Mon-Fri and not a national holiday
+        while (!isBusinessDay(futureDate)) {
+          futureDate = addDays(futureDate, 1);
+        }
       }
 
       // Apply preferred time if set
@@ -498,7 +515,13 @@ export function NewAppointmentDialog({
       let guard = 0;
       while (collidesWithSiblings(futureDate) && guard++ < 60) {
         futureDate = addDays(futureDate, 1);
-        while (!isWorkDay(futureDate)) futureDate = addDays(futureDate, 1);
+        if (servicePreferredDayOfWeek !== null) {
+          while (futureDate.getDay() !== servicePreferredDayOfWeek || getHolidayForDate(futureDate)?.type === 'national') {
+            futureDate = addDays(futureDate, 1);
+          }
+        } else {
+          while (!isBusinessDay(futureDate)) futureDate = addDays(futureDate, 1);
+        }
         if (preferredTime) {
           futureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
         }
@@ -508,7 +531,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, settings?.timezone]);
+  }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, isBusinessDay, getHolidayForDate, settings?.timezone]);
 
   // Update service preview dates when calculation changes
   useEffect(() => {

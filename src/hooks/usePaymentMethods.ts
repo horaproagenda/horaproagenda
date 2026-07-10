@@ -51,6 +51,8 @@ export function usePaymentMethods() {
       toast.success('Forma de pagamento criada com sucesso!');
     },
     onError: (error: any) => {
+      // 23505 = unique_violation — forma de pagamento já existe (seed idempotente). Silencia o toast.
+      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) return;
       toast.error('Erro ao criar forma de pagamento: ' + error.message);
     },
   });

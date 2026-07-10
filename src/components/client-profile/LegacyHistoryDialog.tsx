@@ -98,6 +98,53 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   // CSV
   const [csvText, setCsvText] = useState('');
   const [csvResult, setCsvResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setLoadingFile(true);
+    try {
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      if (isPdf) {
+        const pdfjs = await import('pdfjs-dist');
+        // Use bundled worker via Vite ?url import
+        const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        (pdfjs as any).GlobalWorkerOptions.workerSrc = workerUrl;
+        const buf = await file.arrayBuffer();
+        const doc = await (pdfjs as any).getDocument({ data: buf }).promise;
+        let text = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const content = await page.getTextContent();
+          // Group items by y position to reconstruct lines
+          const rows = new Map<number, string[]>();
+          for (const it of content.items as any[]) {
+            const y = Math.round(it.transform[5]);
+            if (!rows.has(y)) rows.set(y, []);
+            rows.get(y)!.push(it.str);
+          }
+          const sortedY = Array.from(rows.keys()).sort((a, b) => b - a);
+          for (const y of sortedY) {
+            const line = rows.get(y)!.join(' ').replace(/\s+/g, ' ').trim();
+            if (line) text += line + '\n';
+          }
+        }
+        setCsvText(text);
+        toast.success(`PDF importado (${doc.numPages} páginas). Revise o texto antes de importar.`);
+      } else {
+        const text = await file.text();
+        setCsvText(text);
+        toast.success('Arquivo CSV carregado.');
+      }
+    } catch (err: any) {
+      console.error('[LegacyHistory] file load error', err);
+      toast.error(err?.message || 'Falha ao ler o arquivo');
+    } finally {
+      setLoadingFile(false);
+    }
+  };
 
   const serviceOptions = useMemo(
     () => services.filter((s: any) => s.is_active).map((s: any) => ({

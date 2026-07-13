@@ -460,57 +460,83 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       toast.error('Preencha ao menos uma sessão realizada com data e horário');
       return;
     }
-    const available = existingPackagePendingSessions.length;
+    const available = existingPackageAvailableCount;
     if (filledSessions.length > available) {
       toast.error(`O pacote tem apenas ${available} sessão(ões) disponível(is). Reduza as sessões preenchidas.`);
       return;
     }
 
     const pkgAny: any = selectedExistingPackage;
-    const pkgServiceId = pkgAny.service_id || serviceId || null;
-    const pkgDuration = pkgAny.duration || selectedService?.duration || 60;
+    const pkgServiceId = pkgAny.service_id || null;
+    const pkgDuration = pkgAny.duration || 60;
     const pkgName = pkgAny.name || 'Pacote';
+    const pkgProfessionalId = pkgAny.professional_id || null;
+    // Só aceita profissional escolhido no formulário se o pacote ainda não tem um.
+    const effectiveProfessionalId = pkgProfessionalId || professionalId || null;
 
     setSubmitting(true);
     try {
+      // 1) Garante que existem package_appointments suficientes para vincular.
+      //    Pacotes vindos de boleto parcelado ou históricos antigos podem não ter
+      //    gerado registros — nesse caso criamos os pendentes que faltam.
+      let pendingList: any[] = [...existingPackagePendingSessions];
+      const missing = filledSessions.length - pendingList.length;
+      if (missing > 0) {
+        const allSessions = (pkgAny.appointments || []);
+        const maxNum = allSessions.reduce((m: number, s: any) => Math.max(m, s.session_number || 0, s.sequence_order || 0), 0);
+        const toInsert = Array.from({ length: missing }).map((_, k) => {
+          const n = maxNum + k + 1;
+          const row: any = {
+            package_id: pkgAny.id,
+            session_number: n,
+            original_session_number: n,
+            status: 'pending',
+            service_id: pkgServiceId,
+          };
+          if (kind === 'sequential') {
+            row.sequence_order = n;
+            row.interval_after_days = pkgAny.interval_days || 0;
+          }
+          return row;
+        });
+        const { data: inserted, error: insErr } = await supabase
+          .from('package_appointments')
+          .insert(toInsert)
+          .select();
+        if (insErr) throw insErr;
+        pendingList = [...pendingList, ...(inserted || [])];
+      }
+
       for (let i = 0; i < filledSessions.length; i++) {
         const row = filledSessions[i];
-        const pending = existingPackagePendingSessions[i];
+        const pending = pendingList[i];
         const start = buildLocalISO(row.date, row.time);
         if (!start) continue;
         const dur = parseInt(row.duration) || pkgDuration;
         const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
         const stepServiceId = pending.service_id || pkgServiceId;
 
-        // Marca a sessão pendente como realizada com data
         const { error: updErr } = await supabase
           .from('package_appointments')
           .update({ status: 'completed', scheduled_date: start })
           .eq('id', pending.id);
         if (updErr) throw updErr;
 
-        // Cria appointment vinculado
         const apt = await createLegacyAppointment({
           start_time: start,
           end_time: end,
           service_id: stepServiceId,
-          professional_id: professionalId || pkgAny.professional_id || null,
+          professional_id: effectiveProfessionalId,
           package_appointment_id: pending.id,
           notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
         });
 
         await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
 
-        const amt = parseBrazilianCurrency(row.amount_paid);
-        if (amt > 0) {
-          await createFinancialEntry({
-            amount: amt,
-            payment_date: row.payment_date || row.date,
-            description: `Sessão ${pending.session_number} — ${pkgName} (Histórico)`,
-            appointment_id: apt.id,
-          });
-        }
+        // Vínculo a pacote com venda já feita: NÃO cria lançamento financeiro
+        // nem preenche amount_paid — a venda do pacote já foi registrada.
       }
+
 
       invalidateAll();
       toast.success(

@@ -22,6 +22,14 @@ interface AppointmentRequest {
    * that happened BEFORE the user adopted this system.
    */
   legacy?: boolean;
+  // Optional payment fields — when provided, are persisted atomically with
+  // the appointment so retroactive/legacy payments never fall through the
+  // client-side update path (which can be silently blocked by RLS or a race
+  // with auto-heal cycles).
+  amount_paid?: number;
+  payment_status?: 'pending' | 'partial' | 'paid';
+  payment_date?: string | null;
+  payment_methods?: string[];
 }
 
 interface ValidationError {

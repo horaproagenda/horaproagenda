@@ -23,7 +23,9 @@ import { parseBrazilianCurrency } from '@/lib/utils';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useClientPackages } from '@/hooks/useClientPackages';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
+import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
 interface LegacyHistoryDialogProps {
   open: boolean;
@@ -69,6 +71,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const { services } = useServices();
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
+  const { clientPackages } = useClientPackages(clientId);
 
   const [tab, setTab] = useState<'single' | 'common' | 'sequential' | 'csv'>('single');
   const [submitting, setSubmitting] = useState(false);
@@ -94,6 +97,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const [pkgPaymentDate, setPkgPaymentDate] = useState('');
   const [pkgIntervalDays, setPkgIntervalDays] = useState('30'); // sequential
   const [pkgSessions, setPkgSessions] = useState<SessionRow[]>([newSessionRow(), newSessionRow()]);
+  const [linkExistingPackage, setLinkExistingPackage] = useState(false);
+  const [existingPackageId, setExistingPackageId] = useState<string>('');
 
   // CSV
   const [csvText, setCsvText] = useState('');
@@ -162,6 +167,42 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   );
 
   const selectedService = useMemo(() => services.find((s: any) => s.id === serviceId), [services, serviceId]);
+
+  // Pacotes existentes do cliente compatíveis com a aba atual (comum/sequencial).
+  const existingPackagesForTab = useMemo(() => {
+    const kind = tab === 'sequential' ? 'sequential' : 'standard';
+    return (clientPackages || []).filter((p: any) => {
+      const type = p.package_type === 'sequential' ? 'sequential' : 'standard';
+      if (type !== kind) return false;
+      const summary = getPackageAvailabilitySummary(p);
+      return summary.schedulableSessions > 0;
+    });
+  }, [clientPackages, tab]);
+
+  const existingPackageOptions = useMemo(
+    () => existingPackagesForTab.map((p: any) => {
+      const s = getPackageAvailabilitySummary(p);
+      return {
+        value: p.id,
+        label: p.name,
+        sublabel: `${s.schedulableSessions} de ${s.totalSessions} disponíveis`,
+      };
+    }),
+    [existingPackagesForTab]
+  );
+
+  const selectedExistingPackage = useMemo(
+    () => existingPackagesForTab.find((p: any) => p.id === existingPackageId),
+    [existingPackagesForTab, existingPackageId]
+  );
+
+  const existingPackagePendingSessions = useMemo(() => {
+    if (!selectedExistingPackage) return [] as any[];
+    return ((selectedExistingPackage as any).appointments || [])
+      .filter((s: any) => s.status !== 'completed' && s.status !== 'missed' && !s.appointment_id)
+      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+  }, [selectedExistingPackage]);
+
 
   const ensureAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -372,7 +413,84 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: String(selectedService?.duration ?? 60) })]);
   const removeSession = (id: string) => setPkgSessions((rows) => rows.filter((r) => r.id !== id));
 
+  // ============ VINCULAR SESSÕES REALIZADAS A PACOTE EXISTENTE ============
+  const handleSubmitLinkedPackage = async (kind: 'common' | 'sequential') => {
+    if (!existingPackageId || !selectedExistingPackage) {
+      toast.error('Selecione o pacote existente do cliente');
+      return;
+    }
+    const filledSessions = pkgSessions.filter((r) => r.date && r.time);
+    if (filledSessions.length === 0) {
+      toast.error('Preencha ao menos uma sessão realizada com data e horário');
+      return;
+    }
+    const available = existingPackagePendingSessions.length;
+    if (filledSessions.length > available) {
+      toast.error(`O pacote tem apenas ${available} sessão(ões) disponível(is). Reduza as sessões preenchidas.`);
+      return;
+    }
+
+    const pkgAny: any = selectedExistingPackage;
+    const pkgServiceId = pkgAny.service_id || serviceId || null;
+    const pkgDuration = pkgAny.duration || selectedService?.duration || 60;
+    const pkgName = pkgAny.name || 'Pacote';
+
+    setSubmitting(true);
+    try {
+      for (let i = 0; i < filledSessions.length; i++) {
+        const row = filledSessions[i];
+        const pending = existingPackagePendingSessions[i];
+        const start = buildLocalISO(row.date, row.time);
+        if (!start) continue;
+        const dur = parseInt(row.duration) || pkgDuration;
+        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+        const stepServiceId = pending.service_id || pkgServiceId;
+
+        // Marca a sessão pendente como realizada com data
+        const { error: updErr } = await supabase
+          .from('package_appointments')
+          .update({ status: 'completed', scheduled_date: start })
+          .eq('id', pending.id);
+        if (updErr) throw updErr;
+
+        // Cria appointment vinculado
+        const apt = await createLegacyAppointment({
+          start_time: start,
+          end_time: end,
+          service_id: stepServiceId,
+          professional_id: professionalId || pkgAny.professional_id || null,
+          package_appointment_id: pending.id,
+          notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
+        });
+
+        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
+
+        const amt = parseBrazilianCurrency(row.amount_paid);
+        if (amt > 0) {
+          await createFinancialEntry({
+            amount: amt,
+            payment_date: row.payment_date || row.date,
+            description: `Sessão ${pending.session_number} — ${pkgName} (Histórico)`,
+            appointment_id: apt.id,
+          });
+        }
+      }
+
+      invalidateAll();
+      toast.success(
+        `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
+      );
+      resetPackage();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Falha ao vincular sessões ao pacote');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmitPackage = async (kind: 'common' | 'sequential') => {
+    if (linkExistingPackage) return handleSubmitLinkedPackage(kind);
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }
@@ -520,6 +638,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     setPkgName(''); setPkgTotalSessions('4'); setPkgTotalPrice(''); setPkgPaymentDate('');
     setPkgIntervalDays('30');
     setPkgSessions([newSessionRow(), newSessionRow()]);
+    setLinkExistingPackage(false);
+    setExistingPackageId('');
   };
 
   // ============ CSV ============
@@ -874,25 +994,31 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="common" className="mt-0">
               <PackageForm
                 kind="common"
-                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
                 pkgSessions={pkgSessions}
                 addSession={addSession} removeSession={removeSession} updateSession={updateSession}
+                linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
+                existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
+                existingPackageOptions={existingPackageOptions}
+                existingPackageAvailable={existingPackagePendingSessions.length}
               />
             </TabsContent>
 
             <TabsContent value="sequential" className="mt-0">
               <PackageForm
                 kind="sequential"
-                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
                 pkgIntervalDays={pkgIntervalDays} setPkgIntervalDays={setPkgIntervalDays}
                 pkgSessions={pkgSessions}
                 addSession={addSession} removeSession={removeSession} updateSession={updateSession}
+                linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
+                existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
+                existingPackageOptions={existingPackageOptions}
+                existingPackageAvailable={existingPackagePendingSessions.length}
               />
             </TabsContent>
 
@@ -978,7 +1104,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 // ====== Sub-component: Package Form ======
 interface PackageFormProps {
   kind: 'common' | 'sequential';
-  
   pkgTotalSessions: string; setPkgTotalSessions: (v: string) => void;
   pkgTotalPrice: string; setPkgTotalPrice: (v: string) => void;
   pkgPaymentDate: string; setPkgPaymentDate: (v: string) => void;
@@ -987,6 +1112,12 @@ interface PackageFormProps {
   addSession: () => void;
   removeSession: (id: string) => void;
   updateSession: (id: string, patch: Partial<SessionRow>) => void;
+  linkExistingPackage: boolean;
+  setLinkExistingPackage: (v: boolean) => void;
+  existingPackageId: string;
+  setExistingPackageId: (v: string) => void;
+  existingPackageOptions: Array<{ value: string; label: string; sublabel?: string }>;
+  existingPackageAvailable: number;
 }
 
 function PackageForm(props: PackageFormProps) {
@@ -995,48 +1126,76 @@ function PackageForm(props: PackageFormProps) {
     pkgTotalPrice, setPkgTotalPrice, pkgPaymentDate, setPkgPaymentDate,
     pkgIntervalDays, setPkgIntervalDays, pkgSessions,
     addSession, removeSession, updateSession,
+    linkExistingPackage, setLinkExistingPackage,
+    existingPackageId, setExistingPackageId,
+    existingPackageOptions, existingPackageAvailable,
   } = props;
+
+  const filled = pkgSessions.filter((r) => r.date && r.time).length;
+  const totalNum = linkExistingPackage
+    ? existingPackageAvailable
+    : (parseInt(pkgTotalSessions) || pkgSessions.length);
+  const remaining = Math.max(0, totalNum - filled);
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div>
-          <Label className="text-xs">Total de sessões</Label>
-          <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
+      <div className="rounded border bg-muted/30 p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Switch id={`link-existing-${kind}`} checked={linkExistingPackage} onCheckedChange={setLinkExistingPackage} />
+          <Label htmlFor={`link-existing-${kind}`} className="text-xs cursor-pointer">
+            Vincular a um pacote {kind === 'sequential' ? 'sequencial' : 'comum'} já cadastrado do cliente
+          </Label>
         </div>
-        <div>
-          <Label className="text-xs">Valor total pago (R$)</Label>
-          <Input type="text" inputMode="decimal" value={pkgTotalPrice} onChange={(e) => setPkgTotalPrice(e.target.value)} placeholder="0,00" className="h-9" />
-        </div>
-        <div>
-          <Label className="text-xs">Data do pagamento (total)</Label>
-          <Input type="date" value={pkgPaymentDate} onChange={(e) => setPkgPaymentDate(e.target.value)} className="h-9" />
-        </div>
-        {kind === 'sequential' && setPkgIntervalDays && (
+        {linkExistingPackage && (
           <div>
-            <Label className="text-xs">Intervalo entre sessões (dias)</Label>
-            <Input type="number" value={pkgIntervalDays || '30'} onChange={(e) => setPkgIntervalDays(e.target.value)} className="h-9" />
+            <SearchableSelect
+              options={existingPackageOptions}
+              value={existingPackageId}
+              onChange={setExistingPackageId}
+              placeholder={existingPackageOptions.length === 0 ? `Nenhum pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} com sessões disponíveis` : 'Selecione o pacote existente'}
+              className="h-8 text-xs"
+            />
+            {existingPackageId && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {existingPackageAvailable} sessão(ões) disponível(is). As demais permanecerão liberadas para agendamento futuro.
+              </p>
+            )}
           </div>
         )}
       </div>
 
+      {!linkExistingPackage && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div>
+            <Label className="text-xs">Total de sessões</Label>
+            <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">Valor total pago (R$)</Label>
+            <Input type="text" inputMode="decimal" value={pkgTotalPrice} onChange={(e) => setPkgTotalPrice(e.target.value)} placeholder="0,00" className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">Data do pagamento (total)</Label>
+            <Input type="date" value={pkgPaymentDate} onChange={(e) => setPkgPaymentDate(e.target.value)} className="h-9" />
+          </div>
+          {kind === 'sequential' && setPkgIntervalDays && (
+            <div>
+              <Label className="text-xs">Intervalo entre sessões (dias)</Label>
+              <Input type="number" value={pkgIntervalDays || '30'} onChange={(e) => setPkgIntervalDays(e.target.value)} className="h-9" />
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="text-xs">Sessões realizadas ({pkgSessions.filter((r) => r.date && r.time).length} de {parseInt(pkgTotalSessions) || pkgSessions.length})</Label>
-            {(() => {
-              const filled = pkgSessions.filter((r) => r.date && r.time).length;
-              const totalNum = parseInt(pkgTotalSessions) || pkgSessions.length;
-              const remaining = Math.max(0, totalNum - filled);
-              if (remaining > 0) {
-                return (
-                  <p className="text-[10px] text-muted-foreground">
-                    {remaining} sessão(ões) ficarão disponíveis para agendamento futuro.
-                  </p>
-                );
-              }
-              return null;
-            })()}
+            <Label className="text-xs">Sessões realizadas ({filled} de {totalNum})</Label>
+            {remaining > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                {remaining} sessão(ões) {linkExistingPackage ? 'continuarão' : 'ficarão'} disponíveis para agendamento futuro.
+              </p>
+            )}
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addSession} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" />Adicionar sessão

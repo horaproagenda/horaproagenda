@@ -246,6 +246,13 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     package_appointment_id?: string | null;
     notes?: string;
     status?: string;
+    // Optional payment fields — passed to the edge function so the payment is
+    // stamped atomically with the appointment (avoids RLS/race issues on a
+    // separate client-side update path).
+    amount_paid?: number;
+    payment_status?: 'pending' | 'partial' | 'paid';
+    payment_date?: string | null;
+    payment_methods?: string[];
   }) => {
     const token = await ensureAuth();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
@@ -262,6 +269,10 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         status: params.status || 'completed',
         package_appointment_id: params.package_appointment_id || null,
         legacy: true,
+        amount_paid: params.amount_paid,
+        payment_status: params.payment_status,
+        payment_date: params.payment_date,
+        payment_methods: params.payment_methods,
       }),
     });
     const json = await res.json();

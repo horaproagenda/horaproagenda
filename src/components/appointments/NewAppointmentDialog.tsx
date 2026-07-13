@@ -446,14 +446,14 @@ export function NewAppointmentDialog({
     for (let i = 1; i < totalSessions; i++) {
       const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
-      // Sobrescreve com intervalo manual digitado pelo usuário, se válido
+      // Para pacotes sequenciais, sempre respeitar o intervalo cadastrado em cada etapa.
+      // Só permitir override manual para pacotes padrão (sem sequência cadastrada).
       const manualOverride = parseInt(customIntervalDays, 10);
       const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-      // Use the step's interval, falling back to previous step, package default, or 7 days
-      const intervalDays = hasManualOverride
-        ? manualOverride
-        : packageSequenceSteps.length > 0
-          ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+      const intervalDays = packageSequenceSteps.length > 0
+        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+        : hasManualOverride
+          ? manualOverride
           : Number(packageData?.interval_days || 7);
       // Ensure minimum 1 day interval to prevent overlapping sessions
       const safeInterval = Math.max(intervalDays, 1);
@@ -871,10 +871,27 @@ export function NewAppointmentDialog({
       return;
     }
 
-    
+
     // Block if outside business hours
     if (businessHoursError) {
       toast.error(businessHoursError);
+      return;
+    }
+
+    // Guarda: nenhum agendamento (manual ou automático) pode cair em um dia
+    // em que o estabelecimento não trabalha (ex.: domingo com work_sundays=false).
+    if (!isWorkDay(date)) {
+      const dow = date.getDay();
+      const dayName = dow === 0 ? 'domingos' : dow === 6 ? 'sábados' : 'este dia';
+      toast.error(`O estabelecimento não atende aos ${dayName}. Escolha outra data.`);
+      return;
+    }
+    if (autoScheduleEnabled && editablePreviewDates.some((d) => !isWorkDay(d))) {
+      toast.error('Uma ou mais sessões automáticas caem em dias não trabalhados. Ajuste as datas.');
+      return;
+    }
+    if (repeatServiceEnabled && editableServiceDates.some((d) => !isWorkDay(d))) {
+      toast.error('Uma ou mais repetições caem em dias não trabalhados. Ajuste as datas.');
       return;
     }
     
@@ -2194,8 +2211,8 @@ Até breve! ✨`;
                                   <SelectItem value="3">Quarta-feira</SelectItem>
                                   <SelectItem value="4">Quinta-feira</SelectItem>
                                   <SelectItem value="5">Sexta-feira</SelectItem>
-                                  <SelectItem value="6">Sábado</SelectItem>
-                                  <SelectItem value="0">Domingo</SelectItem>
+                                  {workSaturdays && <SelectItem value="6">Sábado</SelectItem>}
+                                  {workSundays && <SelectItem value="0">Domingo</SelectItem>}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -2213,27 +2230,35 @@ Até breve! ✨`;
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs whitespace-nowrap">Intervalo (dias):</Label>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              maxLength={2}
-                              className="h-8 w-16 text-xs text-center tabular-nums"
-                              placeholder={String(existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7)}
-                              value={customIntervalDays}
-                              onChange={(e) => {
-                                // Aceita apenas dígitos, no máximo 2
-                                const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                                setCustomIntervalDays(v);
-                              }}
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {customIntervalDays
-                                ? `a cada ${customIntervalDays} dia${Number(customIntervalDays) === 1 ? '' : 's'}`
-                                : `padrão: a cada ${existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias`}
-                            </span>
-                          </div>
+                          {packageSequenceSteps.length > 0 ? (
+                            <Alert className="py-2">
+                              <Info className="h-3 w-3" />
+                              <AlertDescription className="text-xs">
+                                Os intervalos entre etapas seguem o cadastro do pacote sequencial.
+                              </AlertDescription>
+                            </Alert>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs whitespace-nowrap">Intervalo (dias):</Label>
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={2}
+                                className="h-8 w-16 text-xs text-center tabular-nums"
+                                placeholder={String(existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7)}
+                                value={customIntervalDays}
+                                onChange={(e) => {
+                                  const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                  setCustomIntervalDays(v);
+                                }}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {customIntervalDays
+                                  ? `a cada ${customIntervalDays} dia${Number(customIntervalDays) === 1 ? '' : 's'}`
+                                  : `padrão: a cada ${existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias`}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Preview of scheduled dates with edit capability */}
                           {editablePreviewDates.length > 0 && date && time && (

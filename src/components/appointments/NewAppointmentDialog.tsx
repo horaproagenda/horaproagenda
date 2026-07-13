@@ -353,6 +353,43 @@ export function NewAppointmentDialog({
   // usando aritmética de minutos no relógio de parede (HH:mm) para evitar
   // qualquer deslocamento por fuso horário (bug reportado: início 08:00 mostrava
   // término 20:40 quando o fuso do navegador divergia do fuso da conta).
+  // Etapas do pacote sequencial (declaradas antes de appointmentTimes para
+  // que a duração use a etapa correta, não o total do pacote).
+  const packageSequenceSteps = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
+      return packageData.appointments
+        .map(session => ({
+          service_id: session.service_id,
+          sequence_order: session.sequence_order || session.session_number,
+          interval_after_days: session.interval_after_days || 0,
+        }))
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+    }
+    return packageData?.package_type === 'sequential' && packageData.steps?.length
+      ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+      : [];
+  }, [existingClientPackage, selectedPackageData]);
+
+  const nextPackageStepService = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (!packageData) return null;
+    if (packageData.package_type === 'sequential') {
+      const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+      if (sessions?.length) {
+        const pending = [...sessions]
+          .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
+          .find((s) => !s.appointment_id && s.status === 'pending');
+        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+        return svcId ? services.find((s) => s.id === svcId) || null : null;
+      }
+      const svcId = packageSequenceSteps[0]?.service_id;
+      return svcId ? services.find((s) => s.id === svcId) || null : null;
+    }
+    const svcId = (packageData as any)?.service_id;
+    return svcId ? services.find((s) => s.id === svcId) || null : null;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
+
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
 

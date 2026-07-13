@@ -2033,8 +2033,8 @@ Até breve! ✨`;
                                 <SelectItem value="3">Quarta-feira</SelectItem>
                                 <SelectItem value="4">Quinta-feira</SelectItem>
                                 <SelectItem value="5">Sexta-feira</SelectItem>
-                                <SelectItem value="6">Sábado</SelectItem>
-                                <SelectItem value="0">Domingo</SelectItem>
+                                {workSaturdays && <SelectItem value="6">Sábado</SelectItem>}
+                                {workSundays && <SelectItem value="0">Domingo</SelectItem>}
                               </SelectContent>
                             </Select>
                             <p className="text-[10px] text-muted-foreground">

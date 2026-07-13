@@ -638,8 +638,14 @@ export function NewAppointmentDialog({
     }
 
     appointments.forEach(apt => {
+      // Ignore appointments that no longer occupy a slot (cancelled, missed,
+      // rescheduled or already-deleted rows still cached). Sem esse filtro,
+      // agendamentos cancelados geravam falsos "conflitos" em datas livres.
+      if (apt.status && ['cancelled', 'missed', 'rescheduled', 'deleted'].includes(apt.status)) return;
+
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
+      if (isNaN(aptStart.getTime()) || isNaN(aptEnd.getTime())) return;
 
       // Check if times overlap
       const overlaps = checkStart < aptEnd && checkEnd > aptStart;

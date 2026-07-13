@@ -531,7 +531,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                                 className="h-8 text-xs"
                                 value={step.service_id}
                                 onChange={(value) => updateSeqStep(index, { service_id: value })}
-                                options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
+                                options={stepServiceOptions}
                                 placeholder="Selecione o serviço"
                                 searchPlaceholder="Buscar serviço..."
                                 emptyMessage="Nenhum serviço encontrado."

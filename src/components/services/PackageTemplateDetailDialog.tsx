@@ -220,7 +220,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         totalSessions = expandedSteps.length;
         intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
         duration = expandedSteps.reduce((sum, s) => {
-          const svc = activeServices.find(a => a.id === s.service_id);
+          const svc = services.find(a => a.id === s.service_id);
           return sum + (svc?.duration || 0);
         }, 0) || duration;
       }

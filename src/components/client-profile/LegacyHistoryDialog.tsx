@@ -1104,7 +1104,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 // ====== Sub-component: Package Form ======
 interface PackageFormProps {
   kind: 'common' | 'sequential';
-  
   pkgTotalSessions: string; setPkgTotalSessions: (v: string) => void;
   pkgTotalPrice: string; setPkgTotalPrice: (v: string) => void;
   pkgPaymentDate: string; setPkgPaymentDate: (v: string) => void;
@@ -1113,6 +1112,12 @@ interface PackageFormProps {
   addSession: () => void;
   removeSession: (id: string) => void;
   updateSession: (id: string, patch: Partial<SessionRow>) => void;
+  linkExistingPackage: boolean;
+  setLinkExistingPackage: (v: boolean) => void;
+  existingPackageId: string;
+  setExistingPackageId: (v: string) => void;
+  existingPackageOptions: Array<{ value: string; label: string; sublabel?: string }>;
+  existingPackageAvailable: number;
 }
 
 function PackageForm(props: PackageFormProps) {
@@ -1121,30 +1126,66 @@ function PackageForm(props: PackageFormProps) {
     pkgTotalPrice, setPkgTotalPrice, pkgPaymentDate, setPkgPaymentDate,
     pkgIntervalDays, setPkgIntervalDays, pkgSessions,
     addSession, removeSession, updateSession,
+    linkExistingPackage, setLinkExistingPackage,
+    existingPackageId, setExistingPackageId,
+    existingPackageOptions, existingPackageAvailable,
   } = props;
+
+  const filled = pkgSessions.filter((r) => r.date && r.time).length;
+  const totalNum = linkExistingPackage
+    ? existingPackageAvailable
+    : (parseInt(pkgTotalSessions) || pkgSessions.length);
+  const remaining = Math.max(0, totalNum - filled);
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div>
-          <Label className="text-xs">Total de sessões</Label>
-          <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
+      <div className="rounded border bg-muted/30 p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Switch id={`link-existing-${kind}`} checked={linkExistingPackage} onCheckedChange={setLinkExistingPackage} />
+          <Label htmlFor={`link-existing-${kind}`} className="text-xs cursor-pointer">
+            Vincular a um pacote {kind === 'sequential' ? 'sequencial' : 'comum'} já cadastrado do cliente
+          </Label>
         </div>
-        <div>
-          <Label className="text-xs">Valor total pago (R$)</Label>
-          <Input type="text" inputMode="decimal" value={pkgTotalPrice} onChange={(e) => setPkgTotalPrice(e.target.value)} placeholder="0,00" className="h-9" />
-        </div>
-        <div>
-          <Label className="text-xs">Data do pagamento (total)</Label>
-          <Input type="date" value={pkgPaymentDate} onChange={(e) => setPkgPaymentDate(e.target.value)} className="h-9" />
-        </div>
-        {kind === 'sequential' && setPkgIntervalDays && (
+        {linkExistingPackage && (
           <div>
-            <Label className="text-xs">Intervalo entre sessões (dias)</Label>
-            <Input type="number" value={pkgIntervalDays || '30'} onChange={(e) => setPkgIntervalDays(e.target.value)} className="h-9" />
+            <SearchableSelect
+              options={existingPackageOptions}
+              value={existingPackageId}
+              onChange={setExistingPackageId}
+              placeholder={existingPackageOptions.length === 0 ? `Nenhum pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} com sessões disponíveis` : 'Selecione o pacote existente'}
+              className="h-8 text-xs"
+            />
+            {existingPackageId && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {existingPackageAvailable} sessão(ões) disponível(is). As demais permanecerão liberadas para agendamento futuro.
+              </p>
+            )}
           </div>
         )}
       </div>
+
+      {!linkExistingPackage && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div>
+            <Label className="text-xs">Total de sessões</Label>
+            <Input type="number" value={pkgTotalSessions} onChange={(e) => setPkgTotalSessions(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">Valor total pago (R$)</Label>
+            <Input type="text" inputMode="decimal" value={pkgTotalPrice} onChange={(e) => setPkgTotalPrice(e.target.value)} placeholder="0,00" className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">Data do pagamento (total)</Label>
+            <Input type="date" value={pkgPaymentDate} onChange={(e) => setPkgPaymentDate(e.target.value)} className="h-9" />
+          </div>
+          {kind === 'sequential' && setPkgIntervalDays && (
+            <div>
+              <Label className="text-xs">Intervalo entre sessões (dias)</Label>
+              <Input type="number" value={pkgIntervalDays || '30'} onChange={(e) => setPkgIntervalDays(e.target.value)} className="h-9" />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">

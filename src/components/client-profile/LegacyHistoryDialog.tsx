@@ -360,6 +360,14 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     qc.invalidateQueries({ queryKey: ['client-appointments'] });
     qc.invalidateQueries({ queryKey: ['client_profile', clientId] });
     qc.invalidateQueries({ queryKey: ['service_packages'] });
+    // Contador "N de M disponíveis" lê de useClientPackages (queryKey
+    // ['client_packages', clientId]) e das sessões — invalidar ambos garante
+    // atualização imediata ao vincular/desfazer sem depender de recarregar.
+    qc.invalidateQueries({ queryKey: ['client_packages'] });
+    qc.invalidateQueries({ queryKey: ['client_packages', clientId] });
+    qc.invalidateQueries({ queryKey: ['package_appointments'] });
+    qc.invalidateQueries({ queryKey: ['package_details'] });
+    qc.refetchQueries({ queryKey: ['client_packages', clientId], type: 'active' });
     qc.invalidateQueries({ queryKey: ['financial_entries'] });
     qc.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
     qc.invalidateQueries({ queryKey: ['clients'] });

@@ -562,7 +562,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                             <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
                             <div className="flex flex-wrap gap-1.5">
                               {entries.map(([sid, qty]) => {
-                                const svc = activeServices.find((s: any) => s.id === sid) as any;
+                                const svc = services.find((s: any) => s.id === sid) as any;
                                 const c = getSequentialServiceColor(sid, seqColorMap);
                                 return (
                                   <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>

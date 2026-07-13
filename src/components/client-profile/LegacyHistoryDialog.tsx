@@ -656,6 +656,47 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     setExistingPackageId('');
   };
 
+  // ============ DESFAZER VÍNCULO ============
+  // Restaura a sessão para pending, remove agendamento retroativo e lançamentos financeiros gerados.
+  const handleUndoLink = async (packageAppointmentId: string) => {
+    const linked = existingPackageLinkedSessions.find((s: any) => s.id === packageAppointmentId);
+    if (!linked) { toast.error('Sessão não encontrada'); return; }
+    const appointmentId = linked.appointment_id;
+    setSubmitting(true);
+    try {
+      if (appointmentId) {
+        // 1) Remove lançamentos financeiros gerados a partir desse agendamento
+        const { error: feErr } = await supabase
+          .from('financial_entries')
+          .delete()
+          .eq('appointment_id', appointmentId);
+        if (feErr) throw feErr;
+
+        // 2) Remove o agendamento retroativo
+        const { error: apErr } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('id', appointmentId);
+        if (apErr) throw apErr;
+      }
+
+      // 3) Restaura a sessão do pacote para o estado disponível
+      const { error: paErr } = await supabase
+        .from('package_appointments')
+        .update({ status: 'pending', scheduled_date: null, appointment_id: null })
+        .eq('id', packageAppointmentId);
+      if (paErr) throw paErr;
+
+      invalidateAll();
+      toast.success('Vínculo desfeito. A sessão voltou a ficar disponível para agendamento.');
+    } catch (e: any) {
+      toast.error(e.message || 'Falha ao desfazer o vínculo');
+    } finally {
+      setSubmitting(false);
+      setConfirmUnlinkId(null);
+    }
+  };
+
   // ============ CSV ============
   const downloadCsvTemplate = () => {
     const tpl = `data;hora;duracao_min;servico;profissional;valor_pago;data_pagamento;observacoes

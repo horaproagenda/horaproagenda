@@ -617,11 +617,17 @@ export function NewAppointmentDialog({
     // Check for professional absence
     if (selectedProfessional) {
       absences.forEach(absence => {
+        // Guarda: só considerar ausências válidas do profissional selecionado.
+        // Bug anterior mostrava "profissional ausente" quando havia ausência
+        // com datas inválidas/invertidas ou de outro profissional cacheada.
+        if (!absence?.professional_id || absence.professional_id !== selectedProfessional) return;
         const absenceStart = new Date(absence.start_time);
         const absenceEnd = new Date(absence.end_time);
-        
+        if (isNaN(absenceStart.getTime()) || isNaN(absenceEnd.getTime())) return;
+        if (absenceEnd <= absenceStart) return;
+
         const overlaps = checkStart < absenceEnd && checkEnd > absenceStart;
-        if (overlaps && absence.professional_id === selectedProfessional) {
+        if (overlaps) {
           const prof = professionals.find(p => p.id === selectedProfessional);
           foundConflicts.push({
             type: 'absence',

@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { formatDurationClock } from '@/lib/duration';
+import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';

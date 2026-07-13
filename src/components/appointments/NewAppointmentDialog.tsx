@@ -2163,7 +2163,7 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
-                  {nextPackageStepService && (
+                  {selectedPackageData?.package_type === 'sequential' && nextPackageStepService && (
                     <div className="flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>
                       <span className="font-medium">{nextPackageStepService.name}</span>

@@ -47,7 +47,8 @@ const packageSchema = z.object({
   category: z.string().trim().min(1, 'Selecione uma categoria'),
   total_sessions: z.coerce.number().min(1, 'Mínimo 1 aplicação').max(100, 'Máximo 100 aplicações'),
   interval_days: z.coerce.number().min(1, 'Mínimo 1 dia').max(365, 'Máximo 365 dias'),
-  duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(480, 'Máximo 8 horas'),
+  // Para sequencial, "duration" é a soma das etapas (pode ultrapassar 8h).
+  duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(48000, 'Duração total muito longa'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
   professional_id: z.string().min(1, 'Selecione o profissional').refine(v => v && v !== '_none', 'Selecione o profissional responsável'),
   room_id: z.string().optional(),

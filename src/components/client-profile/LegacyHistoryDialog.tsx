@@ -300,6 +300,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
     // 0) Sync payment fields onto the appointment itself so it shows up in
     //    "Histórico de Pagamentos" (which is built from appointments.amount_paid).
+    //    We READ BACK the row and, if the update didn't stick (RLS silent
+    //    filter, auto-heal race, etc.), we abort loudly instead of leaving the
+    //    appointment as pending/R$ 0.
     if (params.appointment_id) {
       const methodName = selectedPaymentMethodName || null;
       const { error: aptErr } = await supabase
@@ -312,6 +315,23 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         })
         .eq('id', params.appointment_id);
       if (aptErr) throw aptErr;
+
+      const { data: verify, error: verifyErr } = await supabase
+        .from('appointments')
+        .select('amount_paid, payment_status')
+        .eq('id', params.appointment_id)
+        .maybeSingle();
+      if (verifyErr) throw verifyErr;
+      if (!verify || Number(verify.amount_paid || 0) <= 0) {
+        console.error('[LegacyHistory] appointment payment did not persist', {
+          appointment_id: params.appointment_id,
+          expected: params.amount,
+          got: verify,
+        });
+        throw new Error(
+          'Não foi possível registrar o pagamento no agendamento. Tente novamente ou verifique suas permissões.'
+        );
+      }
     }
 
     // 1) Financial entry — always created when payment method is client credit

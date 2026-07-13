@@ -97,6 +97,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const [pkgPaymentDate, setPkgPaymentDate] = useState('');
   const [pkgIntervalDays, setPkgIntervalDays] = useState('30'); // sequential
   const [pkgSessions, setPkgSessions] = useState<SessionRow[]>([newSessionRow(), newSessionRow()]);
+  const [linkExistingPackage, setLinkExistingPackage] = useState(false);
+  const [existingPackageId, setExistingPackageId] = useState<string>('');
 
   // CSV
   const [csvText, setCsvText] = useState('');

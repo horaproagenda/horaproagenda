@@ -42,10 +42,10 @@ describe('resolveSessionServiceLabel — Visualização das Sessões', () => {
     expect(label).toBe('Axila + Virilha');
   });
 
-  it('nunca retorna apenas o nome do pacote — usa "Sessão N · pacote" quando não há serviço', () => {
+  it('não repete "Sessão N" nem o nome do pacote quando nada está disponível', () => {
     const steps: { service_id: string | null }[] = [];
     const pkg = { name: 'Pacote Z', service_id: null };
-    expect(resolveSessionServiceLabel({ index: 0, steps, services: [], pkg })).toBe('Sessão 1 · Pacote Z');
-    expect(resolveSessionServiceLabel({ index: 2, steps, services: [], pkg })).toBe('Sessão 3 · Pacote Z');
+    expect(resolveSessionServiceLabel({ index: 0, steps, services: [], pkg })).toBe('');
+    expect(resolveSessionServiceLabel({ index: 2, steps, services: [], pkg })).toBe('');
   });
 });

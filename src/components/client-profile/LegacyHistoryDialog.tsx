@@ -71,6 +71,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const { services } = useServices();
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
+  const { clientPackages } = useClientPackages(clientId);
 
   const [tab, setTab] = useState<'single' | 'common' | 'sequential' | 'csv'>('single');
   const [submitting, setSubmitting] = useState(false);

@@ -177,21 +177,26 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   // Pacotes existentes do cliente compatíveis com a aba atual (comum/sequencial).
   const existingPackagesForTab = useMemo(() => {
     const kind = tab === 'sequential' ? 'sequential' : 'standard';
+    const seen = new Set<string>();
     return (clientPackages || []).filter((p: any) => {
       const type = p.package_type === 'sequential' ? 'sequential' : 'standard';
       if (type !== kind) return false;
+      if (!p?.id || seen.has(p.id)) return false;
+      seen.add(p.id);
       const summary = getPackageAvailabilitySummary(p);
-      return summary.schedulableSessions > 0;
+      return summary.remainingSessions > 0;
     });
   }, [clientPackages, tab]);
 
   const existingPackageOptions = useMemo(
     () => existingPackagesForTab.map((p: any) => {
       const s = getPackageAvailabilitySummary(p);
+      // "Disponíveis" no contexto de vincular histórico = sessões ainda não realizadas
+      // (não consumidas), independentemente de agendamentos órfãos que possam ter ficado.
       return {
         value: p.id,
         label: p.name,
-        sublabel: `${s.schedulableSessions} de ${s.totalSessions} disponíveis`,
+        sublabel: `${s.remainingSessions} de ${s.totalSessions} disponíveis`,
       };
     }),
     [existingPackagesForTab]
@@ -204,8 +209,10 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   const existingPackagePendingSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
+    // Considera disponível para vincular qualquer sessão ainda não concluída/perdida,
+    // mesmo que tenha um appointment_id órfão de um agendamento já excluído.
     return ((selectedExistingPackage as any).appointments || [])
-      .filter((s: any) => s.status !== 'completed' && s.status !== 'missed' && !s.appointment_id)
+      .filter((s: any) => s.status !== 'completed' && s.status !== 'missed')
       .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
   }, [selectedExistingPackage]);
 
@@ -977,18 +984,20 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsTrigger value="csv" className="text-xs gap-1"><Upload className="h-3.5 w-3.5" />CSV em lote</TabsTrigger>
           </TabsList>
 
-          {/* Shared selectors */}
+          {/* Shared selectors — em "Pacote comum" vinculado, o serviço vem do próprio pacote */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-            <div>
-              <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
-              <SearchableSelect
-                options={serviceOptions}
-                value={serviceId}
-                onChange={setServiceId}
-                placeholder="Selecione o serviço"
-                className="h-8 text-xs"
-              />
-            </div>
+            {!(tab === 'common' && linkExistingPackage) && (
+              <div>
+                <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? (tab === 'sequential' && linkExistingPackage ? '(opcional)' : '(obrigatório)') : '(opcional)'}</Label>
+                <SearchableSelect
+                  options={serviceOptions}
+                  value={serviceId}
+                  onChange={setServiceId}
+                  placeholder="Selecione o serviço"
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
             <div>
               <Label className="text-[10px]">Profissional</Label>
               <SearchableSelect

@@ -1501,7 +1501,9 @@ Até breve! ✨`;
                         <div
                           key={`freq-${service.id}`}
                           className="px-2 py-1.5 hover:bg-amber-500/10 cursor-pointer border-b border-border/50 bg-amber-500/5"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setSelectedService(service.id);
                             setServiceSearch(service.name);
                             setServiceType('service');
@@ -1546,7 +1548,9 @@ Até breve! ✨`;
                           <div
                             key={`client-svc-${paidService.id}`}
                             className="px-2 py-1.5 hover:bg-green-500/10 cursor-pointer border-b border-border/50 bg-green-500/5"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               const actualServiceId = paidService.service?.id || paidService.service_id;
                               setSelectedService(actualServiceId);
                               setServiceSearch(paidService.service?.name || '');
@@ -1625,7 +1629,9 @@ Até breve! ✨`;
                                 "px-2 py-1.5 cursor-pointer border-b border-border/50",
                                 isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
-                              onClick={() => {
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 setSelectedService(pkg.id);
                                 setServiceSearch(pkg.name);
                                 setServiceType('package');
@@ -1677,69 +1683,146 @@ Até breve! ✨`;
                     </div>
                   )}
                   
-                  {/* Regular Services */}
-                  {services
-                    .filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
-                    .slice(0, 5)
-                    .map(service => (
-                      <div
-                        key={service.id}
-                        className="px-2 py-1.5 hover:bg-accent cursor-pointer border-b border-border/50"
-                        onClick={() => {
-                          setSelectedService(service.id);
-                          setServiceSearch(service.name);
-                          setServiceType('service');
-                          setShowServiceSuggestions(false);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium truncate">{service.name}</span>
-                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0">Serviço</Badge>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  {/* Packages (templates) */}
-                  {visibleCatalogPackages
-                    .slice(0, 5)
-                    .map(pkg => (
-                      <div
-                        key={pkg.id}
-                        className="px-2 py-1.5 hover:bg-accent cursor-pointer border-b border-border/50"
-                        onClick={() => {
-                          setSelectedService(pkg.id);
-                          setServiceSearch(pkg.name);
-                          setServiceType('package');
-                          setShowServiceSuggestions(false);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium truncate">{pkg.name}</span>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-semibold gap-0.5 border border-border">
-                              <Package className="h-2.5 w-2.5" />
-                              Pacote
-                            </Badge>
-                            {pkg.package_type === 'sequential' && (
-                              <Badge className="h-5 px-1.5 text-[10px] font-bold gap-0.5 bg-primary text-primary-foreground border border-primary">
-                                <Repeat className="h-2.5 w-2.5" />
-                                Seq
-                              </Badge>
-                            )}
+                  {/* ==== Serviços / Kits / Pacotes: separados por categoria e cor ==== */}
+                  {(() => {
+                    const q = serviceSearch.toLowerCase();
+                    const filteredActive = services.filter(s => s.is_active && s.name.toLowerCase().includes(q));
+                    const isKit = (s: any) => Array.isArray(s?.service_components) && s.service_components.length > 0;
+                    const simpleServices = filteredActive.filter(s => !isKit(s)).slice(0, 5);
+                    const kitServices = filteredActive.filter(s => isKit(s)).slice(0, 5);
+                    const commonPkgs = visibleCatalogPackages.filter(p => p.package_type !== 'sequential').slice(0, 5);
+                    const sequentialPkgs = visibleCatalogPackages.filter(p => p.package_type === 'sequential').slice(0, 5);
+
+                    // Handler comum — usa onMouseDown para vencer o onBlur do input e
+                    // stopPropagation para evitar que a linha vizinha capture o clique.
+                    const pick = (id: string, name: string, type: 'service' | 'package') => (e: React.MouseEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedService(id);
+                      setServiceSearch(name);
+                      setServiceType(type);
+                      setUsingPaidServiceId(null);
+                      setShowServiceSuggestions(false);
+                    };
+
+                    const nothing =
+                      simpleServices.length === 0 &&
+                      kitServices.length === 0 &&
+                      commonPkgs.length === 0 &&
+                      sequentialPkgs.length === 0 &&
+                      (!selectedClient || visibleClientPackages.length === 0) &&
+                      (!selectedClient || clientPaidServices.length === 0);
+
+                    return (
+                      <>
+                        {/* Serviços — AZUL */}
+                        {simpleServices.length > 0 && (
+                          <div className="border-b border-sky-500/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-sky-700 bg-sky-500/10 flex items-center gap-1">
+                              <Briefcase className="h-3 w-3" /> Serviços
+                            </div>
+                            {simpleServices.map(service => (
+                              <div
+                                key={`svc-${service.id}`}
+                                className="px-2 py-1.5 hover:bg-sky-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-sky-500"
+                                onMouseDown={pick(service.id, service.name, 'service')}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium truncate">{service.name}</span>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-sky-400 text-sky-700">Serviço</Badge>
+                                </div>
+                                <div className="text-[10px] font-medium text-sky-700/80 uppercase tracking-wide">Categoria: Serviço</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  {services.filter(s => s.is_active && s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 &&
-                   visibleCatalogPackages.length === 0 &&
-                   (!selectedClient || visibleClientPackages.length === 0) && (
-                    <div className="px-2 py-1.5 text-muted-foreground text-xs">Nenhum serviço ou pacote encontrado</div>
-                   )}
+                        )}
+
+                        {/* Kits de Serviços — TEAL */}
+                        {kitServices.length > 0 && (
+                          <div className="border-b border-teal-500/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-500/10 flex items-center gap-1">
+                              <Package className="h-3 w-3" /> Kits de Serviços
+                            </div>
+                            {kitServices.map(service => (
+                              <div
+                                key={`kit-${service.id}`}
+                                className="px-2 py-1.5 hover:bg-teal-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-teal-500"
+                                onMouseDown={pick(service.id, service.name, 'service')}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium truncate">{service.name}</span>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-teal-400 text-teal-700">Kit</Badge>
+                                </div>
+                                <div className="text-[10px] font-medium text-teal-700/80 uppercase tracking-wide">Categoria: Kit de Serviços</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Pacotes Comuns — VIOLETA */}
+                        {commonPkgs.length > 0 && (
+                          <div className="border-b border-violet-500/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-violet-700 bg-violet-500/10 flex items-center gap-1">
+                              <Package className="h-3 w-3" /> Pacotes Comuns
+                            </div>
+                            {commonPkgs.map(pkg => (
+                              <div
+                                key={`pkgc-${pkg.id}`}
+                                className="px-2 py-1.5 hover:bg-violet-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-violet-500"
+                                onMouseDown={pick(pkg.id, pkg.name, 'package')}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium truncate">{pkg.name}</span>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-violet-400 text-violet-700">Pacote Comum</Badge>
+                                </div>
+                                <div className="text-[10px] font-medium text-violet-700/80 uppercase tracking-wide">Categoria: Pacote Comum</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Pacotes Sequenciais — LARANJA */}
+                        {sequentialPkgs.length > 0 && (
+                          <div className="border-b border-orange-500/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-orange-700 bg-orange-500/10 flex items-center gap-1">
+                              <Repeat className="h-3 w-3" /> Pacotes Sequenciais
+                            </div>
+                            {sequentialPkgs.map(pkg => (
+                              <div
+                                key={`pkgs-${pkg.id}`}
+                                className="px-2 py-1.5 hover:bg-orange-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-orange-500"
+                                onMouseDown={pick(pkg.id, pkg.name, 'package')}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium truncate">{pkg.name}</span>
+                                  <Badge className="h-5 px-1.5 text-[10px] flex-shrink-0 bg-orange-500 text-white border-orange-600">
+                                    <Repeat className="h-2.5 w-2.5 mr-0.5" /> Sequencial
+                                  </Badge>
+                                </div>
+                                <div className="text-[10px] font-medium text-orange-700/80 uppercase tracking-wide">Categoria: Pacote Sequencial</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {nothing && (
+                          <div className="px-2 py-1.5 text-muted-foreground text-xs">Nenhum serviço ou pacote encontrado</div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               {selectedServiceData && serviceType === 'service' && (

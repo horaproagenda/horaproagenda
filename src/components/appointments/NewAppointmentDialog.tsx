@@ -2033,8 +2033,8 @@ Até breve! ✨`;
                                 <SelectItem value="3">Quarta-feira</SelectItem>
                                 <SelectItem value="4">Quinta-feira</SelectItem>
                                 <SelectItem value="5">Sexta-feira</SelectItem>
-                                <SelectItem value="6">Sábado</SelectItem>
-                                <SelectItem value="0">Domingo</SelectItem>
+                                {workSaturdays && <SelectItem value="6">Sábado</SelectItem>}
+                                {workSundays && <SelectItem value="0">Domingo</SelectItem>}
                               </SelectContent>
                             </Select>
                             <p className="text-[10px] text-muted-foreground">
@@ -2118,7 +2118,8 @@ Até breve! ✨`;
                                             )}
                                           >
                                             <span className="truncate">
-                                              {selectedServiceData?.name ? <span className="font-medium">{selectedServiceData.name} · </span> : null}
+                                              {/* Serviço único: não mostrar o nome do serviço na visualização.
+                                                  Nome do serviço aparece apenas em pacotes sequenciais/kits. */}
                                               {format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                             </span>
                                             <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />

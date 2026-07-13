@@ -302,7 +302,14 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
   const activeEquipment = equipment.filter(e => e.is_active);
 
   const originalStart = appointment ? parseISO(appointment.start_time) : new Date();
-  const hasDateChanged = date !== format(originalStart, 'yyyy-MM-dd') || startTime !== format(originalStart, 'HH:mm');
+  const originalProfessional = appointment?.professional_id || 'none';
+  const originalRoom = appointment?.room_id || 'none';
+  const hasDateChanged =
+    date !== format(originalStart, 'yyyy-MM-dd') ||
+    startTime !== format(originalStart, 'HH:mm') ||
+    endTime !== format(parseISO(appointment?.end_time || appointment?.start_time || new Date().toISOString()), 'HH:mm') ||
+    professionalId !== originalProfessional ||
+    roomId !== originalRoom;
 
   return (
     <>

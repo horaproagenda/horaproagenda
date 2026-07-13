@@ -46,6 +46,8 @@ export function resolveSessionServiceLabel({
   if (nextStepService?.name) return nextStepService.name;
   if (fallbackService?.name) return fallbackService.name;
 
-  if (pkg?.name) return `Sessão ${index + 1} · ${pkg.name}`;
+  // Não repetir "Sessão N" nem prefixar com o nome do pacote — a linha já traz
+  // o índice em badge e a data. Se realmente não houver serviço, retornar
+  // string vazia para deixar apenas a data no rótulo.
   return '';
 }

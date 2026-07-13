@@ -168,6 +168,42 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   const selectedService = useMemo(() => services.find((s: any) => s.id === serviceId), [services, serviceId]);
 
+  // Pacotes existentes do cliente compatíveis com a aba atual (comum/sequencial).
+  const existingPackagesForTab = useMemo(() => {
+    const kind = tab === 'sequential' ? 'sequential' : 'standard';
+    return (clientPackages || []).filter((p: any) => {
+      const type = p.package_type === 'sequential' ? 'sequential' : 'standard';
+      if (type !== kind) return false;
+      const summary = getPackageAvailabilitySummary(p);
+      return summary.schedulableSessions > 0;
+    });
+  }, [clientPackages, tab]);
+
+  const existingPackageOptions = useMemo(
+    () => existingPackagesForTab.map((p: any) => {
+      const s = getPackageAvailabilitySummary(p);
+      return {
+        value: p.id,
+        label: p.name,
+        sublabel: `${s.schedulableSessions} de ${s.totalSessions} disponíveis`,
+      };
+    }),
+    [existingPackagesForTab]
+  );
+
+  const selectedExistingPackage = useMemo(
+    () => existingPackagesForTab.find((p: any) => p.id === existingPackageId),
+    [existingPackagesForTab, existingPackageId]
+  );
+
+  const existingPackagePendingSessions = useMemo(() => {
+    if (!selectedExistingPackage) return [] as any[];
+    return ((selectedExistingPackage as any).appointments || [])
+      .filter((s: any) => s.status !== 'completed' && s.status !== 'missed' && !s.appointment_id)
+      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+  }, [selectedExistingPackage]);
+
+
   const ensureAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error('Não autenticado');

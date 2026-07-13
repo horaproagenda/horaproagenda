@@ -74,7 +74,7 @@ import {
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDurationClock } from '@/lib/duration';
+import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';

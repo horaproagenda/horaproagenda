@@ -2477,7 +2477,7 @@ Até breve! ✨`;
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-sm font-medium mb-1">Resumo do Agendamento</p>
                 <p className="text-xs text-muted-foreground">
-                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} • Início {time} • Término {format(appointmentTimes.endTime, 'HH:mm')}
+                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} • Início {time} • Término {appointmentTimes.endLabel || addMinutesToClock(time, (serviceType === 'service' ? (selectedServiceData?.duration || 60) : (selectedPackageData?.duration || 60)))}
                 </p>
               </div>
             )}

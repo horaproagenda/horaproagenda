@@ -2105,7 +2105,7 @@ Até breve! ✨`;
                                               next.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
                                               updateEditableServiceDate(index, next);
                                             }}
-                                            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || !isWorkDay(d)}
+                                            disabled={(d) => !isWorkDay(d)}
                                             locale={ptBR}
                                             initialFocus
                                             className="pointer-events-auto"

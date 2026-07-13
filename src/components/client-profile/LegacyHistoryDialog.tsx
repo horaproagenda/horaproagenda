@@ -994,25 +994,31 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsContent value="common" className="mt-0">
               <PackageForm
                 kind="common"
-                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
                 pkgSessions={pkgSessions}
                 addSession={addSession} removeSession={removeSession} updateSession={updateSession}
+                linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
+                existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
+                existingPackageOptions={existingPackageOptions}
+                existingPackageAvailable={existingPackagePendingSessions.length}
               />
             </TabsContent>
 
             <TabsContent value="sequential" className="mt-0">
               <PackageForm
                 kind="sequential"
-                
                 pkgTotalSessions={pkgTotalSessions} setPkgTotalSessions={setPkgTotalSessions}
                 pkgTotalPrice={pkgTotalPrice} setPkgTotalPrice={setPkgTotalPrice}
                 pkgPaymentDate={pkgPaymentDate} setPkgPaymentDate={setPkgPaymentDate}
                 pkgIntervalDays={pkgIntervalDays} setPkgIntervalDays={setPkgIntervalDays}
                 pkgSessions={pkgSessions}
                 addSession={addSession} removeSession={removeSession} updateSession={updateSession}
+                linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
+                existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
+                existingPackageOptions={existingPackageOptions}
+                existingPackageAvailable={existingPackagePendingSessions.length}
               />
             </TabsContent>
 

@@ -1152,7 +1152,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
                 existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
                 existingPackageOptions={existingPackageOptions}
-                existingPackageAvailable={existingPackagePendingSessions.length}
+                existingPackageAvailable={existingPackageAvailableCount}
                 linkedSessions={existingPackageLinkedSessions}
                 onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />

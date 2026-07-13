@@ -2375,6 +2375,11 @@ Até breve! ✨`;
                                           >
                                             <span className="truncate" data-testid={`preview-session-label-${index}`}>
                                               {(() => {
+                                                // Pacote comum: todos os serviços têm o mesmo nome,
+                                                // então não exibimos o nome do serviço na visualização.
+                                                if (selectedPackageData?.package_type !== 'sequential') {
+                                                  return null;
+                                                }
                                                 const name = resolveSessionServiceLabel({
                                                   index,
                                                   steps: packageSequenceSteps as any,

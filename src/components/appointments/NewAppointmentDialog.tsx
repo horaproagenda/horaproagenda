@@ -871,10 +871,27 @@ export function NewAppointmentDialog({
       return;
     }
 
-    
+
     // Block if outside business hours
     if (businessHoursError) {
       toast.error(businessHoursError);
+      return;
+    }
+
+    // Guarda: nenhum agendamento (manual ou automático) pode cair em um dia
+    // em que o estabelecimento não trabalha (ex.: domingo com work_sundays=false).
+    if (!isWorkDay(date)) {
+      const dow = date.getDay();
+      const dayName = dow === 0 ? 'domingos' : dow === 6 ? 'sábados' : 'este dia';
+      toast.error(`O estabelecimento não atende aos ${dayName}. Escolha outra data.`);
+      return;
+    }
+    if (autoScheduleEnabled && editablePreviewDates.some((d) => !isWorkDay(d))) {
+      toast.error('Uma ou mais sessões automáticas caem em dias não trabalhados. Ajuste as datas.');
+      return;
+    }
+    if (repeatServiceEnabled && editableServiceDates.some((d) => !isWorkDay(d))) {
+      toast.error('Uma ou mais repetições caem em dias não trabalhados. Ajuste as datas.');
       return;
     }
     

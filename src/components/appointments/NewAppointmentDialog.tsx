@@ -2118,7 +2118,8 @@ Até breve! ✨`;
                                             )}
                                           >
                                             <span className="truncate">
-                                              {selectedServiceData?.name ? <span className="font-medium">{selectedServiceData.name} · </span> : null}
+                                              {/* Serviço único: não mostrar o nome do serviço na visualização.
+                                                  Nome do serviço aparece apenas em pacotes sequenciais/kits. */}
                                               {format(previewDate, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                             </span>
                                             <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />

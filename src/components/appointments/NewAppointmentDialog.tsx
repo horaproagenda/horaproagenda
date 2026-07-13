@@ -356,9 +356,14 @@ export function NewAppointmentDialog({
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
 
+    // Para pacote sequencial, a duração de cada agendamento é a duração do
+    // serviço da ETAPA atual (Avaliação, Axila+Virilha, etc.) — não a soma
+    // do pacote inteiro. Caso contrário, término = 08:00 + 12h40 = 20:40.
+    const isSequential = selectedPackageData?.package_type === 'sequential';
+    const stepDuration = (nextPackageStepService as any)?.duration;
     const duration = serviceType === 'service'
       ? (selectedServiceData?.duration || 60)
-      : (selectedPackageData?.duration || 60);
+      : (isSequential ? (stepDuration || 60) : (selectedPackageData?.duration || 60));
 
     const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
